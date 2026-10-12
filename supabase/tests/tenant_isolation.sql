@@ -47,9 +47,9 @@ BEGIN
   ASSERT n=0, 'T3 cross update';
   ok := false; BEGIN PERFORM public.add_business_member(biz_a, u_b, 'viewer');
   EXCEPTION WHEN insufficient_privilege THEN ok := true; END; ASSERT ok, 'T3 cross member add';
-  -- moving own branch into another tenant blocked
+  INSERT INTO public.branches(business_id, code, name) VALUES (biz_b,'HQ','B Office');
   ok := false; BEGIN UPDATE public.branches SET business_id=biz_a WHERE business_id=biz_b;
-  EXCEPTION WHEN insufficient_privilege THEN ok := true; END; ASSERT ok OR true, 'T3 tenant move';
+  EXCEPTION WHEN insufficient_privilege THEN ok := true; END; ASSERT ok, 'T3 tenant move';
 
   -- T4 outsider sees nothing, cannot self-join
   PERFORM set_config('request.jwt.claims', json_build_object('sub',u_x,'role','authenticated')::text, true);
