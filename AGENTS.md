@@ -8,3 +8,7 @@
 > Commits you push to the connected branch sync back to Lovable and show up in
 > the editor, so keep the branch in a working state.
 <!-- LOVABLE:END -->
+
+- Tenant data: every tenant table has `business_id`, RLS via `is_business_member`/`has_business_role` (rank from `roles` table); membership writes only through SECURITY DEFINER RPCs. Why: permissions must come from DB records, never client input.
+- After any new table, REVOKE platform default grants and grant least privilege explicitly. Why: defaults give authenticated full write access.
+- Financial/posted records use ON DELETE RESTRICT, never CASCADE. Why: accounting history must not vanish.
