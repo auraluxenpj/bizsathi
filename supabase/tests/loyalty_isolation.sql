@@ -1,0 +1,45 @@
+-- Isolated test database only. Expected final exception rolls back all synthetic records.
+DO $test$
+DECLARE u uuid:=gen_random_uuid(); staff uuid:=gen_random_uuid(); b uuid; other_b uuid; br uuid; hidden_br uuid; per uuid; v uuid; req jsonb; sale uuid:=gen_random_uuid(); sale2 uuid:=gen_random_uuid(); ret uuid:=gen_random_uuid(); mid uuid; rejected boolean; return_req jsonb;
+BEGIN
+ INSERT INTO auth.users(id,email,email_confirmed_at,raw_user_meta_data,created_at,updated_at) SELECT i,'loyalty+'||i||'@example.invalid',now(),'{}',now(),now() FROM unnest(ARRAY[u,staff]) i;
+ SET LOCAL ROLE authenticated; PERFORM set_config('request.jwt.claims',json_build_object('sub',u,'role','authenticated')::text,true);
+ b:=public.create_business('Isolated loyalty'); other_b:=public.create_business('Other isolated loyalty');
+ INSERT INTO public.branches(business_id,code,name) VALUES(b,'MAIN','Main') RETURNING id INTO br;
+ INSERT INTO public.branches(business_id,code,name) VALUES(b,'HIDDEN','Hidden') RETURNING id INTO hidden_br;
+ INSERT INTO public.financial_periods(business_id,name,start_date,end_date) VALUES(b,'Open','2026-01-01','2026-12-31') RETURNING id INTO per;
+ PERFORM public.save_catalogue_variant(b,'[{"product_name":"Test only","sku":"LOY","selling_price":50}]'); SELECT id INTO v FROM public.product_variants WHERE business_id=b;
+ PERFORM public.post_stock_operation(b,gen_random_uuid(),v,br,NULL,'opening',20,'OPEN','Test only');
+ PERFORM public.post_stock_operation(b,gen_random_uuid(),v,hidden_br,NULL,'opening',20,'OPEN-H','Test only');
+ req:=jsonb_build_object('businessId',b,'id',sale,'branchId',br,'periodId',per,'date','2026-10-27','kind','sale','status','confirmed','reference','LOY-1','lines',jsonb_build_array(jsonb_build_object('variantId',v,'quantity',5,'price',50,'discount',0,'taxRate',0)),'payments',jsonb_build_array(jsonb_build_object('id',gen_random_uuid(),'method','bank','amount',250,'reference','LOY-1')));
+ rejected:=false; BEGIN PERFORM public.post_commerce_document(req); EXCEPTION WHEN raise_exception THEN rejected:=true; END; ASSERT rejected,'Mobile is mandatory';
+ ASSERT NOT EXISTS(SELECT 1 FROM public.commerce_documents WHERE id=sale),'Denied sale is atomic';
+ rejected:=false; BEGIN PERFORM public.post_commerce_document(req||jsonb_build_object('mobile','9612345678')); EXCEPTION WHEN raise_exception THEN rejected:=true; END; ASSERT rejected,'Invalid mobile denied';
+ PERFORM public.post_commerce_document(req||jsonb_build_object('id',gen_random_uuid(),'status','draft','payments','[]'::jsonb)); ASSERT (SELECT count(*) FROM public.customer_memberships WHERE business_id=b)=0,'Drafts never award';
+ req:=req||jsonb_build_object('mobile','+977 984-123-4567'); PERFORM public.post_commerce_document(req); PERFORM public.post_commerce_document(req);
+ SELECT id INTO mid FROM public.customer_memberships WHERE business_id=b AND mobile='9841234567'; ASSERT mid IS NOT NULL,'Mobile normalized';
+ ASSERT (SELECT membership_number FROM public.customer_memberships WHERE id=mid)='AL-9841234567','AL prefix';
+ ASSERT (SELECT points FROM public.loyalty_point_events WHERE document_id=sale)=2,'NPR 250 earns two points';
+ ASSERT (SELECT count(*) FROM public.loyalty_point_events WHERE document_id=sale)=1,'Retry awards once';
+ rejected:=false; BEGIN PERFORM public.post_commerce_document(req||jsonb_build_object('mobile','9841234568')); EXCEPTION WHEN raise_exception THEN rejected:=true; END; ASSERT rejected,'Changed retry denied';
+ req:=req||jsonb_build_object('id',sale2,'mobile','9841234567','lines',jsonb_build_array(jsonb_build_object('variantId',v,'quantity',1,'price',99,'discount',0,'taxRate',0)),'payments',jsonb_build_array(jsonb_build_object('id',gen_random_uuid(),'method','bank','amount',99,'reference','LOY-2'))); PERFORM public.post_commerce_document(req);
+ ASSERT (SELECT points FROM public.loyalty_point_events WHERE document_id=sale2)=0,'NPR 99 earns zero'; ASSERT (SELECT count(*) FROM public.customer_memberships WHERE business_id=b)=1,'Same mobile reuses membership';
+ req:=req||jsonb_build_object('id',gen_random_uuid(),'lines',jsonb_build_array(jsonb_build_object('variantId',v,'quantity',2,'price',100,'taxRate',0)),'payments',jsonb_build_array(jsonb_build_object('id',gen_random_uuid(),'method','bank','amount',200,'reference','LOY-3'))); PERFORM public.post_commerce_document(req);
+ ASSERT (SELECT sum(points) FROM public.loyalty_point_events WHERE membership_id=mid)=4,'Points accumulate across purchases';
+ return_req:=jsonb_build_object('businessId',b,'id',ret,'branchId',br,'periodId',per,'date','2026-10-27','kind','sale_return','status','confirmed','sourceId',sale,'partyId',NULL,'reference','RET','lines',jsonb_build_array(jsonb_build_object('variantId',v,'quantity',2,'price',50,'taxRate',0)),'payments',jsonb_build_array(jsonb_build_object('id',gen_random_uuid(),'method','bank','amount',100,'reference','RET')));
+ PERFORM public.post_commerce_document(return_req); PERFORM public.post_commerce_document(return_req);
+ ASSERT (SELECT points FROM public.loyalty_point_events WHERE document_id=ret)=-1,'Partial return leaves one original point';
+ return_req:=return_req||jsonb_build_object('id',gen_random_uuid(),'lines',jsonb_build_array(jsonb_build_object('variantId',v,'quantity',3,'price',50,'taxRate',0)),'payments',jsonb_build_array(jsonb_build_object('id',gen_random_uuid(),'method','bank','amount',150,'reference','RET-2'))); PERFORM public.post_commerce_document(return_req);
+ ASSERT (SELECT sum(points) FROM public.loyalty_point_events WHERE sale_id=sale)=0,'Full cumulative returns remove only original award';
+ rejected:=false; BEGIN UPDATE public.loyalty_point_events SET points=999 WHERE sale_id=sale; EXCEPTION WHEN insufficient_privilege OR raise_exception THEN rejected:=true; END; ASSERT rejected,'Points cannot be edited';
+ PERFORM public.add_business_member(b,staff,'staff'); PERFORM public.set_branch_access(b,br,staff,true);
+ req:=req||jsonb_build_object('id',gen_random_uuid(),'branchId',hidden_br,'mobile','9811111111'); PERFORM public.post_commerce_document(req);
+ PERFORM set_config('request.jwt.claims',json_build_object('sub',staff,'role','authenticated')::text,true);
+ ASSERT NOT EXISTS(SELECT 1 FROM public.loyalty_point_events WHERE branch_id=hidden_br),'Hidden branch points denied';
+ ASSERT NOT EXISTS(SELECT 1 FROM public.customer_memberships WHERE mobile='9811111111'),'Hidden branch membership denied';
+ ASSERT NOT EXISTS(SELECT 1 FROM public.customer_memberships WHERE business_id=other_b),'Other tenant memberships denied';
+ ASSERT (SELECT sum(points) FROM public.loyalty_point_events WHERE membership_id=mid)=2,'Staff sees authorized branch balance';
+ rejected:=false; BEGIN INSERT INTO public.customer_memberships(business_id,mobile) VALUES(b,'9822222222'); EXCEPTION WHEN insufficient_privilege THEN rejected:=true; END; ASSERT rejected,'Direct membership creation denied';
+ SET LOCAL ROLE anon; rejected:=false; BEGIN PERFORM 1 FROM public.loyalty_point_events; EXCEPTION WHEN insufficient_privilege THEN rejected:=true; END; ASSERT rejected,'Anonymous points denied';
+ RESET ROLE; SET CONSTRAINTS ALL IMMEDIATE; RAISE EXCEPTION 'LOYALTY TESTS PASSED';
+END $test$;

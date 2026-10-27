@@ -4,9 +4,9 @@ import {setResponseHeader} from '@tanstack/react-start/server';
 import Decimal from 'decimal.js';
 import {z} from 'zod';
 import {cacheInput,sameSaleRequest} from './offline-drafts';
-import {documentInput} from './commerce-schemas';
+import {storedDocumentInput} from './commerce-schemas';
 
-export const checkOfflineSale=createServerFn({method:'POST'}).middleware([requireSupabaseAuth]).inputValidator(documentInput).handler(async({data,context})=>{
+export const checkOfflineSale=createServerFn({method:'POST'}).middleware([requireSupabaseAuth]).inputValidator(storedDocumentInput).handler(async({data,context})=>{
  setResponseHeader('Cache-Control','no-store');
  const result=await context.supabase.from('commerce_documents').select('id,status,kind,actor_id,request').eq('business_id',data.businessId).eq('branch_id',data.branchId).eq('id',data.id).maybeSingle();
  if(result.error)throw new Error('Sale status could not be checked. Keep the same request.');

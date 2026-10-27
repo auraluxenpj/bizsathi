@@ -863,6 +863,38 @@ export type Database = {
           },
         ]
       }
+      customer_memberships: {
+        Row: {
+          business_id: string
+          created_at: string
+          id: string
+          membership_number: string | null
+          mobile: string
+        }
+        Insert: {
+          business_id: string
+          created_at?: string
+          id?: string
+          membership_number?: string | null
+          mobile: string
+        }
+        Update: {
+          business_id?: string
+          created_at?: string
+          id?: string
+          membership_number?: string | null
+          mobile?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "customer_memberships_business_id_fkey"
+            columns: ["business_id"]
+            isOneToOne: false
+            referencedRelation: "businesses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       financial_periods: {
         Row: {
           business_id: string
@@ -914,6 +946,85 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
+          },
+        ]
+      }
+      loyalty_point_events: {
+        Row: {
+          actor_id: string
+          branch_id: string
+          business_id: string
+          created_at: string
+          document_id: string
+          id: string
+          membership_id: string
+          points: number
+          sale_id: string
+        }
+        Insert: {
+          actor_id: string
+          branch_id: string
+          business_id: string
+          created_at?: string
+          document_id: string
+          id?: string
+          membership_id: string
+          points: number
+          sale_id: string
+        }
+        Update: {
+          actor_id?: string
+          branch_id?: string
+          business_id?: string
+          created_at?: string
+          document_id?: string
+          id?: string
+          membership_id?: string
+          points?: number
+          sale_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "loyalty_point_events_actor_id_fkey"
+            columns: ["actor_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "loyalty_point_events_business_id_branch_id_fkey"
+            columns: ["business_id", "branch_id"]
+            isOneToOne: false
+            referencedRelation: "branches"
+            referencedColumns: ["business_id", "id"]
+          },
+          {
+            foreignKeyName: "loyalty_point_events_business_id_document_id_fkey"
+            columns: ["business_id", "document_id"]
+            isOneToOne: true
+            referencedRelation: "commerce_documents"
+            referencedColumns: ["business_id", "id"]
+          },
+          {
+            foreignKeyName: "loyalty_point_events_business_id_fkey"
+            columns: ["business_id"]
+            isOneToOne: false
+            referencedRelation: "businesses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "loyalty_point_events_business_id_membership_id_fkey"
+            columns: ["business_id", "membership_id"]
+            isOneToOne: false
+            referencedRelation: "customer_memberships"
+            referencedColumns: ["business_id", "id"]
+          },
+          {
+            foreignKeyName: "loyalty_point_events_business_id_sale_id_fkey"
+            columns: ["business_id", "sale_id"]
+            isOneToOne: false
+            referencedRelation: "commerce_documents"
+            referencedColumns: ["business_id", "id"]
           },
         ]
       }
@@ -1389,6 +1500,7 @@ export type Database = {
         Returns: boolean
       }
       is_business_member: { Args: { _business_id: string }; Returns: boolean }
+      normalize_member_mobile: { Args: { _mobile: string }; Returns: string }
       post_accounting_voucher: { Args: { _request: Json }; Returns: string }
       post_cash_counter_event: { Args: { _request: Json }; Returns: string }
       post_commerce_document: { Args: { _request: Json }; Returns: string }
