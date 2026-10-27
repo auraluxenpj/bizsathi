@@ -1,6 +1,7 @@
 # Security review workspace
 - [x] Audit the uploaded BizSathi business-suite brief against current pages, live schema, grants, and tests.
-- [ ] Implement the business suite incrementally — waiting for approval of the audit and phased plan; no structural changes authorized yet.
+- [ ] Phase 1: business onboarding, password recovery, invitations, staff administration, branch authorization, and explicit review permissions — approved; in progress.
+- [ ] Phase 2 and later: business dashboard and operational modules — awaiting review after Phase 1.
 - [x] Add administrator-only security review history and append-only decisions.
 - [x] Add sign-in and optional avatar profile data.
 - [x] Add AI finding impact and prioritized remediation summaries.

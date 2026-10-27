@@ -18,12 +18,16 @@ export const getReviewHistory = createServerFn({ method: 'GET' }).middleware([re
 });
 
 export const addFinding = createServerFn({ method: 'POST' }).middleware([requireSupabaseAuth]).inputValidator(findingInput).handler(async ({ data, context }) => {
+  const { data: allowed, error: permissionError } = await context.supabase.rpc('has_business_role', { _business_id: data.businessId, _min_role: 'admin' });
+  if (permissionError || !allowed) throw new Error('Administrator access is required.');
   const { data: row, error } = await context.supabase.from('security_review_events').insert({ business_id: data.businessId, kind: 'finding', title: data.title, details: data.details }).select().single();
   if (error) throw new Error('Finding could not be saved. Administrator access is required.');
   return row;
 });
 
 export const appendReviewEvent = createServerFn({ method: 'POST' }).middleware([requireSupabaseAuth]).inputValidator(eventInput).handler(async ({ data, context }) => {
+  const { data: allowed, error: permissionError } = await context.supabase.rpc('has_business_role', { _business_id: data.businessId, _min_role: 'admin' });
+  if (permissionError || !allowed) throw new Error('Administrator access is required.');
   if (data.kind !== 'report' && !data.relatedId) throw new Error('Select a finding for this decision.');
   if (data.kind === 'approval' && !['approved', 'rejected'].includes(data.decision ?? '')) throw new Error('Select an approval decision.');
   if (data.kind === 'disposition' && !['open', 'remediated', 'accepted_risk', 'false_positive'].includes(data.decision ?? '')) throw new Error('Select a disposition.');
@@ -58,6 +62,8 @@ export const analyzeFinding = createServerFn({ method: 'POST' }).middleware([req
 });
 
 export const resumeAiReviews = createServerFn({ method: 'POST' }).middleware([requireSupabaseAuth]).inputValidator(businessInput).handler(async ({ data, context }) => {
+  const { data: allowed, error: permissionError } = await context.supabase.rpc('has_business_role', { _business_id: data.businessId, _min_role: 'admin' });
+  if (permissionError || !allowed) throw new Error('Administrator access is required.');
   const { error } = await context.supabase.from('security_review_events').insert({ business_id: data.businessId, kind: 'ai_resume', title: 'AI access recovery confirmed', details: 'Administrator confirmed AI access was restored. No request was retried automatically.' });
   if (error) throw new Error('Administrator access is required.');
   return { ok: true };
