@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from '@tanstack/react-router';
+import { useQueryClient } from '@tanstack/react-query';
 import { ShieldCheck, ArrowUpRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { lovable } from '@/integrations/lovable';
@@ -9,6 +10,7 @@ import '@lovable.dev/cloud-auth-js/styles.css';
 
 export function SignIn() {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [signedIn, setSignedIn] = useState(false);
@@ -31,6 +33,6 @@ export function SignIn() {
       <div className="absolute inset-0 -z-10 bg-hero-scrim" />
       <div className="max-w-3xl text-primary-foreground"><p className="mb-4 text-sm">SECURITY & GOVERNANCE</p><h1 className="brand text-5xl font-medium md:text-6xl">BizSathi Nepal</h1><p className="mt-5 max-w-lg text-lg">Security reviews. Clear decisions. A stronger business.</p></div>
     </section>
-    <section className="mx-auto grid max-w-6xl gap-8 px-6 py-10 md:grid-cols-2 md:px-12"><div><p className="mb-3 text-xs font-semibold text-primary">ADMINISTRATOR ACCESS</p><h2 className="brand text-3xl">Your security review desk</h2><p className="mt-4 text-sm text-muted-foreground">{signedIn ? 'Your account is signed in.' : 'Sign in with your business administrator account.'}</p></div><div className="max-w-sm space-y-3">{signedIn ? <><Button className="w-full" size="lg" onClick={() => navigate({ to: '/security' })}>Open security desk <ArrowUpRight /></Button><Button variant="outline" className="w-full" onClick={async () => { const { QueryClient } = await import('@tanstack/react-query'); void QueryClient; await supabase.auth.signOut(); setSignedIn(false); }}>Sign out</Button></> : <><Button className="w-full" size="lg" disabled={busy} onClick={() => login('google')}>Continue with Google <ArrowUpRight /></Button><Button className="lovable-auth-button w-full" variant="outline" size="lg" disabled={busy} onClick={() => login('lovable')}>Continue with Lovable</Button></>}{error && <p role="alert" className="text-sm text-destructive">{error}</p>}<p className="pt-2 text-xs text-muted-foreground">Access is restricted to active business owners and administrators.</p></div></section>
+    <section className="mx-auto grid max-w-6xl gap-8 px-6 py-10 md:grid-cols-2 md:px-12"><div><p className="mb-3 text-xs font-semibold text-primary">ADMINISTRATOR ACCESS</p><h2 className="brand text-3xl">Your security review desk</h2><p className="mt-4 text-sm text-muted-foreground">{signedIn ? 'Your account is signed in.' : 'Sign in with your business administrator account.'}</p></div><div className="max-w-sm space-y-3">{signedIn ? <><Button className="w-full" size="lg" onClick={() => navigate({ to: '/security' })}>Open security desk <ArrowUpRight /></Button><Button variant="outline" className="w-full" onClick={async () => { await queryClient.cancelQueries(); queryClient.clear(); await supabase.auth.signOut(); setSignedIn(false); await navigate({ to: '/auth', replace: true }); }}>Sign out</Button></> : <><Button className="w-full" size="lg" disabled={busy} onClick={() => login('google')}>Continue with Google <ArrowUpRight /></Button><Button className="lovable-auth-button w-full" variant="outline" size="lg" disabled={busy} onClick={() => login('lovable')}>Continue with Lovable</Button></>}{error && <p role="alert" className="text-sm text-destructive">{error}</p>}<p className="pt-2 text-xs text-muted-foreground">Access is restricted to active business owners and administrators.</p></div></section>
   </main>;
 }
