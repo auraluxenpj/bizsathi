@@ -3,6 +3,7 @@
 ## Migrations
 1. `0000` — roles, profiles, businesses, business_memberships, branches, financial_periods, business_settings, audit_logs; RLS, helpers, triggers, privileged functions.
 2. `0001` — resets table privileges to least privilege (removes platform default grants).
+3. `0002_security_review_workspace` — optional avatar URL and append-only, administrator-only tenant review events.
 
 ## Running the tests
 Run `supabase/tests/tenant_isolation.sql` as a privileged SQL user. It creates synthetic users, runs all checks, then aborts on purpose.
@@ -18,7 +19,16 @@ Covers: atomic business creation, two-business isolation (all 7 tables), cross-t
 - **Assessment:** Intentional read-only reference data, not a tenant-data exposure or privilege-escalation path under the current schema. Keep private or business-specific information out of this catalogue; reconsider the policy and dismissal if its contents or access rules change.
 - **Approval decision:** The user approved dismissing this specific warning through the security approval card on 2026-10-27. The finding-management tool confirmed the dismissal and reported no remaining active findings at that point. No database policy or grant was relaxed or changed by the dismissal; it suppresses the warning rather than fixing or removing the readable-label policy.
 - **Approved rationale:** “This table contains only shared role names and ranks, not anyone’s assigned permissions or private business data, and users cannot change it.”
-- **Review scope:** The deeper code-level security scan was started separately. Its result was still pending when this decision was recorded; the quick scan and approved dismissal do not establish that the full application is free of security issues.
+- **Review scope:** The deeper code-level security scan was pending when the dismissal was recorded. It completed at 2026-10-27 04:09:39 UTC with no findings for the scanned version; results were marked outdated for the current project. Neither the dismissal nor that scan establishes that subsequent application changes are free of security issues.
+
+## Security workspace review — 2026-10-27
+- Signed-in active business owners and administrators can read and append tenant review events. Server AI calls also verify administrator membership through trusted database records; ordinary reads and writes retain RLS.
+- Findings, report updates, AI analyses, warning dispositions, and approvals are separate immutable events. Recorded approval decisions do not automatically dismiss scanner warnings or change permissions. Cross-tenant event links are rejected by a composite foreign key. Actor and timestamp are database-generated for ordinary application inserts.
+- Existing project evidence is displayed as labeled historical reference records after administrator authorization, not attributed as new tenant approvals. The original approval has date-only precision.
+- AI uses Lovable Gateway `openai/gpt-6-astra` via Responses with streaming on the gateway leg, strict structured output, no automatic retries, and persisted per-business access pauses. Prompts and credentials remain server-only. Advice is not an approval or verified fix.
+- Validation: seven targeted unit/routing tests passed; database columns and administrator RLS were read back; signed-out protected-history navigation redirected to sign-in with no page errors or small-screen horizontal overflow. A real gateway request returned an informational assessment and prioritized steps for non-private role-label evidence.
+- **Not yet verified:** signed-in end-to-end submission, AI persistence/read-back, profile save, and decision recording. Session minting reported no auth users. No real business or account data was inserted. A signed-up user with an active owner/admin business membership is needed to finish these checks. New-table live two-business mutation tests also remain to be run with a privileged transactional test connection.
+- **Manual review:** AI processing sends administrator-supplied evidence to Lovable AI; do not include credentials or personal financial records. Confirm retention requirements before sensitive use. This update has not received a new deep scan.
 
 ## Recovery
 - **Prefer roll-forward**: write a new migration that fixes the issue. Never edit applied migrations.
@@ -30,7 +40,7 @@ DROP FUNCTION IF EXISTS public.create_business(text,text,text), public.add_busin
   public.update_business_member(uuid,uuid,text,text), public.remove_business_member(uuid,uuid),
   public.transfer_business_ownership(uuid,uuid), public.set_financial_period_status(uuid,text),
   public.archive_business(uuid), public.handle_new_user() CASCADE;
-DROP TABLE IF EXISTS public.audit_logs, public.business_settings, public.financial_periods, public.branches,
+DROP TABLE IF EXISTS public.security_review_events, public.audit_logs, public.business_settings, public.financial_periods, public.branches,
   public.business_memberships, public.businesses, public.profiles, public.roles CASCADE;
 DROP FUNCTION IF EXISTS public.write_audit(uuid,text,text,text,jsonb,jsonb), public.audit_row(),
   public.guard_closed_period(), public.block_mutation(), public.prevent_tenant_change(), public.touch_updated_at(),
