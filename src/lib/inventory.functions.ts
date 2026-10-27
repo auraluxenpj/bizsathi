@@ -30,6 +30,6 @@ export const saveParty = createServerFn({method:'POST'}).middleware([requireSupa
  const {data:saved,error}=await query.select('id').single(); if(error || !saved)throw new Error('Contact could not be saved.');return {ok:true};
 });
 export const postStock = createServerFn({method:'POST'}).middleware([requireSupabaseAuth]).inputValidator(stockInput).handler(async ({data,context})=>{
- const {data:id,error}=await context.supabase.rpc('post_stock_operation',{_business_id:data.businessId,_id:data.id,_variant_id:data.variantId,_branch_id:data.branchId,_destination_branch_id:data.destinationBranchId,_kind:data.kind,_quantity:data.quantity,_reference:data.reference,_reason:data.reason});
+ const {data:id,error}=await context.supabase.rpc('post_stock_request',{_request:data});
  if(error) throw new Error('Stock was not confirmed. Check access, available stock, active branches, and whether opening stock was already recorded. Retry unchanged input if the connection was interrupted.');return {id};
 });

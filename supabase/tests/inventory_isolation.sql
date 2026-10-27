@@ -1,0 +1,47 @@
+-- Isolated database only. Final exception deliberately rolls back all fixtures.
+DO $tests$
+DECLARE a uuid:=gen_random_uuid(); b uuid:=gen_random_uuid(); s uuid:=gen_random_uuid(); ba uuid; bb uuid; x uuid; y uuid; z uuid; v uuid; op uuid:=gen_random_uuid(); rejected boolean;
+BEGIN
+ INSERT INTO auth.users(id,email,email_confirmed_at,raw_user_meta_data,created_at,updated_at) SELECT u,'test+'||u||'@example.invalid',now(),'{}',now(),now() FROM unnest(ARRAY[a,b,s]) u;
+ SET LOCAL ROLE authenticated;
+ PERFORM set_config('request.jwt.claims',json_build_object('sub',a,'role','authenticated')::text,true);
+ ba:=public.create_business('Inventory A');PERFORM public.add_business_member(ba,s,'staff');
+ INSERT INTO public.branches(business_id,code,name) VALUES(ba,'X','X') RETURNING id INTO x;
+ INSERT INTO public.branches(business_id,code,name) VALUES(ba,'Y','Y') RETURNING id INTO y;
+ ASSERT public.save_catalogue_variant(ba,'[{"product_name":"Widget","sku":"W1","reorder_level":2}]')=1,'Catalogue import';
+ SELECT id INTO v FROM public.product_variants WHERE business_id=ba;
+ INSERT INTO public.parties(business_id,kind,name) VALUES(ba,'customer','Customer A');
+ PERFORM public.post_stock_operation(ba,op,v,x,NULL,'opening',10,'OPEN-1','Opening count');
+ PERFORM public.post_stock_operation(ba,op,v,x,NULL,'opening',10,'OPEN-1','Opening count');
+ ASSERT (SELECT count(*) FROM public.stock_movements)=1,'Retry posts exactly once';
+ rejected:=false;BEGIN PERFORM public.post_stock_operation(ba,op,v,x,NULL,'opening',11,'OPEN-1','Opening count');EXCEPTION WHEN raise_exception THEN rejected:=true;END;ASSERT rejected,'Changed replay denied';
+ PERFORM public.post_stock_operation(ba,gen_random_uuid(),v,x,y,'transfer',3,'TR-1','Replenish Y');
+ ASSERT (SELECT sum(quantity) FROM public.stock_movements WHERE branch_id=x)=7,'Source balance 7';
+ ASSERT (SELECT sum(quantity) FROM public.stock_movements WHERE branch_id=y)=3,'Destination balance 3';
+ ASSERT (SELECT sum(quantity) FROM public.stock_movements)=10,'Transfer conserves stock';
+ rejected:=false;BEGIN PERFORM public.post_stock_operation(ba,gen_random_uuid(),v,x,y,'transfer',8,'TR-2','Excess');EXCEPTION WHEN raise_exception THEN rejected:=true;END;ASSERT rejected,'Negative stock denied';
+ rejected:=false;BEGIN PERFORM public.post_stock_operation(ba,gen_random_uuid(),v,x,NULL,'opening',1,'OPEN-2','Repeated');EXCEPTION WHEN raise_exception THEN rejected:=true;END;ASSERT rejected,'Repeated opening denied';
+ PERFORM public.post_stock_operation(ba,gen_random_uuid(),v,x,NULL,'adjustment',-2,'COUNT-1','Damage count');
+ ASSERT (SELECT sum(quantity) FROM public.stock_movements WHERE branch_id=x)=5,'Traceable correction';
+ rejected:=false;BEGIN PERFORM public.save_catalogue_variant(ba,'[{"product_name":"Would roll back","sku":"W2"},{"product_name":"Widget","sku":"W1"}]');EXCEPTION WHEN unique_violation THEN rejected:=true;END;ASSERT rejected,'Duplicate import denied';
+ ASSERT (SELECT count(*) FROM public.products)=1,'Failed import is atomic';
+ rejected:=false;BEGIN UPDATE public.stock_movements SET quantity=99;EXCEPTION WHEN insufficient_privilege THEN rejected:=true;END;ASSERT rejected,'Direct stock update denied';
+ PERFORM public.set_branch_access(ba,x,s,true);
+ PERFORM set_config('request.jwt.claims',json_build_object('sub',s,'role','authenticated')::text,true);
+ ASSERT (SELECT count(*) FROM public.stock_movements WHERE branch_id=y)=0,'Unassigned branch hidden';
+ rejected:=false;BEGIN PERFORM public.post_stock_operation(ba,gen_random_uuid(),v,x,y,'transfer',1,'DENIED','Denied destination');EXCEPTION WHEN raise_exception THEN rejected:=true;END;ASSERT rejected,'Destination grant required';
+ rejected:=false;BEGIN PERFORM public.post_stock_operation(ba,gen_random_uuid(),v,x,NULL,'adjustment',1,'DENIED','Staff correction');EXCEPTION WHEN raise_exception THEN rejected:=true;END;ASSERT rejected,'Staff adjustment denied';
+ rejected:=false;BEGIN PERFORM public.save_catalogue_variant(ba,'[{"product_name":"Bad","sku":"BAD"}]');EXCEPTION WHEN raise_exception THEN rejected:=true;END;ASSERT rejected,'Staff catalogue write denied';
+ PERFORM public.post_stock_operation(ba,gen_random_uuid(),v,x,NULL,'receive',2,'GRN-1','Staff delivery');
+ ASSERT (SELECT sum(quantity) FROM public.stock_movements)=7,'Assigned staff receives stock';
+ PERFORM set_config('request.jwt.claims',json_build_object('sub',b,'role','authenticated')::text,true);
+ bb:=public.create_business('Inventory B');INSERT INTO public.branches(business_id,code,name) VALUES(bb,'Z','Z') RETURNING id INTO z;
+ ASSERT (SELECT count(*) FROM public.product_variants WHERE business_id=ba)=0,'Cross tenant variants hidden';
+ ASSERT (SELECT count(*) FROM public.parties WHERE business_id=ba)=0,'Cross tenant parties hidden';
+ ASSERT (SELECT count(*) FROM public.stock_movements WHERE business_id=ba)=0,'Cross tenant stock hidden';
+ rejected:=false;BEGIN PERFORM public.post_stock_operation(bb,gen_random_uuid(),v,z,NULL,'receive',1,'BAD','Foreign variant');EXCEPTION WHEN raise_exception THEN rejected:=true;END;ASSERT rejected,'Foreign variant rejected';
+ rejected:=false;BEGIN INSERT INTO public.products(business_id,name) VALUES(ba,'Foreign insert');EXCEPTION WHEN insufficient_privilege THEN rejected:=true;END;ASSERT rejected,'Cross tenant master write denied';
+ RESET ROLE;SET LOCAL ROLE anon;
+ rejected:=false;BEGIN PERFORM public.post_stock_request('{}');EXCEPTION WHEN insufficient_privilege THEN rejected:=true;END;ASSERT rejected,'Anonymous stock post denied';
+ RESET ROLE;RAISE EXCEPTION 'INVENTORY ISOLATION TESTS PASSED';
+END $tests$;
