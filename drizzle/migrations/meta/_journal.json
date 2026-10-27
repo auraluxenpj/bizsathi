@@ -43,6 +43,13 @@
       "when": 1793076614761,
       "tag": "0005_stock_request_contract",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1793076953830,
+      "tag": "0006_commerce_posting_foundation",
+      "breakpoints": true
     }
   ]
 }
