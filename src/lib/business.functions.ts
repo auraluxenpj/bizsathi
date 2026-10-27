@@ -9,7 +9,7 @@ export const listBusinesses = createServerFn({ method: 'GET' }).middleware([requ
 });
 
 export const registerBusiness = createServerFn({ method: 'POST' }).middleware([requireSupabaseAuth]).inputValidator(registrationInput).handler(async ({ data, context }) => {
-  const { data: id, error } = await context.supabase.rpc('create_business', { _name: data.name, _legal_name: data.legalName || undefined, _pan_vat: data.panVat || undefined });
+  const { data: id, error } = await context.supabase.rpc('create_business', { _name: data.name, _legal_name: data.legalName, _pan_vat: data.panVat });
   if (error) throw new Error('Business registration failed. Check the details and try again.');
   return { id };
 });

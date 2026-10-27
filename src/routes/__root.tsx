@@ -121,7 +121,9 @@ function RootComponent() {
   const { queryClient } = Route.useRouteContext();
   const router = useRouter();
   useEffect(() => {
+    if (new URLSearchParams(window.location.hash.slice(1)).get('type') === 'recovery') sessionStorage.setItem('bizsathi-recovery', 'true');
     const { data } = supabase.auth.onAuthStateChange(event => {
+      if (event === 'PASSWORD_RECOVERY') { sessionStorage.setItem('bizsathi-recovery', 'true'); router.navigate({ to: '/reset-password' }); return; }
       if (!['SIGNED_IN', 'SIGNED_OUT', 'USER_UPDATED'].includes(event)) return;
       router.invalidate();
       if (event !== 'SIGNED_OUT') queryClient.invalidateQueries();
