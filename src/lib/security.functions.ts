@@ -4,7 +4,7 @@ import { analysisInput, businessInput, eventInput, findingInput, isAdministrator
 
 export const listAdminBusinesses = createServerFn({ method: 'GET' }).middleware([requireSupabaseAuth]).handler(async ({ context }) => {
   const { data, error } = await context.supabase.from('business_memberships').select('business_id,role_code,status,businesses(id,name,archived_at)').eq('user_id', context.userId).eq('status', 'active');
-  if (error) throw new Error('Unable to load business access.');
+  if (error) { console.error('Administrator business query failed', error.code, error.message); throw new Error('Unable to load business access.'); }
   return (data ?? []).filter(m => isAdministrator(m.role_code, m.status) && m.businesses && !m.businesses.archived_at).map(m => ({ id: m.business_id, name: m.businesses?.name ?? 'Business', role: m.role_code }));
 });
 
