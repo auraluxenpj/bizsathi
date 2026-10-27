@@ -17,6 +17,6 @@ export class OfflineVault{
  try{value=existing?await decryptVault(existing,key):vaultInput.parse(initial);}catch{throw new Error('Cannot unlock drafts. Check the passphrase; encrypted records were kept.');}
  if(scopeKey(value.cache.userId,value.cache.businessId,value.cache.branchId)!==this.scope)throw new Error('Encrypted cache belongs to another account or branch.');
  if(generation!==this.generation)throw new Error('Device locked during unlock.');this.key=key;this.salt=salt;this.revision=existing?.revision??0;unlocked.add(this);
- if(!existing)await this.save(value);return value;}
+ if(!existing)try{await this.save(value);}catch(e){this.lock();throw e;}return value;}
  async save(value:DraftVault){const key=this.key;const generation=this.generation;if(!key)throw new Error('Unlock the device before saving.');if(scopeKey(value.cache.userId,value.cache.businessId,value.cache.branchId)!==this.scope)throw new Error('Wrong account or branch.');const encrypted=await encryptVault(value,key,this.scope);if(generation!==this.generation)throw new Error('Device locked before saving.');await commit({scope:this.scope,revision:this.revision+1,salt:this.salt,...encrypted},this.revision);this.revision++;}
 }
