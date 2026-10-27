@@ -6,7 +6,7 @@ export const reportInput=z.object({businessId:z.string().uuid(),branchId:z.strin
 export type ReportInput=z.infer<typeof reportInput>;
 const scoped={id:z.string(),business_id:z.string(),branch_id:z.string()};
 export const snapshotSchema=z.object({
- journals:z.array(z.object({...scoped,entry_date:z.string(),created_at:z.string(),account_code:z.string(),source_id:z.string(),source_type:z.string(),debit:z.string(),credit:z.string()})),
+ journals:z.array(z.object({...scoped,entry_date:z.string(),created_at:z.string(),account_code:z.string(),source_id:z.string(),source_type:z.string(),debit:z.string(),credit:z.string(),actor_id:z.string().optional()})),
  documents:z.array(z.object({...scoped,kind:z.string(),status:z.string(),document_date:z.string(),reference:z.string(),party_id:z.string().nullable(),source_id:z.string().nullable(),subtotal:z.string(),tax:z.string(),total:z.string()})),
  payments:z.array(z.object({...scoped,document_id:z.string(),payment_date:z.string(),reference:z.string(),amount:z.string(),direction:z.string(),method:z.string()})),
  vouchers:z.array(z.object({...scoped,kind:z.string(),voucher_date:z.string(),reference:z.string(),reason:z.string(),reverses_id:z.string().nullable(),actor_id:z.string()})).default([]),
