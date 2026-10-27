@@ -160,4 +160,6 @@
  body:has([aria-label="Business report print"]) [role="dialog"] { position: absolute; inset: 0; transform: none; max-height: none; height: auto; overflow: visible; border: none; box-shadow: none; }
  [aria-label="Business report print"] thead { display: table-header-group; }
  [aria-label="Business report print"] tr { break-inside: avoid; }
+ [aria-label="Business report print"] table { table-layout: fixed; }
+ [aria-label="Business report print"] th, [aria-label="Business report print"] td { overflow-wrap: anywhere; }
 }

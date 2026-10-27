@@ -2,6 +2,8 @@
 
 ## Delivered and boundaries
 
+The operational-report expansion adds posting-user controls, stock/low-stock reports, dedicated party/balance views and full print/CSV context. See `BUSINESS_REPORTS.md` for current coverage, filter semantics and remaining financial-statement prerequisites. Earlier verification below describes the original increment, not the expanded suite.
+
 `/accounting` reads the existing commerce ledger; it does not create another ledger or change posting contracts. Available views: posting accounts, general ledger, recorded trial balance, sales/purchase registers, party control-account statements, invoice-family outstanding balances, cash/bank/wallet books and configured VAT postings. Business, authorized branch, date range, financial-period date selection, account and party filters are available. Detail pages contain 50 rows; CSV exports contain every matching row, use formula escaping and include source identifiers. Print is explicitly the displayed page, not a complete multi-page export.
 
 Amounts are transported as numeric text and aggregated with Decimal.js server-side. Opening balances are prior recorded postings, **not** an established opening-balance voucher. Closing account columns split positive/negative debit-minus-credit totals. Statements carry separate receivable/payable running totals; they are not a single customer-supplier netting approval. Registers sign returns negatively. Outstanding balances combine each original invoice, its linked returns, original payments and return refunds exactly once, as at the end date, independent of start date. Negative amounts are credits; invoice age is not overdue age because due dates are not present.

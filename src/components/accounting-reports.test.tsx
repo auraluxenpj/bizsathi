@@ -1,0 +1,21 @@
+import {it,expect,vi,afterEach} from 'vitest';
+import {render,screen,fireEvent,waitFor,cleanup} from '@testing-library/react';
+import {QueryClient,QueryClientProvider} from '@tanstack/react-query';
+import {AccountingReports} from './accounting-reports';
+const mocks=vi.hoisted(()=>({load:vi.fn(),download:vi.fn()}));
+vi.mock('@tanstack/react-start',()=>({useServerFn:(fn:unknown)=>fn}));
+vi.mock('@/lib/accounting.functions',()=>({getAccountingReport:mocks.load}));
+vi.mock('@/lib/download-csv',()=>({downloadCsv:mocks.download}));
+vi.mock('./voucher-workspace',()=>({VoucherWorkspace:()=>null}));
+vi.mock('@/lib/inventory-queries',()=>({businessQuery:{queryKey:['test-business'],queryFn:async()=>[{id:'b',name:'Test business',role:'owner'}]}}));
+vi.mock('@tanstack/react-router',()=>({Link:({children}:{children:React.ReactNode})=><span>{children}</span>}));
+afterEach(()=>{cleanup();vi.restoreAllMocks();});
+it('full print and CSV request every matching row, not only the displayed page',async()=>{
+ const rows=Array.from({length:65},(_,i)=>({Reference:`ROW-${i+1}`,Debit:'1.00','Source ID':String(i)}));
+ mocks.load.mockImplementation(async({data}:{data:{export:boolean}})=>({rows:data.export?rows:rows.slice(0,50),total:65,page:1,totals:{debit:'65.00',credit:'65.00',difference:'0.00'},hasRecords:true,evidence:[],branches:[],parties:[],periods:[],users:[],currency:'NPR',timezone:'Asia/Kathmandu',notice:'Recorded only',context:{Report:'Test report',From:'2026-01-01',Through:'2026-12-31',Currency:'NPR'}}));
+ render(<QueryClientProvider client={new QueryClient({defaultOptions:{queries:{retry:false}}})}><AccountingReports/></QueryClientProvider>);
+ await screen.findByText('ROW-50');expect(screen.queryByText('ROW-65')).not.toBeInTheDocument();
+ fireEvent.click(screen.getByRole('button',{name:'CSV'}));await waitFor(()=>expect(mocks.download).toHaveBeenCalled());expect(mocks.download.mock.calls[0]?.[1]).toContain('ROW-65');
+ fireEvent.click(screen.getByRole('button',{name:'Full print / PDF'}));await screen.findByRole('heading',{name:'Full report · 65 rows'});expect(screen.getByLabelText('Business report print')).toHaveTextContent('ROW-65');
+ expect(mocks.load.mock.calls.filter(([arg])=>arg.data.export)).toHaveLength(2);
+});
