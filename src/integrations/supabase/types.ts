@@ -357,6 +357,428 @@ export type Database = {
           },
         ]
       }
+      cash_counter_events: {
+        Row: {
+          actor_id: string
+          amount: number
+          branch_id: string
+          business_id: string
+          created_at: string
+          difference: number | null
+          event_date: string
+          expected: number | null
+          id: string
+          kind: string
+          period_id: string
+          reference: string
+          request: Json
+          session_id: string
+        }
+        Insert: {
+          actor_id: string
+          amount: number
+          branch_id: string
+          business_id: string
+          created_at?: string
+          difference?: number | null
+          event_date: string
+          expected?: number | null
+          id: string
+          kind: string
+          period_id: string
+          reference: string
+          request: Json
+          session_id: string
+        }
+        Update: {
+          actor_id?: string
+          amount?: number
+          branch_id?: string
+          business_id?: string
+          created_at?: string
+          difference?: number | null
+          event_date?: string
+          expected?: number | null
+          id?: string
+          kind?: string
+          period_id?: string
+          reference?: string
+          request?: Json
+          session_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cash_counter_events_actor_id_fkey"
+            columns: ["actor_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cash_counter_events_business_id_branch_id_fkey"
+            columns: ["business_id", "branch_id"]
+            isOneToOne: false
+            referencedRelation: "branches"
+            referencedColumns: ["business_id", "id"]
+          },
+          {
+            foreignKeyName: "cash_counter_events_business_id_fkey"
+            columns: ["business_id"]
+            isOneToOne: false
+            referencedRelation: "businesses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cash_counter_events_period_id_fkey"
+            columns: ["period_id"]
+            isOneToOne: false
+            referencedRelation: "financial_periods"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      commerce_documents: {
+        Row: {
+          actor_id: string
+          branch_id: string
+          business_id: string
+          created_at: string
+          document_date: string
+          id: string
+          kind: string
+          lines: Json
+          party_id: string | null
+          period_id: string
+          reference: string
+          request: Json
+          source_id: string | null
+          status: string
+          subtotal: number
+          tax: number
+          total: number
+        }
+        Insert: {
+          actor_id: string
+          branch_id: string
+          business_id: string
+          created_at?: string
+          document_date: string
+          id: string
+          kind: string
+          lines: Json
+          party_id?: string | null
+          period_id: string
+          reference: string
+          request: Json
+          source_id?: string | null
+          status: string
+          subtotal?: number
+          tax?: number
+          total?: number
+        }
+        Update: {
+          actor_id?: string
+          branch_id?: string
+          business_id?: string
+          created_at?: string
+          document_date?: string
+          id?: string
+          kind?: string
+          lines?: Json
+          party_id?: string | null
+          period_id?: string
+          reference?: string
+          request?: Json
+          source_id?: string | null
+          status?: string
+          subtotal?: number
+          tax?: number
+          total?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "commerce_documents_actor_id_fkey"
+            columns: ["actor_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "commerce_documents_business_id_branch_id_fkey"
+            columns: ["business_id", "branch_id"]
+            isOneToOne: false
+            referencedRelation: "branches"
+            referencedColumns: ["business_id", "id"]
+          },
+          {
+            foreignKeyName: "commerce_documents_business_id_fkey"
+            columns: ["business_id"]
+            isOneToOne: false
+            referencedRelation: "businesses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "commerce_documents_business_id_party_id_fkey"
+            columns: ["business_id", "party_id"]
+            isOneToOne: false
+            referencedRelation: "parties"
+            referencedColumns: ["business_id", "id"]
+          },
+          {
+            foreignKeyName: "commerce_documents_business_id_source_id_fkey"
+            columns: ["business_id", "source_id"]
+            isOneToOne: false
+            referencedRelation: "commerce_documents"
+            referencedColumns: ["business_id", "id"]
+          },
+          {
+            foreignKeyName: "commerce_documents_period_id_fkey"
+            columns: ["period_id"]
+            isOneToOne: false
+            referencedRelation: "financial_periods"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      commerce_journal_entries: {
+        Row: {
+          account_code: string
+          actor_id: string
+          branch_id: string
+          business_id: string
+          created_at: string
+          credit: number
+          debit: number
+          entry_date: string
+          id: string
+          period_id: string
+          source_id: string
+          source_type: string
+        }
+        Insert: {
+          account_code: string
+          actor_id: string
+          branch_id: string
+          business_id: string
+          created_at?: string
+          credit?: number
+          debit?: number
+          entry_date: string
+          id?: string
+          period_id: string
+          source_id: string
+          source_type: string
+        }
+        Update: {
+          account_code?: string
+          actor_id?: string
+          branch_id?: string
+          business_id?: string
+          created_at?: string
+          credit?: number
+          debit?: number
+          entry_date?: string
+          id?: string
+          period_id?: string
+          source_id?: string
+          source_type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "commerce_journal_entries_actor_id_fkey"
+            columns: ["actor_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "commerce_journal_entries_business_id_branch_id_fkey"
+            columns: ["business_id", "branch_id"]
+            isOneToOne: false
+            referencedRelation: "branches"
+            referencedColumns: ["business_id", "id"]
+          },
+          {
+            foreignKeyName: "commerce_journal_entries_business_id_fkey"
+            columns: ["business_id"]
+            isOneToOne: false
+            referencedRelation: "businesses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "commerce_journal_entries_period_id_fkey"
+            columns: ["period_id"]
+            isOneToOne: false
+            referencedRelation: "financial_periods"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      commerce_payments: {
+        Row: {
+          actor_id: string
+          amount: number
+          branch_id: string
+          business_id: string
+          created_at: string
+          direction: string
+          document_id: string
+          id: string
+          method: string
+          payment_date: string
+          period_id: string
+          reference: string
+          request: Json
+          session_id: string | null
+        }
+        Insert: {
+          actor_id: string
+          amount: number
+          branch_id: string
+          business_id: string
+          created_at?: string
+          direction: string
+          document_id: string
+          id: string
+          method: string
+          payment_date: string
+          period_id: string
+          reference: string
+          request: Json
+          session_id?: string | null
+        }
+        Update: {
+          actor_id?: string
+          amount?: number
+          branch_id?: string
+          business_id?: string
+          created_at?: string
+          direction?: string
+          document_id?: string
+          id?: string
+          method?: string
+          payment_date?: string
+          period_id?: string
+          reference?: string
+          request?: Json
+          session_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "commerce_payments_actor_id_fkey"
+            columns: ["actor_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "commerce_payments_business_id_branch_id_fkey"
+            columns: ["business_id", "branch_id"]
+            isOneToOne: false
+            referencedRelation: "branches"
+            referencedColumns: ["business_id", "id"]
+          },
+          {
+            foreignKeyName: "commerce_payments_business_id_document_id_fkey"
+            columns: ["business_id", "document_id"]
+            isOneToOne: false
+            referencedRelation: "commerce_documents"
+            referencedColumns: ["business_id", "id"]
+          },
+          {
+            foreignKeyName: "commerce_payments_business_id_fkey"
+            columns: ["business_id"]
+            isOneToOne: false
+            referencedRelation: "businesses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "commerce_payments_period_id_fkey"
+            columns: ["period_id"]
+            isOneToOne: false
+            referencedRelation: "financial_periods"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      commerce_stock_movements: {
+        Row: {
+          actor_id: string
+          branch_id: string
+          business_id: string
+          created_at: string
+          document_id: string
+          id: string
+          kind: string
+          quantity: number
+          reason: string
+          reference: string
+          variant_id: string
+        }
+        Insert: {
+          actor_id: string
+          branch_id: string
+          business_id: string
+          created_at?: string
+          document_id: string
+          id?: string
+          kind: string
+          quantity: number
+          reason: string
+          reference: string
+          variant_id: string
+        }
+        Update: {
+          actor_id?: string
+          branch_id?: string
+          business_id?: string
+          created_at?: string
+          document_id?: string
+          id?: string
+          kind?: string
+          quantity?: number
+          reason?: string
+          reference?: string
+          variant_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "commerce_stock_movements_actor_id_fkey"
+            columns: ["actor_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "commerce_stock_movements_business_id_branch_id_fkey"
+            columns: ["business_id", "branch_id"]
+            isOneToOne: false
+            referencedRelation: "branches"
+            referencedColumns: ["business_id", "id"]
+          },
+          {
+            foreignKeyName: "commerce_stock_movements_business_id_document_id_fkey"
+            columns: ["business_id", "document_id"]
+            isOneToOne: false
+            referencedRelation: "commerce_documents"
+            referencedColumns: ["business_id", "id"]
+          },
+          {
+            foreignKeyName: "commerce_stock_movements_business_id_fkey"
+            columns: ["business_id"]
+            isOneToOne: false
+            referencedRelation: "businesses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "commerce_stock_movements_business_id_variant_id_fkey"
+            columns: ["business_id", "variant_id"]
+            isOneToOne: false
+            referencedRelation: "product_variants"
+            referencedColumns: ["business_id", "id"]
+          },
+        ]
+      }
       financial_periods: {
         Row: {
           business_id: string
@@ -843,6 +1265,28 @@ export type Database = {
         Args: { _branch_id: string; _business_id: string }
         Returns: boolean
       }
+      commerce_journal: {
+        Args: {
+          _account: string
+          _branch: string
+          _business: string
+          _credit: number
+          _date: string
+          _debit: number
+          _period: string
+          _source: string
+          _type: string
+        }
+        Returns: undefined
+      }
+      commerce_open_period: {
+        Args: { _business: string; _date: string; _period: string }
+        Returns: undefined
+      }
+      commerce_stock_balance: {
+        Args: { _branch: string; _business: string; _variant: string }
+        Returns: number
+      }
       create_business: {
         Args: { _legal_name?: string; _name: string; _pan_vat?: string }
         Returns: string
@@ -861,6 +1305,9 @@ export type Database = {
         Returns: boolean
       }
       is_business_member: { Args: { _business_id: string }; Returns: boolean }
+      post_cash_counter_event: { Args: { _request: Json }; Returns: string }
+      post_commerce_document: { Args: { _request: Json }; Returns: string }
+      post_commerce_payment: { Args: { _request: Json }; Returns: string }
       post_stock_operation: {
         Args: {
           _branch_id: string

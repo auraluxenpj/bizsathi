@@ -1,0 +1,11 @@
+DO $migration$ DECLARE body text;BEGIN SELECT pg_get_functiondef('public.post_commerce_document(jsonb)'::regprocedure) INTO body;
+body:=replace(body,'AND status=''confirmed'';IF NOT FOUND OR original.party_id IS DISTINCT FROM party',';IF NOT FOUND OR original.party_id IS DISTINCT FROM party');
+body:=replace(body,'IF k IN (''sale_return'',''purchase_return'',''goods_receipt'') AND (src IS NULL','IF k IN (''sale_return'',''purchase_return'',''goods_receipt'') AND (original.status<>''confirmed'' OR src IS NULL');
+body:=replace(body,'IF k=''purchase'' AND src IS NOT NULL AND original.kind NOT IN (''purchase_order'',''purchase'')','IF k=''purchase'' AND src IS NOT NULL AND NOT ((original.kind=''purchase_order'' AND original.status=''confirmed'') OR (original.kind=''purchase'' AND original.status=''draft''))');
+body:=replace(body,'FOR r IN SELECT value FROM jsonb_array_elements(_request->''lines'') LOOP','IF src IS NOT NULL AND original.status=''draft'' AND EXISTS(SELECT 1 FROM public.commerce_documents WHERE source_id=src AND status=''confirmed'') THEN RAISE EXCEPTION ''Draft already confirmed'';END IF;'||chr(10)||'FOR r IN SELECT value FROM jsonb_array_elements(_request->''lines'') LOOP');
+EXECUTE body;
+END $migration$;
+CREATE FUNCTION public.commerce_document_source_guard() RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER SET search_path=public AS $$ DECLARE original public.commerce_documents;BEGIN IF NEW.source_id IS NOT NULL THEN SELECT * INTO original FROM public.commerce_documents WHERE id=NEW.source_id;IF original.status='draft' THEN IF original.kind<>NEW.kind THEN RAISE EXCEPTION 'Draft kind must match';END IF;ELSIF NEW.kind='sale' THEN RAISE EXCEPTION 'Sale source must be a draft';END IF;END IF;RETURN NEW;END $$;
+REVOKE ALL ON FUNCTION public.commerce_document_source_guard() FROM PUBLIC,anon,authenticated;
+CREATE TRIGGER commerce_source_guard BEFORE INSERT ON public.commerce_documents FOR EACH ROW EXECUTE FUNCTION public.commerce_document_source_guard();
+CREATE UNIQUE INDEX commerce_reference_confirmed ON public.commerce_documents(business_id,kind,reference) WHERE status='confirmed';

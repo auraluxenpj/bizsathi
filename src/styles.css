@@ -148,3 +148,8 @@
 }
 .brand { font-family: 'Manrope', sans-serif; }
 * { letter-spacing: 0; }
+@media print {
+ body * { visibility: hidden; }
+ [aria-label="Invoice receipt"], [aria-label="Invoice receipt"] * { visibility: visible; }
+ [aria-label="Invoice receipt"] { position: absolute; left: 0; top: 0; width: 100%; max-width: none; }
+}
