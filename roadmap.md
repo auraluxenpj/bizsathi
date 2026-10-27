@@ -16,6 +16,7 @@
 - [x] Phase 5 first increment: read-only recorded accounts, ledger/trial balance, registers, party statements, outstanding balances, cash/bank/wallet books and VAT postings; 39 tests and isolated report-access checks passed.
 - [ ] Phase 5 populated live report detail/CSV/print read-back — needs legitimate branches, periods and confirmed transactions; no synthetic live records permitted.
 - [ ] Remaining Phase 5: chart extensions, opening balances, vouchers/reversals, cash-variance resolution, costing/COGS and full statements — separate financial-workflow approval and validation required.
+- [ ] Next step: review and approve a small Phase 5 posting-control increment before structural implementation; do not skip unfinished accounting for offline POS.
 - [ ] Phase 6 and later: offline POS and final verification — awaiting their phase approval.
 - [x] Add administrator-only security review history and append-only decisions.
 - [x] Add sign-in and optional avatar profile data.
