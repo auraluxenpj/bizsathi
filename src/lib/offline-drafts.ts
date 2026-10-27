@@ -1,9 +1,9 @@
 import {z} from 'zod';
-import {commerceLine,documentInput,type CommerceRequest} from './commerce-schemas';
+import {commerceLine,storedDocumentInput,type CommerceRequest} from './commerce-schemas';
 
 export const cacheInput=z.object({userId:z.string().uuid(),businessId:z.string().uuid(),branchId:z.string().uuid(),branchName:z.string(),cachedAt:z.string(),currency:z.string(),vatRegistered:z.boolean(),vatRate:z.number(),products:z.array(z.object({id:z.string().uuid(),name:z.string(),sku:z.string(),barcode:z.string().nullable(),price:z.number(),stock:z.number()})),periods:z.array(z.object({id:z.string().uuid(),name:z.string(),start:z.string(),end:z.string()}))});
 export type PosCache=z.infer<typeof cacheInput>;
-export const draftInput=z.object({id:z.string().uuid(),createdAt:z.string(),updatedAt:z.string(),state:z.enum(['local','review','uncertain','confirmed','attention']),reference:z.string().trim().min(1).max(200),mobile:z.string().max(40).optional(),date:z.string().regex(/^\d{4}-\d{2}-\d{2}$/),lines:z.array(commerceLine).min(1).max(100),baseline:cacheInput.optional(),request:documentInput.optional(),message:z.string().default('')});
+export const draftInput=z.object({id:z.string().uuid(),createdAt:z.string(),updatedAt:z.string(),state:z.enum(['local','review','uncertain','confirmed','attention']),reference:z.string().trim().min(1).max(200),mobile:z.string().max(40).optional(),date:z.string().regex(/^\d{4}-\d{2}-\d{2}$/),lines:z.array(commerceLine).min(1).max(100),baseline:cacheInput.optional(),request:storedDocumentInput.optional(),message:z.string().default('')});
 export type LocalDraft=z.infer<typeof draftInput>;
 export const vaultInput=z.object({cache:cacheInput,drafts:z.array(draftInput)});
 export type DraftVault=z.infer<typeof vaultInput>;
@@ -22,4 +22,4 @@ export function retainAttempt(draft:LocalDraft,request:CommerceRequest):LocalDra
 }
 export function editableDraft(draft:LocalDraft){return !draft.request&&draft.state!=='confirmed';}
 function canonical(value:unknown):string{if(Array.isArray(value))return `[${value.map(canonical).join(',')}]`;if(value&&typeof value==='object')return `{${Object.entries(value).sort(([a],[b])=>a.localeCompare(b)).map(([key,v])=>`${JSON.stringify(key)}:${canonical(v)}`).join(',')}}`;return JSON.stringify(value)??'null';}
-export function sameSaleRequest(expected:CommerceRequest,stored:unknown){const parsed=documentInput.safeParse(stored);return parsed.success&&canonical(expected)===canonical(parsed.data);}
+export function sameSaleRequest(expected:CommerceRequest,stored:unknown){const parsed=storedDocumentInput.safeParse(stored);return parsed.success&&canonical(expected)===canonical(parsed.data);}
