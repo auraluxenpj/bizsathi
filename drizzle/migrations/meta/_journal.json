@@ -85,6 +85,13 @@
       "when": 1793077370474,
       "tag": "0011_legacy_stock_combined_balance",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1793077590002,
+      "tag": "0012_commerce_numeric_and_refund_validation",
+      "breakpoints": true
     }
   ]
 }
