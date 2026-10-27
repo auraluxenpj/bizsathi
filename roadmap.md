@@ -1,4 +1,5 @@
 # Security review workspace
+- [ ] Requested report expansion: audit all required reports, date/branch/user filters and exports; obtain approval before structural changes, with costing/opening-balance limits explicit.
 - [x] Audit the uploaded BizSathi business-suite brief against current pages, live schema, grants, and tests.
 - [x] Phase 1 implementation: business onboarding, password recovery, shareable email-bound invitations, staff administration, branch authorization, and explicit review permissions.
 - [x] Run original tenant tests and new invitation/branch/review-event isolation tests in an isolated local PostgreSQL database; all synthetic records rolled back.
