@@ -1412,6 +1412,10 @@ export type Database = {
         Args: { _branch_id?: string; _business_id: string; _through?: string }
         Returns: Json
       }
+      read_business_report_snapshot: {
+        Args: { _branch_id?: string; _business_id: string; _through?: string }
+        Returns: Json
+      }
       remove_business_member: {
         Args: { _business_id: string; _user_id: string }
         Returns: undefined
