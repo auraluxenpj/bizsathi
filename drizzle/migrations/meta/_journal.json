@@ -57,6 +57,13 @@
       "when": 1793077002522,
       "tag": "0007_commerce_confirmation_contract",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1793077037015,
+      "tag": "0008_commerce_counter_and_stock_guards",
+      "breakpoints": true
     }
   ]
 }

@@ -1305,6 +1305,7 @@ export type Database = {
         Returns: boolean
       }
       is_business_member: { Args: { _business_id: string }; Returns: boolean }
+      post_cash_counter_event: { Args: { _request: Json }; Returns: string }
       post_commerce_document: { Args: { _request: Json }; Returns: string }
       post_commerce_payment: { Args: { _request: Json }; Returns: string }
       post_stock_operation: {
