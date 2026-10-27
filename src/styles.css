@@ -153,3 +153,11 @@
  [aria-label="Invoice receipt"], [aria-label="Invoice receipt"] * { visibility: visible; }
  [aria-label="Invoice receipt"] { position: absolute; left: 0; top: 0; width: 100%; max-width: none; }
 }
+
+@media print {
+ [aria-label="Business report print"], [aria-label="Business report print"] * { visibility: visible; }
+ [aria-label="Business report print"] { position: absolute; inset: 0 auto auto 0; width: 100%; max-width: none; overflow: visible; }
+ body:has([aria-label="Business report print"]) [role="dialog"] { position: absolute; inset: 0; transform: none; max-height: none; height: auto; overflow: visible; border: none; box-shadow: none; }
+ [aria-label="Business report print"] thead { display: table-header-group; }
+ [aria-label="Business report print"] tr { break-inside: avoid; }
+}
