@@ -3,7 +3,7 @@ import {commerceLine,documentInput,type CommerceRequest} from './commerce-schema
 
 export const cacheInput=z.object({userId:z.string().uuid(),businessId:z.string().uuid(),branchId:z.string().uuid(),branchName:z.string(),cachedAt:z.string(),currency:z.string(),vatRegistered:z.boolean(),vatRate:z.number(),products:z.array(z.object({id:z.string().uuid(),name:z.string(),sku:z.string(),barcode:z.string().nullable(),price:z.number(),stock:z.number()})),periods:z.array(z.object({id:z.string().uuid(),name:z.string(),start:z.string(),end:z.string()}))});
 export type PosCache=z.infer<typeof cacheInput>;
-export const draftInput=z.object({id:z.string().uuid(),createdAt:z.string(),updatedAt:z.string(),state:z.enum(['local','review','uncertain','confirmed','attention']),reference:z.string().trim().min(1).max(200),date:z.string().regex(/^\d{4}-\d{2}-\d{2}$/),lines:z.array(commerceLine).min(1).max(100),request:documentInput.optional(),message:z.string().default('')});
+export const draftInput=z.object({id:z.string().uuid(),createdAt:z.string(),updatedAt:z.string(),state:z.enum(['local','review','uncertain','confirmed','attention']),reference:z.string().trim().min(1).max(200),date:z.string().regex(/^\d{4}-\d{2}-\d{2}$/),lines:z.array(commerceLine).min(1).max(100),baseline:cacheInput.optional(),request:documentInput.optional(),message:z.string().default('')});
 export type LocalDraft=z.infer<typeof draftInput>;
 export const vaultInput=z.object({cache:cacheInput,drafts:z.array(draftInput)});
 export type DraftVault=z.infer<typeof vaultInput>;
