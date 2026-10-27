@@ -1,0 +1,46 @@
+-- Isolated PostgreSQL only; final exception rolls back all synthetic records.
+DO $test$
+DECLARE a uuid:=gen_random_uuid();b uuid:=gen_random_uuid();s uuid:=gen_random_uuid();viewer uuid:=gen_random_uuid();ba uuid;bb uuid;br uuid;br2 uuid;v uuid;customer uuid;supplier uuid;per uuid;sale uuid:=gen_random_uuid();purchase uuid:=gen_random_uuid();receipt uuid:=gen_random_uuid();ret uuid:=gen_random_uuid();session uuid:=gen_random_uuid();req jsonb;rejected boolean;due numeric;
+BEGIN
+ INSERT INTO auth.users(id,email,email_confirmed_at,raw_user_meta_data,created_at,updated_at) SELECT u,'test+'||u||'@example.invalid',now(),'{}',now(),now() FROM unnest(ARRAY[a,b,s,viewer])u;
+ SET LOCAL ROLE authenticated;PERFORM set_config('request.jwt.claims',json_build_object('sub',a,'role','authenticated')::text,true);
+ ba:=public.create_business('Commerce A');PERFORM public.add_business_member(ba,s,'staff');PERFORM public.add_business_member(ba,viewer,'viewer');
+ INSERT INTO public.branches(business_id,code,name)VALUES(ba,'A','A')RETURNING id INTO br;INSERT INTO public.branches(business_id,code,name)VALUES(ba,'B','B')RETURNING id INTO br2;
+ INSERT INTO public.financial_periods(business_id,name,start_date,end_date)VALUES(ba,'Open','2026-01-01','2026-12-31')RETURNING id INTO per;
+ PERFORM public.save_catalogue_variant(ba,'[{"product_name":"Widget","sku":"W","selling_price":100}]');SELECT id INTO v FROM public.product_variants WHERE business_id=ba;
+ INSERT INTO public.parties(business_id,kind,name)VALUES(ba,'customer','Customer')RETURNING id INTO customer;INSERT INTO public.parties(business_id,kind,name)VALUES(ba,'supplier','Supplier')RETURNING id INTO supplier;
+ PERFORM public.post_stock_operation(ba,gen_random_uuid(),v,br,NULL,'opening',10,'OPEN','Opening');
+ PERFORM public.post_cash_counter_event(jsonb_build_object('businessId',ba,'id',gen_random_uuid(),'branchId',br,'periodId',per,'sessionId',session,'kind','open','amount',500,'date','2026-10-27','reference','Opening cash'));
+ req:=jsonb_build_object('businessId',ba,'id',sale,'branchId',br,'periodId',per,'date','2026-10-27','kind','sale','status','confirmed','partyId',customer,'reference','INV-1','lines',jsonb_build_array(jsonb_build_object('variantId',v,'quantity',2,'price',100,'discount',0,'taxRate',0)),'payments',jsonb_build_array(jsonb_build_object('id',gen_random_uuid(),'method','cash','amount',100,'sessionId',session,'reference','Cash')));
+ PERFORM public.post_commerce_document(req);PERFORM public.post_commerce_document(req);
+ ASSERT (SELECT count(*)FROM public.commerce_documents WHERE id=sale)=1,'Sale retry once';ASSERT public.commerce_stock_balance(ba,br,v)=8,'Sale stock deduction';
+ ASSERT (SELECT sum(debit)-sum(credit)FROM public.commerce_journal_entries WHERE source_id=sale)=0,'Sale balances';
+ rejected:=false;BEGIN PERFORM public.post_commerce_document(req||jsonb_build_object('reference','Changed'));EXCEPTION WHEN raise_exception THEN rejected:=true;END;ASSERT rejected,'Changed replay denied';
+ rejected:=false;BEGIN PERFORM public.post_commerce_payment(jsonb_build_object('businessId',ba,'id',gen_random_uuid(),'documentId',sale,'periodId',per,'date','2026-10-27','method','bank','amount',101,'reference','Over'));EXCEPTION WHEN raise_exception THEN rejected:=true;END;ASSERT rejected,'Overpayment denied';
+ req:=jsonb_build_object('businessId',ba,'id',purchase,'branchId',br,'periodId',per,'date','2026-10-27','kind','purchase','status','confirmed','partyId',supplier,'reference','PUR-1','lines',jsonb_build_array(jsonb_build_object('variantId',v,'quantity',3,'price',50)));
+ PERFORM public.post_commerce_document(req);ASSERT public.commerce_stock_balance(ba,br,v)=8,'Invoice does not receive goods';
+ req:=req||jsonb_build_object('id',receipt,'kind','goods_receipt','sourceId',purchase,'reference','GRN-1');PERFORM public.post_commerce_document(req);PERFORM public.post_commerce_document(req);ASSERT public.commerce_stock_balance(ba,br,v)=11,'Goods received once';
+ rejected:=false;BEGIN PERFORM public.post_commerce_document(req||jsonb_build_object('id',gen_random_uuid()));EXCEPTION WHEN raise_exception THEN rejected:=true;END;ASSERT rejected,'Overreceiving denied';
+ req:=jsonb_build_object('businessId',ba,'id',ret,'branchId',br,'periodId',per,'date','2026-10-27','kind','sale_return','status','confirmed','partyId',customer,'sourceId',sale,'reference','RET-1','lines',jsonb_build_array(jsonb_build_object('variantId',v,'quantity',1,'price',999)));
+ PERFORM public.post_commerce_document(req);ASSERT(SELECT total FROM public.commerce_documents WHERE id=ret)=100,'Return original price';ASSERT public.commerce_stock_balance(ba,br,v)=12,'Return restocks';
+ rejected:=false;BEGIN PERFORM public.post_commerce_document(req||jsonb_build_object('id',gen_random_uuid(),'lines',jsonb_build_array(jsonb_build_object('variantId',v,'quantity',2,'price',100))));EXCEPTION WHEN raise_exception THEN rejected:=true;END;ASSERT rejected,'Overreturn denied';
+ rejected:=false;BEGIN PERFORM public.post_commerce_payment(jsonb_build_object('businessId',ba,'id',gen_random_uuid(),'documentId',ret,'periodId',per,'date','2026-10-27','method','bank','amount',100,'reference','Refund'));EXCEPTION WHEN raise_exception THEN rejected:=true;END;ASSERT rejected,'Unsettled return cannot refund money';
+ PERFORM public.set_branch_access(ba,br,s,true);PERFORM public.set_branch_access(ba,br,viewer,true);
+ PERFORM set_config('request.jwt.claims',json_build_object('sub',s,'role','authenticated')::text,true);
+ rejected:=false;BEGIN PERFORM public.post_commerce_document(req||jsonb_build_object('id',gen_random_uuid()));EXCEPTION WHEN raise_exception THEN rejected:=true;END;ASSERT rejected,'Staff refund denied';
+ rejected:=false;BEGIN PERFORM public.post_commerce_document(req||jsonb_build_object('id',gen_random_uuid(),'kind','purchase','sourceId',NULL,'partyId',supplier));EXCEPTION WHEN raise_exception THEN rejected:=true;END;ASSERT rejected,'Staff purchase denied';
+ ASSERT(SELECT count(*)FROM public.commerce_documents WHERE branch_id=br2)=0,'Unassigned branch hidden';
+ PERFORM set_config('request.jwt.claims',json_build_object('sub',viewer,'role','authenticated')::text,true);
+ rejected:=false;BEGIN PERFORM public.post_cash_counter_event(jsonb_build_object('businessId',ba,'id',gen_random_uuid(),'branchId',br,'periodId',per,'sessionId',gen_random_uuid(),'kind','open','amount',0,'date','2026-10-27','reference','Denied'));EXCEPTION WHEN raise_exception THEN rejected:=true;END;ASSERT rejected,'Viewer counter denied';
+ PERFORM set_config('request.jwt.claims',json_build_object('sub',a,'role','authenticated')::text,true);
+ PERFORM public.set_financial_period_status(per,'closed');
+ rejected:=false;BEGIN PERFORM public.post_commerce_document(req||jsonb_build_object('id',gen_random_uuid()));EXCEPTION WHEN raise_exception THEN rejected:=true;END;ASSERT rejected,'Closed period posting denied';
+ PERFORM public.set_financial_period_status(per,'open');
+ PERFORM public.post_cash_counter_event(jsonb_build_object('businessId',ba,'id',gen_random_uuid(),'branchId',br,'periodId',per,'sessionId',session,'kind','close','amount',590,'date','2026-10-27','reference','Count'));
+ ASSERT (SELECT expected FROM public.cash_counter_events WHERE session_id=session AND kind='close')=600,'Counter expected includes confirmed cash';ASSERT(SELECT difference FROM public.cash_counter_events WHERE session_id=session AND kind='close')=-10,'Count difference separate';
+ rejected:=false;BEGIN UPDATE public.commerce_documents SET total=0 WHERE id=sale;EXCEPTION WHEN insufficient_privilege THEN rejected:=true;END;ASSERT rejected,'Invoice mutation denied';
+ PERFORM set_config('request.jwt.claims',json_build_object('sub',b,'role','authenticated')::text,true);bb:=public.create_business('Commerce B');ASSERT(SELECT count(*)FROM public.commerce_documents WHERE business_id=ba)=0,'Cross tenant documents hidden';ASSERT(SELECT count(*)FROM public.commerce_payments WHERE business_id=ba)=0,'Cross tenant payments hidden';ASSERT(SELECT count(*)FROM public.commerce_journal_entries WHERE business_id=ba)=0,'Cross tenant journals hidden';
+ rejected:=false;BEGIN PERFORM public.post_commerce_document(req||jsonb_build_object('id',gen_random_uuid()));EXCEPTION WHEN raise_exception THEN rejected:=true;END;ASSERT rejected,'Cross tenant write denied';
+ RESET ROLE;SET LOCAL ROLE anon;rejected:=false;BEGIN PERFORM public.post_commerce_document('{}');EXCEPTION WHEN insufficient_privilege THEN rejected:=true;END;ASSERT rejected,'Anonymous posting denied';RESET ROLE;
+ SET CONSTRAINTS ALL IMMEDIATE;RAISE EXCEPTION 'COMMERCE ISOLATION TESTS PASSED';
+END $test$;
