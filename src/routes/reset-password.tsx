@@ -1,0 +1,12 @@
+import { createFileRoute, Link } from '@tanstack/react-router';
+import { useEffect, useState } from 'react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { supabase } from '@/integrations/supabase/client';
+import { pageHead } from '@/lib/head';
+export const Route = createFileRoute('/reset-password')({ head: () => pageHead('Reset password', 'Securely reset your BizSathi Nepal account password.'), component: ResetPassword });
+function ResetPassword() {
+ const [recovery, setRecovery] = useState(false); const [password, setPassword] = useState(''); const [confirm, setConfirm] = useState(''); const [busy, setBusy] = useState(false); const [message, setMessage] = useState('');
+ useEffect(() => { const hash = new URLSearchParams(window.location.hash.slice(1)); const isRecovery = hash.get('type') === 'recovery'; supabase.auth.getUser().then(({ data }) => setRecovery(isRecovery && Boolean(data.user))); }, []);
+ return <main className="mx-auto max-w-md px-6 py-16"><h1 className="brand text-3xl">Reset password</h1>{recovery ? <form className="mt-8 space-y-5" onSubmit={async e => { e.preventDefault(); if (password !== confirm) { setMessage('Passwords do not match.'); return; } setBusy(true); const { error } = await supabase.auth.updateUser({ password }); setBusy(false); setMessage(error ? 'Password could not be changed. Request a fresh recovery link.' : 'Password changed.'); if (!error) setRecovery(false); }}><label className="block text-sm">New password<Input type="password" autoComplete="new-password" minLength={8} maxLength={128} required value={password} onChange={e => setPassword(e.target.value)} /></label><label className="block text-sm">Confirm password<Input type="password" autoComplete="new-password" minLength={8} maxLength={128} required value={confirm} onChange={e => setConfirm(e.target.value)} /></label><Button disabled={busy}>Save new password</Button></form> : <p className="my-6 text-sm">{message || 'Open the recovery link from your email to set a new password.'}</p>}{recovery && <p role="status" className="mt-5 text-sm">{message}</p>}<Button asChild variant="link"><Link to="/auth">Back to sign-in</Link></Button></main>;
+}
