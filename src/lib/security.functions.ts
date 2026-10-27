@@ -3,7 +3,7 @@ import { requireSupabaseAuth } from '@/integrations/supabase/auth-middleware';
 import { analysisInput, businessInput, eventInput, findingInput, isAdministrator } from './security-schemas';
 
 export const listAdminBusinesses = createServerFn({ method: 'GET' }).middleware([requireSupabaseAuth]).handler(async ({ context }) => {
-  const { data, error } = await context.supabase.from('business_memberships').select('business_id,role_code,status,businesses(id,name,archived_at)').eq('user_id', context.userId).eq('status', 'active');
+  const { data, error } = await context.supabase.from('business_memberships').select('business_id,role_code,status,businesses!business_memberships_business_id_fkey(id,name,archived_at)').eq('user_id', context.userId).eq('status', 'active');
   if (error) { console.error('Administrator business query failed', error.code, error.message); throw new Error('Unable to load business access.'); }
   return (data ?? []).filter(m => isAdministrator(m.role_code, m.status) && m.businesses && !m.businesses.archived_at).map(m => ({ id: m.business_id, name: m.businesses?.name ?? 'Business', role: m.role_code }));
 });
