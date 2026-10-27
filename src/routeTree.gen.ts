@@ -15,7 +15,10 @@ import { Route as AuthRouteImport } from './routes/auth'
 import { Route as InviteRouteImport } from './routes/invite'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as AuthenticatedBusinessesRouteImport } from './routes/_authenticated/businesses'
+import { Route as AuthenticatedContactsRouteImport } from './routes/_authenticated/contacts'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
+import { Route as AuthenticatedInventoryRouteImport } from './routes/_authenticated/inventory'
+import { Route as AuthenticatedProductsRouteImport } from './routes/_authenticated/products'
 import { Route as AuthenticatedProfileRouteImport } from './routes/_authenticated/profile'
 import { Route as AuthenticatedSecurityRouteImport } from './routes/_authenticated/security'
 import { Route as AuthenticatedSecurityHistoryRouteImport } from './routes/_authenticated/security-history'
@@ -49,9 +52,24 @@ const AuthenticatedBusinessesRoute = AuthenticatedBusinessesRouteImport.update({
   path: '/businesses',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedContactsRoute = AuthenticatedContactsRouteImport.update({
+  id: '/contacts',
+  path: '/contacts',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 const AuthenticatedDashboardRoute = AuthenticatedDashboardRouteImport.update({
   id: '/dashboard',
   path: '/dashboard',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedInventoryRoute = AuthenticatedInventoryRouteImport.update({
+  id: '/inventory',
+  path: '/inventory',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedProductsRoute = AuthenticatedProductsRouteImport.update({
+  id: '/products',
+  path: '/products',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 const AuthenticatedProfileRoute = AuthenticatedProfileRouteImport.update({
@@ -77,7 +95,10 @@ export interface FileRoutesByFullPath {
   '/invite': typeof InviteRoute
   '/reset-password': typeof ResetPasswordRoute
   '/businesses': typeof AuthenticatedBusinessesRoute
+  '/contacts': typeof AuthenticatedContactsRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
+  '/inventory': typeof AuthenticatedInventoryRoute
+  '/products': typeof AuthenticatedProductsRoute
   '/profile': typeof AuthenticatedProfileRoute
   '/security': typeof AuthenticatedSecurityRoute
   '/security-history': typeof AuthenticatedSecurityHistoryRoute
@@ -88,7 +109,10 @@ export interface FileRoutesByTo {
   '/invite': typeof InviteRoute
   '/reset-password': typeof ResetPasswordRoute
   '/businesses': typeof AuthenticatedBusinessesRoute
+  '/contacts': typeof AuthenticatedContactsRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
+  '/inventory': typeof AuthenticatedInventoryRoute
+  '/products': typeof AuthenticatedProductsRoute
   '/profile': typeof AuthenticatedProfileRoute
   '/security': typeof AuthenticatedSecurityRoute
   '/security-history': typeof AuthenticatedSecurityHistoryRoute
@@ -101,7 +125,10 @@ export interface FileRoutesById {
   '/invite': typeof InviteRoute
   '/reset-password': typeof ResetPasswordRoute
   '/_authenticated/businesses': typeof AuthenticatedBusinessesRoute
+  '/_authenticated/contacts': typeof AuthenticatedContactsRoute
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
+  '/_authenticated/inventory': typeof AuthenticatedInventoryRoute
+  '/_authenticated/products': typeof AuthenticatedProductsRoute
   '/_authenticated/profile': typeof AuthenticatedProfileRoute
   '/_authenticated/security': typeof AuthenticatedSecurityRoute
   '/_authenticated/security-history': typeof AuthenticatedSecurityHistoryRoute
@@ -114,7 +141,10 @@ export interface FileRouteTypes {
     | '/invite'
     | '/reset-password'
     | '/businesses'
+    | '/contacts'
     | '/dashboard'
+    | '/inventory'
+    | '/products'
     | '/profile'
     | '/security'
     | '/security-history'
@@ -125,7 +155,10 @@ export interface FileRouteTypes {
     | '/invite'
     | '/reset-password'
     | '/businesses'
+    | '/contacts'
     | '/dashboard'
+    | '/inventory'
+    | '/products'
     | '/profile'
     | '/security'
     | '/security-history'
@@ -137,7 +170,10 @@ export interface FileRouteTypes {
     | '/invite'
     | '/reset-password'
     | '/_authenticated/businesses'
+    | '/_authenticated/contacts'
     | '/_authenticated/dashboard'
+    | '/_authenticated/inventory'
+    | '/_authenticated/products'
     | '/_authenticated/profile'
     | '/_authenticated/security'
     | '/_authenticated/security-history'
@@ -195,11 +231,32 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedBusinessesRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/contacts': {
+      id: '/_authenticated/contacts'
+      path: '/contacts'
+      fullPath: '/contacts'
+      preLoaderRoute: typeof AuthenticatedContactsRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/dashboard': {
       id: '/_authenticated/dashboard'
       path: '/dashboard'
       fullPath: '/dashboard'
       preLoaderRoute: typeof AuthenticatedDashboardRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/inventory': {
+      id: '/_authenticated/inventory'
+      path: '/inventory'
+      fullPath: '/inventory'
+      preLoaderRoute: typeof AuthenticatedInventoryRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/products': {
+      id: '/_authenticated/products'
+      path: '/products'
+      fullPath: '/products'
+      preLoaderRoute: typeof AuthenticatedProductsRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/profile': {
@@ -228,7 +285,10 @@ declare module '@tanstack/react-router' {
 
 interface AuthenticatedRouteRouteChildren {
   AuthenticatedBusinessesRoute: typeof AuthenticatedBusinessesRoute
+  AuthenticatedContactsRoute: typeof AuthenticatedContactsRoute
   AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
+  AuthenticatedInventoryRoute: typeof AuthenticatedInventoryRoute
+  AuthenticatedProductsRoute: typeof AuthenticatedProductsRoute
   AuthenticatedProfileRoute: typeof AuthenticatedProfileRoute
   AuthenticatedSecurityRoute: typeof AuthenticatedSecurityRoute
   AuthenticatedSecurityHistoryRoute: typeof AuthenticatedSecurityHistoryRoute
@@ -236,7 +296,10 @@ interface AuthenticatedRouteRouteChildren {
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedBusinessesRoute: AuthenticatedBusinessesRoute,
+  AuthenticatedContactsRoute: AuthenticatedContactsRoute,
   AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
+  AuthenticatedInventoryRoute: AuthenticatedInventoryRoute,
+  AuthenticatedProductsRoute: AuthenticatedProductsRoute,
   AuthenticatedProfileRoute: AuthenticatedProfileRoute,
   AuthenticatedSecurityRoute: AuthenticatedSecurityRoute,
   AuthenticatedSecurityHistoryRoute: AuthenticatedSecurityHistoryRoute,
