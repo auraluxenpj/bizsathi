@@ -9,7 +9,8 @@
 - [ ] Phase 2 populated business/branch selection — needs a legitimately registered business and branch; no live sample records permitted.
 - [x] Phase 3 core: products/variants, customers/suppliers, append-only stock ledger, opening/receiving/adjustments/transfers, low stock, CSV, and isolated database checks; 23 unit/routing tests passed.
 - [ ] Phase 3 successful live product/contact/movement save and read-back — needs a legitimately registered business/branch; no synthetic live records permitted.
-- [ ] Phase 4 and later: sales, purchases, POS and accounting — awaiting approval after Phase 3.
+- [ ] Phase 4: sales, purchases, POS, returns, payments and cash reconciliation — requested; prepare posting safeguards and implementation plan.
+- [ ] Phase 5 and later: accounting reports and offline POS — awaiting their phase approval.
 - [x] Add administrator-only security review history and append-only decisions.
 - [x] Add sign-in and optional avatar profile data.
 - [x] Add AI finding impact and prioritized remediation summaries.
