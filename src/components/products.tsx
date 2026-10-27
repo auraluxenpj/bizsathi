@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useMutation } from '@tanstack/react-query';
 import { useServerFn } from '@tanstack/react-start';
 import { Plus, Upload, Download, Pencil, Package, X } from 'lucide-react';
@@ -8,11 +8,12 @@ import { InventoryWorkspace, useInventoryWorkspace } from './inventory-workspace
 import { saveCatalogue, editVariant } from '@/lib/inventory.functions';
 import { catalogueRow, type CatalogueRow } from '@/lib/inventory-schemas';
 import { catalogueColumns, makeCsv, parseCatalogueCsv } from '@/lib/inventory-csv';
-export function downloadCsv(name:string,text:string){const url=URL.createObjectURL(new Blob([text],{type:'text/csv;charset=utf-8;'}));const a=document.createElement('a');a.href=url;a.download=name;a.click();URL.revokeObjectURL(url);}
+import { downloadCsv } from '@/lib/download-csv';
 const blank:CatalogueRow={product_name:'',category:'',variant_name:'Standard',sku:'',barcode:'',unit:'pcs',selling_price:0,reorder_level:0};
 export function Products(){
  const w=useInventoryWorkspace(); const save=useServerFn(saveCatalogue);const edit=useServerFn(editVariant); const upload=useRef<HTMLInputElement>(null);
  const [open,setOpen]=useState(false);const [editing,setEditing]=useState('');const [active,setActive]=useState(true);const [draft,setDraft]=useState(blank);const [search,setSearch]=useState('');const [status,setStatus]=useState('');const [preview,setPreview]=useState<CatalogueRow[]>([]);
+ useEffect(()=>{setOpen(false);setEditing('');setDraft(blank);setPreview([]);setStatus('');},[w.businessId]);
  const mutation=useMutation({mutationFn:async()=>editing?edit({data:{businessId:w.businessId,id:editing,values:{...catalogueRow.parse(draft),is_active:active}}}):save({data:{businessId:w.businessId,rows:[catalogueRow.parse(draft)]}}),onSuccess:()=>{setStatus('Product saved.');setOpen(false);setDraft(blank);w.inventory.refetch();},onError:e=>setStatus(e.message)});
  const importing=useMutation({mutationFn:()=>save({data:{businessId:w.businessId,rows:preview}}),onSuccess:r=>{setStatus(`${r.count} variants imported.`);setPreview([]);w.inventory.refetch();},onError:e=>setStatus(e.message)});
  const rows=w.inventory.data?.variants ?? [];const filtered=rows.filter(v=>`${v.products?.name} ${v.name} ${v.sku} ${v.barcode ?? ''}`.toLowerCase().includes(search.toLowerCase()));

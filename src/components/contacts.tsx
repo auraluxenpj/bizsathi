@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useMutation } from '@tanstack/react-query';
 import { useServerFn } from '@tanstack/react-start';
 import { Plus, Pencil, UsersRound, X, Download } from 'lucide-react';
@@ -8,9 +8,10 @@ import { InventoryWorkspace, useInventoryWorkspace } from './inventory-workspace
 import { saveParty } from '@/lib/inventory.functions';
 import { partyInput } from '@/lib/inventory-schemas';
 import { makeCsv } from '@/lib/inventory-csv';
-import { downloadCsv } from './products';
+import { downloadCsv } from '@/lib/download-csv';
 const blank={name:'',phone:'',email:'',address:'',pan_vat_number:'',is_active:true};
 export function Contacts(){const w=useInventoryWorkspace();const save=useServerFn(saveParty);const [kind,setKind]=useState<'customer'|'supplier'>('customer');const [search,setSearch]=useState('');const [open,setOpen]=useState(false);const [id,setId]=useState<string>();const [draft,setDraft]=useState(blank);const [status,setStatus]=useState('');
+ useEffect(()=>{setOpen(false);setId(undefined);setDraft(blank);setStatus('');},[w.businessId]);
  const mutation=useMutation({mutationFn:()=>save({data:partyInput.parse({...draft,businessId:w.businessId,id,kind})}),onSuccess:()=>{setOpen(false);setStatus('Contact saved.');w.inventory.refetch();},onError:e=>setStatus(e.message)});
  const rows=(w.inventory.data?.parties ?? []).filter(p=>p.kind===kind);const filtered=rows.filter(p=>`${p.name} ${p.phone} ${p.email}`.toLowerCase().includes(search.toLowerCase()));
  return <InventoryWorkspace workspace={w} title="Customers & suppliers" active="/contacts"><div className="flex flex-wrap items-center justify-between gap-4 py-6"><div role="group" aria-label="Contact type" className="flex gap-1">{(['customer','supplier'] as const).map(k=><Button key={k} variant={kind===k?'secondary':'ghost'} aria-pressed={kind===k} onClick={()=>{setKind(k);setOpen(false);}}>{k==='customer'?'Customers':'Suppliers'}</Button>)}</div><div className="flex flex-wrap gap-2"><Button variant="outline" onClick={()=>downloadCsv(`${kind}s.csv`,makeCsv(rows.map(({name,phone,email,address,pan_vat_number,is_active})=>({name,phone,email,address,pan_vat_number,is_active})),['name','phone','email','address','pan_vat_number','is_active']))}><Download/>Export</Button>{w.manager&&<Button onClick={()=>{setDraft(blank);setId(undefined);setOpen(true);}}><Plus/>Add {kind}</Button>}</div></div><Input aria-label="Search contacts" className="mb-5 sm:max-w-xs" placeholder="Search name, phone or email" value={search} onChange={e=>setSearch(e.target.value)}/>{status&&<p role="status" className="mb-5 border-l-2 border-primary pl-3 text-sm">{status}</p>}

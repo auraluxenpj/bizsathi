@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useMutation } from '@tanstack/react-query';
 import { useServerFn } from '@tanstack/react-start';
 import { Plus, Download, ArrowLeftRight, X } from 'lucide-react';
@@ -8,9 +8,10 @@ import { InventoryWorkspace, useInventoryWorkspace } from './inventory-workspace
 import { postStock } from '@/lib/inventory.functions';
 import { stockInput, stockBalances } from '@/lib/inventory-schemas';
 import { makeCsv } from '@/lib/inventory-csv';
-import { downloadCsv } from './products';
+import { downloadCsv } from '@/lib/download-csv';
 export function StockLedger(){const w=useInventoryWorkspace();const post=useServerFn(postStock);const [branch,setBranch]=useState('');const [low,setLow]=useState(false);const [open,setOpen]=useState(false);const [status,setStatus]=useState('');
  const [draft,setDraft]=useState({id:'',variantId:'',branchId:'',destinationBranchId:'',kind:'receive',quantity:'',reference:'',reason:''});const [locked,setLocked]=useState(false);
+ useEffect(()=>{setOpen(false);setBranch('');setLocked(false);setStatus('');},[w.businessId]);
  const branches=w.access.data?.branches.filter(b=>b.is_active) ?? [];const variants=w.inventory.data?.variants ?? [];const movements=w.inventory.data?.movements ?? [];
  const totals=stockBalances(movements);const balances=branches.filter(b=>!branch||b.id===branch).flatMap(b=>variants.filter(v=>v.is_active&&v.products?.is_active).map(v=>({branch:b,variant:v,quantity:totals.get(`${b.id}:${v.id}`)??0}))).filter(r=>!low||r.quantity<=Number(r.variant.reorder_level));
  const history=movements.filter(m=>!branch||m.branch_id===branch);
