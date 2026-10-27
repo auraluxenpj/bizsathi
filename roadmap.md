@@ -7,7 +7,8 @@
 - [x] Phase 2: shared desktop/mobile navigation, authorized business/branch selectors, and dashboard with unavailable financial values instead of fabricated totals.
 - [x] Phase 2 checks: 17 tests passed; signed-in empty dashboard, period controls, navigation, mobile layout, signed-out guard, and sign-out verified.
 - [ ] Phase 2 populated business/branch selection — needs a legitimately registered business and branch; no live sample records permitted.
-- [ ] Phase 3 and later: inventory and operational modules — awaiting approval after Phase 2.
+- [ ] Phase 3: products/variants, customers/suppliers, append-only stock ledger, opening/receiving/adjustments/transfers, low stock, CSV, and isolation checks — approved and in progress.
+- [ ] Phase 4 and later: sales, purchases, POS and accounting — awaiting approval after Phase 3.
 - [x] Add administrator-only security review history and append-only decisions.
 - [x] Add sign-in and optional avatar profile data.
 - [x] Add AI finding impact and prioritized remediation summaries.
