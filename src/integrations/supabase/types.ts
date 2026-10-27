@@ -1323,6 +1323,10 @@ export type Database = {
         Returns: string
       }
       post_stock_request: { Args: { _request: Json }; Returns: string }
+      read_accounting_snapshot: {
+        Args: { _branch_id?: string; _business_id: string; _through?: string }
+        Returns: Json
+      }
       remove_business_member: {
         Args: { _business_id: string; _user_id: string }
         Returns: undefined
