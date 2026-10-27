@@ -1,0 +1,5 @@
+DO $migration$ DECLARE f text;body text;BEGIN FOREACH f IN ARRAY ARRAY['public.post_commerce_document(jsonb)','public.post_commerce_payment(jsonb)','public.post_cash_counter_event(jsonb)'] LOOP SELECT pg_get_functiondef(f::regprocedure) INTO body;body:=replace(body,'AS $function$','AS $function$'||chr(10)||'#variable_conflict use_column');IF f='public.post_commerce_document(jsonb)' THEN body:=replace(body,'IF k NOT IN (''sale'') AND party IS NULL','IF k NOT IN (''sale'',''sale_return'') AND party IS NULL');END IF;EXECUTE body;END LOOP;END $migration$;
+CREATE FUNCTION public.commerce_stock_write_lock() RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER SET search_path=public AS $$ BEGIN PERFORM pg_advisory_xact_lock(hashtextextended(NEW.business_id::text,0));RETURN NEW;END $$;
+REVOKE ALL ON FUNCTION public.commerce_stock_write_lock() FROM PUBLIC,anon,authenticated;
+CREATE TRIGGER commerce_stock_write_lock BEFORE INSERT ON public.commerce_stock_movements FOR EACH ROW EXECUTE FUNCTION public.commerce_stock_write_lock();
+CREATE TRIGGER legacy_stock_write_lock BEFORE INSERT ON public.stock_movements FOR EACH ROW EXECUTE FUNCTION public.commerce_stock_write_lock();

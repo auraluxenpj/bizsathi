@@ -64,6 +64,13 @@
       "when": 1793077037015,
       "tag": "0008_commerce_counter_and_stock_guards",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1793077245695,
+      "tag": "0009_commerce_function_validation_fixes",
+      "breakpoints": true
     }
   ]
 }
