@@ -23,3 +23,4 @@
 - Quantity reads combine legacy and document-linked movements; invoice entry and goods receiving remain separate events. Why: preserve Phase 3 history and avoid receiving the same purchase twice.
 - Online document requests are retained per user/business in session storage until confirmed or explicitly checked; this is not offline billing. Why: keep unchanged retry identifiers without promising disconnected sales.
 - Monetary previews use Decimal.js with per-line half-up rounding, matching PostgreSQL numeric posting. Why: avoid fractional-cent drift and defer inventory valuation and COGS to reliable costing.
+- Accounting reports reuse a single invoker-RLS database snapshot of commerce evidence with numeric text, server-side Decimal aggregation and pagination after totals; no parallel ledger. Why: preserve authorization, read consistency and exact opening/closing balances without duplicate posting.

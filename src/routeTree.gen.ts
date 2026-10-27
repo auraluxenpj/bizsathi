@@ -14,6 +14,7 @@ import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as InviteRouteImport } from './routes/invite'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
+import { Route as AuthenticatedAccountingRouteImport } from './routes/_authenticated/accounting'
 import { Route as AuthenticatedBusinessesRouteImport } from './routes/_authenticated/businesses'
 import { Route as AuthenticatedCashCountersRouteImport } from './routes/_authenticated/cash-counters'
 import { Route as AuthenticatedContactsRouteImport } from './routes/_authenticated/contacts'
@@ -50,6 +51,11 @@ const ResetPasswordRoute = ResetPasswordRouteImport.update({
   id: '/reset-password',
   path: '/reset-password',
   getParentRoute: () => rootRouteImport,
+} as any)
+const AuthenticatedAccountingRoute = AuthenticatedAccountingRouteImport.update({
+  id: '/accounting',
+  path: '/accounting',
+  getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 const AuthenticatedBusinessesRoute = AuthenticatedBusinessesRouteImport.update({
   id: '/businesses',
@@ -119,6 +125,7 @@ export interface FileRoutesByFullPath {
   '/auth': typeof AuthRoute
   '/invite': typeof InviteRoute
   '/reset-password': typeof ResetPasswordRoute
+  '/accounting': typeof AuthenticatedAccountingRoute
   '/businesses': typeof AuthenticatedBusinessesRoute
   '/cash-counters': typeof AuthenticatedCashCountersRoute
   '/contacts': typeof AuthenticatedContactsRoute
@@ -137,6 +144,7 @@ export interface FileRoutesByTo {
   '/auth': typeof AuthRoute
   '/invite': typeof InviteRoute
   '/reset-password': typeof ResetPasswordRoute
+  '/accounting': typeof AuthenticatedAccountingRoute
   '/businesses': typeof AuthenticatedBusinessesRoute
   '/cash-counters': typeof AuthenticatedCashCountersRoute
   '/contacts': typeof AuthenticatedContactsRoute
@@ -157,6 +165,7 @@ export interface FileRoutesById {
   '/auth': typeof AuthRoute
   '/invite': typeof InviteRoute
   '/reset-password': typeof ResetPasswordRoute
+  '/_authenticated/accounting': typeof AuthenticatedAccountingRoute
   '/_authenticated/businesses': typeof AuthenticatedBusinessesRoute
   '/_authenticated/cash-counters': typeof AuthenticatedCashCountersRoute
   '/_authenticated/contacts': typeof AuthenticatedContactsRoute
@@ -177,6 +186,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/invite'
     | '/reset-password'
+    | '/accounting'
     | '/businesses'
     | '/cash-counters'
     | '/contacts'
@@ -195,6 +205,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/invite'
     | '/reset-password'
+    | '/accounting'
     | '/businesses'
     | '/cash-counters'
     | '/contacts'
@@ -214,6 +225,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/invite'
     | '/reset-password'
+    | '/_authenticated/accounting'
     | '/_authenticated/businesses'
     | '/_authenticated/cash-counters'
     | '/_authenticated/contacts'
@@ -272,6 +284,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/reset-password'
       preLoaderRoute: typeof ResetPasswordRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/_authenticated/accounting': {
+      id: '/_authenticated/accounting'
+      path: '/accounting'
+      fullPath: '/accounting'
+      preLoaderRoute: typeof AuthenticatedAccountingRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/businesses': {
       id: '/_authenticated/businesses'
@@ -361,6 +380,7 @@ declare module '@tanstack/react-router' {
 }
 
 interface AuthenticatedRouteRouteChildren {
+  AuthenticatedAccountingRoute: typeof AuthenticatedAccountingRoute
   AuthenticatedBusinessesRoute: typeof AuthenticatedBusinessesRoute
   AuthenticatedCashCountersRoute: typeof AuthenticatedCashCountersRoute
   AuthenticatedContactsRoute: typeof AuthenticatedContactsRoute
@@ -376,6 +396,7 @@ interface AuthenticatedRouteRouteChildren {
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
+  AuthenticatedAccountingRoute: AuthenticatedAccountingRoute,
   AuthenticatedBusinessesRoute: AuthenticatedBusinessesRoute,
   AuthenticatedCashCountersRoute: AuthenticatedCashCountersRoute,
   AuthenticatedContactsRoute: AuthenticatedContactsRoute,
