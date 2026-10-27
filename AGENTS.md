@@ -16,3 +16,4 @@
 - AI reviews use server-only Lovable Gateway Responses streaming with persisted access pauses and no automatic retries. Why: keep secrets private and avoid repeated billing or denied calls.
 - Business onboarding reuses the atomic create_business RPC; invitations store only hashed email-bound tokens and accept through a locked database operation that rechecks inviter authority. Why: prevent duplicate infrastructure and stale invitation privilege grants.
 - Branch-scoped data uses can_access_branch plus operation-specific role checks; administrators have manager access and lower roles require explicit branch_memberships. Why: business membership alone must not expose every branch.
+- Shared workspace navigation lives around the root Outlet; dashboard uses existing authorized business/branch queries and null financial values until operational sources exist. Why: preserve public routes and avoid fabricated balances or duplicate data structures.

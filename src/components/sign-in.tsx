@@ -26,7 +26,7 @@ export function SignIn() {
       if (result.error) throw result.error;
       if (result.redirected) return;
       const { data } = await supabase.auth.getUser();
-      if (data.user) await navigate({ to: sessionStorage.getItem('bizsathi-invite') ? '/invite' : '/businesses' });
+      if (data.user) await navigate({ to: sessionStorage.getItem('bizsathi-invite') ? '/invite' : '/dashboard' });
     } catch { setError('Sign-in could not be completed. Please try again.'); }
     finally { setBusy(false); }
   }
@@ -47,7 +47,7 @@ export function SignIn() {
           const { error } = await supabase.auth.signInWithPassword(credentials);
           if (error) throw error;
         }
-        await navigate({ to: sessionStorage.getItem('bizsathi-invite') ? '/invite' : '/businesses' });
+        await navigate({ to: sessionStorage.getItem('bizsathi-invite') ? '/invite' : '/dashboard' });
       }
     } catch { setError('This request could not be completed. Check your details and try again.'); }
     finally { setBusy(false); }

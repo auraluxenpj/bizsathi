@@ -4,7 +4,10 @@
 - [x] Run original tenant tests and new invitation/branch/review-event isolation tests in an isolated local PostgreSQL database; all synthetic records rolled back.
 - [x] Verify signed-in empty-business screen, denied invitation acceptance, and mobile layout; 13 focused unit/routing tests passed.
 - [ ] Phase 1 successful registration/staff/branch and recovery-email end-to-end checks — need real business details and a recipient who can open confirmation/recovery mail; no live sample records permitted.
-- [ ] Phase 2 and later: business dashboard and operational modules — awaiting review after Phase 1.
+- [x] Phase 2: shared desktop/mobile navigation, authorized business/branch selectors, and dashboard with unavailable financial values instead of fabricated totals.
+- [x] Phase 2 checks: 17 tests passed; signed-in empty dashboard, period controls, navigation, mobile layout, signed-out guard, and sign-out verified.
+- [ ] Phase 2 populated business/branch selection — needs a legitimately registered business and branch; no live sample records permitted.
+- [ ] Phase 3 and later: inventory and operational modules — awaiting approval after Phase 2.
 - [x] Add administrator-only security review history and append-only decisions.
 - [x] Add sign-in and optional avatar profile data.
 - [x] Add AI finding impact and prioritized remediation summaries.

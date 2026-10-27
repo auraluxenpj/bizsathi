@@ -15,6 +15,7 @@ import { Route as AuthRouteImport } from './routes/auth'
 import { Route as InviteRouteImport } from './routes/invite'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as AuthenticatedBusinessesRouteImport } from './routes/_authenticated/businesses'
+import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
 import { Route as AuthenticatedProfileRouteImport } from './routes/_authenticated/profile'
 import { Route as AuthenticatedSecurityRouteImport } from './routes/_authenticated/security'
 import { Route as AuthenticatedSecurityHistoryRouteImport } from './routes/_authenticated/security-history'
@@ -48,6 +49,11 @@ const AuthenticatedBusinessesRoute = AuthenticatedBusinessesRouteImport.update({
   path: '/businesses',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedDashboardRoute = AuthenticatedDashboardRouteImport.update({
+  id: '/dashboard',
+  path: '/dashboard',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 const AuthenticatedProfileRoute = AuthenticatedProfileRouteImport.update({
   id: '/profile',
   path: '/profile',
@@ -71,6 +77,7 @@ export interface FileRoutesByFullPath {
   '/invite': typeof InviteRoute
   '/reset-password': typeof ResetPasswordRoute
   '/businesses': typeof AuthenticatedBusinessesRoute
+  '/dashboard': typeof AuthenticatedDashboardRoute
   '/profile': typeof AuthenticatedProfileRoute
   '/security': typeof AuthenticatedSecurityRoute
   '/security-history': typeof AuthenticatedSecurityHistoryRoute
@@ -81,6 +88,7 @@ export interface FileRoutesByTo {
   '/invite': typeof InviteRoute
   '/reset-password': typeof ResetPasswordRoute
   '/businesses': typeof AuthenticatedBusinessesRoute
+  '/dashboard': typeof AuthenticatedDashboardRoute
   '/profile': typeof AuthenticatedProfileRoute
   '/security': typeof AuthenticatedSecurityRoute
   '/security-history': typeof AuthenticatedSecurityHistoryRoute
@@ -93,6 +101,7 @@ export interface FileRoutesById {
   '/invite': typeof InviteRoute
   '/reset-password': typeof ResetPasswordRoute
   '/_authenticated/businesses': typeof AuthenticatedBusinessesRoute
+  '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
   '/_authenticated/profile': typeof AuthenticatedProfileRoute
   '/_authenticated/security': typeof AuthenticatedSecurityRoute
   '/_authenticated/security-history': typeof AuthenticatedSecurityHistoryRoute
@@ -105,6 +114,7 @@ export interface FileRouteTypes {
     | '/invite'
     | '/reset-password'
     | '/businesses'
+    | '/dashboard'
     | '/profile'
     | '/security'
     | '/security-history'
@@ -115,6 +125,7 @@ export interface FileRouteTypes {
     | '/invite'
     | '/reset-password'
     | '/businesses'
+    | '/dashboard'
     | '/profile'
     | '/security'
     | '/security-history'
@@ -126,6 +137,7 @@ export interface FileRouteTypes {
     | '/invite'
     | '/reset-password'
     | '/_authenticated/businesses'
+    | '/_authenticated/dashboard'
     | '/_authenticated/profile'
     | '/_authenticated/security'
     | '/_authenticated/security-history'
@@ -183,6 +195,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedBusinessesRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/dashboard': {
+      id: '/_authenticated/dashboard'
+      path: '/dashboard'
+      fullPath: '/dashboard'
+      preLoaderRoute: typeof AuthenticatedDashboardRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/profile': {
       id: '/_authenticated/profile'
       path: '/profile'
@@ -209,6 +228,7 @@ declare module '@tanstack/react-router' {
 
 interface AuthenticatedRouteRouteChildren {
   AuthenticatedBusinessesRoute: typeof AuthenticatedBusinessesRoute
+  AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
   AuthenticatedProfileRoute: typeof AuthenticatedProfileRoute
   AuthenticatedSecurityRoute: typeof AuthenticatedSecurityRoute
   AuthenticatedSecurityHistoryRoute: typeof AuthenticatedSecurityHistoryRoute
@@ -216,6 +236,7 @@ interface AuthenticatedRouteRouteChildren {
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedBusinessesRoute: AuthenticatedBusinessesRoute,
+  AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
   AuthenticatedProfileRoute: AuthenticatedProfileRoute,
   AuthenticatedSecurityRoute: AuthenticatedSecurityRoute,
   AuthenticatedSecurityHistoryRoute: AuthenticatedSecurityHistoryRoute,

@@ -4,6 +4,7 @@ import {
   Link,
   createRootRouteWithContext,
   useRouter,
+  useRouterState,
   HeadContent,
   Scripts,
   type ErrorComponentProps,
@@ -13,6 +14,7 @@ import { useEffect, type ReactNode } from "react";
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
 import { supabase } from '@/integrations/supabase/client';
+import { AppNavigation } from '@/components/app-navigation';
 
 function NotFoundComponent() {
   return (
@@ -120,6 +122,8 @@ function RootShell({ children }: { children: ReactNode }) {
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
   const router = useRouter();
+  const pathname = useRouterState({ select: state => state.location.pathname });
+  const workspace = ['/dashboard', '/businesses', '/profile', '/security', '/security-history'].includes(pathname);
   useEffect(() => {
     if (new URLSearchParams(window.location.hash.slice(1)).get('type') === 'recovery') sessionStorage.setItem('bizsathi-recovery', 'true');
     const { data } = supabase.auth.onAuthStateChange(event => {
@@ -135,7 +139,7 @@ function RootComponent() {
   return (
     <QueryClientProvider client={queryClient}>
       {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
-      <Outlet />
+      {workspace ? <AppNavigation pathname={pathname}><Outlet /></AppNavigation> : <Outlet />}
     </QueryClientProvider>
   );
 }
