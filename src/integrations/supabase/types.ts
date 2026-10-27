@@ -58,6 +58,59 @@ export type Database = {
           },
         ]
       }
+      branch_memberships: {
+        Row: {
+          branch_id: string
+          business_id: string
+          created_at: string
+          granted_by: string
+          user_id: string
+        }
+        Insert: {
+          branch_id: string
+          business_id: string
+          created_at?: string
+          granted_by: string
+          user_id: string
+        }
+        Update: {
+          branch_id?: string
+          business_id?: string
+          created_at?: string
+          granted_by?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "branch_memberships_business_id_branch_id_fkey"
+            columns: ["business_id", "branch_id"]
+            isOneToOne: false
+            referencedRelation: "branches"
+            referencedColumns: ["business_id", "id"]
+          },
+          {
+            foreignKeyName: "branch_memberships_business_id_fkey"
+            columns: ["business_id"]
+            isOneToOne: false
+            referencedRelation: "businesses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "branch_memberships_business_id_user_id_fkey"
+            columns: ["business_id", "user_id"]
+            isOneToOne: false
+            referencedRelation: "business_memberships"
+            referencedColumns: ["business_id", "user_id"]
+          },
+          {
+            foreignKeyName: "branch_memberships_granted_by_fkey"
+            columns: ["granted_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       branches: {
         Row: {
           address: string | null
@@ -96,6 +149,67 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "businesses"
             referencedColumns: ["id"]
+          },
+        ]
+      }
+      business_invitations: {
+        Row: {
+          accepted_at: string | null
+          business_id: string
+          created_at: string
+          email: string
+          expires_at: string
+          id: string
+          invited_by: string
+          revoked_at: string | null
+          role_code: string
+          token_hash: string
+        }
+        Insert: {
+          accepted_at?: string | null
+          business_id: string
+          created_at?: string
+          email: string
+          expires_at?: string
+          id?: string
+          invited_by: string
+          revoked_at?: string | null
+          role_code: string
+          token_hash: string
+        }
+        Update: {
+          accepted_at?: string | null
+          business_id?: string
+          created_at?: string
+          email?: string
+          expires_at?: string
+          id?: string
+          invited_by?: string
+          revoked_at?: string | null
+          role_code?: string
+          token_hash?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "business_invitations_business_id_fkey"
+            columns: ["business_id"]
+            isOneToOne: false
+            referencedRelation: "businesses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "business_invitations_invited_by_fkey"
+            columns: ["invited_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "business_invitations_role_code_fkey"
+            columns: ["role_code"]
+            isOneToOne: false
+            referencedRelation: "roles"
+            referencedColumns: ["code"]
           },
         ]
       }
@@ -408,6 +522,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      accept_business_invitation: {
+        Args: { _token_hash: string }
+        Returns: string
+      }
       add_business_member: {
         Args: { _business_id: string; _role: string; _user_id: string }
         Returns: string
@@ -417,8 +535,21 @@ export type Database = {
         Args: { _business_id: string; _user_id?: string }
         Returns: number
       }
+      can_access_branch: {
+        Args: { _branch_id: string; _business_id: string }
+        Returns: boolean
+      }
       create_business: {
         Args: { _legal_name?: string; _name: string; _pan_vat?: string }
+        Returns: string
+      }
+      create_business_invitation: {
+        Args: {
+          _business_id: string
+          _email: string
+          _role: string
+          _token_hash: string
+        }
         Returns: string
       }
       has_business_role: {
@@ -428,6 +559,19 @@ export type Database = {
       is_business_member: { Args: { _business_id: string }; Returns: boolean }
       remove_business_member: {
         Args: { _business_id: string; _user_id: string }
+        Returns: undefined
+      }
+      revoke_business_invitation: {
+        Args: { _business_id: string; _invitation_id: string }
+        Returns: undefined
+      }
+      set_branch_access: {
+        Args: {
+          _allowed: boolean
+          _branch_id: string
+          _business_id: string
+          _user_id: string
+        }
         Returns: undefined
       }
       set_financial_period_status: {
