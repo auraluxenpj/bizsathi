@@ -1265,6 +1265,20 @@ export type Database = {
         Args: { _branch_id: string; _business_id: string }
         Returns: boolean
       }
+      commerce_journal: {
+        Args: {
+          _account: string
+          _branch: string
+          _business: string
+          _credit: number
+          _date: string
+          _debit: number
+          _period: string
+          _source: string
+          _type: string
+        }
+        Returns: undefined
+      }
       commerce_open_period: {
         Args: { _business: string; _date: string; _period: string }
         Returns: undefined
@@ -1291,6 +1305,8 @@ export type Database = {
         Returns: boolean
       }
       is_business_member: { Args: { _business_id: string }; Returns: boolean }
+      post_commerce_document: { Args: { _request: Json }; Returns: string }
+      post_commerce_payment: { Args: { _request: Json }; Returns: string }
       post_stock_operation: {
         Args: {
           _branch_id: string
