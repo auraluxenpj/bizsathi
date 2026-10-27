@@ -113,6 +113,13 @@
       "when": 1793078379462,
       "tag": "0015_controlled_accounting_vouchers",
       "breakpoints": true
+    },
+    {
+      "idx": 16,
+      "version": "7",
+      "when": 1793078560465,
+      "tag": "0016_voucher_strict_reversal_contract",
+      "breakpoints": true
     }
   ]
 }
