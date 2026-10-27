@@ -12,7 +12,9 @@
 - [x] Phase 4 core: transactional documents, stock/balanced posting, POS, purchase orders/invoices/receiving, payments, returns, cash counts, receipt tools and real-record overview totals.
 - [ ] Phase 4 live confirmation/read-back and receipt/refund/cashier checks — real business exists but needs legitimate branches, products and open financial periods; no synthetic live records permitted.
 - [ ] Phase 4 payment reversals and authorized reconciliation-variance resolution — deferred pending validated live posting flows and explicit financial workflow review.
-- [ ] Phase 5 and later: accounting reports and offline POS — awaiting their phase approval.
+- [x] Phase 5: audited accounting readiness; first reporting increment prepared for approval, with incomplete costing and correction workflows identified.
+- [ ] Phase 5 implementation and verification — awaiting approval of its detailed plan; preserve outstanding Phase 4 live-flow checks.
+- [ ] Phase 6 and later: offline POS and final verification — awaiting their phase approval.
 - [x] Add administrator-only security review history and append-only decisions.
 - [x] Add sign-in and optional avatar profile data.
 - [x] Add AI finding impact and prioritized remediation summaries.
