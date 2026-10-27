@@ -14,6 +14,90 @@ export type Database = {
   }
   public: {
     Tables: {
+      accounting_vouchers: {
+        Row: {
+          actor_id: string
+          branch_id: string
+          business_id: string
+          created_at: string
+          id: string
+          kind: string
+          period_id: string
+          reason: string
+          reference: string
+          request: Json
+          request_id: string
+          reverses_id: string | null
+          voucher_date: string
+        }
+        Insert: {
+          actor_id: string
+          branch_id: string
+          business_id: string
+          created_at?: string
+          id?: string
+          kind: string
+          period_id: string
+          reason: string
+          reference: string
+          request: Json
+          request_id: string
+          reverses_id?: string | null
+          voucher_date: string
+        }
+        Update: {
+          actor_id?: string
+          branch_id?: string
+          business_id?: string
+          created_at?: string
+          id?: string
+          kind?: string
+          period_id?: string
+          reason?: string
+          reference?: string
+          request?: Json
+          request_id?: string
+          reverses_id?: string | null
+          voucher_date?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "accounting_vouchers_actor_id_fkey"
+            columns: ["actor_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "accounting_vouchers_business_id_branch_id_fkey"
+            columns: ["business_id", "branch_id"]
+            isOneToOne: false
+            referencedRelation: "branches"
+            referencedColumns: ["business_id", "id"]
+          },
+          {
+            foreignKeyName: "accounting_vouchers_business_id_fkey"
+            columns: ["business_id"]
+            isOneToOne: false
+            referencedRelation: "businesses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "accounting_vouchers_business_id_period_id_fkey"
+            columns: ["business_id", "period_id"]
+            isOneToOne: false
+            referencedRelation: "financial_periods"
+            referencedColumns: ["business_id", "id"]
+          },
+          {
+            foreignKeyName: "accounting_vouchers_business_id_reverses_id_fkey"
+            columns: ["business_id", "reverses_id"]
+            isOneToOne: false
+            referencedRelation: "accounting_vouchers"
+            referencedColumns: ["business_id", "id"]
+          },
+        ]
+      }
       audit_logs: {
         Row: {
           action: string
@@ -1305,6 +1389,7 @@ export type Database = {
         Returns: boolean
       }
       is_business_member: { Args: { _business_id: string }; Returns: boolean }
+      post_accounting_voucher: { Args: { _request: Json }; Returns: string }
       post_cash_counter_event: { Args: { _request: Json }; Returns: string }
       post_commerce_document: { Args: { _request: Json }; Returns: string }
       post_commerce_payment: { Args: { _request: Json }; Returns: string }
