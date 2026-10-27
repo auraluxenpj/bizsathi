@@ -1,6 +1,7 @@
 # Security review workspace
 - [x] Requested report expansion audited: existing registers/ledger/CSV, missing user filters, stock/low-stock report controls and full print identified; costing/COGS/openings/classifications block complete valuation/profit/statements.
-- [ ] Report expansion first increment: awaiting approval for unified operational-report controls and exports; full financial statements remain a separately reviewed prerequisite increment.
+- [x] Approved report expansion: date/branch/posting-user controls, stock/low-stock, dedicated customer/supplier/receivable/payable views and full CSV/print; 95 tests and isolated report/financial regression suites passed.
+- [ ] Expanded reports populated live detail/CSV/full print read-back — legitimate branches/products/confirmed activity required; live counts remain zero. Inventory valuation/profit/full statements need reviewed costing, COGS, openings and classifications, not estimated values.
 - [x] Audit the uploaded BizSathi business-suite brief against current pages, live schema, grants, and tests.
 - [x] Phase 1 implementation: business onboarding, password recovery, shareable email-bound invitations, staff administration, branch authorization, and explicit review permissions.
 - [x] Run original tenant tests and new invitation/branch/review-event isolation tests in an isolated local PostgreSQL database; all synthetic records rolled back.

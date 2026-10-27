@@ -1,0 +1,22 @@
+BEGIN;
+DO $test$
+DECLARE a uuid:=gen_random_uuid();b uuid:=gen_random_uuid();viewer uuid:=gen_random_uuid();ba uuid;bb uuid;br uuid;br2 uuid;variant uuid;period uuid;snap jsonb;denied boolean;
+BEGIN
+ INSERT INTO auth.users(id,email,email_confirmed_at,raw_user_meta_data,created_at,updated_at)SELECT u,'report+'||u||'@example.invalid',now(),'{}',now(),now()FROM unnest(ARRAY[a,b,viewer])u;
+ SET LOCAL ROLE authenticated;PERFORM set_config('request.jwt.claims',json_build_object('sub',a,'role','authenticated')::text,true);
+ ba:=public.create_business('Report test A');PERFORM public.add_business_member(ba,viewer,'viewer');UPDATE public.business_settings SET timezone='Asia/Kathmandu' WHERE business_id=ba;
+ INSERT INTO public.branches(business_id,code,name)VALUES(ba,'A','A')RETURNING id INTO br;INSERT INTO public.branches(business_id,code,name)VALUES(ba,'B','B')RETURNING id INTO br2;
+ INSERT INTO public.financial_periods(business_id,name,start_date,end_date)VALUES(ba,'Open','2026-01-01','2026-12-31')RETURNING id INTO period;
+ PERFORM public.save_catalogue_variant(ba,'[{"product_name":"Report item","sku":"REPORT","selling_price":100}]');SELECT id INTO variant FROM public.product_variants WHERE business_id=ba;
+ PERFORM public.post_stock_operation(ba,gen_random_uuid(),variant,br,NULL,'opening',10,'OPEN','Opening');
+ -- Change timestamps only in the isolated fixture under privileged test role, never live history.
+ RESET ROLE;ALTER TABLE public.stock_movements DISABLE TRIGGER USER;UPDATE public.stock_movements SET created_at='2026-01-31T19:00:00Z' WHERE business_id=ba;ALTER TABLE public.stock_movements ENABLE TRIGGER USER;SET LOCAL ROLE authenticated;
+ snap:=public.read_business_report_snapshot(ba,br,'2026-02-01');ASSERT jsonb_array_length(snap->'movements')=1,'Local boundary included';ASSERT snap->'movements'->0->>'movement_date'='2026-02-01','Business timezone applied';ASSERT jsonb_typeof(snap->'movements'->0->'quantity')='string','Exact stock numeric text';ASSERT snap->'movements'->0->>'actor_id'=a::text,'Stock actor preserved';ASSERT jsonb_array_length(snap->'users')=1,'Evidence-only user selector';ASSERT jsonb_array_length(public.read_business_report_snapshot(ba,br,'2026-01-31')->'movements')=0,'Local prior date excludes boundary';
+ PERFORM public.post_commerce_document(jsonb_build_object('businessId',ba,'id',gen_random_uuid(),'branchId',br,'periodId',period,'date','2026-02-01','kind','sale','status','confirmed','reference','SALE','lines',jsonb_build_array(jsonb_build_object('variantId',variant,'quantity',1,'price',100)),'payments',jsonb_build_array(jsonb_build_object('id',gen_random_uuid(),'method','bank','amount',100,'reference','BANK'))));
+ snap:=public.read_business_report_snapshot(ba,br,'2026-12-31');ASSERT jsonb_array_length(snap->'movements')=2,'Both quantity ledgers included once';ASSERT snap->'documents'->0->>'actor_id'=a::text,'Document actor preserved';ASSERT NOT(snap->'documents'->0?'request'),'No private raw request';ASSERT NOT(snap->'documents'->0?'lines'),'No document item payload';
+ PERFORM public.set_branch_access(ba,br,viewer,true);PERFORM set_config('request.jwt.claims',json_build_object('sub',viewer,'role','authenticated')::text,true);ASSERT jsonb_array_length(public.read_business_report_snapshot(ba,NULL,'2026-12-31')->'branches')=1,'Unassigned branches excluded';denied:=false;BEGIN PERFORM public.read_business_report_snapshot(ba,br2,'2026-12-31');EXCEPTION WHEN insufficient_privilege THEN denied:=true;END;ASSERT denied,'Inaccessible branch denied';
+ PERFORM set_config('request.jwt.claims',json_build_object('sub',b,'role','authenticated')::text,true);bb:=public.create_business('Report test B');denied:=false;BEGIN PERFORM public.read_business_report_snapshot(ba,NULL,'2026-12-31');EXCEPTION WHEN insufficient_privilege THEN denied:=true;END;ASSERT denied,'Other tenant denied';ASSERT jsonb_array_length(public.read_business_report_snapshot(bb,NULL,'2026-12-31')->'users')=0,'Other tenant actors not exposed';
+ RESET ROLE;SET LOCAL ROLE anon;denied:=false;BEGIN PERFORM public.read_business_report_snapshot(ba,NULL,'2026-12-31');EXCEPTION WHEN insufficient_privilege THEN denied:=true;END;ASSERT denied,'Anonymous denied';RESET ROLE;
+END $test$;
+ROLLBACK;
+\echo BUSINESS REPORT TESTS PASSED
