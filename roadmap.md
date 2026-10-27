@@ -1,4 +1,5 @@
 # Security review workspace
+- [ ] Mobile membership and loyalty: audit complete; approve mandatory sale mobile, AL- membership identity, atomic one-point-per-NPR-100 accrual and online/offline/return safeguards before structural changes.
 - [x] Requested report expansion audited: existing registers/ledger/CSV, missing user filters, stock/low-stock report controls and full print identified; costing/COGS/openings/classifications block complete valuation/profit/statements.
 - [x] Approved report expansion: date/branch/posting-user controls, stock/low-stock, dedicated customer/supplier/receivable/payable views and full CSV/print; 95 tests and isolated report/financial regression suites passed.
 - [ ] Expanded reports populated live detail/CSV/full print read-back — legitimate branches/products/confirmed activity required; live counts remain zero. Inventory valuation/profit/full statements need reviewed costing, COGS, openings and classifications, not estimated values.
