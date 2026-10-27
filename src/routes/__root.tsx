@@ -15,6 +15,7 @@ import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
 import { supabase } from '@/integrations/supabase/client';
 import { AppNavigation } from '@/components/app-navigation';
+import { lockOfflineVaults } from '@/lib/offline-vault';
 
 function NotFoundComponent() {
   return (
@@ -128,7 +129,8 @@ function RootComponent() {
     if (new URLSearchParams(window.location.hash.slice(1)).get('type') === 'recovery') sessionStorage.setItem('bizsathi-recovery', 'true');
     const { data } = supabase.auth.onAuthStateChange(event => {
       if (event === 'PASSWORD_RECOVERY') { sessionStorage.setItem('bizsathi-recovery', 'true'); router.navigate({ to: '/reset-password' }); return; }
-      if (event === 'SIGNED_OUT') { sessionStorage.removeItem('bizsathi-recovery'); sessionStorage.removeItem('bizsathi-invite'); }
+      if (event === 'SIGNED_OUT' || event === 'SIGNED_IN' || event === 'USER_UPDATED') lockOfflineVaults();
+      if (event === 'SIGNED_OUT') { sessionStorage.removeItem('bizsathi-recovery'); sessionStorage.removeItem('bizsathi-invite'); queryClient.clear(); }
       if (!['SIGNED_IN', 'SIGNED_OUT', 'USER_UPDATED'].includes(event)) return;
       router.invalidate();
       if (event !== 'SIGNED_OUT') queryClient.invalidateQueries();

@@ -1,0 +1,33 @@
+// @vitest-environment node
+import {beforeEach,describe,it,expect} from 'vitest';
+import {IDBFactory} from 'fake-indexeddb';
+import {webcrypto} from 'node:crypto';
+import {draftInput,retainAttempt,reviewConflicts,scopeKey,editableDraft,sameSaleRequest,type DraftVault} from './offline-drafts';
+import {OfflineVault,deriveVaultKey,encryptVault,decryptVault,lockOfflineVaults} from './offline-vault';
+import {documentInput} from './commerce-schemas';
+const user='11111111-1111-4111-8111-111111111111',business='22222222-2222-4222-8222-222222222222',branch='33333333-3333-4333-8333-333333333333',product='44444444-4444-4444-8444-444444444444',id='55555555-5555-4555-8555-555555555555',period='66666666-6666-4666-8666-666666666666';
+const item={id:product,name:'Test item',sku:'SKU',barcode:null,price:100,stock:10};
+const cache={userId:user,businessId:business,branchId:branch,branchName:'Authorized branch',cachedAt:'2026-10-27T05:00:00Z',currency:'NPR',vatRegistered:false,vatRate:0,products:[item],periods:[{id:period,name:'Open',start:'2026-01-01',end:'2026-12-31'}]};
+const draft=draftInput.parse({id,reference:'LOCAL-1',date:'2026-10-27',createdAt:cache.cachedAt,updatedAt:cache.cachedAt,state:'local',lines:[{variantId:product,quantity:2,price:100,discount:0,taxRate:0}],baseline:cache});
+const value:DraftVault={cache,drafts:[draft]};
+beforeEach(()=>{lockOfflineVaults();Object.defineProperty(globalThis,'indexedDB',{value:new IDBFactory(),configurable:true});Object.defineProperty(globalThis,'crypto',{value:webcrypto,configurable:true});});
+describe('offline draft rules',()=>{
+ it('matches immutable requests despite database key order and rejects different sale content',()=>{const request=documentInput.parse({id,businessId:business,branchId:branch,periodId:period,date:draft.date,kind:'sale',status:'confirmed',reference:draft.reference,lines:draft.lines});expect(sameSaleRequest(request,Object.fromEntries(Object.entries(request).reverse()))).toBe(true);expect(sameSaleRequest(request,{...request,reference:'Another sale'})).toBe(false);});
+ it('local work is not an attempted confirmed sale',()=>{expect(draft.request).toBeUndefined();expect(draft.state).toBe('local');expect(editableDraft(draft)).toBe(true);});
+ it('keeps the same id and payload on an uncertain retry',()=>{const request=documentInput.parse({id,businessId:business,branchId:branch,periodId:period,date:draft.date,kind:'sale',status:'confirmed',reference:draft.reference,lines:draft.lines});const attempted=retainAttempt(draft,request);expect(retainAttempt(attempted,request).request).toEqual(request);expect(attempted.state).toBe('uncertain');expect(editableDraft(attempted)).toBe(false);expect(()=>retainAttempt(attempted,{...request,reference:'changed'})).toThrow('cannot be changed');});
+ it('flags catalogue price changes rather than rewriting the draft',()=>{expect(reviewConflicts(draft,cache,{...cache,products:[{...item,price:110}]})).toContain('SKU: catalogue price changed.');expect(draft.lines[0]?.price).toBe(100);});
+ it('flags changed VAT settings',()=>{expect(reviewConflicts(draft,cache,{...cache,vatRegistered:true,vatRate:13})).toContain('VAT settings changed.');});
+ it('flags stock conflicts',()=>{expect(reviewConflicts(draft,cache,{...cache,products:[{...item,stock:1}]})).toContain('SKU: insufficient current stock.');});
+ it('flags closed periods',()=>{expect(reviewConflicts(draft,cache,{...cache,periods:[]})).toContain('No open period for this date.');});
+ it('flags inactive or removed products',()=>{expect(reviewConflicts(draft,cache,{...cache,products:[]})).toContain('An item is no longer available.');});
+ it('rejects account and branch changes',()=>{expect(reviewConflicts(draft,cache,{...cache,userId:business})).toEqual(['Account or branch changed.']);expect(scopeKey(user,business,branch)).not.toBe(scopeKey(business,business,branch));});
+});
+describe('encrypted durable storage',()=>{
+ it('recovers multiple drafts after a new vault instance opens',async()=>{const scope=scopeKey(user,business,branch);const first=new OfflineVault(scope);await first.unlock('device passphrase test',value);await first.save({...value,drafts:[draft,{...draft,id:period,reference:'LOCAL-2'}]});first.lock();const next=new OfflineVault(scope);expect((await next.unlock('device passphrase test')).drafts.map(d=>d.reference)).toEqual(['LOCAL-1','LOCAL-2']);});
+ it('uses nonextractable keys and does not store readable draft content',async()=>{const key=await deriveVaultKey('device passphrase test',new Uint8Array(16));expect(key.extractable).toBe(false);const encrypted=await encryptVault(value,key,'scope');expect(JSON.stringify(encrypted)).not.toContain('LOCAL-1');expect(await decryptVault({scope:'scope',...encrypted},key)).toEqual(value);await expect(decryptVault({scope:'other',...encrypted},key)).rejects.toThrow();});
+ it('wrong passphrase fails without removing the stored draft',async()=>{const scope=scopeKey(user,business,branch);await new OfflineVault(scope).unlock('device passphrase test',value);await expect(new OfflineVault(scope).unlock('wrong passphrase test')).rejects.toThrow('Cannot unlock');expect((await new OfflineVault(scope).unlock('device passphrase test')).drafts).toHaveLength(1);});
+ it('locks every active key without deleting encrypted work',async()=>{const scope=scopeKey(user,business,branch);const vault=new OfflineVault(scope);await vault.unlock('device passphrase test',value);lockOfflineVaults();await expect(vault.save(value)).rejects.toThrow('Unlock');expect((await new OfflineVault(scope).unlock('device passphrase test')).drafts).toHaveLength(1);});
+ it('rejects cross-account saves',async()=>{const vault=new OfflineVault(scopeKey(user,business,branch));await vault.unlock('device passphrase test',value);await expect(vault.save({...value,cache:{...cache,userId:business}})).rejects.toThrow('Wrong account');});
+ it('rejects concurrent tab overwrite instead of silently losing drafts',async()=>{const scope=scopeKey(user,business,branch);const one=new OfflineVault(scope),two=new OfflineVault(scope);await one.unlock('device passphrase test',value);await two.unlock('device passphrase test');await one.save({...value,drafts:[draft,{...draft,id:period,reference:'LOCAL-2'}]});await expect(two.save(value)).rejects.toThrow('another tab');expect((await new OfflineVault(scope).unlock('device passphrase test')).drafts).toHaveLength(2);});
+ it('reports denied storage as failure, never success',async()=>{Object.defineProperty(globalThis,'indexedDB',{value:{open(){throw new Error('Storage denied');}},configurable:true});await expect(new OfflineVault(scopeKey(user,business,branch)).unlock('device passphrase test',value)).rejects.toThrow('Storage denied');});
+});
