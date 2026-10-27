@@ -6,16 +6,17 @@ import {draftInput,retainAttempt,reviewConflicts,scopeKey,editableDraft,type Dra
 import {OfflineVault,deriveVaultKey,encryptVault,decryptVault,lockOfflineVaults} from './offline-vault';
 import {documentInput} from './commerce-schemas';
 const user='11111111-1111-4111-8111-111111111111',business='22222222-2222-4222-8222-222222222222',branch='33333333-3333-4333-8333-333333333333',product='44444444-4444-4444-8444-444444444444',id='55555555-5555-4555-8555-555555555555',period='66666666-6666-4666-8666-666666666666';
-const cache={userId:user,businessId:business,branchId:branch,branchName:'Authorized branch',cachedAt:'2026-10-27T05:00:00Z',currency:'NPR',vatRegistered:false,vatRate:0,products:[{id:product,name:'Test item',sku:'SKU',barcode:null,price:100,stock:10}],periods:[{id:period,name:'Open',start:'2026-01-01',end:'2026-12-31'}]};
+const item={id:product,name:'Test item',sku:'SKU',barcode:null,price:100,stock:10};
+const cache={userId:user,businessId:business,branchId:branch,branchName:'Authorized branch',cachedAt:'2026-10-27T05:00:00Z',currency:'NPR',vatRegistered:false,vatRate:0,products:[item],periods:[{id:period,name:'Open',start:'2026-01-01',end:'2026-12-31'}]};
 const draft=draftInput.parse({id,reference:'LOCAL-1',date:'2026-10-27',createdAt:cache.cachedAt,updatedAt:cache.cachedAt,state:'local',lines:[{variantId:product,quantity:2,price:100,discount:0,taxRate:0}],baseline:cache});
 const value:DraftVault={cache,drafts:[draft]};
 beforeEach(()=>{lockOfflineVaults();Object.defineProperty(globalThis,'indexedDB',{value:new IDBFactory(),configurable:true});Object.defineProperty(globalThis,'crypto',{value:webcrypto,configurable:true});});
 describe('offline draft rules',()=>{
  it('local work is not an attempted confirmed sale',()=>{expect(draft.request).toBeUndefined();expect(draft.state).toBe('local');expect(editableDraft(draft)).toBe(true);});
  it('keeps the same id and payload on an uncertain retry',()=>{const request=documentInput.parse({id,businessId:business,branchId:branch,periodId:period,date:draft.date,kind:'sale',status:'confirmed',reference:draft.reference,lines:draft.lines});const attempted=retainAttempt(draft,request);expect(retainAttempt(attempted,request).request).toEqual(request);expect(attempted.state).toBe('uncertain');expect(editableDraft(attempted)).toBe(false);expect(()=>retainAttempt(attempted,{...request,reference:'changed'})).toThrow('cannot be changed');});
- it('flags catalogue price changes rather than rewriting the draft',()=>{expect(reviewConflicts(draft,cache,{...cache,products:[{...cache.products[0],price:110}]})).toContain('SKU: catalogue price changed.');expect(draft.lines[0]?.price).toBe(100);});
+ it('flags catalogue price changes rather than rewriting the draft',()=>{expect(reviewConflicts(draft,cache,{...cache,products:[{...item,price:110}]})).toContain('SKU: catalogue price changed.');expect(draft.lines[0]?.price).toBe(100);});
  it('flags changed VAT settings',()=>{expect(reviewConflicts(draft,cache,{...cache,vatRegistered:true,vatRate:13})).toContain('VAT settings changed.');});
- it('flags stock conflicts',()=>{expect(reviewConflicts(draft,cache,{...cache,products:[{...cache.products[0],stock:1}]})).toContain('SKU: insufficient current stock.');});
+ it('flags stock conflicts',()=>{expect(reviewConflicts(draft,cache,{...cache,products:[{...item,stock:1}]})).toContain('SKU: insufficient current stock.');});
  it('flags closed periods',()=>{expect(reviewConflicts(draft,cache,{...cache,periods:[]})).toContain('No open period for this date.');});
  it('flags inactive or removed products',()=>{expect(reviewConflicts(draft,cache,{...cache,products:[]})).toContain('An item is no longer available.');});
  it('rejects account and branch changes',()=>{expect(reviewConflicts(draft,cache,{...cache,userId:business})).toEqual(['Account or branch changed.']);expect(scopeKey(user,business,branch)).not.toBe(scopeKey(business,business,branch));});
