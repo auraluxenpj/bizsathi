@@ -15,9 +15,10 @@
 - [x] Phase 5: audited accounting readiness; first reporting increment prepared for approval, with incomplete costing and correction workflows identified.
 - [x] Phase 5 first increment: read-only recorded accounts, ledger/trial balance, registers, party statements, outstanding balances, cash/bank/wallet books and VAT postings; 39 tests and isolated report-access checks passed.
 - [ ] Phase 5 populated live report detail/CSV/print read-back — needs legitimate branches, periods and confirmed transactions; no synthetic live records permitted.
-- [ ] Remaining Phase 5: chart extensions, opening balances, vouchers/reversals, cash-variance resolution, costing/COGS and full statements — separate financial-workflow approval and validation required.
+- [ ] Remaining Phase 5: custom chart/opening balances, payment reversals/cash-variance resolution, costing/COGS and full statements — separate financial-workflow approval and validation required.
 - [x] Next step readiness reviewed: controlled journal/expense vouchers and voucher-only reversals proposed, preserving the existing ledger and excluding invoice/cash-counter adjustments.
-- [ ] Next accounting posting-control increment — awaiting approval of its detailed plan before structural implementation.
+- [x] Next accounting increment: controlled journal/expense vouchers and administrator full voucher-only reversals, integrated into the existing ledger and expense reports; 61 tests and isolated voucher/regression suites passed.
+- [ ] Live voucher confirmation/reversal/retry and populated report/export read-back — needs legitimate branches, open periods and business activity; no synthetic live records permitted.
 - [ ] Phase 6 and later: offline POS and final verification — awaiting their phase approval.
 - [x] Add administrator-only security review history and append-only decisions.
 - [x] Add sign-in and optional avatar profile data.

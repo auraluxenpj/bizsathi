@@ -6,7 +6,7 @@
 
 Amounts are transported as numeric text and aggregated with Decimal.js server-side. Opening balances are prior recorded postings, **not** an established opening-balance voucher. Closing account columns split positive/negative debit-minus-credit totals. Statements carry separate receivable/payable running totals; they are not a single customer-supplier netting approval. Registers sign returns negatively. Outstanding balances combine each original invoice, its linked returns, original payments and return refunds exactly once, as at the end date, independent of start date. Negative amounts are credits; invoice age is not overdue age because due dates are not present.
 
-No expense/journal vouchers, complete configurable chart, opening-balance workflow, payment reversal, cash-variance resolution, COGS, stock valuation, profit/loss, full balance sheet or classified cash-flow statement is claimed. VAT summaries are configured posting evidence, not certified Nepal tax filings. Cash/bank totals are not externally reconciled balances. Full Phase 5 remains incomplete.
+Controlled bank/wallet and expense journal vouchers, voucher-only full reversals and an expense register are now available. No complete configurable chart, opening-balance workflow, payment reversal, cash-variance resolution, COGS, stock valuation, profit/loss, full balance sheet or classified cash-flow statement is claimed. VAT summaries are configured posting evidence, not certified Nepal tax filings. Cash/bank totals are not externally reconciled balances. Full Phase 5 remains incomplete.
 
 ## Access and consistency
 

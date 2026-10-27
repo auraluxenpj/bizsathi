@@ -1,0 +1,4 @@
+DO $fix$ DECLARE body text;BEGIN SELECT pg_get_functiondef('public.post_accounting_voucher(jsonb)'::regprocedure) INTO body;
+body:=replace(body,'PERFORM pg_advisory_xact_lock(hashtextextended(b::text,0));','IF jsonb_typeof(_request) IS DISTINCT FROM ''object'' OR EXISTS(SELECT 1 FROM jsonb_object_keys(_request) key WHERE key NOT IN (''id'',''businessId'',''branchId'',''periodId'',''date'',''reference'',''reason'',''kind'',''lines'',''reversesId'')) OR (k=''reversal'' AND _request ? ''lines'') THEN RAISE EXCEPTION ''Unexpected voucher fields'';END IF;'||chr(10)||'PERFORM pg_advisory_xact_lock(hashtextextended(b::text,0));');
+body:=replace(body,'ac:=r->>''account'';d:=','IF jsonb_typeof(r) IS DISTINCT FROM ''object'' OR EXISTS(SELECT 1 FROM jsonb_object_keys(r) key WHERE key NOT IN (''account'',''debit'',''credit'')) THEN RAISE EXCEPTION ''Unexpected line fields'';END IF;'||chr(10)||'ac:=r->>''account'';d:=');
+EXECUTE body;END $fix$;

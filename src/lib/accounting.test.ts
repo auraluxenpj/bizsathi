@@ -1,7 +1,7 @@
 import {describe,it,expect} from 'vitest';
 import {buildReport,reportInput,type Snapshot,type ReportInput} from './accounting';
 const f:ReportInput={businessId:'b',from:'2026-02-01',to:'2026-02-28',view:'trial',account:'all',page:1,export:false};
-const base:Snapshot={journals:[],documents:[],payments:[],counters:[],parties:[{id:'p',name:'Customer',kind:'customer'}],branches:[],periods:[]};
+const base:Snapshot={journals:[],documents:[],payments:[],vouchers:[],counters:[],parties:[{id:'p',name:'Customer',kind:'customer'}],branches:[],periods:[]};
 const j=(id:string,entry_date:string,account_code:string,debit:string,credit:string)=>({id,business_id:'b',branch_id:'br',entry_date,created_at:entry_date,account_code,debit,credit,source_id:'invoice',source_type:'document'});
 const doc=(id:string,total:string,kind='sale',source_id:string|null=null)=>({id,business_id:'b',branch_id:'br',kind,status:'confirmed',document_date:'2026-02-01',reference:id,party_id:'p',source_id,subtotal:total,tax:'0',total});
 const pay=(id:string,document_id:string,amount:string)=>({id,business_id:'b',branch_id:'br',document_id,payment_date:'2026-02-02',reference:id,amount,direction:'in',method:'bank'});
