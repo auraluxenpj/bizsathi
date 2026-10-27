@@ -1,10 +1,13 @@
 # Security review workspace
 - [x] Audit the uploaded BizSathi business-suite brief against current pages, live schema, grants, and tests.
-- [ ] Phase 1: business onboarding, password recovery, invitations, staff administration, branch authorization, and explicit review permissions — approved; in progress.
+- [x] Phase 1 implementation: business onboarding, password recovery, shareable email-bound invitations, staff administration, branch authorization, and explicit review permissions.
+- [x] Run original tenant tests and new invitation/branch/review-event isolation tests in an isolated local PostgreSQL database; all synthetic records rolled back.
+- [x] Verify signed-in empty-business screen, denied invitation acceptance, and mobile layout; 13 focused unit/routing tests passed.
+- [ ] Phase 1 successful registration/staff/branch and recovery-email end-to-end checks — need real business details and a recipient who can open confirmation/recovery mail; no live sample records permitted.
 - [ ] Phase 2 and later: business dashboard and operational modules — awaiting review after Phase 1.
 - [x] Add administrator-only security review history and append-only decisions.
 - [x] Add sign-in and optional avatar profile data.
 - [x] Add AI finding impact and prioritized remediation summaries.
 - [x] Verify unit permission rules, database policies, signed-out access, and a real AI call.
 - [ ] Verify signed-in finding/decision/profile saves and AI read-back — one auth user now exists, but no business or administrator membership exists.
-- [ ] Run live two-business mutation tests for review events — blocked by no privileged transactional test connection.
+- [x] Run two-business mutation tests for review events in an isolated database; no live synthetic records used.
