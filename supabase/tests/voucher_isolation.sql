@@ -37,7 +37,7 @@ BEGIN
  denied:=false;BEGIN UPDATE public.accounting_vouchers SET reason='Changed' WHERE id=v;EXCEPTION WHEN insufficient_privilege THEN denied:=true;END;ASSERT denied,'Header direct update denied';
  denied:=false;BEGIN DELETE FROM public.commerce_journal_entries WHERE source_id=v;EXCEPTION WHEN insufficient_privilege THEN denied:=true;END;ASSERT denied,'Line deletion denied';
  RESET ROLE;ASSERT (SELECT count(*) FROM public.audit_logs WHERE entity_table='accounting_vouchers' AND business_id=b)=2,'Both voucher audits';
- denied:=false;BEGIN UPDATE public.accounting_vouchers SET reason='Changed' WHERE id=v;EXCEPTION WHEN raise_exception THEN denied:=true;END;ASSERT denied,'Privileged immutable header';
+ denied:=false;BEGIN UPDATE public.accounting_vouchers SET reason='Changed' WHERE id=v;EXCEPTION WHEN insufficient_privilege THEN denied:=true;END;ASSERT denied,'Privileged immutable header';
  SET LOCAL ROLE anon;denied:=false;BEGIN PERFORM public.post_accounting_voucher(req);EXCEPTION WHEN insufficient_privilege THEN denied:=true;END;ASSERT denied,'Anonymous execution denied';RESET ROLE;
  SET CONSTRAINTS ALL IMMEDIATE;
 END $test$;
