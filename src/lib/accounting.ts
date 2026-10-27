@@ -2,13 +2,13 @@ import Decimal from 'decimal.js';
 import {z} from 'zod';
 
 const date = z.string().regex(/^\d{4}-\d{2}-\d{2}$/).refine(v=>{const d=new Date(`${v}T00:00:00Z`);return !Number.isNaN(d.valueOf())&&d.toISOString().slice(0,10)===v;},'Use a valid date.');
-export const reportInput=z.object({businessId:z.string().uuid(),branchId:z.string().uuid().optional(),from:date,to:date,view:z.enum(['accounts','ledger','trial','sales','purchases','statement','outstanding','cashbook','vat','expenses']),account:z.string().default('all'),partyId:z.string().uuid().optional(),page:z.number().int().min(1).default(1),export:z.boolean().default(false)}).refine(v=>v.from<=v.to,'Start date must precede end date.');
+export const reportInput=z.object({businessId:z.string().uuid(),branchId:z.string().uuid().optional(),from:date,to:date,view:z.enum(['accounts','ledger','trial','sales','purchases','statement','outstanding','cashbook','vat','expenses','customer','supplier','receivables','payables','stock','lowstock','valuation','profit','balance','cashflow']),userId:z.string().uuid().optional(),account:z.string().default('all'),partyId:z.string().uuid().optional(),page:z.number().int().min(1).default(1),export:z.boolean().default(false)}).refine(v=>v.from<=v.to,'Start date must precede end date.');
 export type ReportInput=z.infer<typeof reportInput>;
 const scoped={id:z.string(),business_id:z.string(),branch_id:z.string()};
 export const snapshotSchema=z.object({
  journals:z.array(z.object({...scoped,entry_date:z.string(),created_at:z.string(),account_code:z.string(),source_id:z.string(),source_type:z.string(),debit:z.string(),credit:z.string(),actor_id:z.string().optional()})),
- documents:z.array(z.object({...scoped,kind:z.string(),status:z.string(),document_date:z.string(),reference:z.string(),party_id:z.string().nullable(),source_id:z.string().nullable(),subtotal:z.string(),tax:z.string(),total:z.string()})),
- payments:z.array(z.object({...scoped,document_id:z.string(),payment_date:z.string(),reference:z.string(),amount:z.string(),direction:z.string(),method:z.string()})),
+ documents:z.array(z.object({...scoped,kind:z.string(),status:z.string(),document_date:z.string(),reference:z.string(),party_id:z.string().nullable(),source_id:z.string().nullable(),subtotal:z.string(),tax:z.string(),total:z.string(),actor_id:z.string().optional()})),
+ payments:z.array(z.object({...scoped,document_id:z.string(),payment_date:z.string(),reference:z.string(),amount:z.string(),direction:z.string(),method:z.string(),actor_id:z.string().optional()})),
  vouchers:z.array(z.object({...scoped,kind:z.string(),voucher_date:z.string(),reference:z.string(),reason:z.string(),reverses_id:z.string().nullable(),actor_id:z.string()})).default([]),
  counters:z.array(z.object({id:z.string(),reference:z.string()})),parties:z.array(z.object({id:z.string(),name:z.string(),kind:z.string()})),branches:z.array(z.object({id:z.string(),name:z.string()})),periods:z.array(z.object({id:z.string(),name:z.string(),start_date:z.string(),end_date:z.string()}))
 });
