@@ -13,9 +13,9 @@ BEGIN
  -- Reconnect must use current authority, not the previously cached grant.
  PERFORM public.set_branch_access(business,br,staff_id,false);PERFORM set_config('request.jwt.claims',json_build_object('sub',staff_id,'role','authenticated')::text,true);
  rejected:=false;BEGIN PERFORM public.post_commerce_document(req);EXCEPTION WHEN raise_exception THEN rejected:=true;END;ASSERT rejected,'Revoked branch denies queued confirmation';
- PERFORM set_config('request.jwt.claims',json_build_object('sub',owner_id,'role','authenticated')::text,true);PERFORM public.set_branch_access(business,br,staff_id,true);PERFORM public.add_business_member(business,staff_id,'viewer');
+ PERFORM set_config('request.jwt.claims',json_build_object('sub',owner_id,'role','authenticated')::text,true);PERFORM public.set_branch_access(business,br,staff_id,true);PERFORM public.update_business_member(business,staff_id,'viewer','active');
  PERFORM set_config('request.jwt.claims',json_build_object('sub',staff_id,'role','authenticated')::text,true);rejected:=false;BEGIN PERFORM public.post_commerce_document(req);EXCEPTION WHEN raise_exception THEN rejected:=true;END;ASSERT rejected,'Revoked sale role denies queued confirmation';
- PERFORM set_config('request.jwt.claims',json_build_object('sub',owner_id,'role','authenticated')::text,true);PERFORM public.add_business_member(business,staff_id,'staff');
+ PERFORM set_config('request.jwt.claims',json_build_object('sub',owner_id,'role','authenticated')::text,true);PERFORM public.update_business_member(business,staff_id,'staff','active');
  UPDATE public.business_settings SET vat_registered=true,vat_rate=13 WHERE business_id=business;
  rejected:=false;BEGIN PERFORM public.post_commerce_document(req||jsonb_build_object('lines',jsonb_build_array(jsonb_build_object('variantId',variant,'quantity',2,'price',100,'taxRate',12))));EXCEPTION WHEN raise_exception THEN rejected:=true;END;ASSERT rejected,'Stale nonzero VAT denied';
  UPDATE public.product_variants SET is_active=false WHERE id=variant;rejected:=false;BEGIN PERFORM public.post_commerce_document(req);EXCEPTION WHEN raise_exception THEN rejected:=true;END;ASSERT rejected,'Inactive product denies queued sale';UPDATE public.product_variants SET is_active=true WHERE id=variant;

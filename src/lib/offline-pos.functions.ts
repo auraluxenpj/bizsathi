@@ -3,7 +3,17 @@ import {requireSupabaseAuth} from '@/integrations/supabase/auth-middleware';
 import {setResponseHeader} from '@tanstack/react-start/server';
 import Decimal from 'decimal.js';
 import {z} from 'zod';
-import {cacheInput} from './offline-drafts';
+import {cacheInput,sameSaleRequest} from './offline-drafts';
+import {documentInput} from './commerce-schemas';
+
+export const checkOfflineSale=createServerFn({method:'POST'}).middleware([requireSupabaseAuth]).inputValidator(documentInput).handler(async({data,context})=>{
+ setResponseHeader('Cache-Control','no-store');
+ const result=await context.supabase.from('commerce_documents').select('id,status,kind,actor_id,request').eq('business_id',data.businessId).eq('branch_id',data.branchId).eq('id',data.id).maybeSingle();
+ if(result.error)throw new Error('Sale status could not be checked. Keep the same request.');
+ if(!result.data)return null;
+ if(result.data.actor_id!==context.userId||result.data.kind!=='sale'||result.data.status!=='confirmed'||!sameSaleRequest(data,result.data.request))throw new Error('This identifier belongs to a different document. Encrypted request retained; do not submit a replacement.');
+ return{id:result.data.id};
+});
 
 export const getOfflinePosCache=createServerFn({method:'GET'}).middleware([requireSupabaseAuth]).inputValidator(z.object({businessId:z.string().uuid(),branchId:z.string().uuid()})).handler(async({data,context})=>{
  setResponseHeader('Cache-Control','no-store');

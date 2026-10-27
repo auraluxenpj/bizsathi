@@ -21,3 +21,5 @@ export function retainAttempt(draft:LocalDraft,request:CommerceRequest):LocalDra
  return draftInput.parse({...draft,request,state:'uncertain',updatedAt:new Date().toISOString(),message:'Confirmation awaiting a server status check.'});
 }
 export function editableDraft(draft:LocalDraft){return !draft.request&&draft.state!=='confirmed';}
+function canonical(value:unknown):string{if(Array.isArray(value))return `[${value.map(canonical).join(',')}]`;if(value&&typeof value==='object')return `{${Object.entries(value).sort(([a],[b])=>a.localeCompare(b)).map(([key,v])=>`${JSON.stringify(key)}:${canonical(v)}`).join(',')}}`;return JSON.stringify(value)??'null';}
+export function sameSaleRequest(expected:CommerceRequest,stored:unknown){const parsed=documentInput.safeParse(stored);return parsed.success&&canonical(expected)===canonical(parsed.data);}

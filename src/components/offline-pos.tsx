@@ -6,15 +6,15 @@ import {LockKeyhole,Unlock,Wifi,WifiOff,Plus,Trash2,Save,RefreshCw,Check} from '
 import {Button} from './ui/button';
 import {Input} from './ui/input';
 import type {CommerceWorkspace} from './commerce-workspace';
-import {getOfflinePosCache} from '@/lib/offline-pos.functions';
-import {confirmDocument,findCommerceDocument} from '@/lib/commerce.functions';
+import {getOfflinePosCache,checkOfflineSale} from '@/lib/offline-pos.functions';
+import {confirmDocument} from '@/lib/commerce.functions';
 import {cartTotal,documentInput,type CommerceRequest} from '@/lib/commerce-schemas';
 import {draftInput,scopeKey,reviewConflicts,retainAttempt,editableDraft,type DraftVault,type LocalDraft,type PosCache} from '@/lib/offline-drafts';
 import {OfflineVault} from '@/lib/offline-vault';
 
 const stateLabels={local:'Local draft',review:'Awaiting review',uncertain:'Confirmation uncertain',confirmed:'Confirmed',attention:'Needs attention'};
 export function OfflinePos({w}:{w:CommerceWorkspace}){
- const client=useQueryClient();const fetchCache=useServerFn(getOfflinePosCache);const post=useServerFn(confirmDocument);const find=useServerFn(findCommerceDocument);
+ const client=useQueryClient();const fetchCache=useServerFn(getOfflinePosCache);const post=useServerFn(confirmDocument);const find=useServerFn(checkOfflineSale);
  const [online,setOnline]=useState(true);const [branch,setBranch]=useState('');const [passphrase,setPassphrase]=useState('');const [accepted,setAccepted]=useState(false);const [vault,setVault]=useState<DraftVault|null>(null);const [current,setCurrent]=useState<PosCache|null>(null);const [busy,setBusy]=useState(false);const [message,setMessage]=useState('');const [storage,setStorage]=useState('');const [editing,setEditing]=useState('');const [reference,setReference]=useState('');const [date,setDate]=useState(new Date().toLocaleDateString('en-CA'));const [lines,setLines]=useState<CommerceRequest['lines']>([]);const [search,setSearch]=useState('');const [reviewId,setReviewId]=useState('');const [method,setMethod]=useState<'bank'|'wallet'|'cash'>('bank');
  const store=useRef<OfflineVault|null>(null);const epoch=useRef(0);const alive=useRef(true);
  const userId=w.commerce.data?.userId??w.access.data?.userId??'';const branches=w.access.data?.branches.filter(b=>b.is_active)??[];const branchId=branch||branches[0]?.id||'';const scope=userId&&branchId?scopeKey(userId,w.businessId,branchId):'';
@@ -30,7 +30,7 @@ export function OfflinePos({w}:{w:CommerceWorkspace}){
  const selected=vault?.drafts.find(d=>d.id===reviewId);const baseline=selected?.baseline??vault?.cache;const conflicts=selected&&current&&baseline?reviewConflicts(selected,baseline,current):[];
  async function saveDraft(){if(!vault)throw new Error('Unlock this device.');const existing=vault.drafts.find(d=>d.id===editing);if(existing&&!editableDraft(existing))throw new Error('Check the attempted sale before editing.');const now=new Date().toISOString();const draft=draftInput.parse({id:existing?.id??crypto.randomUUID(),createdAt:existing?.createdAt??now,updatedAt:now,state:online?'review':'local',reference,date,lines,baseline:existing?.baseline??current??vault.cache,message:''});await persist({...vault,drafts:[...vault.drafts.filter(d=>d.id!==draft.id),draft]});setLines([]);setReference('');setEditing('');setMessage('Local draft saved on this device. No sale has been confirmed.');}
  async function changeDraft(draft:LocalDraft){if(!vault)return;await persist({...vault,drafts:vault.drafts.map(d=>d.id===draft.id?draft:d)});}
- async function readConfirmed(request:CommerceRequest){const found=await find({data:{businessId:request.businessId,id:request.id}});if(found&&found.status!=='confirmed')throw new Error('This identifier is not a confirmed sale. Keep the request for review.');return found;}
+ async function readConfirmed(request:CommerceRequest){return find({data:request});}
  async function confirm(draft:LocalDraft){if(!vault||!online)throw new Error('Connect to the internet before confirmation.');const version=epoch.current;const result=await fetchCache({data:{businessId:w.businessId,branchId}});if(version!==epoch.current)return;if(!result.ok){lock();throw new Error(result.reason);}setCurrent(result.cache);
  let request=draft.request;
  if(!request){const issues=reviewConflicts(draft,draft.baseline??vault.cache,result.cache);if(issues.length){await changeDraft({...draft,state:'attention',message:issues.join(' ')});throw new Error(issues.join(' '));}const period=result.cache.periods.find(p=>dateFor(draft)>=p.start&&dateFor(draft)<=p.end);if(!period)throw new Error('Open period required.');const session=w.commerce.data?.counters.find(e=>e.kind==='open'&&e.branch_id===branchId&&e.actor_id===userId&&!w.commerce.data?.counters.some(c=>c.session_id===e.session_id&&c.kind==='close'))?.session_id??null;
@@ -38,7 +38,7 @@ export function OfflinePos({w}:{w:CommerceWorkspace}){
  if(!window.confirm(`Confirm this sale for ${cartTotal(request.lines).toFixed(2)} ${vault.cache.currency}?`))return;
  const attempted=retainAttempt(draft,request);await changeDraft(attempted);
  try{const found=await readConfirmed(request);if(!found)await post({data:request});const saved=await readConfirmed(request);if(!saved)throw new Error('Confirmation response was not verified in sales history. Check the same identifier.');if(version!==epoch.current)return;await changeDraft({...attempted,state:'confirmed',message:`Confirmed sale ${saved.id}`});await client.invalidateQueries({queryKey:['commerce',w.businessId]});setMessage('Confirmed sale verified in sales history.');}catch(e){if(version!==epoch.current)return;await changeDraft({...attempted,state:'uncertain',message:e instanceof Error?e.message:'Confirmation uncertain. Check the same identifier.'});throw e;}}
- async function checkOnly(draft:LocalDraft){if(!draft.request)throw new Error('This local draft has not been submitted.');const found=await readConfirmed(draft.request);await changeDraft({...draft,state:found?'confirmed':'uncertain',message:found?'Confirmed sale verified in sales history.':'No confirmed sale found. Keep the same request for checking or retry.'});}
+ async function checkOnly(draft:LocalDraft){if(!draft.request)throw new Error('This local draft has not been submitted.');const version=epoch.current;const result=await fetchCache({data:{businessId:w.businessId,branchId}});if(version!==epoch.current)return;if(!result.ok){lock();throw new Error(result.reason);}const found=await readConfirmed(draft.request);if(version!==epoch.current)return;await changeDraft({...draft,state:found?'confirmed':'uncertain',message:found?'Confirmed sale verified in sales history.':'No matching confirmed sale found at this check. Outcome remains uncertain; keep the exact request.'});}
  function edit(draft:LocalDraft){if(!editableDraft(draft))return;setEditing(draft.id);setReference(draft.reference);setDate(draft.date);setLines(draft.lines);setReviewId('');}
  const products=current?.products??vault?.cache.products??[];
  function add(id:string){const p=products.find(p=>p.id===id);if(!p)return;setLines(old=>old.some(l=>l.variantId===id)?old.map(l=>l.variantId===id?{...l,quantity:l.quantity+1}:l):[...old,{variantId:id,quantity:1,price:p.price,discount:0,taxRate:(current??vault?.cache)?.vatRegistered?(current??vault?.cache)?.vatRate??0:0}]);}
