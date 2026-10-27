@@ -12,8 +12,9 @@ import {accounts,type ReportInput,type ReportRow} from '@/lib/accounting';
 import {getAccountingReport} from '@/lib/accounting.functions';
 import {downloadCsv} from '@/lib/download-csv';
 import {makeCsv} from '@/lib/inventory-csv';
+import {VoucherWorkspace} from './voucher-workspace';
 
-const views=[['accounts','Posting accounts'],['ledger','General ledger'],['trial','Recorded trial balance'],['sales','Sales register'],['purchases','Purchase register'],['statement','Party statement'],['outstanding','Outstanding balances'],['cashbook','Cash / bank / wallet'],['vat','VAT postings']] as const;
+const views=[['accounts','Posting accounts'],['ledger','General ledger'],['trial','Recorded trial balance'],['sales','Sales register'],['purchases','Purchase register'],['statement','Party statement'],['outstanding','Outstanding balances'],['cashbook','Cash / bank / wallet'],['vat','VAT postings'],['expenses','Expense register']] as const;
 function Choice({label,value,onChange,options}:{label:string;value:string;onChange:(v:string)=>void;options:{id:string;name:string}[]}){return <label className="min-w-0 text-sm">{label}<Select value={value} onValueChange={onChange}><SelectTrigger aria-label={label} className="mt-2 w-full bg-card"><SelectValue/></SelectTrigger><SelectContent>{options.map(o=><SelectItem key={o.id} value={o.id}>{o.name}</SelectItem>)}</SelectContent></Select></label>;}
 export function AccountingReports(){
  const {data:businesses}=useSuspenseQuery(businessQuery);const[selected,setSelected]=useState('');const businessId=authorizedSelection(businesses,selected);
@@ -25,6 +26,7 @@ export function AccountingReports(){
  const fields=data?.rows[0]?Object.keys(data.rows[0]).filter(k=>!['Source type','Source ID','Document ID','Code'].includes(k)):[];
  return <main className="mx-auto max-w-7xl px-5 py-8 md:px-9"><header className="flex flex-wrap items-end justify-between gap-4 border-b pb-6"><div><p className="text-xs font-semibold text-primary">BIZSATHI NEPAL</p><h1 className="brand mt-3 text-3xl font-semibold">Accounting & reports</h1></div><div className="w-full sm:w-64"><Choice label="Business" value={businessId||'none'} options={businesses.length?businesses.map(b=>({id:b.id,name:b.name})):[{id:'none',name:'No business linked'}]} onChange={v=>{setSelected(v);setBranch('all');setParty('all');setPeriod('all');reset();}}/></div></header>
  {!businessId?<section className="py-16 text-center"><BookOpen className="mx-auto mb-4 size-9 text-primary"/><h2 className="brand text-xl">No business linked yet</h2><Button asChild className="mt-5"><Link to="/businesses">Business setup</Link></Button></section>:<>
+ <VoucherWorkspace key={businessId} businessId={businessId}/>
  <div className="grid grid-cols-1 gap-4 border-b py-5 sm:grid-cols-2 lg:grid-cols-4 print:hidden">
  <Choice label="Report" value={view} options={views.map(([id,name])=>({id,name}))} onChange={v=>{const next=views.find(([id])=>id===v);if(next)setView(next[0]);reset();}}/>
  <Choice label="Branch" value={branch} options={[{id:'all',name:'All authorized branches'},...(data?.branches??[])]} onChange={v=>{setBranch(v);reset();}}/>
