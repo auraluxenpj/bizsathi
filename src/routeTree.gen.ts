@@ -15,11 +15,15 @@ import { Route as AuthRouteImport } from './routes/auth'
 import { Route as InviteRouteImport } from './routes/invite'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as AuthenticatedBusinessesRouteImport } from './routes/_authenticated/businesses'
+import { Route as AuthenticatedCashCountersRouteImport } from './routes/_authenticated/cash-counters'
 import { Route as AuthenticatedContactsRouteImport } from './routes/_authenticated/contacts'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
 import { Route as AuthenticatedInventoryRouteImport } from './routes/_authenticated/inventory'
+import { Route as AuthenticatedPosRouteImport } from './routes/_authenticated/pos'
 import { Route as AuthenticatedProductsRouteImport } from './routes/_authenticated/products'
 import { Route as AuthenticatedProfileRouteImport } from './routes/_authenticated/profile'
+import { Route as AuthenticatedPurchasesRouteImport } from './routes/_authenticated/purchases'
+import { Route as AuthenticatedSalesRouteImport } from './routes/_authenticated/sales'
 import { Route as AuthenticatedSecurityRouteImport } from './routes/_authenticated/security'
 import { Route as AuthenticatedSecurityHistoryRouteImport } from './routes/_authenticated/security-history'
 
@@ -52,6 +56,12 @@ const AuthenticatedBusinessesRoute = AuthenticatedBusinessesRouteImport.update({
   path: '/businesses',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedCashCountersRoute =
+  AuthenticatedCashCountersRouteImport.update({
+    id: '/cash-counters',
+    path: '/cash-counters',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedContactsRoute = AuthenticatedContactsRouteImport.update({
   id: '/contacts',
   path: '/contacts',
@@ -67,6 +77,11 @@ const AuthenticatedInventoryRoute = AuthenticatedInventoryRouteImport.update({
   path: '/inventory',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedPosRoute = AuthenticatedPosRouteImport.update({
+  id: '/pos',
+  path: '/pos',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 const AuthenticatedProductsRoute = AuthenticatedProductsRouteImport.update({
   id: '/products',
   path: '/products',
@@ -75,6 +90,16 @@ const AuthenticatedProductsRoute = AuthenticatedProductsRouteImport.update({
 const AuthenticatedProfileRoute = AuthenticatedProfileRouteImport.update({
   id: '/profile',
   path: '/profile',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedPurchasesRoute = AuthenticatedPurchasesRouteImport.update({
+  id: '/purchases',
+  path: '/purchases',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedSalesRoute = AuthenticatedSalesRouteImport.update({
+  id: '/sales',
+  path: '/sales',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 const AuthenticatedSecurityRoute = AuthenticatedSecurityRouteImport.update({
@@ -95,11 +120,15 @@ export interface FileRoutesByFullPath {
   '/invite': typeof InviteRoute
   '/reset-password': typeof ResetPasswordRoute
   '/businesses': typeof AuthenticatedBusinessesRoute
+  '/cash-counters': typeof AuthenticatedCashCountersRoute
   '/contacts': typeof AuthenticatedContactsRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/inventory': typeof AuthenticatedInventoryRoute
+  '/pos': typeof AuthenticatedPosRoute
   '/products': typeof AuthenticatedProductsRoute
   '/profile': typeof AuthenticatedProfileRoute
+  '/purchases': typeof AuthenticatedPurchasesRoute
+  '/sales': typeof AuthenticatedSalesRoute
   '/security': typeof AuthenticatedSecurityRoute
   '/security-history': typeof AuthenticatedSecurityHistoryRoute
 }
@@ -109,11 +138,15 @@ export interface FileRoutesByTo {
   '/invite': typeof InviteRoute
   '/reset-password': typeof ResetPasswordRoute
   '/businesses': typeof AuthenticatedBusinessesRoute
+  '/cash-counters': typeof AuthenticatedCashCountersRoute
   '/contacts': typeof AuthenticatedContactsRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/inventory': typeof AuthenticatedInventoryRoute
+  '/pos': typeof AuthenticatedPosRoute
   '/products': typeof AuthenticatedProductsRoute
   '/profile': typeof AuthenticatedProfileRoute
+  '/purchases': typeof AuthenticatedPurchasesRoute
+  '/sales': typeof AuthenticatedSalesRoute
   '/security': typeof AuthenticatedSecurityRoute
   '/security-history': typeof AuthenticatedSecurityHistoryRoute
 }
@@ -125,11 +158,15 @@ export interface FileRoutesById {
   '/invite': typeof InviteRoute
   '/reset-password': typeof ResetPasswordRoute
   '/_authenticated/businesses': typeof AuthenticatedBusinessesRoute
+  '/_authenticated/cash-counters': typeof AuthenticatedCashCountersRoute
   '/_authenticated/contacts': typeof AuthenticatedContactsRoute
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
   '/_authenticated/inventory': typeof AuthenticatedInventoryRoute
+  '/_authenticated/pos': typeof AuthenticatedPosRoute
   '/_authenticated/products': typeof AuthenticatedProductsRoute
   '/_authenticated/profile': typeof AuthenticatedProfileRoute
+  '/_authenticated/purchases': typeof AuthenticatedPurchasesRoute
+  '/_authenticated/sales': typeof AuthenticatedSalesRoute
   '/_authenticated/security': typeof AuthenticatedSecurityRoute
   '/_authenticated/security-history': typeof AuthenticatedSecurityHistoryRoute
 }
@@ -141,11 +178,15 @@ export interface FileRouteTypes {
     | '/invite'
     | '/reset-password'
     | '/businesses'
+    | '/cash-counters'
     | '/contacts'
     | '/dashboard'
     | '/inventory'
+    | '/pos'
     | '/products'
     | '/profile'
+    | '/purchases'
+    | '/sales'
     | '/security'
     | '/security-history'
   fileRoutesByTo: FileRoutesByTo
@@ -155,11 +196,15 @@ export interface FileRouteTypes {
     | '/invite'
     | '/reset-password'
     | '/businesses'
+    | '/cash-counters'
     | '/contacts'
     | '/dashboard'
     | '/inventory'
+    | '/pos'
     | '/products'
     | '/profile'
+    | '/purchases'
+    | '/sales'
     | '/security'
     | '/security-history'
   id:
@@ -170,11 +215,15 @@ export interface FileRouteTypes {
     | '/invite'
     | '/reset-password'
     | '/_authenticated/businesses'
+    | '/_authenticated/cash-counters'
     | '/_authenticated/contacts'
     | '/_authenticated/dashboard'
     | '/_authenticated/inventory'
+    | '/_authenticated/pos'
     | '/_authenticated/products'
     | '/_authenticated/profile'
+    | '/_authenticated/purchases'
+    | '/_authenticated/sales'
     | '/_authenticated/security'
     | '/_authenticated/security-history'
   fileRoutesById: FileRoutesById
@@ -231,6 +280,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedBusinessesRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/cash-counters': {
+      id: '/_authenticated/cash-counters'
+      path: '/cash-counters'
+      fullPath: '/cash-counters'
+      preLoaderRoute: typeof AuthenticatedCashCountersRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/contacts': {
       id: '/_authenticated/contacts'
       path: '/contacts'
@@ -252,6 +308,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedInventoryRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/pos': {
+      id: '/_authenticated/pos'
+      path: '/pos'
+      fullPath: '/pos'
+      preLoaderRoute: typeof AuthenticatedPosRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/products': {
       id: '/_authenticated/products'
       path: '/products'
@@ -264,6 +327,20 @@ declare module '@tanstack/react-router' {
       path: '/profile'
       fullPath: '/profile'
       preLoaderRoute: typeof AuthenticatedProfileRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/purchases': {
+      id: '/_authenticated/purchases'
+      path: '/purchases'
+      fullPath: '/purchases'
+      preLoaderRoute: typeof AuthenticatedPurchasesRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/sales': {
+      id: '/_authenticated/sales'
+      path: '/sales'
+      fullPath: '/sales'
+      preLoaderRoute: typeof AuthenticatedSalesRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/security': {
@@ -285,22 +362,30 @@ declare module '@tanstack/react-router' {
 
 interface AuthenticatedRouteRouteChildren {
   AuthenticatedBusinessesRoute: typeof AuthenticatedBusinessesRoute
+  AuthenticatedCashCountersRoute: typeof AuthenticatedCashCountersRoute
   AuthenticatedContactsRoute: typeof AuthenticatedContactsRoute
   AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
   AuthenticatedInventoryRoute: typeof AuthenticatedInventoryRoute
+  AuthenticatedPosRoute: typeof AuthenticatedPosRoute
   AuthenticatedProductsRoute: typeof AuthenticatedProductsRoute
   AuthenticatedProfileRoute: typeof AuthenticatedProfileRoute
+  AuthenticatedPurchasesRoute: typeof AuthenticatedPurchasesRoute
+  AuthenticatedSalesRoute: typeof AuthenticatedSalesRoute
   AuthenticatedSecurityRoute: typeof AuthenticatedSecurityRoute
   AuthenticatedSecurityHistoryRoute: typeof AuthenticatedSecurityHistoryRoute
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedBusinessesRoute: AuthenticatedBusinessesRoute,
+  AuthenticatedCashCountersRoute: AuthenticatedCashCountersRoute,
   AuthenticatedContactsRoute: AuthenticatedContactsRoute,
   AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
   AuthenticatedInventoryRoute: AuthenticatedInventoryRoute,
+  AuthenticatedPosRoute: AuthenticatedPosRoute,
   AuthenticatedProductsRoute: AuthenticatedProductsRoute,
   AuthenticatedProfileRoute: AuthenticatedProfileRoute,
+  AuthenticatedPurchasesRoute: AuthenticatedPurchasesRoute,
+  AuthenticatedSalesRoute: AuthenticatedSalesRoute,
   AuthenticatedSecurityRoute: AuthenticatedSecurityRoute,
   AuthenticatedSecurityHistoryRoute: AuthenticatedSecurityHistoryRoute,
 }
