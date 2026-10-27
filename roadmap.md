@@ -19,7 +19,7 @@
 - [x] Next step readiness reviewed: controlled journal/expense vouchers and voucher-only reversals proposed, preserving the existing ledger and excluding invoice/cash-counter adjustments.
 - [x] Next accounting increment: controlled journal/expense vouchers and administrator full voucher-only reversals, integrated into the existing ledger and expense reports; 61 tests and isolated voucher/regression suites passed.
 - [ ] Live voucher confirmation/reversal/retry and populated report/export read-back — needs legitimate branches, open periods and business activity; no synthetic live records permitted.
-- [ ] Phase 6 requested: audit offline POS access, durable queue, reconnect conflicts and shared-device protections; present a scoped plan before implementation.
+- [x] Phase 6 requested: audited offline POS access, durable queue, reconnect conflicts and shared-device protections; scoped first increment to durable local drafts and explicit reconnect review, not finalized offline invoices.
 - [ ] Phase 6 implementation and final verification — awaiting approval of the audited offline POS plan.
 - [x] Add administrator-only security review history and append-only decisions.
 - [x] Add sign-in and optional avatar profile data.
