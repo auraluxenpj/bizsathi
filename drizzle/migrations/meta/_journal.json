@@ -22,6 +22,13 @@
       "when": 1793074321086,
       "tag": "0002_security_review_workspace",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1793074829231,
+      "tag": "0003_business_access_foundation",
+      "breakpoints": true
     }
   ]
 }
