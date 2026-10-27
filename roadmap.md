@@ -1,5 +1,6 @@
 # Security review workspace
-- [ ] Requested report expansion: audit all required reports, date/branch/user filters and exports; obtain approval before structural changes, with costing/opening-balance limits explicit.
+- [x] Requested report expansion audited: existing registers/ledger/CSV, missing user filters, stock/low-stock report controls and full print identified; costing/COGS/openings/classifications block complete valuation/profit/statements.
+- [ ] Report expansion first increment: awaiting approval for unified operational-report controls and exports; full financial statements remain a separately reviewed prerequisite increment.
 - [x] Audit the uploaded BizSathi business-suite brief against current pages, live schema, grants, and tests.
 - [x] Phase 1 implementation: business onboarding, password recovery, shareable email-bound invitations, staff administration, branch authorization, and explicit review permissions.
 - [x] Run original tenant tests and new invitation/branch/review-event isolation tests in an isolated local PostgreSQL database; all synthetic records rolled back.
