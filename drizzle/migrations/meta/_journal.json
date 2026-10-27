@@ -36,6 +36,13 @@
       "when": 1793076432617,
       "tag": "0004_inventory_master_data",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1793076614761,
+      "tag": "0005_stock_request_contract",
+      "breakpoints": true
     }
   ]
 }

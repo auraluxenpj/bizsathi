@@ -875,6 +875,7 @@ export type Database = {
         }
         Returns: string
       }
+      post_stock_request: { Args: { _request: Json }; Returns: string }
       remove_business_member: {
         Args: { _business_id: string; _user_id: string }
         Returns: undefined
