@@ -18,6 +18,7 @@ All-history JSON snapshots can become costly for very large businesses: volume/l
 
 - 39 existing/new unit and routing tests passed, including nine accounting calculation/validation tests: concrete opening/range/closing values, decimal precision, tenant/branch scope, returns/payments/refunds, draft exclusion, party attribution, pagination-independent totals and valid date boundaries.
 - `supabase/tests/accounting_isolation.sql` passed in the disposable local PostgreSQL environment. It creates actual postings via the existing restricted operations inside a rollback transaction and checks confirmed evidence, numeric-text transport, date/branch filters, cross-tenant denial, viewer branch visibility and anonymous denial. The first run detected SQL projection precedence retaining requests; migration 0014 corrected it and the rerun passed.
+- Existing commerce, inventory, tenant and business-access SQL suites were rerun in that isolated database and reached their deliberate rollback success markers after the reporting changes.
 - Browser checks exercised signed-out redirect, signed-in real-account report loading, VAT/general-ledger selection, invalid date range and 799×732 layout without page errors or horizontal overflow. This account has no posted activity: populated UI, posting evidence, CSV and print read-back through live financial data remain **unverified**, not inferred from empty pages.
 
 ## Recovery
