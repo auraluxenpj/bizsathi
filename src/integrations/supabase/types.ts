@@ -411,6 +411,154 @@ export type Database = {
           },
         ]
       }
+      parties: {
+        Row: {
+          address: string
+          business_id: string
+          created_at: string
+          email: string
+          id: string
+          is_active: boolean
+          kind: string
+          name: string
+          pan_vat_number: string
+          phone: string
+          updated_at: string
+        }
+        Insert: {
+          address?: string
+          business_id: string
+          created_at?: string
+          email?: string
+          id?: string
+          is_active?: boolean
+          kind: string
+          name: string
+          pan_vat_number?: string
+          phone?: string
+          updated_at?: string
+        }
+        Update: {
+          address?: string
+          business_id?: string
+          created_at?: string
+          email?: string
+          id?: string
+          is_active?: boolean
+          kind?: string
+          name?: string
+          pan_vat_number?: string
+          phone?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "parties_business_id_fkey"
+            columns: ["business_id"]
+            isOneToOne: false
+            referencedRelation: "businesses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      product_variants: {
+        Row: {
+          barcode: string | null
+          business_id: string
+          created_at: string
+          id: string
+          is_active: boolean
+          name: string
+          product_id: string
+          reorder_level: number
+          selling_price: number
+          sku: string
+          unit: string
+          updated_at: string
+        }
+        Insert: {
+          barcode?: string | null
+          business_id: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          name?: string
+          product_id: string
+          reorder_level?: number
+          selling_price?: number
+          sku: string
+          unit?: string
+          updated_at?: string
+        }
+        Update: {
+          barcode?: string | null
+          business_id?: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          name?: string
+          product_id?: string
+          reorder_level?: number
+          selling_price?: number
+          sku?: string
+          unit?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "product_variants_business_id_fkey"
+            columns: ["business_id"]
+            isOneToOne: false
+            referencedRelation: "businesses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "product_variants_business_id_product_id_fkey"
+            columns: ["business_id", "product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["business_id", "id"]
+          },
+        ]
+      }
+      products: {
+        Row: {
+          business_id: string
+          category: string
+          created_at: string
+          id: string
+          is_active: boolean
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          business_id: string
+          category?: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          business_id?: string
+          category?: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          name?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "products_business_id_fkey"
+            columns: ["business_id"]
+            isOneToOne: false
+            referencedRelation: "businesses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           avatar_url: string | null
@@ -517,6 +665,162 @@ export type Database = {
           },
         ]
       }
+      stock_movements: {
+        Row: {
+          actor_id: string
+          branch_id: string
+          business_id: string
+          created_at: string
+          id: string
+          kind: string
+          operation_id: string
+          quantity: number
+          reason: string
+          reference: string
+          variant_id: string
+        }
+        Insert: {
+          actor_id: string
+          branch_id: string
+          business_id: string
+          created_at?: string
+          id?: string
+          kind: string
+          operation_id: string
+          quantity: number
+          reason: string
+          reference: string
+          variant_id: string
+        }
+        Update: {
+          actor_id?: string
+          branch_id?: string
+          business_id?: string
+          created_at?: string
+          id?: string
+          kind?: string
+          operation_id?: string
+          quantity?: number
+          reason?: string
+          reference?: string
+          variant_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "stock_movements_actor_id_fkey"
+            columns: ["actor_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stock_movements_business_id_branch_id_fkey"
+            columns: ["business_id", "branch_id"]
+            isOneToOne: false
+            referencedRelation: "branches"
+            referencedColumns: ["business_id", "id"]
+          },
+          {
+            foreignKeyName: "stock_movements_business_id_fkey"
+            columns: ["business_id"]
+            isOneToOne: false
+            referencedRelation: "businesses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stock_movements_business_id_operation_id_fkey"
+            columns: ["business_id", "operation_id"]
+            isOneToOne: false
+            referencedRelation: "stock_operations"
+            referencedColumns: ["business_id", "id"]
+          },
+          {
+            foreignKeyName: "stock_movements_business_id_variant_id_fkey"
+            columns: ["business_id", "variant_id"]
+            isOneToOne: false
+            referencedRelation: "product_variants"
+            referencedColumns: ["business_id", "id"]
+          },
+        ]
+      }
+      stock_operations: {
+        Row: {
+          actor_id: string
+          branch_id: string
+          business_id: string
+          created_at: string
+          destination_branch_id: string | null
+          id: string
+          kind: string
+          quantity: number
+          reason: string
+          reference: string
+          variant_id: string
+        }
+        Insert: {
+          actor_id: string
+          branch_id: string
+          business_id: string
+          created_at?: string
+          destination_branch_id?: string | null
+          id: string
+          kind: string
+          quantity: number
+          reason: string
+          reference: string
+          variant_id: string
+        }
+        Update: {
+          actor_id?: string
+          branch_id?: string
+          business_id?: string
+          created_at?: string
+          destination_branch_id?: string | null
+          id?: string
+          kind?: string
+          quantity?: number
+          reason?: string
+          reference?: string
+          variant_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "stock_operations_actor_id_fkey"
+            columns: ["actor_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stock_operations_business_id_branch_id_fkey"
+            columns: ["business_id", "branch_id"]
+            isOneToOne: false
+            referencedRelation: "branches"
+            referencedColumns: ["business_id", "id"]
+          },
+          {
+            foreignKeyName: "stock_operations_business_id_destination_branch_id_fkey"
+            columns: ["business_id", "destination_branch_id"]
+            isOneToOne: false
+            referencedRelation: "branches"
+            referencedColumns: ["business_id", "id"]
+          },
+          {
+            foreignKeyName: "stock_operations_business_id_fkey"
+            columns: ["business_id"]
+            isOneToOne: false
+            referencedRelation: "businesses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stock_operations_business_id_variant_id_fkey"
+            columns: ["business_id", "variant_id"]
+            isOneToOne: false
+            referencedRelation: "product_variants"
+            referencedColumns: ["business_id", "id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
@@ -557,6 +861,20 @@ export type Database = {
         Returns: boolean
       }
       is_business_member: { Args: { _business_id: string }; Returns: boolean }
+      post_stock_operation: {
+        Args: {
+          _branch_id: string
+          _business_id: string
+          _destination_branch_id: string
+          _id: string
+          _kind: string
+          _quantity: number
+          _reason: string
+          _reference: string
+          _variant_id: string
+        }
+        Returns: string
+      }
       remove_business_member: {
         Args: { _business_id: string; _user_id: string }
         Returns: undefined
@@ -564,6 +882,10 @@ export type Database = {
       revoke_business_invitation: {
         Args: { _business_id: string; _invitation_id: string }
         Returns: undefined
+      }
+      save_catalogue_variant: {
+        Args: { _business_id: string; _rows: Json }
+        Returns: number
       }
       set_branch_access: {
         Args: {

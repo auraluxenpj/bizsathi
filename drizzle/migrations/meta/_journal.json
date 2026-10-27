@@ -29,6 +29,13 @@
       "when": 1793074829231,
       "tag": "0003_business_access_foundation",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1793076432617,
+      "tag": "0004_inventory_master_data",
+      "breakpoints": true
     }
   ]
 }
