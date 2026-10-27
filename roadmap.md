@@ -9,7 +9,9 @@
 - [ ] Phase 2 populated business/branch selection — needs a legitimately registered business and branch; no live sample records permitted.
 - [x] Phase 3 core: products/variants, customers/suppliers, append-only stock ledger, opening/receiving/adjustments/transfers, low stock, CSV, and isolated database checks; 23 unit/routing tests passed.
 - [ ] Phase 3 successful live product/contact/movement save and read-back — needs a legitimately registered business/branch; no synthetic live records permitted.
-- [ ] Phase 4: approved; implement transactional documents, stock/financial posting, POS, purchases, payments, returns and cash reconciliation.
+- [x] Phase 4 core: transactional documents, stock/balanced posting, POS, purchase orders/invoices/receiving, payments, returns, cash counts, receipt tools and real-record overview totals.
+- [ ] Phase 4 live confirmation/read-back and receipt/refund/cashier checks — real business exists but needs legitimate branches, products and open financial periods; no synthetic live records permitted.
+- [ ] Phase 4 payment reversals and authorized reconciliation-variance resolution — deferred pending validated live posting flows and explicit financial workflow review.
 - [ ] Phase 5 and later: accounting reports and offline POS — awaiting their phase approval.
 - [x] Add administrator-only security review history and append-only decisions.
 - [x] Add sign-in and optional avatar profile data.
