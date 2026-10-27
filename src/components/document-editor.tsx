@@ -8,7 +8,7 @@ import {confirmDocument} from '@/lib/commerce.functions';
 import {cartTotal,documentInput,type CommerceRequest} from '@/lib/commerce-schemas';
 import {pendingKey,readPending,savePending} from '@/lib/pending-commerce';
 import {readLines,type CommerceWorkspace} from './commerce-workspace';
-export function DocumentEditor({w,kind,sourceId,onSaved}:{w:CommerceWorkspace;kind:CommerceRequest['kind'];sourceId?:string;onSaved:(id:string)=>void}){
+export function DocumentEditor({w,kind,sourceId,onSaved}:{w:CommerceWorkspace;kind:CommerceRequest['kind'];sourceId?:string|undefined;onSaved:(id:string)=>void}){
  const client=useQueryClient();const fn=useServerFn(confirmDocument);const data=w.commerce.data;const source=data?.documents.find(d=>d.id===sourceId);const [branch,setBranch]=useState(source?.branch_id??'');const [period,setPeriod]=useState('');const [date,setDate]=useState(new Date().toLocaleDateString('en-CA'));const [party,setParty]=useState(source?.party_id??'');const [reference,setReference]=useState('');const [search,setSearch]=useState('');const [lines,setLines]=useState<CommerceRequest['lines']>(source?readLines(source.lines):[]);const [payments,setPayments]=useState<{method:'cash'|'bank'|'wallet';amount:string}[]>([]);const [pending,setPending]=useState<CommerceRequest|null>(null);const [message,setMessage]=useState('');
  const key=data?pendingKey(data.userId,w.businessId):'';
  useEffect(()=>{if(!key)return;try{setPending(readPending(key));}catch{setMessage('Stored request could not be read. Do not start another transaction until its status is checked.');}},[key]);
