@@ -13,7 +13,9 @@
 - [ ] Phase 4 live confirmation/read-back and receipt/refund/cashier checks — real business exists but needs legitimate branches, products and open financial periods; no synthetic live records permitted.
 - [ ] Phase 4 payment reversals and authorized reconciliation-variance resolution — deferred pending validated live posting flows and explicit financial workflow review.
 - [x] Phase 5: audited accounting readiness; first reporting increment prepared for approval, with incomplete costing and correction workflows identified.
-- [ ] Phase 5 implementation and verification — awaiting approval of its detailed plan; preserve outstanding Phase 4 live-flow checks.
+- [x] Phase 5 first increment: read-only recorded accounts, ledger/trial balance, registers, party statements, outstanding balances, cash/bank/wallet books and VAT postings; 39 tests and isolated report-access checks passed.
+- [ ] Phase 5 populated live report detail/CSV/print read-back — needs legitimate branches, periods and confirmed transactions; no synthetic live records permitted.
+- [ ] Remaining Phase 5: chart extensions, opening balances, vouchers/reversals, cash-variance resolution, costing/COGS and full statements — separate financial-workflow approval and validation required.
 - [ ] Phase 6 and later: offline POS and final verification — awaiting their phase approval.
 - [x] Add administrator-only security review history and append-only decisions.
 - [x] Add sign-in and optional avatar profile data.
