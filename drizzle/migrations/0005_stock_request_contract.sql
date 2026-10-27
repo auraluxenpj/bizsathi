@@ -1,0 +1,2 @@
+CREATE FUNCTION public.post_stock_request(_request jsonb) RETURNS uuid LANGUAGE sql SECURITY INVOKER SET search_path=public AS $$ SELECT public.post_stock_operation((_request->>'businessId')::uuid,(_request->>'id')::uuid,(_request->>'variantId')::uuid,(_request->>'branchId')::uuid,(_request->>'destinationBranchId')::uuid,_request->>'kind',(_request->>'quantity')::numeric,_request->>'reference',_request->>'reason'); $$;
+REVOKE ALL ON FUNCTION public.post_stock_request(jsonb) FROM PUBLIC,anon; GRANT EXECUTE ON FUNCTION public.post_stock_request(jsonb) TO authenticated;

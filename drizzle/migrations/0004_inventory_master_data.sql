@@ -1,0 +1,76 @@
+CREATE TABLE public.products (id uuid PRIMARY KEY DEFAULT gen_random_uuid(), business_id uuid NOT NULL REFERENCES public.businesses(id) ON DELETE RESTRICT, name text NOT NULL CHECK(length(btrim(name)) BETWEEN 1 AND 200), category text NOT NULL DEFAULT '', is_active boolean NOT NULL DEFAULT true, created_at timestamptz NOT NULL DEFAULT now(), updated_at timestamptz NOT NULL DEFAULT now(), UNIQUE(business_id,id), UNIQUE(business_id,name));
+REVOKE ALL ON public.products FROM anon,authenticated; GRANT SELECT,INSERT,UPDATE ON public.products TO authenticated; GRANT ALL ON public.products TO service_role;
+ALTER TABLE public.products ENABLE ROW LEVEL SECURITY;
+CREATE POLICY products_read ON public.products FOR SELECT TO authenticated USING(public.is_business_member(business_id));
+CREATE POLICY products_add ON public.products FOR INSERT TO authenticated WITH CHECK(public.has_business_role(business_id,'admin'));
+CREATE POLICY products_edit ON public.products FOR UPDATE TO authenticated USING(public.has_business_role(business_id,'admin')) WITH CHECK(public.has_business_role(business_id,'admin'));
+CREATE TABLE public.product_variants (id uuid PRIMARY KEY DEFAULT gen_random_uuid(),business_id uuid NOT NULL REFERENCES public.businesses(id) ON DELETE RESTRICT,product_id uuid NOT NULL,name text NOT NULL DEFAULT 'Standard' CHECK(length(btrim(name)) BETWEEN 1 AND 100),sku text NOT NULL CHECK(length(btrim(sku)) BETWEEN 1 AND 80),barcode text,unit text NOT NULL DEFAULT 'pcs' CHECK(length(btrim(unit)) BETWEEN 1 AND 30),selling_price numeric(18,2) NOT NULL DEFAULT 0 CHECK(selling_price>=0 AND selling_price::text NOT IN ('NaN','Infinity','-Infinity')),reorder_level numeric(18,3) NOT NULL DEFAULT 0 CHECK(reorder_level>=0 AND reorder_level::text NOT IN ('NaN','Infinity','-Infinity')),is_active boolean NOT NULL DEFAULT true,created_at timestamptz NOT NULL DEFAULT now(),updated_at timestamptz NOT NULL DEFAULT now(),UNIQUE(business_id,id),UNIQUE(business_id,sku),UNIQUE(business_id,product_id,name),FOREIGN KEY(business_id,product_id) REFERENCES public.products(business_id,id) ON DELETE RESTRICT);
+REVOKE ALL ON public.product_variants FROM anon,authenticated; GRANT SELECT,INSERT,UPDATE ON public.product_variants TO authenticated; GRANT ALL ON public.product_variants TO service_role;
+ALTER TABLE public.product_variants ENABLE ROW LEVEL SECURITY;
+CREATE POLICY variants_read ON public.product_variants FOR SELECT TO authenticated USING(public.is_business_member(business_id));
+CREATE POLICY variants_add ON public.product_variants FOR INSERT TO authenticated WITH CHECK(public.has_business_role(business_id,'admin'));
+CREATE POLICY variants_edit ON public.product_variants FOR UPDATE TO authenticated USING(public.has_business_role(business_id,'admin')) WITH CHECK(public.has_business_role(business_id,'admin'));
+CREATE UNIQUE INDEX variant_barcode_unique ON public.product_variants(business_id,barcode) WHERE barcode IS NOT NULL;
+CREATE TABLE public.parties(id uuid PRIMARY KEY DEFAULT gen_random_uuid(),business_id uuid NOT NULL REFERENCES public.businesses(id) ON DELETE RESTRICT,kind text NOT NULL CHECK(kind IN ('customer','supplier')),name text NOT NULL CHECK(length(btrim(name)) BETWEEN 1 AND 200),phone text NOT NULL DEFAULT '',email text NOT NULL DEFAULT '',address text NOT NULL DEFAULT '',pan_vat_number text NOT NULL DEFAULT '',is_active boolean NOT NULL DEFAULT true,created_at timestamptz NOT NULL DEFAULT now(),updated_at timestamptz NOT NULL DEFAULT now(),UNIQUE(business_id,id));
+REVOKE ALL ON public.parties FROM anon,authenticated; GRANT SELECT,INSERT,UPDATE ON public.parties TO authenticated; GRANT ALL ON public.parties TO service_role;
+ALTER TABLE public.parties ENABLE ROW LEVEL SECURITY;
+CREATE POLICY parties_read ON public.parties FOR SELECT TO authenticated USING(public.is_business_member(business_id));
+CREATE POLICY parties_add ON public.parties FOR INSERT TO authenticated WITH CHECK(public.has_business_role(business_id,'admin'));
+CREATE POLICY parties_edit ON public.parties FOR UPDATE TO authenticated USING(public.has_business_role(business_id,'admin')) WITH CHECK(public.has_business_role(business_id,'admin'));
+CREATE TABLE public.stock_operations(id uuid PRIMARY KEY,business_id uuid NOT NULL REFERENCES public.businesses(id) ON DELETE RESTRICT,variant_id uuid NOT NULL,branch_id uuid NOT NULL,destination_branch_id uuid,kind text NOT NULL CHECK(kind IN ('opening','receive','adjustment','transfer')),quantity numeric(18,3) NOT NULL CHECK(quantity<>0 AND quantity::text NOT IN ('NaN','Infinity','-Infinity')),reference text NOT NULL CHECK(length(btrim(reference)) BETWEEN 1 AND 200),reason text NOT NULL CHECK(length(btrim(reason)) BETWEEN 1 AND 500),actor_id uuid NOT NULL REFERENCES public.profiles(id) ON DELETE RESTRICT,created_at timestamptz NOT NULL DEFAULT now(),UNIQUE(business_id,id),FOREIGN KEY(business_id,variant_id) REFERENCES public.product_variants(business_id,id) ON DELETE RESTRICT,FOREIGN KEY(business_id,branch_id) REFERENCES public.branches(business_id,id) ON DELETE RESTRICT,FOREIGN KEY(business_id,destination_branch_id) REFERENCES public.branches(business_id,id) ON DELETE RESTRICT,CHECK((kind='transfer' AND destination_branch_id IS NOT NULL AND destination_branch_id<>branch_id AND quantity>0) OR (kind<>'transfer' AND destination_branch_id IS NULL)),CHECK(kind='adjustment' OR quantity>0));
+REVOKE ALL ON public.stock_operations FROM anon,authenticated; GRANT SELECT ON public.stock_operations TO authenticated; GRANT ALL ON public.stock_operations TO service_role;
+ALTER TABLE public.stock_operations ENABLE ROW LEVEL SECURITY;
+CREATE POLICY stock_ops_read ON public.stock_operations FOR SELECT TO authenticated USING(public.can_access_branch(business_id,branch_id) AND (destination_branch_id IS NULL OR public.can_access_branch(business_id,destination_branch_id)));
+CREATE UNIQUE INDEX stock_opening_once ON public.stock_operations(business_id,branch_id,variant_id) WHERE kind='opening';
+CREATE TABLE public.stock_movements(id uuid PRIMARY KEY DEFAULT gen_random_uuid(),business_id uuid NOT NULL REFERENCES public.businesses(id) ON DELETE RESTRICT,operation_id uuid NOT NULL,branch_id uuid NOT NULL,variant_id uuid NOT NULL,quantity numeric(18,3) NOT NULL CHECK(quantity<>0 AND quantity::text NOT IN ('NaN','Infinity','-Infinity')),kind text NOT NULL CHECK(kind IN ('opening','receive','adjustment','transfer')),reference text NOT NULL,reason text NOT NULL,actor_id uuid NOT NULL REFERENCES public.profiles(id) ON DELETE RESTRICT,created_at timestamptz NOT NULL DEFAULT now(),UNIQUE(operation_id,branch_id),FOREIGN KEY(business_id,operation_id) REFERENCES public.stock_operations(business_id,id) ON DELETE RESTRICT,FOREIGN KEY(business_id,branch_id) REFERENCES public.branches(business_id,id) ON DELETE RESTRICT,FOREIGN KEY(business_id,variant_id) REFERENCES public.product_variants(business_id,id) ON DELETE RESTRICT);
+REVOKE ALL ON public.stock_movements FROM anon,authenticated; GRANT SELECT ON public.stock_movements TO authenticated; GRANT ALL ON public.stock_movements TO service_role;
+ALTER TABLE public.stock_movements ENABLE ROW LEVEL SECURITY;
+CREATE POLICY stock_read ON public.stock_movements FOR SELECT TO authenticated USING(public.can_access_branch(business_id,branch_id));
+CREATE INDEX stock_balance_lookup ON public.stock_movements(business_id,branch_id,variant_id);
+CREATE INDEX stock_history_lookup ON public.stock_movements(business_id,created_at DESC);
+CREATE TRIGGER products_tenant BEFORE UPDATE ON public.products FOR EACH ROW EXECUTE FUNCTION public.prevent_tenant_change();
+CREATE TRIGGER variants_tenant BEFORE UPDATE ON public.product_variants FOR EACH ROW EXECUTE FUNCTION public.prevent_tenant_change();
+CREATE TRIGGER parties_tenant BEFORE UPDATE ON public.parties FOR EACH ROW EXECUTE FUNCTION public.prevent_tenant_change();
+CREATE TRIGGER products_touch BEFORE UPDATE ON public.products FOR EACH ROW EXECUTE FUNCTION public.touch_updated_at();
+CREATE TRIGGER variants_touch BEFORE UPDATE ON public.product_variants FOR EACH ROW EXECUTE FUNCTION public.touch_updated_at();
+CREATE TRIGGER parties_touch BEFORE UPDATE ON public.parties FOR EACH ROW EXECUTE FUNCTION public.touch_updated_at();
+CREATE TRIGGER products_audit AFTER INSERT OR UPDATE ON public.products FOR EACH ROW EXECUTE FUNCTION public.audit_row();
+CREATE TRIGGER variants_audit AFTER INSERT OR UPDATE ON public.product_variants FOR EACH ROW EXECUTE FUNCTION public.audit_row();
+CREATE TRIGGER parties_audit AFTER INSERT OR UPDATE ON public.parties FOR EACH ROW EXECUTE FUNCTION public.audit_row();
+CREATE TRIGGER stock_ops_immutable BEFORE UPDATE OR DELETE ON public.stock_operations FOR EACH ROW EXECUTE FUNCTION public.block_mutation();
+CREATE TRIGGER stock_moves_immutable BEFORE UPDATE OR DELETE ON public.stock_movements FOR EACH ROW EXECUTE FUNCTION public.block_mutation();
+CREATE TRIGGER stock_ops_audit AFTER INSERT ON public.stock_operations FOR EACH ROW EXECUTE FUNCTION public.audit_row();
+CREATE FUNCTION public.save_catalogue_variant(_business_id uuid,_rows jsonb) RETURNS integer LANGUAGE plpgsql SECURITY DEFINER SET search_path=public AS $$
+DECLARE r jsonb; p uuid; n integer:=0;
+BEGIN
+ IF NOT public.has_business_role(_business_id,'admin') THEN RAISE EXCEPTION 'Administrator access required'; END IF;
+ IF jsonb_typeof(_rows)<>'array' OR jsonb_array_length(_rows) NOT BETWEEN 1 AND 500 THEN RAISE EXCEPTION 'Expected 1 to 500 rows'; END IF;
+ FOR r IN SELECT value FROM jsonb_array_elements(_rows) LOOP
+ INSERT INTO public.products(business_id,name,category) VALUES(_business_id,btrim(r->>'product_name'),coalesce(r->>'category','')) ON CONFLICT(business_id,name) DO UPDATE SET name=EXCLUDED.name RETURNING id INTO p;
+ INSERT INTO public.product_variants(business_id,product_id,name,sku,barcode,unit,selling_price,reorder_level) VALUES(_business_id,p,coalesce(nullif(btrim(r->>'variant_name'),''),'Standard'),btrim(r->>'sku'),nullif(btrim(r->>'barcode'),''),coalesce(nullif(btrim(r->>'unit'),''),'pcs'),coalesce((r->>'selling_price')::numeric,0),coalesce((r->>'reorder_level')::numeric,0)); n:=n+1;
+ END LOOP; RETURN n;
+END $$;
+REVOKE ALL ON FUNCTION public.save_catalogue_variant(uuid,jsonb) FROM PUBLIC,anon; GRANT EXECUTE ON FUNCTION public.save_catalogue_variant(uuid,jsonb) TO authenticated;
+CREATE FUNCTION public.post_stock_operation(_business_id uuid,_id uuid,_variant_id uuid,_branch_id uuid,_destination_branch_id uuid,_kind text,_quantity numeric,_reference text,_reason text) RETURNS uuid LANGUAGE plpgsql SECURITY DEFINER SET search_path=public AS $$
+DECLARE previous public.stock_operations; balance numeric; required_role text;
+BEGIN
+ required_role:=CASE WHEN _kind IN ('opening','adjustment') THEN 'admin' ELSE 'staff' END;
+ IF NOT public.has_business_role(_business_id,required_role) OR NOT public.can_access_branch(_business_id,_branch_id) OR (_destination_branch_id IS NOT NULL AND NOT public.can_access_branch(_business_id,_destination_branch_id)) THEN RAISE EXCEPTION 'Stock access denied'; END IF;
+ PERFORM pg_advisory_xact_lock(hashtextextended(_business_id::text,0));
+ SELECT * INTO previous FROM public.stock_operations WHERE id=_id;
+ IF FOUND THEN
+ IF previous.business_id=_business_id AND previous.actor_id=auth.uid() AND previous.variant_id=_variant_id AND previous.branch_id=_branch_id AND previous.destination_branch_id IS NOT DISTINCT FROM _destination_branch_id AND previous.kind=_kind AND previous.quantity=_quantity AND previous.reference=btrim(_reference) AND previous.reason=btrim(_reason) THEN RETURN _id; END IF;
+ RAISE EXCEPTION 'Request identifier already used for different input'; END IF;
+ IF _quantity IS NULL OR _quantity<>round(_quantity,3) OR _quantity=0 OR _quantity::text IN ('NaN','Infinity','-Infinity') THEN RAISE EXCEPTION 'Invalid quantity'; END IF;
+ IF NOT EXISTS(SELECT 1 FROM public.product_variants v JOIN public.products p ON p.business_id=v.business_id AND p.id=v.product_id WHERE v.id=_variant_id AND v.business_id=_business_id AND v.is_active AND p.is_active) THEN RAISE EXCEPTION 'Active variant required'; END IF;
+ IF NOT EXISTS(SELECT 1 FROM public.branches WHERE id=_branch_id AND business_id=_business_id AND is_active) OR (_destination_branch_id IS NOT NULL AND NOT EXISTS(SELECT 1 FROM public.branches WHERE id=_destination_branch_id AND business_id=_business_id AND is_active)) THEN RAISE EXCEPTION 'Active branch required'; END IF;
+ IF _kind='opening' AND EXISTS(SELECT 1 FROM public.stock_movements WHERE business_id=_business_id AND branch_id=_branch_id AND variant_id=_variant_id) THEN RAISE EXCEPTION 'Opening stock must precede other movements'; END IF;
+ SELECT coalesce(sum(quantity),0) INTO balance FROM public.stock_movements WHERE business_id=_business_id AND branch_id=_branch_id AND variant_id=_variant_id;
+ IF balance + (CASE WHEN _kind='transfer' THEN -_quantity ELSE _quantity END) < 0 THEN RAISE EXCEPTION 'Insufficient stock'; END IF;
+ INSERT INTO public.stock_operations(id,business_id,variant_id,branch_id,destination_branch_id,kind,quantity,reference,reason,actor_id) VALUES(_id,_business_id,_variant_id,_branch_id,_destination_branch_id,_kind,_quantity,btrim(_reference),btrim(_reason),auth.uid());
+ INSERT INTO public.stock_movements(business_id,operation_id,branch_id,variant_id,quantity,kind,reference,reason,actor_id) VALUES(_business_id,_id,_branch_id,_variant_id,CASE WHEN _kind='transfer' THEN -_quantity ELSE _quantity END,_kind,btrim(_reference),btrim(_reason),auth.uid());
+ IF _kind='transfer' THEN INSERT INTO public.stock_movements(business_id,operation_id,branch_id,variant_id,quantity,kind,reference,reason,actor_id) VALUES(_business_id,_id,_destination_branch_id,_variant_id,_quantity,_kind,btrim(_reference),btrim(_reason),auth.uid()); END IF;
+ RETURN _id;
+END $$;
+REVOKE ALL ON FUNCTION public.post_stock_operation(uuid,uuid,uuid,uuid,uuid,text,numeric,text,text) FROM PUBLIC,anon; GRANT EXECUTE ON FUNCTION public.post_stock_operation(uuid,uuid,uuid,uuid,uuid,text,numeric,text,text) TO authenticated;
+COMMENT ON TABLE public.stock_movements IS 'Append-only quantity ledger; corrections require authorized adjustments. No financial valuation or accounting posting is implied.';

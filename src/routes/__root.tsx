@@ -123,7 +123,7 @@ function RootComponent() {
   const { queryClient } = Route.useRouteContext();
   const router = useRouter();
   const pathname = useRouterState({ select: state => state.location.pathname });
-  const workspace = ['/dashboard', '/businesses', '/profile', '/security', '/security-history'].includes(pathname);
+  const workspace = ['/dashboard', '/businesses', '/profile', '/security', '/security-history', '/products', '/contacts', '/inventory'].includes(pathname);
   useEffect(() => {
     if (new URLSearchParams(window.location.hash.slice(1)).get('type') === 'recovery') sessionStorage.setItem('bizsathi-recovery', 'true');
     const { data } = supabase.auth.onAuthStateChange(event => {
