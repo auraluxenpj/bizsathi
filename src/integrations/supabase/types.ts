@@ -299,6 +299,7 @@ export type Database = {
       }
       profiles: {
         Row: {
+          avatar_url: string | null
           created_at: string
           full_name: string | null
           id: string
@@ -306,6 +307,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          avatar_url?: string | null
           created_at?: string
           full_name?: string | null
           id: string
@@ -313,6 +315,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          avatar_url?: string | null
           created_at?: string
           full_name?: string | null
           id?: string
@@ -341,6 +344,64 @@ export type Database = {
           rank?: number
         }
         Relationships: []
+      }
+      security_review_events: {
+        Row: {
+          actor_id: string
+          business_id: string
+          created_at: string
+          details: string
+          id: string
+          kind: string
+          payload: Json
+          related_id: string | null
+          title: string
+        }
+        Insert: {
+          actor_id?: string
+          business_id: string
+          created_at?: string
+          details: string
+          id?: string
+          kind: string
+          payload?: Json
+          related_id?: string | null
+          title: string
+        }
+        Update: {
+          actor_id?: string
+          business_id?: string
+          created_at?: string
+          details?: string
+          id?: string
+          kind?: string
+          payload?: Json
+          related_id?: string | null
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "security_review_events_actor_id_fkey"
+            columns: ["actor_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "security_review_events_business_id_fkey"
+            columns: ["business_id"]
+            isOneToOne: false
+            referencedRelation: "businesses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "security_review_events_business_id_related_id_fkey"
+            columns: ["business_id", "related_id"]
+            isOneToOne: false
+            referencedRelation: "security_review_events"
+            referencedColumns: ["business_id", "id"]
+          },
+        ]
       }
     }
     Views: {
