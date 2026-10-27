@@ -20,7 +20,7 @@
 - [x] Next accounting increment: controlled journal/expense vouchers and administrator full voucher-only reversals, integrated into the existing ledger and expense reports; 61 tests and isolated voucher/regression suites passed.
 - [ ] Live voucher confirmation/reversal/retry and populated report/export read-back — needs legitimate branches, open periods and business activity; no synthetic live records permitted.
 - [x] Phase 6 requested: audited offline POS access, durable queue, reconnect conflicts and shared-device protections; scoped first increment to durable local drafts and explicit reconnect review, not finalized offline invoices.
-- [x] Phase 6 first safe increment: encrypted durable local drafts, scoped cache, reconnect conflict review, exact-request status checks and explicit confirmation; 80 unit/integration tests and isolated reconnect plus regression database suites passed.
+- [x] Phase 6 first safe increment: encrypted durable local drafts, scoped cache, reconnect conflict review, exact-request status checks and explicit confirmation; 82 unit/integration tests and isolated reconnect plus regression database suites passed.
 - [ ] Phase 6 successful live draft save/recovery/confirmation and populated history read-back — needs legitimate active branches, products and an open period; no synthetic live records permitted. Full offline reopening/finalized offline billing and final verification remain separate approved work.
 - [x] Add administrator-only security review history and append-only decisions.
 - [x] Add sign-in and optional avatar profile data.
