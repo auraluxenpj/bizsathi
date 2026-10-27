@@ -9,6 +9,8 @@ export const unavailableReports:Partial<Record<ReportInput['view'],string>>={val
 export function supportsUser(view:ReportInput['view']){return !['accounts','trial','lowstock','valuation','profit','balance','vat'].includes(view);}
 export function reportContext(f:ReportInput,s:BusinessSnapshot){return{Report:reportViews.find(([id])=>id===f.view)?.[1]??f.view,From:f.from,Through:f.to,Branch:f.branchId?s.branches.find(b=>b.id===f.branchId)?.name??f.branchId:'All authorized branches','Posted by':supportsUser(f.view)&&f.userId?s.users.find(u=>u.id===f.userId)?.name??f.userId:'All users',Currency:s.currency,Timezone:s.timezone};}
 export function paginateRows(rows:ReportRow[],page:number,all:boolean){const actual=Math.min(page,Math.max(1,Math.ceil(rows.length/50)));return{rows:all?rows:rows.slice((actual-1)*50,actual*50),total:rows.length,page:actual};}
+export function reportColumns(rows:ReportRow[]){return [...new Set(rows.flatMap(r=>Object.keys(r)))];}
+export function exportReportRows(rows:ReportRow[],context:Record<string,string>){const columns=reportColumns(rows);return rows.map(row=>({...context,...Object.fromEntries(columns.map(key=>[key,row[key]??'']))}));}
 export function buildBusinessReport(s:BusinessSnapshot,f:ReportInput){
  const userId=supportsUser(f.view)?f.userId:undefined;
  const scoped=(r:{business_id:string;branch_id:string})=>r.business_id===f.businessId&&(!f.branchId||r.branch_id===f.branchId);
@@ -31,7 +33,7 @@ export function buildBusinessReport(s:BusinessSnapshot,f:ReportInput){
  rows=rows.map(r=>{const sourceId=r['Source ID'];const journal=s.journals.find(j=>j.source_id===sourceId);const doc=s.documents.find(d=>d.id===sourceId);const actorId=doc?.actor_id??journal?.actor_id;return sourceId?{...r,Branch:branch(doc?.branch_id??journal?.branch_id??''),'Posted by':actor(actorId),'User ID':actorId??''}:r;});
  let notice=userId?'User posting subset — not a complete business balance.':'Recorded postings only; opening balances not established and not externally reconciled.';
  if(['outstanding','receivables','payables'].includes(f.view))notice=`As at ${f.to}; user selects original invoice creator. All linked settlements included. Invoice age is not overdue age.`;
- if(f.view==='sales')notice='Sales and returns only. Profit unavailable until reliable costing and COGS exist.';
+ if(f.view==='sales'||f.view==='purchases'){const total=rows.reduce((sum,r)=>sum.plus(r['Total']??0),new Decimal(0));notice=`${f.view==='sales'?'Sales':'Purchases'} net of returns: ${s.currency} ${total.toFixed(2)}. ${f.view==='sales'?'Profit unavailable until reliable costing and COGS exist.':''}${userId?' Original document posting user selected.':''}`;}
  if(f.view==='cashflow')notice='Recorded cash/bank/wallet movement book only — not a classified cash-flow statement.';
  if(f.view==='vat')notice='Configured VAT postings only — not a statutory tax filing.';
  if(f.view==='customer'||f.view==='supplier'){const party=s.parties.find(p=>p.id===f.partyId);if(party?.kind!==(f.view==='customer'?'customer':'supplier'))rows=[];}

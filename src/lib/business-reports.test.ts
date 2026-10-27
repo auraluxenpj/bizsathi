@@ -1,5 +1,5 @@
 import {describe,it,expect} from 'vitest';
-import {buildBusinessReport,paginateRows,supportsUser,type BusinessSnapshot} from './business-reports';
+import {buildBusinessReport,paginateRows,supportsUser,exportReportRows,type BusinessSnapshot} from './business-reports';
 import type {ReportInput} from './accounting';
 import {makeCsv} from './inventory-csv';
 const f:ReportInput={businessId:'b',from:'2026-02-01',to:'2026-02-28',view:'sales',account:'all',page:1,export:false};
@@ -17,4 +17,6 @@ describe('Business report filters and exports',()=>{
  it('keeps complete export rows independently of screen pagination',()=>{const rows=Array.from({length:65},(_,i)=>({Reference:String(i)}));expect(paginateRows(rows,1,false).rows).toHaveLength(50);expect(paginateRows(rows,2,false).rows).toHaveLength(15);expect(paginateRows(rows,2,true).rows).toHaveLength(65);expect(paginateRows(rows,2,true).total).toBe(65);});
  it('never substitutes sales prices for valuation or unsupported profit',()=>{for(const view of ['valuation','profit','balance'] as const){const report=buildBusinessReport(s,{...f,view});expect(report.rows).toEqual([]);expect(report.notice).toBeTruthy();}});
  it('formula-safe exports retain context and identifiers',()=>{const csv=makeCsv([{Report:'Sales',From:f.from,Reference:'=SUM(1,1)','Source ID':'id'}]);expect(csv).toContain("'=SUM");expect(csv).toContain('2026-02-01');expect(csv).toContain('Source ID');});
+ it('exports attribution columns present after an opening row',()=>{const rows=exportReportRows([{Date:f.from,Reference:'Opening'},{Date:f.to,Reference:'Invoice','User ID':'u','Posted by':'User'}],{Report:'Ledger'});expect(rows[0]?.['User ID']).toBe('');expect(makeCsv(rows)).toContain('User ID');expect(rows[1]?.['User ID']).toBe('u');});
+ it('prior party postings still produce an opening row with no in-range activity',()=>{const journal={id:'j',business_id:'b',branch_id:'br',entry_date:'2026-01-01',created_at:'2026-01-01',account_code:'receivable',source_id:'one',source_type:'document',debit:'100',credit:'0',actor_id:'u'};const result=buildBusinessReport({...s,documents:[doc('one','u')],journals:[journal]},{...f,view:'customer',partyId:'c'});expect(result.rows).toHaveLength(1);expect(result.rows[0]?.['Running signed']).toBe('100.00');});
 });
