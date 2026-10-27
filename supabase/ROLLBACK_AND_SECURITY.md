@@ -10,6 +10,16 @@ Run `supabase/tests/tenant_isolation.sql` as a privileged SQL user. It creates s
 
 Covers: atomic business creation, two-business isolation (all 7 tables), cross-tenant writes, tenant move, outsider/self-join, staff self-promotion, owner/admin grant limits, owner removal, closed-period protection, business/audit deletion, anonymous access.
 
+## Security review — readable role labels
+- **Scan:** Quick backend security scan completed on 2026-10-27 at 04:06:43 UTC.
+- **Warning:** “Any signed-in user can read every record in roles.” The scanner classified this as error-level `RLS_EXPOSURE` because `roles_read` permits authenticated SELECT with `using: true`.
+- **Finding reference:** scanner `lov_pgscan`; ID `lov_db_rls_tautology_permissive_v1_60fb38a4e32a9161`.
+- **Impact:** Any signed-in account, including one without a business membership, can read the shared role catalogue (`code`, `name`, `rank`, `description`). This reveals role labels and hierarchy, not users’ assigned roles, memberships, profiles, or private tenant records. Anonymous reads and authenticated INSERT, UPDATE, and DELETE remain denied. Reading a rank does not grant that rank: authorization still derives from trusted business membership records.
+- **Assessment:** Intentional read-only reference data, not a tenant-data exposure or privilege-escalation path under the current schema. Keep private or business-specific information out of this catalogue; reconsider the policy and dismissal if its contents or access rules change.
+- **Approval decision:** The user approved dismissing this specific warning through the security approval card on 2026-10-27. The finding-management tool confirmed the dismissal and reported no remaining active findings at that point. No database policy or grant was relaxed or changed by the dismissal; it suppresses the warning rather than fixing or removing the readable-label policy.
+- **Approved rationale:** “This table contains only shared role names and ranks, not anyone’s assigned permissions or private business data, and users cannot change it.”
+- **Review scope:** The deeper code-level security scan was started separately. Its result was still pending when this decision was recorded; the quick scan and approved dismissal do not establish that the full application is free of security issues.
+
 ## Recovery
 - **Prefer roll-forward**: write a new migration that fixes the issue. Never edit applied migrations.
 - **Restore**: use a point-in-time backup from the Cloud panel when data is damaged.
