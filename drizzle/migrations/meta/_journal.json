@@ -71,6 +71,13 @@
       "when": 1793077245695,
       "tag": "0009_commerce_function_validation_fixes",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1793077303572,
+      "tag": "0010_commerce_draft_and_source_controls",
+      "breakpoints": true
     }
   ]
 }
