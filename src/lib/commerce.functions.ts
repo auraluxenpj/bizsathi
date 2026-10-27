@@ -2,6 +2,8 @@ import {createServerFn} from '@tanstack/react-start';
 import {requireSupabaseAuth} from '@/integrations/supabase/auth-middleware';
 import {tenantInput} from './business-schemas';
 import {documentInput,paymentInput,counterInput} from './commerce-schemas';
+import {z} from 'zod';
+export const findCommerceDocument=createServerFn({method:'GET'}).middleware([requireSupabaseAuth]).inputValidator(z.object({businessId:z.string().uuid(),id:z.string().uuid()})).handler(async({data,context})=>{const r=await context.supabase.from('commerce_documents').select('id,status').eq('business_id',data.businessId).eq('id',data.id).maybeSingle();if(r.error)throw new Error('Document status could not be checked.');return r.data;});
 export const getCommerce=createServerFn({method:'GET'}).middleware([requireSupabaseAuth]).inputValidator(tenantInput).handler(async({data,context})=>{
  const {data:member,error:accessError}=await context.supabase.rpc('is_business_member',{_business_id:data.businessId});if(accessError||!member)throw new Error('Business access required.');
  const documents=[];const payments=[];const counters=[];const journals=[];
