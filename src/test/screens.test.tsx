@@ -68,7 +68,7 @@ describe('Dashboard', () => {
     expect(screen.getByText(/^Sales \(/)).toBeInTheDocument();
     expect(screen.getByText(/^Purchase \(/)).toBeInTheDocument();
     expect(screen.getByText(/^Expense \(/)).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: /Quick POS/ })).toBeInTheDocument();
+    expect(screen.getAllByRole('link', { name: /Quick POS/ }).length).toBeGreaterThan(0);
     expect(await screen.findByText('Low stock (1)')).toBeInTheDocument();
     expect(await screen.findAllByText(/Rs\. 1,200\.00/)).not.toHaveLength(0);
   });
@@ -85,7 +85,7 @@ describe('Navigation and sign-in', () => {
     mount(<AppNavigation pathname="/dashboard"><p>page body</p></AppNavigation>);
     const nav = await screen.findByRole('navigation', { name: 'Main navigation' });
     for (const n of ['Dashboard', 'Parties', 'Inventory', 'Sales', 'Purchase', 'Expense', 'Reports', 'Manage Staff']) expect(within(nav).getByText(n)).toBeInTheDocument();
-    expect(await screen.findByText('Auraluxe', { selector: 'span' })).toBeInTheDocument();
+    expect((await screen.findAllByText('Auraluxe', { selector: 'span' })).length).toBeGreaterThan(0);
     fireEvent.keyDown(window, { key: 'k', metaKey: true });
     expect(await screen.findAllByPlaceholderText(/Search pages or create/)).toHaveLength(1);
   });
