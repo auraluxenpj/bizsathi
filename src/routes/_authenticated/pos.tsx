@@ -2,4 +2,4 @@ import {createFileRoute} from '@tanstack/react-router';
 import {Pos} from '@/components/pos';
 import {businessQuery} from '@/lib/inventory-queries';
 import {pageHead} from '@/lib/head';
-export const Route=createFileRoute('/_authenticated/pos')({head:()=>pageHead('Point of sale','BizSathi Nepal stock-checked sales, encrypted local drafts during connection interruptions, and reviewed server confirmation.'),loader:({context})=>context.queryClient.ensureQueryData(businessQuery),component:Pos});
+export const Route=createFileRoute('/_authenticated/pos')({head:()=>pageHead('Point of sale','Fast stock-checked point of sale with server-confirmed receipts for BizSathi Nepal.'),loader:({context})=>context.queryClient.ensureQueryData(businessQuery),component:Pos});
