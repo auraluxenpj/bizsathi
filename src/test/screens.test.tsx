@@ -44,6 +44,7 @@ import { DocumentEditor } from '@/components/document-editor';
 import { CashCounters } from '@/components/cash-counters';
 import { VoucherWorkspace } from '@/components/voucher-workspace';
 import { useCommerce } from '@/components/commerce-workspace';
+import { Pos } from '@/components/pos';
 
 function mount(ui: ReactNode, url = '/') {
   const root = createRootRoute({ component: () => <>{ui}</> });
@@ -128,6 +129,30 @@ describe('Sale editor', () => {
     expect(sent.name).toMatch(/^FY 20\d\d\/\d\d$/);
     expect(sent.start <= todayAd() && todayAd() <= sent.end).toBe(true);
     expect(sent.businessId).toBe(ID.biz);
+  });
+});
+
+describe('Point of sale', () => {
+  it('is a standalone sale screen with no device passphrase', async () => {
+    mount(<Pos />);
+    expect(await screen.findByRole('heading', { name: /Point of sale/ })).toBeInTheDocument();
+    expect(await screen.findByLabelText('Product search or barcode')).toBeInTheDocument();
+    expect(screen.queryByText(/passphrase/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/unlock/i)).not.toBeInTheDocument();
+    expect(screen.queryByRole('navigation', { name: 'Main navigation' })).not.toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /Dashboard/ })).toHaveAttribute('href', '/dashboard');
+    noOpenPeriodLabel();
+  });
+  it('sells through the same confirmation as Sales', async () => {
+    mount(<Pos />);
+    fireEvent.change(await screen.findByLabelText('Product search or barcode'), { target: { value: 'AL-001' } });
+    fireEvent.keyDown(screen.getByLabelText('Product search or barcode'), { key: 'Enter' });
+    fireEvent.change(await screen.findByLabelText('Customer mobile'), { target: { value: '9812345678' } });
+    vi.spyOn(window, 'confirm').mockReturnValue(true);
+    fireEvent.click(screen.getByRole('button', { name: /Confirm sale/ }));
+    await waitFor(() => expect(confirm).toHaveBeenCalledTimes(1));
+    expect((confirm.mock.calls[0]![0] as { data: Record<string, unknown> }).data).toMatchObject({ kind: 'sale', status: 'confirmed', periodId: ID.per });
+    expect(await screen.findByText('Sale saved')).toBeInTheDocument();
   });
 });
 
