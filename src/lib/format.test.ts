@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { adToBs, addDaysAd, bsMonthInfo, bsShort, bsToAd, compactNPR, formatBsAd, formatNPR } from './format';
+import { fiscalYearFor, adToBs, addDaysAd, bsMonthInfo, bsShort, bsToAd, compactNPR, formatBsAd, formatNPR } from './format';
 
 describe('formatNPR', () => {
   it('uses lakh/crore grouping with two decimals', () => {
@@ -41,5 +41,15 @@ describe('dashboard helpers', () => {
     expect(compactNPR(250000)).toBe('2.5L');
     expect(compactNPR(500)).toBe('500');
     expect(addDaysAd('2026-11-05', -6)).toBe('2026-10-30');
+  });
+});
+
+describe('fiscal year', () => {
+  it('finds the Nepal fiscal year that contains a date', () => {
+    const fy = fiscalYearFor('2026-11-05');
+    expect(fy?.name).toBe('FY 2083/84');
+    expect(fy && fy.start <= '2026-11-05' && '2026-11-05' <= fy.end).toBe(true);
+    expect(adToBs(fy!.start)).toBe('2083-04-01');
+    expect(fiscalYearFor('2026-03-01')?.name).toBe('FY 2082/83');
   });
 });

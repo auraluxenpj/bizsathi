@@ -89,3 +89,17 @@ export function addDaysAd(ad: string, days: number): string {
   const d = parseLocal(ad) ?? new Date();
   return toIso(new Date(d.getFullYear(), d.getMonth(), d.getDate() + days));
 }
+
+/** Nepal fiscal year (Shrawan 1 to Ashadh end) that contains an AD date. */
+export function fiscalYearFor(ad: string): { name: string; start: string; end: string } | null {
+  const d = parseLocal(ad);
+  if (!d) return null;
+  try {
+    const n = new NepaliDate(d);
+    const startYear = n.getMonth() >= 3 ? n.getYear() : n.getYear() - 1;
+    const start = new NepaliDate(startYear, 3, 1).toJsDate();
+    const nextStart = new NepaliDate(startYear + 1, 3, 1).toJsDate();
+    const end = new Date(nextStart.getFullYear(), nextStart.getMonth(), nextStart.getDate() - 1);
+    return { name: `FY ${startYear}/${String(startYear + 1).slice(2)}`, start: toIso(start), end: toIso(end) };
+  } catch { return null; }
+}
