@@ -3,7 +3,7 @@ import { Link } from '@tanstack/react-router';
 import { useServerFn } from '@tanstack/react-start';
 import { useQuery } from '@tanstack/react-query';
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
-import { ArrowDown, ArrowUp, Building2, Eye, Plus, ShoppingCart, Tag, Wallet, Zap, type LucideIcon } from 'lucide-react';
+import { ArrowDown, ArrowUp, BarChart3, Building2, Calculator, Eye, Landmark, MessageSquareText, Package, Plus, Receipt, ShoppingCart, Tag, UserPlus, Wallet, Zap, type LucideIcon } from 'lucide-react';
 import Decimal from 'decimal.js';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
@@ -88,6 +88,17 @@ export function Dashboard() {
       <StatCard label={`Expense (${monthName})`} value={money(expenses)} icon={Wallet} tint="bg-rose-50" iconTone="text-rose-600" to="/expenses" />
     </section>
 
+    <section aria-label="Explore app" className="mt-6"><h2 className="mb-2 text-lg font-semibold">Explore App</h2><div className="grid grid-cols-2 gap-3 sm:grid-cols-4">{[
+      { to: '/expenses', label: 'Quick Entry', icon: Calculator }, { to: '/pos', label: 'Quick POS', icon: Zap },
+      { to: '/reports', label: 'View Reports', icon: BarChart3 }, { to: '/credit-reminder', label: 'Credit Reminder', icon: MessageSquareText, badge: 'New' },
+    ].map(t => <Link key={t.label} to={t.to} className="relative flex min-h-28 flex-col items-center justify-center gap-3 rounded-2xl border bg-card p-3 text-center text-sm font-medium shadow-sm transition-colors hover:bg-secondary/50"><t.icon className="size-7 text-primary" />{t.label}{'badge' in t && <span className="absolute right-2 top-2 rounded bg-rose-500 px-1.5 text-[10px] font-semibold text-white">{t.badge}</span>}</Link>)}</div></section>
+    <section aria-label="Shortcuts" className="mt-6"><h2 className="mb-2 text-lg font-semibold">Shortcuts</h2><div className="grid grid-cols-4 gap-y-5 rounded-2xl border bg-card p-4">{([
+      { to: '/contacts', label: 'Add Party', icon: UserPlus }, { to: '/sales', label: 'Sales Invoice', icon: Tag, search: { new: '1' as const } },
+      { to: '/parties', label: 'Payment In', icon: ArrowDown }, { to: '/parties', label: 'Payment Out', icon: ArrowUp },
+      { to: '/purchases', label: 'Purchase', icon: ShoppingCart, search: { new: '1' as const } }, { to: '/products', label: 'Add Item', icon: Package },
+      { to: '/expenses', label: 'Expense', icon: Wallet }, { to: '/cash-bank', label: 'Cash & Bank', icon: Landmark },
+      { to: '/transactions', label: 'Transactions', icon: Receipt }, { to: '/calculators', label: 'Calculators', icon: Calculator },
+    ] as { to: string; label: string; icon: LucideIcon; search?: { new: '1' } }[]).map(t => <Link key={t.label} to={t.to} {...(t.search ? { search: t.search } : {})} className="flex flex-col items-center gap-2 text-center text-xs font-medium"><span className="flex size-12 items-center justify-center rounded-full bg-primary/10 text-primary"><t.icon className="size-5" /></span>{t.label}</Link>)}</div></section>
     <div className="mt-5 grid gap-5 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
       <div className="space-y-5">
         <section aria-label="Cashflow" className="rounded-xl border bg-card p-5">
