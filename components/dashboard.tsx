@@ -66,7 +66,7 @@ export function Dashboard() {
         <Button asChild variant="outline" className="relative h-10 border-primary/30 bg-primary/10 text-foreground hover:bg-primary/20"><Link to="/pos"><Zap />Quick POS<span className="absolute -top-2 right-2 rounded-full bg-destructive px-1.5 text-[10px] font-semibold leading-4 text-white">New</span></Link></Button>
         <Button asChild className="h-10"><Link to="/sales" search={{ new: '1' }}><Plus />Sales</Link></Button>
         <Button asChild className="h-10 bg-blue-600 text-white hover:bg-blue-700"><Link to="/purchases" search={{ new: '1' }}><Plus />Purchase</Link></Button>
-        <DropdownMenu><DropdownMenuTrigger asChild><Button variant="outline" className="h-10">More</Button></DropdownMenuTrigger><DropdownMenuContent align="end"><DropdownMenuItem asChild><Link to="/products">Add item</Link></DropdownMenuItem><DropdownMenuItem asChild><Link to="/contacts">Add party</Link></DropdownMenuItem><DropdownMenuItem asChild><Link to="/expenses">Add expense</Link></DropdownMenuItem><DropdownMenuItem asChild><Link to="/inventory">Stock ledger</Link></DropdownMenuItem></DropdownMenuContent></DropdownMenu>
+        <DropdownMenu><DropdownMenuTrigger asChild><Button variant="outline" className="h-10">More</Button></DropdownMenuTrigger><DropdownMenuContent align="end"><DropdownMenuItem asChild><Link to="/parties">Receive / give payment</Link></DropdownMenuItem><DropdownMenuItem asChild><Link to="/products">Add item</Link></DropdownMenuItem><DropdownMenuItem asChild><Link to="/contacts">Add party</Link></DropdownMenuItem><DropdownMenuItem asChild><Link to="/expenses">Add expense</Link></DropdownMenuItem><DropdownMenuItem asChild><Link to="/inventory">Stock ledger</Link></DropdownMenuItem></DropdownMenuContent></DropdownMenu>
       </div>
     </header>
     <p className="mt-1 text-sm text-muted-foreground">{formatBsAd(today)}{business ? ` · ${business.name}` : ''}</p>
@@ -81,8 +81,8 @@ export function Dashboard() {
     {commerce.error && <p role="alert" className="mt-4 text-sm text-destructive">{commerce.error.message}</p>}
 
     <section aria-label="Summary" className="mt-5 grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-5">
-      <StatCard label="To Receive" value={money(allTime?.receivables)} icon={ArrowDown} tint="bg-emerald-50" iconTone="text-emerald-600" to="/sales" />
-      <StatCard label="To Give" value={money(allTime?.payables)} icon={ArrowUp} tint="bg-rose-50" iconTone="text-rose-600" to="/purchases" />
+      <StatCard label="To Receive" value={money(allTime?.receivables)} icon={ArrowDown} tint="bg-emerald-50" iconTone="text-emerald-600" to="/parties" />
+      <StatCard label="To Give" value={money(allTime?.payables)} icon={ArrowUp} tint="bg-rose-50" iconTone="text-rose-600" to="/parties" />
       <StatCard label={`Sales (${monthName})`} value={money(monthly?.sales)} icon={Tag} tint="bg-emerald-50" iconTone="text-emerald-600" to="/sales" />
       <StatCard label={`Purchase (${monthName})`} value={money(monthly?.purchases)} icon={ShoppingCart} tint="bg-blue-50" iconTone="text-blue-600" to="/purchases" />
       <StatCard label={`Expense (${monthName})`} value={money(expenses)} icon={Wallet} tint="bg-rose-50" iconTone="text-rose-600" to="/expenses" />

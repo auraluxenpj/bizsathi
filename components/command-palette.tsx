@@ -12,7 +12,7 @@ const create: Entry[] = [
   { label: 'Add party', to: '/contacts' },
 ];
 const pages: Entry[] = [
-  { label: 'Dashboard', to: '/dashboard' }, { label: 'Parties', to: '/contacts' }, { label: 'Inventory', to: '/products' },
+  { label: 'Dashboard', to: '/dashboard' }, { label: 'Parties', to: '/parties' }, { label: 'Receive / give payment', to: '/parties' }, { label: 'Inventory', to: '/products' },
   { label: 'Sales', to: '/sales' }, { label: 'Quick POS', to: '/pos' }, { label: 'Purchases', to: '/purchases' },
   { label: 'Expenses', to: '/expenses' }, { label: 'Reports', to: '/accounting' }, { label: 'Stock ledger', to: '/inventory' },
   { label: 'Cash counters', to: '/cash-counters' }, { label: 'Manage staff', to: '/businesses' }, { label: 'My account', to: '/profile' },

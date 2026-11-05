@@ -15,7 +15,7 @@ type Entry = { name: string; icon: LucideIcon; to?: string; children?: Leaf[] };
 
 const business: Entry[] = [
   { name: 'Dashboard', icon: LayoutDashboard, to: '/dashboard' },
-  { name: 'Parties', icon: UserRound, to: '/contacts' },
+  { name: 'Parties', icon: UserRound, to: '/parties' },
   { name: 'Inventory', icon: Package, to: '/products' },
   { name: 'Sales', icon: Receipt, children: [{ to: '/sales', name: 'Sales invoices' }, { to: '/pos', name: 'Quick POS' }, { to: '/cash-counters', name: 'Cash counters' }] },
   { name: 'Purchase', icon: ShoppingCart, to: '/purchases' },
@@ -24,7 +24,7 @@ const business: Entry[] = [
 const adminTools: Leaf[] = [{ to: '/security', name: 'Security findings' }, { to: '/security-history', name: 'Review history' }];
 const bottomTabs: { to: string; name: string; icon: LucideIcon }[] = [
   { to: '/dashboard', name: 'Dashboard', icon: LayoutDashboard }, { to: '/sales', name: 'Sales', icon: Receipt },
-  { to: '/products', name: 'Inventory', icon: Package }, { to: '/contacts', name: 'Parties', icon: UserRound },
+  { to: '/products', name: 'Inventory', icon: Package }, { to: '/parties', name: 'Parties', icon: UserRound },
 ];
 
 const isActive = (pathname: string, to: string) => pathname === to || pathname.startsWith(`${to}/`);
