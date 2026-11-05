@@ -14,5 +14,3 @@ export default defineConfig({
     alias: { "@": path.resolve(__dirname, "./src") },
   },
 });
-bun add dexie dexie-react-hooks nepali-date-converter
-bun add -d vite-plugin-pwa

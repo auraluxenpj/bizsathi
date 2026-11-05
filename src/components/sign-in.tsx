@@ -1,11 +1,10 @@
 import { useEffect, useState } from 'react';
-import { Link, useNavigate } from '@tanstack/react-router';
+import { useNavigate } from '@tanstack/react-router';
 import { useQueryClient } from '@tanstack/react-query';
-import { ShieldCheck, ArrowUpRight } from 'lucide-react';
+import { ArrowUpRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { lovable } from '@/integrations/lovable';
 import { supabase } from '@/integrations/supabase/client';
-import kathmandu from '@/assets/kathmandu.jpg';
 import '@lovable.dev/cloud-auth-js/styles.css';
 import { Input } from '@/components/ui/input';
 import { credentialsInput } from '@/lib/business-schemas';
@@ -52,13 +51,37 @@ export function SignIn() {
     } catch { setError('This request could not be completed. Check your details and try again.'); }
     finally { setBusy(false); }
   }
-  return <main className="min-h-screen bg-background">
-    <header className="flex items-center justify-between border-b px-6 py-5 md:px-12"><span className="brand text-xl font-semibold">bizsathi<span className="text-primary">.</span> <span className="text-xs font-normal text-muted-foreground">NEPAL</span></span><span className="flex items-center gap-2 text-xs text-muted-foreground"><ShieldCheck className="size-4 text-primary" /> Administrator workspace</span></header>
-    <section className="relative isolate flex min-h-[460px] items-end overflow-hidden bg-primary px-6 py-12 md:px-12">
-      <img src={kathmandu} alt="Kathmandu rooftops with the Himalayas beyond" width={1536} height={1024} className="absolute inset-0 -z-20 h-full w-full object-cover" />
-      <div className="absolute inset-0 -z-10 bg-hero-scrim" />
-      <div className="max-w-3xl text-primary-foreground"><p className="mb-4 text-sm">SECURITY & GOVERNANCE</p><h1 className="brand text-5xl font-medium md:text-6xl">BizSathi Nepal</h1><p className="mt-5 max-w-lg text-lg">Security reviews. Clear decisions. A stronger business.</p></div>
-    </section>
-    <section className="mx-auto grid max-w-6xl gap-8 px-6 py-10 md:grid-cols-2 md:px-12"><div><p className="mb-3 text-xs font-semibold text-primary">BUSINESS ACCESS</p><h2 className="brand text-3xl">Your business account</h2><p className="mt-4 text-sm text-muted-foreground">{signedIn ? 'Your account is signed in.' : 'Sign in to your BizSathi Nepal account.'}</p></div><div className="max-w-sm space-y-3">{signedIn ? <><Button className="w-full" size="lg" onClick={() => navigate({ to: '/businesses' })}>Open businesses <ArrowUpRight /></Button><Button asChild variant="outline" className="w-full"><Link to="/security">Open security desk</Link></Button><Button variant="outline" className="w-full" onClick={async () => { await queryClient.cancelQueries(); queryClient.clear(); await supabase.auth.signOut(); setSignedIn(false); await navigate({ to: '/auth', replace: true }); }}>Sign out</Button></> : <><Button className="w-full" size="lg" disabled={busy} onClick={() => login('google')}>Continue with Google <ArrowUpRight /></Button><Button className="lovable-auth-button w-full" variant="outline" size="lg" disabled={busy} onClick={() => login('lovable')}>Continue with Lovable</Button><form className="space-y-4 border-t pt-5" onSubmit={e => { e.preventDefault(); emailLogin(); }}><h3 className="font-medium">{mode === 'recovery' ? 'Recover account' : mode === 'signup' ? 'Create account' : 'Email sign-in'}</h3><label className="block text-sm">Email<Input type="email" autoComplete="email" required maxLength={254} value={email} onChange={e => setEmail(e.target.value)} /></label>{mode !== 'recovery' && <label className="block text-sm">Password<Input type="password" autoComplete={mode === 'signup' ? 'new-password' : 'current-password'} required minLength={8} maxLength={128} value={password} onChange={e => setPassword(e.target.value)} /></label>}<Button className="w-full" disabled={busy}>{busy ? 'Please wait…' : mode === 'recovery' ? 'Send recovery link' : mode === 'signup' ? 'Create account' : 'Sign in'}</Button><div className="flex flex-wrap gap-2"><Button type="button" variant="link" onClick={() => { setMode(mode === 'signup' ? 'login' : 'signup'); setError(''); setMessage(''); }}>{mode === 'signup' ? 'Already have an account?' : 'Create account'}</Button><Button type="button" variant="link" onClick={() => { setMode(mode === 'recovery' ? 'login' : 'recovery'); setError(''); setMessage(''); }}>{mode === 'recovery' ? 'Back to sign-in' : 'Forgot password?'}</Button></div></form></>}{error && <p role="alert" className="text-sm text-destructive">{error}</p>}{message && <p role="status" className="text-sm">{message}</p>}<p className="pt-2 text-xs text-muted-foreground">Security reviews remain restricted to active business owners and administrators.</p></div></section>
+  const title = mode === 'recovery' ? 'Recover account' : mode === 'signup' ? 'Create account' : 'Sign in';
+  return <main className="flex min-h-screen items-center justify-center bg-secondary/40 px-4 py-10">
+    <div className="w-full max-w-sm">
+      <p className="brand mb-6 text-center text-3xl font-semibold">BizSathi<span className="text-primary">.</span></p>
+      <div className="rounded-2xl border bg-card p-6 shadow-sm">
+        {signedIn ? <div className="space-y-3">
+          <h1 className="brand text-xl font-semibold">You are signed in</h1>
+          <Button className="w-full" size="lg" onClick={() => navigate({ to: '/dashboard' })}>Open dashboard <ArrowUpRight /></Button>
+          <Button variant="outline" className="w-full" onClick={async () => { await queryClient.cancelQueries(); queryClient.clear(); await supabase.auth.signOut(); setSignedIn(false); await navigate({ to: '/auth', replace: true }); }}>Sign out</Button>
+        </div> : <>
+          <h1 className="brand text-xl font-semibold">{title}</h1>
+          <form className="mt-5 space-y-4" onSubmit={e => { e.preventDefault(); emailLogin(); }}>
+            <label className="block text-sm">Email<Input className="mt-1 h-11" type="email" autoComplete="email" required maxLength={254} value={email} onChange={e => setEmail(e.target.value)} /></label>
+            {mode !== 'recovery' && <label className="block text-sm">Password<Input className="mt-1 h-11" type="password" autoComplete={mode === 'signup' ? 'new-password' : 'current-password'} required minLength={8} maxLength={128} value={password} onChange={e => setPassword(e.target.value)} /></label>}
+            <Button className="h-11 w-full" disabled={busy}>{busy ? 'Please wait…' : mode === 'recovery' ? 'Send recovery link' : mode === 'signup' ? 'Create account' : 'Sign in'}</Button>
+            <div className="flex flex-wrap justify-between gap-2 text-sm">
+              <button type="button" className="text-primary hover:underline" onClick={() => { setMode(mode === 'signup' ? 'login' : 'signup'); setError(''); setMessage(''); }}>{mode === 'signup' ? 'Already have an account?' : 'Create account'}</button>
+              <button type="button" className="text-muted-foreground hover:underline" onClick={() => { setMode(mode === 'recovery' ? 'login' : 'recovery'); setError(''); setMessage(''); }}>{mode === 'recovery' ? 'Back to sign-in' : 'Forgot password?'}</button>
+            </div>
+          </form>
+          {mode !== 'recovery' && <>
+            <div className="my-5 flex items-center gap-3 text-xs text-muted-foreground"><span className="h-px flex-1 bg-border" />or<span className="h-px flex-1 bg-border" /></div>
+            <div className="grid gap-2">
+              <Button variant="outline" className="h-11" disabled={busy} onClick={() => login('google')}>Continue with Google</Button>
+              <Button className="lovable-auth-button h-11" variant="outline" disabled={busy} onClick={() => login('lovable')}>Continue with Lovable</Button>
+            </div>
+          </>}
+        </>}
+        {error && <p role="alert" className="mt-4 text-sm text-destructive">{error}</p>}
+        {message && <p role="status" className="mt-4 text-sm">{message}</p>}
+      </div>
+    </div>
   </main>;
 }
