@@ -85,7 +85,7 @@ export function AppNavigation({ children, pathname }: { children: ReactNode; pat
 
       <header className="sticky top-0 z-20 flex items-center justify-between border-b bg-card px-4 py-3 lg:hidden">
         <Link to="/dashboard" className="brand truncate text-lg font-semibold">{businessName}</Link>
-        <div className="flex items-center gap-1"><CommandPalette className="hidden" /><Button variant="ghost" size="icon" aria-label="Open menu" title="Menu" onClick={() => setMore(true)}><Menu /></Button></div>
+        <div className="flex items-center gap-1"><CommandPalette variant="icon" shortcut={false} /><Button variant="ghost" size="icon" aria-label="Open menu" title="Menu" onClick={() => setMore(true)}><Menu /></Button></div>
       </header>
 
       <div className="min-w-0 pb-24 lg:pb-0">{children}</div>
