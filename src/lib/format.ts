@@ -4,12 +4,12 @@ import NepaliDate from 'nepali-date-converter';
 
 const nepaliNumber = new Intl.NumberFormat('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
-/** NPR with lakh/crore grouping, e.g. रू 1,23,456.00. Null/invalid values show an em dash. */
+/** NPR with lakh/crore grouping, e.g. Rs. 1,23,456.00. Null/invalid values show an em dash. */
 export function formatNPR(value: number | string | null | undefined): string {
   if (value === null || value === undefined || value === '') return '—';
   const n = Number(value);
   if (!Number.isFinite(n)) return '—';
-  return `${n < 0 ? '-' : ''}रू ${nepaliNumber.format(Math.abs(n))}`;
+  return `${n < 0 ? '-' : ''}Rs. ${nepaliNumber.format(Math.abs(n))}`;
 }
 
 const AD_PATTERN = /^(\d{4})-(\d{2})-(\d{2})$/;
@@ -48,4 +48,44 @@ export function formatBsAd(ad: string): string {
 
 export function todayAd(): string {
   return toIso(new Date());
+}
+
+/** 12.5k / 1.2L / 3.4Cr style axis labels. */
+export function compactNPR(value: number): string {
+  const n = Math.abs(value);
+  const sign = value < 0 ? '-' : '';
+  const trim = (x: number) => String(Math.round(x * 10) / 10);
+  if (n >= 1e7) return `${sign}${trim(n / 1e7)}Cr`;
+  if (n >= 1e5) return `${sign}${trim(n / 1e5)}L`;
+  if (n >= 1e3) return `${sign}${trim(n / 1e3)}k`;
+  return `${sign}${trim(n)}`;
+}
+
+const BS_MONTHS = ['Baisakh', 'Jestha', 'Ashadh', 'Shrawan', 'Bhadra', 'Ashwin', 'Kartik', 'Mangsir', 'Poush', 'Magh', 'Falgun', 'Chaitra'];
+const BS_SHORT = ['Bai', 'Jes', 'Asa', 'Shr', 'Bha', 'Asw', 'Kar', 'Man', 'Pou', 'Mag', 'Fal', 'Cha'];
+
+/** Short BS label such as "Kar 18" for chart axes. */
+export function bsShort(ad: string): string {
+  const d = parseLocal(ad);
+  if (!d) return ad;
+  try { const n = new NepaliDate(d); return `${BS_SHORT[n.getMonth()] ?? ""} ${n.getDate()}`; } catch { return ad; }
+}
+
+/** The BS month that contains an AD date, with its AD start and end dates. */
+export function bsMonthInfo(ad: string): { name: string; fromAd: string; toAd: string } | null {
+  const d = parseLocal(ad);
+  if (!d) return null;
+  try {
+    const n = new NepaliDate(d);
+    const y = n.getYear(); const m = n.getMonth();
+    const from = new NepaliDate(y, m, 1).toJsDate();
+    const next = (m === 11 ? new NepaliDate(y + 1, 0, 1) : new NepaliDate(y, m + 1, 1)).toJsDate();
+    const to = new Date(next.getFullYear(), next.getMonth(), next.getDate() - 1);
+    return { name: BS_MONTHS[m] ?? "", fromAd: toIso(from), toAd: toIso(to) };
+  } catch { return null; }
+}
+
+export function addDaysAd(ad: string, days: number): string {
+  const d = parseLocal(ad) ?? new Date();
+  return toIso(new Date(d.getFullYear(), d.getMonth(), d.getDate() + days));
 }
