@@ -1,4 +1,5 @@
 # Security review workspace
+- [ ] Auraluxe-only workspace: audit and approve removal of business registration/switching; retain branches, trusted permissions and existing records.
 - [ ] Link www.auraluxe.com.np inventory both ways: inspect source website and identify authorized stock interface; preserve one stock authority and prevent duplicate movements. Website-side setup and approval required before activation.
 - [ ] Mobile membership and loyalty: audit complete; approve mandatory sale mobile, AL- membership identity, atomic one-point-per-NPR-100 accrual and online/offline/return safeguards before structural changes.
 - [x] Requested report expansion audited: existing registers/ledger/CSV, missing user filters, stock/low-stock report controls and full print identified; costing/COGS/openings/classifications block complete valuation/profit/statements.
