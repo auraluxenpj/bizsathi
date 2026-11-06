@@ -1,7 +1,7 @@
 import { Link, useNavigate } from '@tanstack/react-router';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useServerFn } from '@tanstack/react-start';
-import { Banknote, Building2, Calculator, ChevronRight, LogOut, MessageSquareText, ShieldCheck, ShoppingCart, ArrowLeftRight, BarChart3, UserCog, UsersRound, Wallet, type LucideIcon } from 'lucide-react';
+import { Banknote, Building2, Calculator, ChevronRight, LogOut, MessageSquareText, ShieldCheck, ShoppingCart, ArrowLeftRight, BarChart3, UserCog, UsersRound, Upload, Wallet, type LucideIcon } from 'lucide-react';
 import { listBusinesses } from '@/lib/business.functions';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -15,6 +15,8 @@ const main: Item[] = [
   { to: '/profile', label: 'Account Settings', icon: UserCog },
 ];
 const utilities: Item[] = [
+  { to: '/contacts', label: 'Import Parties', icon: Upload },
+  { to: '/products', label: 'Import Items', icon: Upload },
   { to: '/calculators', label: 'Calculators', icon: Calculator },
   { to: '/pos', label: 'Quick POS', icon: ShoppingCart },
   { to: '/expenses', label: 'Expenses', icon: Wallet },
