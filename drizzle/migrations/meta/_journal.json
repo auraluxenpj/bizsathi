@@ -134,6 +134,13 @@
       "when": 1793080269495,
       "tag": "0018_mobile_membership_loyalty",
       "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1793926981218,
+      "tag": "0019_migration",
+      "breakpoints": true
     }
   ]
 }
