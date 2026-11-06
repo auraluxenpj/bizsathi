@@ -141,6 +141,13 @@
       "when": 1793926981218,
       "tag": "0019_migration",
       "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "7",
+      "when": 1793927167055,
+      "tag": "0020_expense_receipts",
+      "breakpoints": true
     }
   ]
 }

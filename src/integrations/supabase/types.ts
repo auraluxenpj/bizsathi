@@ -895,6 +895,92 @@ export type Database = {
           },
         ]
       }
+      expense_receipts: {
+        Row: {
+          ai_error: string | null
+          ai_extraction: Json | null
+          ai_model: string | null
+          business_id: string
+          created_at: string
+          file_name: string
+          file_path: string
+          id: string
+          mime_type: string
+          review_note: string | null
+          reviewed: Json | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          status: string
+          uploaded_by: string
+          voucher_id: string | null
+        }
+        Insert: {
+          ai_error?: string | null
+          ai_extraction?: Json | null
+          ai_model?: string | null
+          business_id: string
+          created_at?: string
+          file_name: string
+          file_path: string
+          id?: string
+          mime_type: string
+          review_note?: string | null
+          reviewed?: Json | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+          uploaded_by: string
+          voucher_id?: string | null
+        }
+        Update: {
+          ai_error?: string | null
+          ai_extraction?: Json | null
+          ai_model?: string | null
+          business_id?: string
+          created_at?: string
+          file_name?: string
+          file_path?: string
+          id?: string
+          mime_type?: string
+          review_note?: string | null
+          reviewed?: Json | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+          uploaded_by?: string
+          voucher_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "expense_receipts_business_id_fkey"
+            columns: ["business_id"]
+            isOneToOne: false
+            referencedRelation: "businesses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "expense_receipts_reviewed_by_fkey"
+            columns: ["reviewed_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "expense_receipts_uploaded_by_fkey"
+            columns: ["uploaded_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "expense_receipts_voucher_id_fkey"
+            columns: ["voucher_id"]
+            isOneToOne: false
+            referencedRelation: "accounting_vouchers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       financial_periods: {
         Row: {
           business_id: string
@@ -1482,6 +1568,10 @@ export type Database = {
         Args: { _branch: string; _business: string; _variant: string }
         Returns: number
       }
+      confirm_expense_receipt: {
+        Args: { _receipt_id: string; _request: Json }
+        Returns: string
+      }
       create_business: {
         Args: { _legal_name?: string; _name: string; _pan_vat?: string }
         Returns: string
@@ -1527,6 +1617,10 @@ export type Database = {
       read_business_report_snapshot: {
         Args: { _branch_id?: string; _business_id: string; _through?: string }
         Returns: Json
+      }
+      reject_expense_receipt: {
+        Args: { _note: string; _receipt_id: string }
+        Returns: undefined
       }
       remove_business_member: {
         Args: { _business_id: string; _user_id: string }
