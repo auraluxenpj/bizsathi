@@ -16,6 +16,7 @@ const pages: Entry[] = [
   { label: 'Sales', to: '/sales' }, { label: 'Quick POS', to: '/pos' }, { label: 'Purchases', to: '/purchases' },
   { label: 'Expenses', to: '/expenses' }, { label: 'Reports', to: '/reports' }, { label: 'Transactions', to: '/transactions' }, { label: 'Cash & Bank accounts', to: '/cash-bank' }, { label: 'Credit reminder', to: '/credit-reminder' }, { label: 'Calculators', to: '/calculators' }, { label: 'Stock ledger', to: '/inventory' },
   { label: 'Cash counters', to: '/cash-counters' }, { label: 'Manage staff', to: '/businesses' }, { label: 'My account', to: '/profile' },
+  { label: 'Notebook', to: '/notebook' }, { label: 'Bill Gallery', to: '/bill-gallery' }, { label: 'Item Categories', to: '/categories' },
 ];
 
 // Only one instance should own the keyboard shortcut; the mobile icon passes shortcut={false}.

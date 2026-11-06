@@ -1,7 +1,7 @@
 import { Link, useNavigate } from '@tanstack/react-router';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useServerFn } from '@tanstack/react-start';
-import { Banknote, Building2, Calculator, ChevronRight, LogOut, MessageSquareText, ShieldCheck, ShoppingCart, ArrowLeftRight, BarChart3, UserCog, UsersRound, Upload, Wallet, type LucideIcon } from 'lucide-react';
+import { Banknote, Building2, Image as ImageIcon, NotebookPen, Shapes, Calculator, ChevronRight, LogOut, MessageSquareText, ShieldCheck, ShoppingCart, ArrowLeftRight, BarChart3, UserCog, UsersRound, Upload, Wallet, type LucideIcon } from 'lucide-react';
 import { listBusinesses } from '@/lib/business.functions';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -11,10 +11,13 @@ const main: Item[] = [
   { to: '/credit-reminder', label: 'Credit Reminder', icon: MessageSquareText, badge: 'New' },
   { to: '/businesses', label: 'Manage Staff', icon: UsersRound },
   { to: '/cash-bank', label: 'Cash & Bank Accounts', icon: Banknote },
+  { to: '/categories', label: 'Item Categories', icon: Shapes },
   { to: '/reports', label: 'View Reports', icon: BarChart3 },
   { to: '/profile', label: 'Account Settings', icon: UserCog },
 ];
 const utilities: Item[] = [
+  { to: '/bill-gallery', label: 'Bill Gallery', icon: ImageIcon, badge: 'New' },
+  { to: '/notebook', label: 'Notebook', icon: NotebookPen, badge: 'New' },
   { to: '/contacts', label: 'Import Parties', icon: Upload },
   { to: '/products', label: 'Import Items', icon: Upload },
   { to: '/calculators', label: 'Calculators', icon: Calculator },
