@@ -11,3 +11,11 @@ describe('Inventory integrity',()=>{
  it('rejects negative prices and overprecision quantities',()=>{expect(catalogueRow.safeParse({product_name:'Item',sku:'I',selling_price:-1}).success).toBe(false);expect(stockInput.safeParse({...stock,quantity:1.0001}).success).toBe(false);});
  it('imports quoted CSV and protects exported formula cells',()=>{expect(parseCatalogueCsv('product_name,sku\n"Shirt, red",S1',a)[0]?.product_name).toBe('Shirt, red');expect(makeCsv([{name:'=1+1'}])).toContain("'=1+1");});
 });
+import { describe as d2, it as i2, expect as e2 } from 'vitest';
+import { catalogueInput as ci } from './inventory-schemas';
+d2('catalogue import limit', () => {
+  const row = (n: number) => ({ product_name: `P${n}`, sku: `S${n}` });
+  const biz = '00000000-0000-4000-8000-000000000001';
+  i2('accepts 1000 rows', () => { e2(ci.safeParse({ businessId: biz, rows: Array.from({ length: 1000 }, (_, n) => row(n)) }).success).toBe(true); });
+  i2('rejects 1001 rows', () => { e2(ci.safeParse({ businessId: biz, rows: Array.from({ length: 1001 }, (_, n) => row(n)) }).success).toBe(false); });
+});
