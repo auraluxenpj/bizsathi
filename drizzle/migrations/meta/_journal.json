@@ -5,162 +5,120 @@
     {
       "idx": 0,
       "version": "7",
-      "when": 1791838419072,
-      "tag": "0000_migration",
+      "when": 1790842398854,
+      "tag": "0000_auraluxe_core_schema",
       "breakpoints": true
     },
     {
       "idx": 1,
       "version": "7",
-      "when": 1791838509726,
-      "tag": "0001_migration",
+      "when": 1790901591553,
+      "tag": "0001_admin_bootstrap",
       "breakpoints": true
     },
     {
       "idx": 2,
       "version": "7",
-      "when": 1793074321086,
-      "tag": "0002_security_review_workspace",
+      "when": 1791078100739,
+      "tag": "0002_product_images_policies",
       "breakpoints": true
     },
     {
       "idx": 3,
       "version": "7",
-      "when": 1793074829231,
-      "tag": "0003_business_access_foundation",
+      "when": 1792671155702,
+      "tag": "0003_payment_settings_secure_checkout",
       "breakpoints": true
     },
     {
       "idx": 4,
       "version": "7",
-      "when": 1793076432617,
-      "tag": "0004_inventory_master_data",
+      "when": 1792714690590,
+      "tag": "0004_order_restock",
       "breakpoints": true
     },
     {
       "idx": 5,
       "version": "7",
-      "when": 1793076614761,
-      "tag": "0005_stock_request_contract",
+      "when": 1792809251638,
+      "tag": "0005_banner_mobile_image",
       "breakpoints": true
     },
     {
       "idx": 6,
       "version": "7",
-      "when": 1793076953830,
-      "tag": "0006_commerce_posting_foundation",
+      "when": 1792810942130,
+      "tag": "0006_public_order_tracking",
       "breakpoints": true
     },
     {
       "idx": 7,
       "version": "7",
-      "when": 1793077002522,
-      "tag": "0007_commerce_confirmation_contract",
+      "when": 1792812024135,
+      "tag": "0007_tighten_public_reads",
       "breakpoints": true
     },
     {
       "idx": 8,
       "version": "7",
-      "when": 1793077037015,
-      "tag": "0008_commerce_counter_and_stock_guards",
+      "when": 1792814495730,
+      "tag": "0008_per_size_stock_checkout",
       "breakpoints": true
     },
     {
       "idx": 9,
       "version": "7",
-      "when": 1793077245695,
-      "tag": "0009_commerce_function_validation_fixes",
+      "when": 1792814515892,
+      "tag": "0009_restock_size_variants",
       "breakpoints": true
     },
     {
       "idx": 10,
       "version": "7",
-      "when": 1793077303572,
-      "tag": "0010_commerce_draft_and_source_controls",
+      "when": 1792819015995,
+      "tag": "0010_auraluxe_pos_counter",
       "breakpoints": true
     },
     {
       "idx": 11,
       "version": "7",
-      "when": 1793077370474,
-      "tag": "0011_legacy_stock_combined_balance",
+      "when": 1792819364531,
+      "tag": "0011_pos_least_privilege_grants",
       "breakpoints": true
     },
     {
       "idx": 12,
       "version": "7",
-      "when": 1793077590002,
-      "tag": "0012_commerce_numeric_and_refund_validation",
+      "when": 1792819640576,
+      "tag": "0012_khata_settlements_expenses",
       "breakpoints": true
     },
     {
       "idx": 13,
       "version": "7",
-      "when": 1793077863355,
-      "tag": "0013_accounting_read_snapshot",
+      "when": 1792819903456,
+      "tag": "0013_consistent_customer_statement",
       "breakpoints": true
     },
     {
       "idx": 14,
       "version": "7",
-      "when": 1793078034687,
-      "tag": "0014_accounting_snapshot_evidence_projection",
+      "when": 1792820160865,
+      "tag": "0014_vendor_purchase_tracking",
       "breakpoints": true
     },
     {
       "idx": 15,
       "version": "7",
-      "when": 1793078379462,
-      "tag": "0015_controlled_accounting_vouchers",
+      "when": 1792820220865,
+      "tag": "0015_inventory_sync",
       "breakpoints": true
     },
     {
       "idx": 16,
       "version": "7",
-      "when": 1793078560465,
-      "tag": "0016_voucher_strict_reversal_contract",
-      "breakpoints": true
-    },
-    {
-      "idx": 17,
-      "version": "7",
-      "when": 1793079659544,
-      "tag": "0017_business_report_stock_and_actor_snapshot",
-      "breakpoints": true
-    },
-    {
-      "idx": 18,
-      "version": "7",
-      "when": 1793080269495,
-      "tag": "0018_mobile_membership_loyalty",
-      "breakpoints": true
-    },
-    {
-      "idx": 19,
-      "version": "7",
-      "when": 1793926981218,
-      "tag": "0019_migration",
-      "breakpoints": true
-    },
-    {
-      "idx": 20,
-      "version": "7",
-      "when": 1793927167055,
-      "tag": "0020_expense_receipts",
-      "breakpoints": true
-    },
-    {
-      "idx": 21,
-      "version": "7",
-      "when": 1793927227055,
-      "tag": "0021_notebook_and_bill_gallery",
-      "breakpoints": true
-    },
-    {
-      "idx": 22,
-      "version": "7",
-      "when": 1794022597675,
-      "tag": "0022_website_stock_sync",
+      "when": 1792820280865,
+      "tag": "0016_inventory_sync_push_guard",
       "breakpoints": true
     }
   ]
