@@ -155,6 +155,13 @@
       "when": 1793927227055,
       "tag": "0021_notebook_and_bill_gallery",
       "breakpoints": true
+    },
+    {
+      "idx": 22,
+      "version": "7",
+      "when": 1794022597675,
+      "tag": "0022_website_stock_sync",
+      "breakpoints": true
     }
   ]
 }

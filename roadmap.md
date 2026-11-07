@@ -1,6 +1,7 @@
 # Security review workspace
 - [ ] Auraluxe-only workspace: audit and approve removal of business registration/switching; retain branches, trusted permissions and existing records.
-- [ ] Add requested Sync with Website ledger action for the Auraluxe inventory-sync API; audit API contract, shared secret, active SKU mapping, branch allocation and retry safeguards before activation.
+- [x] Add Sync with Website ledger action, reviewed branch comparison, server-only connection, durable acknowledgement recovery and conditional count pushes; 32 focused tests passed and signed-in desktop/mobile error feedback verified.
+- [ ] Activate and verify live website sync: website returned 401 to the saved INVENTORY_SYNC_SECRET; user must configure the identical value in both apps, then review fulfilment branch/SKUs. No live stock changed. Isolated SQL mutation/isolation verification remains unexecuted.
 - [ ] Mobile membership and loyalty: audit complete; approve mandatory sale mobile, AL- membership identity, atomic one-point-per-NPR-100 accrual and online/offline/return safeguards before structural changes.
 - [x] Requested report expansion audited: existing registers/ledger/CSV, missing user filters, stock/low-stock report controls and full print identified; costing/COGS/openings/classifications block complete valuation/profit/statements.
 - [x] Approved report expansion: date/branch/posting-user controls, stock/low-stock, dedicated customer/supplier/receivable/payable views and full CSV/print; 95 tests and isolated report/financial regression suites passed.
