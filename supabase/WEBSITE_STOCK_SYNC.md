@@ -22,3 +22,10 @@ Each acknowledgement is recorded locally once, then completed remotely. Failed c
 ## Activation checks
 
 Verify the shared secret against a read-only comparison and review the actual fulfilment branch/SKU mapping before a live stock-changing run. Synthetic tests must run only in an isolated database. No Auraluxe website code or deployment is modified from this project.
+
+## Verified in this change
+
+- 32 focused unit/regression tests passed, including nine sync workflow tests.
+- Authenticated desktop and mobile comparison reached the real website and displayed its authorization rejection clearly; mobile had no horizontal page overflow.
+- Latest preview compilation succeeded. New binding and acknowledgement tables exist; both contain zero records, so no stock-changing sync ran.
+- Live activation is blocked by the website rejecting the saved shared secret (HTTP 401). The user must configure the identical value in both apps and repeat comparison. Successful live posting/read-back and isolated database mutation/isolation tests are not verified.
