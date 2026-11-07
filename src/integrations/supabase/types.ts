@@ -236,6 +236,50 @@ export type Database = {
           },
         ]
       }
+      business_bills: {
+        Row: {
+          bill_date: string
+          business_id: string
+          caption: string
+          created_at: string
+          created_by: string
+          id: string
+          mime_type: string
+          size_bytes: number
+          storage_path: string
+        }
+        Insert: {
+          bill_date?: string
+          business_id: string
+          caption?: string
+          created_at?: string
+          created_by?: string
+          id?: string
+          mime_type: string
+          size_bytes: number
+          storage_path: string
+        }
+        Update: {
+          bill_date?: string
+          business_id?: string
+          caption?: string
+          created_at?: string
+          created_by?: string
+          id?: string
+          mime_type?: string
+          size_bytes?: number
+          storage_path?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "business_bills_business_id_fkey"
+            columns: ["business_id"]
+            isOneToOne: false
+            referencedRelation: "businesses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       business_invitations: {
         Row: {
           accepted_at: string | null
@@ -355,6 +399,47 @@ export type Database = {
             columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      business_notes: {
+        Row: {
+          body: string
+          business_id: string
+          created_at: string
+          created_by: string
+          id: string
+          pinned: boolean
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          body?: string
+          business_id: string
+          created_at?: string
+          created_by?: string
+          id?: string
+          pinned?: boolean
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          body?: string
+          business_id?: string
+          created_at?: string
+          created_by?: string
+          id?: string
+          pinned?: boolean
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "business_notes_business_id_fkey"
+            columns: ["business_id"]
+            isOneToOne: false
+            referencedRelation: "businesses"
             referencedColumns: ["id"]
           },
         ]
@@ -1538,6 +1623,7 @@ export type Database = {
         Returns: string
       }
       archive_business: { Args: { _business_id: string }; Returns: undefined }
+      bill_object_business: { Args: { _name: string }; Returns: string }
       business_role_rank: {
         Args: { _business_id: string; _user_id?: string }
         Returns: number
