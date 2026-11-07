@@ -1609,6 +1609,120 @@ export type Database = {
           },
         ]
       }
+      website_stock_acknowledgements: {
+        Row: {
+          actor_id: string
+          branch_id: string
+          business_id: string
+          created_at: string
+          delta: number
+          id: string
+          operation_id: string
+          sku: string
+          variant_id: string
+        }
+        Insert: {
+          actor_id: string
+          branch_id: string
+          business_id: string
+          created_at?: string
+          delta: number
+          id: string
+          operation_id: string
+          sku: string
+          variant_id: string
+        }
+        Update: {
+          actor_id?: string
+          branch_id?: string
+          business_id?: string
+          created_at?: string
+          delta?: number
+          id?: string
+          operation_id?: string
+          sku?: string
+          variant_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "website_stock_acknowledgements_actor_id_fkey"
+            columns: ["actor_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "website_stock_acknowledgements_business_id_branch_id_fkey"
+            columns: ["business_id", "branch_id"]
+            isOneToOne: false
+            referencedRelation: "branches"
+            referencedColumns: ["business_id", "id"]
+          },
+          {
+            foreignKeyName: "website_stock_acknowledgements_business_id_fkey"
+            columns: ["business_id"]
+            isOneToOne: false
+            referencedRelation: "businesses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "website_stock_acknowledgements_business_id_operation_id_fkey"
+            columns: ["business_id", "operation_id"]
+            isOneToOne: false
+            referencedRelation: "stock_operations"
+            referencedColumns: ["business_id", "id"]
+          },
+          {
+            foreignKeyName: "website_stock_acknowledgements_business_id_variant_id_fkey"
+            columns: ["business_id", "variant_id"]
+            isOneToOne: false
+            referencedRelation: "product_variants"
+            referencedColumns: ["business_id", "id"]
+          },
+        ]
+      }
+      website_stock_sync: {
+        Row: {
+          branch_id: string
+          business_id: string
+          connection: string
+          created_at: string
+          lease_id: string | null
+          lease_until: string | null
+        }
+        Insert: {
+          branch_id: string
+          business_id: string
+          connection?: string
+          created_at?: string
+          lease_id?: string | null
+          lease_until?: string | null
+        }
+        Update: {
+          branch_id?: string
+          business_id?: string
+          connection?: string
+          created_at?: string
+          lease_id?: string | null
+          lease_until?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "website_stock_sync_business_id_branch_id_fkey"
+            columns: ["business_id", "branch_id"]
+            isOneToOne: false
+            referencedRelation: "branches"
+            referencedColumns: ["business_id", "id"]
+          },
+          {
+            foreignKeyName: "website_stock_sync_business_id_fkey"
+            columns: ["business_id"]
+            isOneToOne: true
+            referencedRelation: "businesses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
@@ -1623,6 +1737,10 @@ export type Database = {
         Returns: string
       }
       archive_business: { Args: { _business_id: string }; Returns: undefined }
+      begin_website_stock_sync: {
+        Args: { _branch_id: string; _business_id: string; _lease_id: string }
+        Returns: undefined
+      }
       bill_object_business: { Args: { _name: string }; Returns: string }
       business_role_rank: {
         Args: { _business_id: string; _user_id?: string }
@@ -1671,6 +1789,10 @@ export type Database = {
         }
         Returns: string
       }
+      end_website_stock_sync: {
+        Args: { _business_id: string; _lease_id: string }
+        Returns: undefined
+      }
       has_business_role: {
         Args: { _business_id: string; _min_role: string }
         Returns: boolean
@@ -1703,6 +1825,21 @@ export type Database = {
       read_business_report_snapshot: {
         Args: { _branch_id?: string; _business_id: string; _through?: string }
         Returns: Json
+      }
+      read_website_stock_snapshot: {
+        Args: { _branch_id: string; _business_id: string }
+        Returns: Json
+      }
+      record_website_stock_ack: {
+        Args: {
+          _ack_id: string
+          _branch_id: string
+          _business_id: string
+          _delta: number
+          _lease_id: string
+          _sku: string
+        }
+        Returns: boolean
       }
       reject_expense_receipt: {
         Args: { _note: string; _receipt_id: string }
