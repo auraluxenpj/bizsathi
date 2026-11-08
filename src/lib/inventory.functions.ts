@@ -2,6 +2,19 @@ import { createServerFn } from '@tanstack/react-start';
 import { requireSupabaseAuth } from '@/integrations/supabase/auth-middleware';
 import { tenantInput } from './business-schemas';
 import { catalogueInput, partyInput, stockInput, variantEditInput } from './inventory-schemas';
+import { googleSheetCatalogueInput } from './google-sheet-catalogue';
+export const fetchGoogleSheetCatalogue = createServerFn({method:'POST'}).middleware([requireSupabaseAuth]).inputValidator(googleSheetCatalogueInput).handler(async ({data,context})=>{
+ const {data:member,error}=await context.supabase.rpc('is_business_member',{_business_id:data.businessId});
+ const {data:admin,error:roleError}=await context.supabase.rpc('has_business_role',{_business_id:data.businessId,_min_role:'admin'});
+ if(error || roleError || !member || !admin) throw new Error('Administrator access to this business is required.');
+ const {readGoogleSheetCatalogue}=await import('./google-sheet-catalogue.server');
+ try {
+  return await readGoogleSheetCatalogue(data,{gatewayKey:process.env['LOVABLE_API_KEY'],connectionKey:process.env['GOOGLE_SHEETS_API_KEY']});
+ } catch(error) {
+  if(error instanceof Error && (error.name==='TimeoutError' || error.name==='TypeError')) throw new Error('Google Sheets could not be reached. Check the URL and try again.');
+  throw error;
+ }
+});
 export const getInventory = createServerFn({method:'GET'}).middleware([requireSupabaseAuth]).inputValidator(tenantInput).handler(async ({data,context})=>{
  const {data:member,error:accessError}=await context.supabase.rpc('is_business_member',{_business_id:data.businessId});
  if(accessError || !member) throw new Error('Business access is required.');
