@@ -1,5 +1,5 @@
 # Security review workspace
-- [ ] Master Inventory & Catalogue CSV compatibility: normalize header aliases, formatted numbers and defaults; verify original and sheet formats with regression tests.
+- [x] Master Inventory & Catalogue CSV compatibility: header aliases, formatted numbers and defaults implemented; 27 importer/schema tests passed, original and sheet formats plus export round-trip verified. No live catalogue records changed.
 - [ ] Auraluxe-only workspace: audit and approve removal of business registration/switching; retain branches, trusted permissions and existing records.
 - [x] Add Sync with Website ledger action, reviewed branch comparison, server-only connection, durable acknowledgement recovery and conditional count pushes; 32 focused tests passed and signed-in desktop/mobile error feedback verified.
 - [ ] Activate and verify live website sync: website returned 401 to the saved INVENTORY_SYNC_SECRET; user must configure the identical value in both apps, then review fulfilment branch/SKUs. No live stock changed. Isolated SQL mutation/isolation verification remains unexecuted.
