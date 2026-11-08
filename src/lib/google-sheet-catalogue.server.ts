@@ -1,7 +1,7 @@
 import { extractSpreadsheetId, parseGoogleSheetValues } from './google-sheet-catalogue';
 import { parseCatalogueCsv } from './inventory-csv';
 
-export async function readGoogleSheetCatalogue(input: {businessId:string;spreadsheetIdOrUrl:string;sheetName:string}, credentials: {gatewayKey?:string;connectionKey?:string}, request: typeof fetch = fetch) {
+export async function readGoogleSheetCatalogue(input: {businessId:string;spreadsheetIdOrUrl:string;sheetName:string}, credentials: {gatewayKey?:string | undefined;connectionKey?:string | undefined}, request: typeof fetch = fetch) {
  const id = extractSpreadsheetId(input.spreadsheetIdOrUrl);
  const options = {signal:AbortSignal.timeout(20000)};
  if (credentials.gatewayKey && credentials.connectionKey) {

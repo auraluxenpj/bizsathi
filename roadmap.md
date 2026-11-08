@@ -1,4 +1,5 @@
 # Security review workspace
+- [ ] Direct Google Sheets catalogue import: protected fetch, editable master-sheet dialog, validated preview and existing confirmation; test parsing, access and live preview without posting records.
 - [x] Master Inventory & Catalogue CSV compatibility: header aliases, formatted numbers and defaults implemented; 27 importer/schema tests passed, original and sheet formats plus export round-trip verified. No live catalogue records changed.
 - [ ] Auraluxe-only workspace: audit and approve removal of business registration/switching; retain branches, trusted permissions and existing records.
 - [x] Add Sync with Website ledger action, reviewed branch comparison, server-only connection, durable acknowledgement recovery and conditional count pushes; 32 focused tests passed and signed-in desktop/mobile error feedback verified.
