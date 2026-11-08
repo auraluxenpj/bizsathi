@@ -13,6 +13,47 @@ describe('Inventory integrity',()=>{
 });
 import { describe as d2, it as i2, expect as e2 } from 'vitest';
 import { catalogueInput as ci } from './inventory-schemas';
+describe('Master sheet catalogue CSV compatibility', () => {
+ it('parses the original format with all catalogue values', () => {
+  expect(parseCatalogueCsv('product_name,category,variant_name,sku,barcode,unit,selling_price,reorder_level\nShirt,Clothing,Large,S1,123,pcs,1250.50,2.5', a)).toEqual([
+   {product_name:'Shirt',category:'Clothing',variant_name:'Large',sku:'S1',barcode:'123',unit:'pcs',selling_price:1250.5,reorder_level:2.5},
+  ]);
+ });
+ it('parses master sheet headers and formatted currency and quantities', () => {
+  expect(parseCatalogueCsv('Item Name,Category,Variant / Size,Generated SKU,Barcode,Primary Unit,Selling Price,Reorder Level\nShirt,Clothing,Large,S1,123,pcs,"NPR 1,250.50","1,000"', a)).toEqual([
+   {product_name:'Shirt',category:'Clothing',variant_name:'Large',sku:'S1',barcode:'123',unit:'pcs',selling_price:1250.5,reorder_level:1000},
+  ]);
+ });
+ const aliasSets = [
+  ['product_name', 'Item Name', 'item_name', 'Product Name', 'Product', 'Name'],
+  ['variant_name', 'Variant / Size', 'Variant', 'Size'],
+  ['sku', 'Generated SKU', 'SKU', 'Item Code', 'Code'],
+  ['unit', 'Primary Unit', 'Unit'],
+  ['selling_price', 'Selling Price', 'Sales Price', 'Price', 'Rate'],
+  ['reorder_level', 'Reorder Level', 'Low Stock', 'Low Stock Threshold'],
+ ];
+ it.each(Array.from({length:6}, (_, i) => i))('accepts trimmed mixed-case aliases (set %s)', i => {
+  const headers = aliasSets.map(aliases => ` ${aliases[i % aliases.length]?.toUpperCase()} `).join(',');
+  expect(parseCatalogueCsv(`${headers}\nShirt,Large,S1,box,Rs. 250/-,3.125`, a)[0]).toMatchObject({product_name:'Shirt',variant_name:'Large',sku:'S1',unit:'box',selling_price:250,reorder_level:3.125});
+ });
+ it.each(['Item Name,Generated SKU\nShirt,S1', 'Item Name,Generated SKU,Variant / Size,Primary Unit,Reorder Level\nShirt,S1,  ,  ,  '])('defaults omitted or blank fields', csv => {
+  expect(parseCatalogueCsv(csv, a)[0]).toMatchObject({variant_name:'Standard',unit:'pcs',selling_price:0,reorder_level:0});
+ });
+ it.each(['-1', 'NPR -100', '12abc', 'NPR nope', '1.234', '10%'])('rejects invalid prices: %s', price => {
+  expect(() => parseCatalogueCsv(`Item Name,Generated SKU,Selling Price\nShirt,S1,${price}`, a)).toThrow();
+ });
+ it('preserves quoted names and currency symbols', () => {
+  expect(parseCatalogueCsv('Item Name,Generated SKU,Price\n"Shirt, red",S1,"₨ 1,200.50"', a)[0]).toMatchObject({product_name:'Shirt, red',selling_price:1200.5});
+ });
+ it('still requires product and SKU headers and nonempty values', () => {
+  expect(() => parseCatalogueCsv('Item Name,Price\nShirt,10', a)).toThrow();
+  expect(() => parseCatalogueCsv('Item Name,Generated SKU\nShirt,', a)).toThrow();
+ });
+ it('round-trips exported catalogue CSV through the importer', () => {
+  const rows = parseCatalogueCsv('Item Name,Generated SKU,Selling Price\nShirt,S1,250', a);
+  expect(parseCatalogueCsv(makeCsv(rows), a)).toEqual(rows);
+ });
+});
 d2('catalogue import limit', () => {
   const row = (n: number) => ({ product_name: `P${n}`, sku: `S${n}` });
   const biz = '00000000-0000-4000-8000-000000000001';
