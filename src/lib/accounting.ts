@@ -13,7 +13,7 @@ export const snapshotSchema=z.object({
  counters:z.array(z.object({id:z.string(),reference:z.string()})),parties:z.array(z.object({id:z.string(),name:z.string(),kind:z.string()})),branches:z.array(z.object({id:z.string(),name:z.string()})),periods:z.array(z.object({id:z.string(),name:z.string(),start_date:z.string(),end_date:z.string()}))
 });
 export type Snapshot=z.infer<typeof snapshotSchema>;
-export const accounts=[['cash','Cash'],['bank','Bank'],['wallet','Digital wallet'],['receivable','Accounts receivable'],['payable','Accounts payable'],['sales','Sales'],['purchases','Periodic purchases'],['vat_output','VAT output'],['vat_input','VAT input'],['counter_clearing','Counter clearing'],['expense_rent','Rent expense'],['expense_utilities','Utilities expense'],['expense_operating','Operating expense']] as const;
+export const accounts=[['cash','Cash'],['bank','Bank'],['wallet','Digital wallet'],['receivable','Accounts receivable'],['payable','Accounts payable'],['sales','Sales'],['purchases','Periodic purchases'],['vat_output','VAT output'],['vat_input','VAT input'],['counter_clearing','Counter clearing'],['expense_rent','Rent expense'],['expense_utilities','Utilities expense'],['expense_operating','Operating expense'],['expense_salaries','Salaries'],['expense_transport','Transport'],['expense_marketing','Marketing'],['expense_supplies','Supplies'],['expense_repairs','Repairs & maintenance'],['expense_professional','Professional fees']] as const;
 export type ReportRow=Record<string,string>;
 const money=(v:Decimal.Value)=>new Decimal(v).toFixed(2);
 export function buildReport(s:Snapshot,f:ReportInput){
