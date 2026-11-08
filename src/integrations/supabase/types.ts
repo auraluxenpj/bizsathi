@@ -1797,6 +1797,7 @@ export type Database = {
         Args: { _business_id: string; _min_role: string }
         Returns: boolean
       }
+      inv_sync_push: { Args: { _items: Json }; Returns: Json }
       is_business_member: { Args: { _business_id: string }; Returns: boolean }
       normalize_member_mobile: { Args: { _mobile: string }; Returns: string }
       post_accounting_voucher: { Args: { _request: Json }; Returns: string }
