@@ -92,7 +92,8 @@ describe('Navigation and sign-in', () => {
   it('renders a simple sign-in card', async () => {
     auth.user = null;
     mount(<SignIn />);
-    expect(await screen.findByRole('heading', { name: 'Sign in' })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: 'Sign in with mobile' })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: /Existing account/ }));
     expect(screen.getByLabelText('Email')).toBeInTheDocument();
     expect(screen.getByLabelText('Password')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /Continue with Google/ })).toBeInTheDocument();

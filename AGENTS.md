@@ -10,6 +10,7 @@
 <!-- LOVABLE:END -->
 
 - Tenant data: every tenant table has `business_id`, RLS via `is_business_member`/`has_business_role` (rank from `roles` table); membership writes only through SECURITY DEFINER RPCs. Why: permissions must come from DB records, never client input.
+- Phone authentication uses Cloud Auth OTP and verified phone changes on existing identities, never editable profile phone data; disable legacy providers only after real SMS and retained-member access verification. Why: avoid account takeover, duplicate identities and locking out existing staff.
 - After any new table, REVOKE platform default grants and grant least privilege explicitly. Why: defaults give authenticated full write access.
 - Financial/posted records use ON DELETE RESTRICT, never CASCADE. Why: accounting history must not vanish.
 - Security review history uses append-only tenant events with administrator RLS and server-side membership verification; findings, analyses, and decisions remain separate evidence. Why: preserve attribution and prevent AI advice from becoming an approval.

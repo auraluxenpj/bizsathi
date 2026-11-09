@@ -8,6 +8,7 @@ import { supabase } from '@/integrations/supabase/client';
 import '@lovable.dev/cloud-auth-js/styles.css';
 import { Input } from '@/components/ui/input';
 import { credentialsInput } from '@/lib/business-schemas';
+import { PhoneOtp } from '@/components/phone-otp';
 
 export function SignIn() {
   const navigate = useNavigate();
@@ -16,6 +17,7 @@ export function SignIn() {
   const [error, setError] = useState('');
   const [signedIn, setSignedIn] = useState(false);
   const [mode, setMode] = useState<'login'|'signup'|'recovery'>('login');
+  const [legacy, setLegacy] = useState(false);
   const [email, setEmail] = useState(''); const [password, setPassword] = useState(''); const [message, setMessage] = useState('');
   useEffect(() => { supabase.auth.getUser().then(({ data }) => setSignedIn(Boolean(data.user))); }, []);
   async function login(provider: 'google' | 'lovable') {
@@ -54,14 +56,15 @@ export function SignIn() {
   const title = mode === 'recovery' ? 'Recover account' : mode === 'signup' ? 'Create account' : 'Sign in';
   return <main className="flex min-h-screen items-center justify-center bg-secondary/40 px-4 py-10">
     <div className="w-full max-w-sm">
-      <p className="brand mb-6 text-center text-3xl font-semibold">BizSathi<span className="text-primary">.</span></p>
+      <p className="brand mb-6 text-center text-3xl font-semibold">Auraluxe<span className="text-primary">.</span></p>
       <div className="rounded-2xl border bg-card p-6 shadow-sm">
         {signedIn ? <div className="space-y-3">
           <h1 className="brand text-xl font-semibold">You are signed in</h1>
           <Button className="w-full" size="lg" onClick={() => navigate({ to: '/dashboard' })}>Open dashboard <ArrowUpRight /></Button>
           <Button variant="outline" className="w-full" onClick={async () => { await queryClient.cancelQueries(); queryClient.clear(); await supabase.auth.signOut(); setSignedIn(false); await navigate({ to: '/auth', replace: true }); }}>Sign out</Button>
         </div> : <>
-          <h1 className="brand text-xl font-semibold">{title}</h1>
+          <h1 className="brand text-xl font-semibold">{legacy ? title : 'Sign in with mobile'}</h1>
+          {!legacy ? <div className="mt-5 space-y-4"><PhoneOtp mode="login" onVerified={async () => { await navigate({ to: sessionStorage.getItem('bizsathi-invite') ? '/invite' : '/dashboard', replace: true }); }} /><Button variant="link" className="h-auto whitespace-normal text-center" onClick={() => setLegacy(true)}>Existing account — verify your login mobile</Button></div> : <>
           <form className="mt-5 space-y-4" onSubmit={e => { e.preventDefault(); emailLogin(); }}>
             <label className="block text-sm">Email<Input className="mt-1 h-11" type="email" autoComplete="email" required maxLength={254} value={email} onChange={e => setEmail(e.target.value)} /></label>
             {mode !== 'recovery' && <label className="block text-sm">Password<Input className="mt-1 h-11" type="password" autoComplete={mode === 'signup' ? 'new-password' : 'current-password'} required minLength={8} maxLength={128} value={password} onChange={e => setPassword(e.target.value)} /></label>}
@@ -77,6 +80,8 @@ export function SignIn() {
               <Button variant="outline" className="h-11" disabled={busy} onClick={() => login('google')}>Continue with Google</Button>
               <Button className="lovable-auth-button h-11" variant="outline" disabled={busy} onClick={() => login('lovable')}>Continue with Lovable</Button>
             </div>
+          </>}
+          <Button variant="link" className="mt-4 w-full" onClick={() => { setLegacy(false); setError(''); setMessage(''); }}>Back to mobile sign-in</Button>
           </>}
         </>}
         {error && <p role="alert" className="mt-4 text-sm text-destructive">{error}</p>}
