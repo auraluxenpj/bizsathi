@@ -162,6 +162,13 @@
       "when": 1794022597675,
       "tag": "0022_website_stock_sync",
       "breakpoints": true
+    },
+    {
+      "idx": 23,
+      "version": "7",
+      "when": 1794022657675,
+      "tag": "0023_catalogue_import_5000",
+      "breakpoints": true
     }
   ]
 }

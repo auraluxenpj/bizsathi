@@ -14,7 +14,7 @@ describe('Google Sheets catalogue import',()=>{
   const rows=await readGoogleSheetCatalogue(input,{gatewayKey:'test-gateway',connectionKey:'test-connection'},request);
   expect(rows[0]?.sku).toBe('S1');
   const url=String(request.mock.calls[0]?.[0]);
-  expect(url).toContain('A1:Z1002');expect(url).not.toContain('%3A');expect(url).toContain('Inventory%20&%20Catalogue');
+  expect(url).toContain('A1:Z5002');expect(url).not.toContain('%3A');expect(url).toContain('Inventory%20&%20Catalogue');
   expect(request.mock.calls[0]?.[1]?.headers).toEqual({Authorization:'Bearer test-gateway','X-Connection-Api-Key':'test-connection'});
  });
  it('uses link-shared CSV without connector credentials',async()=>{
@@ -36,5 +36,5 @@ describe('Google Sheets catalogue import',()=>{
   const request=vi.fn<typeof fetch>().mockResolvedValue(new Response('<html>Sign in</html>'));
   await expect(readGoogleSheetCatalogue(input,{},request)).rejects.toThrow('private or unreachable');
  });
- it('rejects more than 1,000 product rows',()=>expect(()=>parseGoogleSheetValues([['Item Name','Generated SKU'],...Array.from({length:1001},(_,i)=>[`Product ${i}`,`S${i}`])],businessId)).toThrow());
+ it('rejects more than 5,000 product rows',()=>expect(()=>parseGoogleSheetValues([['Item Name','Generated SKU'],...Array.from({length:5001},(_,i)=>[`Product ${i}`,`S${i}`])],businessId)).toThrow());
 });

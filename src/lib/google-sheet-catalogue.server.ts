@@ -5,8 +5,8 @@ export async function readGoogleSheetCatalogue(input: {businessId:string;spreads
  const id = extractSpreadsheetId(input.spreadsheetIdOrUrl);
  const options = {signal:AbortSignal.timeout(20000)};
  if (credentials.gatewayKey && credentials.connectionKey) {
-  // Read one extra data row so the 1,000-row limit cannot silently truncate imports.
-  const range = `'${input.sheetName.replace(/'/g, "''")}'!A1:Z1002`;
+  // Read one extra data row so the 5,000-row limit cannot silently truncate imports.
+  const range = `'${input.sheetName.replace(/'/g, "''")}'!A1:Z5002`;
   const url = new URL(`https://connector-gateway.lovable.dev/google_sheets/v4/spreadsheets/${id}/values/${range}`);
   const response = await request(url, {...options,redirect:'error',headers:{Authorization:`Bearer ${credentials.gatewayKey}`,'X-Connection-Api-Key':credentials.connectionKey}});
   if (response.ok) {
@@ -24,7 +24,7 @@ export async function readGoogleSheetCatalogue(input: {businessId:string;spreads
  const response = await request(url, {...options,redirect:'follow'});
  if (!response.ok) throw new Error(`The sheet is private or unreachable (${response.status}). Check the sheet URL, tab name and Google Sheets access or link-sharing settings.`);
  const text = await response.text();
- if (text.length > 2_000_000) throw new Error('Sheet data must be smaller than 2 MB.');
+ if (text.length > 5_000_000) throw new Error('Sheet data must be smaller than 5 MB.');
  if (/^\s*</.test(text)) throw new Error('The sheet is private or unreachable. Check Google Sheets access or link-sharing settings.');
  return parseCatalogueCsv(text, input.businessId);
 }

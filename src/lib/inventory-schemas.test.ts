@@ -57,6 +57,6 @@ describe('Master sheet catalogue CSV compatibility', () => {
 d2('catalogue import limit', () => {
   const row = (n: number) => ({ product_name: `P${n}`, sku: `S${n}` });
   const biz = '00000000-0000-4000-8000-000000000001';
-  i2('accepts 1000 rows', () => { e2(ci.safeParse({ businessId: biz, rows: Array.from({ length: 1000 }, (_, n) => row(n)) }).success).toBe(true); });
-  i2('rejects 1001 rows', () => { e2(ci.safeParse({ businessId: biz, rows: Array.from({ length: 1001 }, (_, n) => row(n)) }).success).toBe(false); });
+  i2('accepts 5000 rows', () => { e2(ci.safeParse({ businessId: biz, rows: Array.from({ length: 5000 }, (_, n) => row(n)) }).success).toBe(true); });
+  i2('rejects 5001 rows', () => { e2(ci.safeParse({ businessId: biz, rows: Array.from({ length: 5001 }, (_, n) => row(n)) }).success).toBe(false); });
 });
