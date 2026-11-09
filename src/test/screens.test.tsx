@@ -6,17 +6,18 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { todayAd } from '@/lib/format';
 
 const ID = { biz: '55555555-5555-4555-8555-555555555555', br: '33333333-3333-4333-8333-333333333333', per: '44444444-4444-4444-8444-444444444444', user: '66666666-6666-4666-8666-666666666666', v1: '77777777-7777-4777-8777-777777777777', p1: '88888888-8888-4888-8888-888888888888' };
-const state = { periods: [{ id: ID.per, name: 'FY test', status: 'open', start_date: '2020-01-01', end_date: '2099-12-31' }] as { id: string; name: string; status: string; start_date: string; end_date: string }[] };
+const SESSION = '99999999-9999-4999-8999-999999999999';
+const state = { counter: true, periods: [{ id: ID.per, name: 'FY test', status: 'open', start_date: '2020-01-01', end_date: '2099-12-31' }] as { id: string; name: string; status: string; start_date: string; end_date: string }[] };
 class ResizeObserverStub { observe() {} unobserve() {} disconnect() {} }
 (globalThis as unknown as { ResizeObserver: unknown }).ResizeObserver = ResizeObserverStub;
 Element.prototype.scrollIntoView = () => {};
 const auth = vi.hoisted(() => ({ user: { email: 'vikky@example.com', user_metadata: { full_name: 'Vikky' } } as { email: string; user_metadata: Record<string, string> } | null }));
 const confirm = vi.fn(async (_: unknown) => ({ id: '99999999-9999-4999-8999-999999999999' }));
 const createPeriod = vi.fn(async (_: unknown) => ({ ok: true }));
-const counter = vi.fn(async (_: unknown) => 'ok');
+const counter = vi.fn(async (_: unknown) => { state.counter = true; return 'ok'; });
 
 const commerce = () => ({
-  userId: ID.user, role: 'owner', counters: [], memberships: [], loyalty: [], documents: [], payments: [],
+  userId: ID.user, role: 'owner', counters: state.counter ? [{ kind: 'open', branch_id: ID.br, actor_id: ID.user, session_id: SESSION }] : [], memberships: [], loyalty: [], documents: [], payments: [],
   settings: { vat_registered: false, vat_rate: 0, currency: 'NPR' }, business: { name: 'Auraluxe', legal_name: 'Auraluxe Private limited', pan_vat_number: '' },
   journals: [{ account_code: 'cash', debit: 5000, credit: 0, entry_date: todayAd(), branch_id: ID.br }, { account_code: 'receivable', debit: 1200, credit: 0, entry_date: todayAd(), branch_id: ID.br }],
   periods: state.periods,
@@ -58,7 +59,7 @@ function SaleEditor() {
 }
 const noOpenPeriodLabel = () => expect(screen.queryByText(/open period/i)).not.toBeInTheDocument();
 
-beforeEach(() => { auth.user = { email: 'vikky@example.com', user_metadata: { full_name: 'Vikky' } }; confirm.mockClear(); createPeriod.mockClear(); counter.mockClear(); sessionStorage.clear(); state.periods = [{ id: ID.per, name: 'FY test', status: 'open', start_date: '2020-01-01', end_date: '2099-12-31' }]; });
+beforeEach(() => { auth.user = { email: 'vikky@example.com', user_metadata: { full_name: 'Vikky' } }; confirm.mockClear(); createPeriod.mockClear(); counter.mockClear(); sessionStorage.clear(); state.counter = true; state.periods = [{ id: ID.per, name: 'FY test', status: 'open', start_date: '2020-01-01', end_date: '2099-12-31' }]; });
 
 describe('Dashboard', () => {
   it('shows the Karobar-style cards, chart and quick actions', async () => {
@@ -113,7 +114,7 @@ describe('Sale editor', () => {
     await waitFor(() => expect(confirm).toHaveBeenCalledTimes(1));
     const sent = (confirm.mock.calls[0]![0] as { data: Record<string, unknown> }).data;
     expect(sent).toMatchObject({ businessId: ID.biz, branchId: ID.br, periodId: ID.per, kind: 'sale', status: 'confirmed' });
-    expect(sent['payments']).toMatchObject([{ method: 'cash', amount: 1500 }]);
+    expect(sent['payments']).toMatchObject([{ method: 'cash', amount: 1500, sessionId: SESSION }]);
     expect(sent['lines']).toMatchObject([{ variantId: ID.v1, quantity: 1, price: 1500 }]);
   });
   it('offers to create the Nepal fiscal year when none is open', async () => {
@@ -129,6 +130,37 @@ describe('Sale editor', () => {
     expect(sent.name).toMatch(/^FY 20\d\d\/\d\d$/);
     expect(sent.start <= todayAd() && todayAd() <= sent.end).toBe(true);
     expect(sent.businessId).toBe(ID.biz);
+  });
+});
+
+describe('Why a sale cannot be confirmed', () => {
+  const addSaree = async () => { fireEvent.change(await screen.findByLabelText('Product search or barcode'), { target: { value: 'saree' } }); fireEvent.click(await screen.findByRole('button', { name: /Silk Saree/ })); fireEvent.change(screen.getByLabelText('Customer mobile'), { target: { value: '9812345678' } }); };
+  const why = () => screen.getByLabelText('Why this cannot be confirmed yet');
+  it('a walk-in sale that is not paid says it must be paid in full, and a chosen customer allows credit', async () => {
+    mount(<SaleEditor />); await addSaree();
+    expect(why()).toHaveTextContent(/must be paid in full/);
+    expect(screen.getByRole('button', { name: /Confirm sale/ })).toBeDisabled();
+    fireEvent.change(screen.getByLabelText('Document contact'), { target: { value: ID.p1 } });
+    await waitFor(() => expect(screen.queryByLabelText('Why this cannot be confirmed yet')).not.toBeInTheDocument());
+    expect(screen.getByRole('button', { name: /Confirm sale/ })).toBeEnabled();
+  });
+  it('cash without an open counter explains it and opens the counter in one tap', async () => {
+    state.counter = false; mount(<SaleEditor />); await addSaree();
+    fireEvent.click(screen.getByRole('button', { name: /^Cash$/ }));
+    expect(why()).toHaveTextContent(/cash counter open/);
+    expect(screen.getByRole('button', { name: /Confirm sale/ })).toBeDisabled();
+    fireEvent.click(screen.getByRole('button', { name: 'Open my cash counter' }));
+    await waitFor(() => expect(counter).toHaveBeenCalledTimes(1));
+    expect((counter.mock.calls[0]![0] as { data: Record<string, unknown> }).data).toMatchObject({ businessId: ID.biz, branchId: ID.br, periodId: ID.per, kind: 'open', amount: 0 });
+    await waitFor(() => expect(screen.getByRole('button', { name: /Confirm sale/ })).toBeEnabled());
+  });
+  it('warns on the line and blocks Confirm when an item has less stock than the quantity', async () => {
+    mount(<SaleEditor />); await addSaree();
+    fireEvent.click(screen.getByRole('button', { name: /^Cash$/ }));
+    fireEvent.change(screen.getByLabelText('quantity line 1'), { target: { value: '5' } });
+    expect(await screen.findByText('Only 3 in stock here.')).toBeInTheDocument();
+    expect(why()).toHaveTextContent(/Not enough stock for Silk Saree \(3 in stock here\)/);
+    expect(screen.getByRole('button', { name: /Confirm sale/ })).toBeDisabled();
   });
 });
 
@@ -148,6 +180,7 @@ describe('Point of sale', () => {
     fireEvent.change(await screen.findByLabelText('Product search or barcode'), { target: { value: 'AL-001' } });
     fireEvent.keyDown(screen.getByLabelText('Product search or barcode'), { key: 'Enter' });
     fireEvent.change(await screen.findByLabelText('Customer mobile'), { target: { value: '9812345678' } });
+    fireEvent.click(screen.getByRole('button', { name: /^Cash$/ }));
     vi.spyOn(window, 'confirm').mockReturnValue(true);
     fireEvent.click(screen.getByRole('button', { name: /Confirm sale/ }));
     await waitFor(() => expect(confirm).toHaveBeenCalledTimes(1));
