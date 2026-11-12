@@ -1,4 +1,5 @@
 # Security review workspace
+- [ ] POS & Sales UI overhaul: touch catalogue grid, dedicated barcode entry, quantity controls and live receipt preview; preserve confirmation, mobile loyalty and permissions.
 - [x] Direct Google Sheets catalogue import: protected administrator fetch, editable master-sheet dialog, validated preview and existing confirmation; 42 focused tests passed, app credentials verified, signed-in desktop/mobile preview fetched 113 variants across 44 products with no page errors. Confirmation was not executed; no live records changed.
 - [x] Master Inventory & Catalogue CSV compatibility: header aliases, formatted numbers and defaults implemented; 27 importer/schema tests passed, original and sheet formats plus export round-trip verified. No live catalogue records changed.
 - [ ] Auraluxe-only workspace: audit and approve removal of business registration/switching; retain branches, trusted permissions and existing records.
