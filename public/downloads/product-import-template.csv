@@ -1,2 +1,2 @@
-product_name,category,variant_name,sku,model_code,barcode,unit,selling_price,purchase_price,reorder_level,opening_stock
-Example Kurti Set,Kurti set 3 Piece,M,EXAMPLE-KURTI-M,EXAMPLE-MODEL,,pcs,1999.00,1347.50,2,0
+product_name,category,variant_name,sku,model_code,barcode,unit,qty,selling_price,purchase_price,reorder_level
+Example Kurti Set,Kurti set 3 Piece,M,EXAMPLE-KURTI-M,EXAMPLE-MODEL,,pcs,0,1999.00,1347.50,2

@@ -2,7 +2,7 @@ import Papa from 'papaparse';
 import { generateBarcodeFromSkuIfNeeded } from './barcode';
 import { catalogueInput, type CatalogueRow } from './inventory-schemas';
 
-export const catalogueColumns = ['product_name','category','variant_name','sku','model_code','barcode','unit','selling_price','purchase_price','reorder_level'];
+export const catalogueColumns = ['product_name','category','variant_name','sku','model_code','barcode','unit','qty','selling_price','purchase_price','reorder_level'];
 const headerAliases: Record<string, string[]> = {
  product_name: ['product_name', 'Item Name', 'item_name', 'Product Name', 'Product', 'Name'],
  category: ['category'],
@@ -13,7 +13,8 @@ const headerAliases: Record<string, string[]> = {
  unit: ['unit', 'Primary Unit'],
  selling_price: ['selling_price', 'Selling Price', 'Sales Price', 'Price', 'Rate'],
  purchase_price: ['purchase_price', 'Purchase Price', 'Cost Price'],
- opening_stock: ['opening_stock', 'Opening Stock', 'Opening Qty'],
+ // qty is the exported name; on import it is the quantity to open as stock for new items (same as the older opening_stock column).
+ opening_stock: ['opening_stock', 'Opening Stock', 'Opening Qty', 'qty', 'Qty', 'Quantity', 'Stock', 'Current Stock'],
  description: ['description', 'Description'],
  reorder_level: ['reorder_level', 'Reorder Level', 'Low Stock', 'Low Stock Threshold'],
 };
