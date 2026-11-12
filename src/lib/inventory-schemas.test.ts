@@ -60,3 +60,13 @@ d2('catalogue import limit', () => {
   i2('accepts 5000 rows', () => { e2(ci.safeParse({ businessId: biz, rows: Array.from({ length: 5000 }, (_, n) => row(n)) }).success).toBe(true); });
   i2('rejects 5001 rows', () => { e2(ci.safeParse({ businessId: biz, rows: Array.from({ length: 5001 }, (_, n) => row(n)) }).success).toBe(false); });
 });
+
+import { parseCatalogueCsv as parseKarobar } from './inventory-csv';
+describe('Karobar item sheet', () => {
+ const csv = 'Item Name,Category,Sales Price,Purchase Price,Item Code,Opening Stock,Primary Unit,MRP Price,Wholesale Price,Low Stock,HS Code,Description\nAL-ALA01-M,Kurti set 3 Piece,"1,999","1,347",ALA01-M,1,PIECES,"2,020","1,616",0,,ANUSHREE01\nAL-ALA01-XL,Kurti set 3 Piece,"1,999","1,347",ALA01-XL,3,PIECES,"2,020","1,616",0,,ANUSHREE01';
+ it('groups sizes under the Description and reads opening stock', () => {
+  const rows = parseKarobar(csv, '00000000-0000-4000-8000-000000000000');
+  expect(rows.map(r => [r.product_name, r.variant_name, r.opening_stock])).toEqual([['ANUSHREE01','M',1],['ANUSHREE01','XL',3]]);
+  expect(rows[0]!.selling_price).toBe(1999);
+ });
+});

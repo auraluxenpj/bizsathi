@@ -13,7 +13,7 @@ import { downloadCsv } from '@/lib/download-csv';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { defaultCatalogueSpreadsheet } from '@/lib/google-sheet-catalogue';
 import { BarcodeStickers } from './barcode-stickers';
-const blank:CatalogueRow={product_name:'',category:'',variant_name:'Standard',sku:'',barcode:'',unit:'pcs',selling_price:0,reorder_level:0};
+const blank:CatalogueRow={product_name:'',category:'',variant_name:'Standard',sku:'',barcode:'',unit:'pcs',selling_price:0,reorder_level:0,opening_stock:0};
 export function Products(){
  const w=useInventoryWorkspace(); const can=useCan(w.businessId); const save=useServerFn(saveCatalogue);const edit=useServerFn(editVariant); const upload=useRef<HTMLInputElement>(null);
  const fetchSheet=useServerFn(fetchGoogleSheetCatalogue);
