@@ -1203,6 +1203,7 @@ export type Database = {
           id: string
           membership_id: string
           points: number
+          points_per_100: number
           sale_id: string
         }
         Insert: {
@@ -1214,6 +1215,7 @@ export type Database = {
           id?: string
           membership_id: string
           points: number
+          points_per_100?: number
           sale_id: string
         }
         Update: {
@@ -1225,6 +1227,7 @@ export type Database = {
           id?: string
           membership_id?: string
           points?: number
+          points_per_100?: number
           sale_id?: string
         }
         Relationships: [
@@ -2085,6 +2088,10 @@ export type Database = {
       }
       inv_sync_push: { Args: { _items: Json }; Returns: Json }
       is_business_member: { Args: { _business_id: string }; Returns: boolean }
+      loyalty_earned_points: {
+        Args: { _rate?: number; _total: number }
+        Returns: number
+      }
       normalize_member_mobile: { Args: { _mobile: string }; Returns: string }
       pa_balance: { Args: { _account: string }; Returns: number }
       pa_journal: {
@@ -2166,6 +2173,15 @@ export type Database = {
       read_business_report_snapshot: {
         Args: { _branch_id?: string; _business_id: string; _through?: string }
         Returns: Json
+      }
+      read_customer_loyalty: {
+        Args: { _business_id: string }
+        Returns: {
+          membership_number: string
+          mobile: string
+          points: string
+          purchase_count: string
+        }[]
       }
       read_website_stock_snapshot: {
         Args: { _branch_id: string; _business_id: string }

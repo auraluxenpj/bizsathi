@@ -225,6 +225,13 @@
       "when": 1794474096249,
       "tag": "0031_variant_purchase_price",
       "breakpoints": true
+    },
+    {
+      "idx": 32,
+      "version": "7",
+      "when": 1794476386908,
+      "tag": "0032_loyalty_ten_points_customer_summary",
+      "breakpoints": true
     }
   ]
 }
