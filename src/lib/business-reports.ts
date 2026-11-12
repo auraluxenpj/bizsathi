@@ -15,14 +15,14 @@ export type DocLines={id:string;kind:string;document_date:string;lines:unknown}[
 type L={variantId:string;quantity:number;price:number;discount:number};
 const readL=(v:unknown):L[]=>Array.isArray(v)?v.flatMap(x=>x&&typeof x==='object'&&typeof (x as L).variantId==='string'?[{variantId:(x as L).variantId,quantity:Number((x as L).quantity)||0,price:Number((x as L).price)||0,discount:Number((x as L).discount)||0}]:[]):[];
 /** Cost of goods uses each item's most recent confirmed purchase price on or before the sale date. */
-export function costOfGoods(docs:DocLines){
+export function costOfGoods(docs:DocLines,fallback:Map<string,Decimal>=new Map()){
  const buys=docs.filter(d=>d.kind==='purchase').flatMap(d=>readL(d.lines).filter(l=>l.quantity>0).map(l=>({v:l.variantId,date:d.document_date,cost:new Decimal(l.price).times(l.quantity).minus(l.discount).div(l.quantity)}))).sort((a,b)=>a.date.localeCompare(b.date));
  const last=(v:string,date:string)=>{let c:Decimal|null=null;for(const b of buys){if(b.v===v&&b.date<=date)c=b.cost;}return c;};
  const byDoc=new Map<string,{cost:Decimal;missing:number}>();
- for(const d of docs.filter(d=>d.kind==='sale'||d.kind==='sale_return')){let cost=new Decimal(0),missing=0;for(const l of readL(d.lines)){const c=last(l.variantId,d.document_date);if(c)cost=cost.plus(c.times(l.quantity));else missing++;}byDoc.set(d.id,{cost:d.kind==='sale_return'?cost.neg():cost,missing});}
+ for(const d of docs.filter(d=>d.kind==='sale'||d.kind==='sale_return')){let cost=new Decimal(0),missing=0;for(const l of readL(d.lines)){const c=last(l.variantId,d.document_date)??fallback.get(l.variantId)??null;if(c)cost=cost.plus(c.times(l.quantity));else missing++;}byDoc.set(d.id,{cost:d.kind==='sale_return'?cost.neg():cost,missing});}
  return byDoc;
 }
-export function buildBusinessReport(s:BusinessSnapshot,f:ReportInput,docLines:DocLines=[]){
+export function buildBusinessReport(s:BusinessSnapshot,f:ReportInput,docLines:DocLines=[],itemCosts:Map<string,Decimal>=new Map()){
  const actor=(id:string|undefined)=>s.users.find(u=>u.id===id)?.name??id??'Unattributed';
  const inScope=(r:{business_id:string;branch_id:string})=>r.business_id===f.businessId&&(!f.branchId||r.branch_id===f.branchId);
  const D=(v:Decimal.Value)=>new Decimal(v).toFixed(2);const done=(rows:ReportRow[],notice:string)=>({rows,totals:{debit:'0.00',credit:'0.00',difference:'0.00'},evidence:[],hasRecords:rows.length>0,notice});
@@ -38,7 +38,7 @@ export function buildBusinessReport(s:BusinessSnapshot,f:ReportInput,docLines:Do
  if(f.view==='profit'){
   const docs=s.documents.filter(d=>d.business_id===f.businessId&&(!f.branchId||d.branch_id===f.branchId)&&d.status==='confirmed'&&d.document_date>=f.from&&d.document_date<=f.to);
   const sum=(k:string)=>docs.filter(d=>d.kind===k).reduce((n,d)=>n.plus(d.subtotal),new Decimal(0));
-  const cogsMap=costOfGoods(docLines);let cogs=new Decimal(0),missing=0;for(const d of docs){const c=cogsMap.get(d.id);if(c){cogs=cogs.plus(c.cost);missing+=c.missing;}}
+  const cogsMap=costOfGoods(docLines,itemCosts);let cogs=new Decimal(0),missing=0;for(const d of docs){const c=cogsMap.get(d.id);if(c){cogs=cogs.plus(c.cost);missing+=c.missing;}}
   const sales=sum('sale'),returns=sum('sale_return'),net=sales.minus(returns),gross=net.minus(cogs);
   const j=s.journals.filter(x=>x.business_id===f.businessId&&(!f.branchId||x.branch_id===f.branchId)&&x.entry_date>=f.from&&x.entry_date<=f.to);
   const group=(prefix:string,sign:1|-1)=>{const m=new Map<string,Decimal>();for(const x of j.filter(x=>x.account_code.startsWith(prefix)))m.set(x.account_code,(m.get(x.account_code)??new Decimal(0)).plus(new Decimal(x.debit).minus(x.credit).times(sign)));return m;};
@@ -46,7 +46,7 @@ export function buildBusinessReport(s:BusinessSnapshot,f:ReportInput,docLines:Do
   const totalExp=[...exp.values()].reduce((a,b)=>a.plus(b),new Decimal(0)),totalInc=[...inc.values()].reduce((a,b)=>a.plus(b),new Decimal(0));
   const r=(Section:string,Item:string,v:Decimal)=>({Section,Item,Amount:v.toFixed(2)});
   const rows:ReportRow[]=[r('Income','Sales',sales),r('Income','Sales return',returns.neg()),r('Income','Net sales',net),r('Cost','Cost of goods sold (last purchase price)',cogs.neg()),r('Gross','Gross profit',gross),...[...inc].map(([c,v])=>r('Other income',label(c),v)),...[...exp].map(([c,v])=>r('Expenses',label(c),v.neg())),r('Expenses','Total expenses',totalExp.neg()),r('Net','Net profit',gross.plus(totalInc).minus(totalExp))];
-  return{rows,totals:{debit:'0.00',credit:'0.00',difference:'0.00'},evidence:[],hasRecords:true,notice:`Amounts exclude VAT. Cost uses each item's last purchase price on or before the sale date.${missing?` ${missing} sold item line(s) have no earlier purchase price and are counted at zero cost.`:''}`};
+  return{rows,totals:{debit:'0.00',credit:'0.00',difference:'0.00'},evidence:[],hasRecords:true,notice:`Amounts exclude VAT. Cost uses each item's last purchase bill price on or before the sale date, or its saved purchase price when no bill exists.${missing?` ${missing} sold item line(s) have no earlier purchase price and are counted at zero cost.`:''}`};
  }
  const userId=supportsUser(f.view)?f.userId:undefined;
  const scoped=(r:{business_id:string;branch_id:string})=>r.business_id===f.businessId&&(!f.branchId||r.branch_id===f.branchId);
@@ -65,7 +65,7 @@ export function buildBusinessReport(s:BusinessSnapshot,f:ReportInput,docLines:Do
  let rows=report.rows;
  if(['sales','purchases'].includes(f.view))rows=rows.filter(r=>!userId||s.documents.find(d=>d.id===r['Source ID'])?.actor_id===userId);
  if(['outstanding','receivables','payables'].includes(f.view))rows=rows.filter(r=>(!userId||s.documents.find(d=>d.id===r['Source ID'])?.actor_id===userId)&&(f.view!=='receivables'||r['Kind']==='sale')&&(f.view!=='payables'||r['Kind']==='purchase'));
- rows=rows.map(r=>{const sourceId=r['Source ID'];const journal=s.journals.find(j=>j.source_id===sourceId);const doc=s.documents.find(d=>d.id===sourceId);const actorId=doc?.actor_id??journal?.actor_id;const cg=f.view==='sales'&&sourceId?costOfGoods(docLines).get(sourceId):undefined;const extra=cg?{'Cost (last purchase)':cg.cost.toFixed(2),Profit:new Decimal(r['Net']??0).minus(cg.cost).toFixed(2)}:{};return sourceId?{...r,...extra,Branch:branch(doc?.branch_id??journal?.branch_id??''),'Posted by':actor(actorId),'User ID':actorId??''}:r;});
+ rows=rows.map(r=>{const sourceId=r['Source ID'];const journal=s.journals.find(j=>j.source_id===sourceId);const doc=s.documents.find(d=>d.id===sourceId);const actorId=doc?.actor_id??journal?.actor_id;const cg=f.view==='sales'&&sourceId?costOfGoods(docLines,itemCosts).get(sourceId):undefined;const extra=cg?{'Cost (last purchase)':cg.cost.toFixed(2),Profit:new Decimal(r['Net']??0).minus(cg.cost).toFixed(2)}:{};return sourceId?{...r,...extra,Branch:branch(doc?.branch_id??journal?.branch_id??''),'Posted by':actor(actorId),'User ID':actorId??''}:r;});
  let notice=userId?'User posting subset — not a complete business balance.':'Recorded postings only; opening balances not established and not externally reconciled.';
  if(['outstanding','receivables','payables'].includes(f.view))notice=`As at ${f.to}; user selects original invoice creator. All linked settlements included. Invoice age is not overdue age.`;
  if(f.view==='sales'||f.view==='purchases'){const total=rows.reduce((sum,r)=>sum.plus(r['Total']??0),new Decimal(0));notice=`${f.view==='sales'?'Sales':'Purchases'} net of returns: ${s.currency} ${total.toFixed(2)}. ${f.view==='sales'?`Profit (before VAT, using last purchase price): ${s.currency} ${rows.reduce((n,r)=>n.plus(r['Profit']??0),new Decimal(0)).toFixed(2)}.`:''}${userId?' Original document posting user selected.':''}`;}

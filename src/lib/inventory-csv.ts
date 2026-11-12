@@ -11,6 +11,7 @@ const headerAliases: Record<string, string[]> = {
  barcode: ['barcode'],
  unit: ['unit', 'Primary Unit'],
  selling_price: ['selling_price', 'Selling Price', 'Sales Price', 'Price', 'Rate'],
+ purchase_price: ['purchase_price', 'Purchase Price', 'Cost Price'],
  opening_stock: ['opening_stock', 'Opening Stock', 'Opening Qty'],
  description: ['description', 'Description'],
  reorder_level: ['reorder_level', 'Reorder Level', 'Low Stock', 'Low Stock Threshold'],
