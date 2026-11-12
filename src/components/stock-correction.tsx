@@ -1,3 +1,4 @@
+import { useCan } from './permission-checklist';
 import { useState } from 'react';
 import { useMutation } from '@tanstack/react-query';
 import { useServerFn } from '@tanstack/react-start';
@@ -11,6 +12,7 @@ import { stockBalances, type stockInput } from '@/lib/inventory-schemas';
 import type { z } from 'zod';
 import type { Workspace } from './inventory-workspace';
 export function StockCorrection({w,branch,onStatus}:{w:Workspace;branch:string;onStatus:(s:string)=>void}) {
+ const can=useCan(w.businessId);
   const post=useServerFn(postStock);
   const [mode,setMode]=useState<'adjust'|'dispose'|null>(null);
   const [branchId,setBranch]=useState(''),[variantId,setVariant]=useState(''),[quantity,setQuantity]=useState('');
@@ -25,6 +27,7 @@ export function StockCorrection({w,branch,onStatus}:{w:Workspace;branch:string;o
   function open(m:'adjust'|'dispose') {setMode(m);setBranch(branch||branches[0]?.id||'');setVariant('');setQuantity('');setNotes('');setReference('');setClassification('damaged');setError('');setRequest(null);}
   function submit(){try{if(!mode)return;const r=request??correctionRequest({businessId:w.businessId,id:crypto.randomUUID(),branchId,variantId,reference},{mode,quantity:Number(quantity),classification,notes});if(onHand+r.quantity<0&&!request)throw new Error('The resulting stock cannot be negative.');setRequest(r);mutation.mutate(r);}catch(e){setError(e instanceof Error?e.message:'Check adjustment details.');}}
   const locked=!!request;
+  if(!can('stock.create'))return null;
   return <><Button variant="outline" disabled={!branches.length||!variants.length} onClick={()=>open('adjust')}><SlidersHorizontal/>Adjust stock</Button><Button variant="outline" disabled={!branches.length||!variants.length} onClick={()=>open('dispose')}><PackageMinus/>Dispose stock</Button>
     <Dialog open={!!mode} onOpenChange={value=>{if(!value&&!mutation.isPending&&!locked)setMode(null);}}><DialogContent className="max-h-[85dvh] w-[calc(100%-2rem)] overflow-y-auto"><DialogTitle>{mode==='dispose'?'Dispose damaged or expired stock':'Adjust stock'}</DialogTitle><DialogDescription>Quantity correction · {reference||'New reference'}</DialogDescription>
       <form className="grid gap-4" onSubmit={e=>{e.preventDefault();submit();}}>
