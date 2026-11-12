@@ -1,3 +1,4 @@
+import { useCan } from './permission-checklist';
 import { useState } from 'react';
 import { Link } from '@tanstack/react-router';
 import { useQuery } from '@tanstack/react-query';
@@ -16,6 +17,7 @@ const icon = { cash: Banknote, bank: Landmark, wallet: Smartphone } as const;
 const tone = (v: number) => (v < 0 ? 'text-red-500' : 'text-emerald-600');
 
 function Body({ w, commerce }: { w: CommerceWorkspace; commerce: CommerceData }) {
+  const can = useCan(w.businessId);
   const canManage = ['owner', 'admin', 'accountant'].includes(commerce.role);
   const load = useServerFn(getAccountBalances);
   const accounts = useQuery({ queryKey: ['accounts', w.businessId], queryFn: () => load({ data: { businessId: w.businessId } }), enabled: canManage, retry: false });
@@ -34,7 +36,7 @@ function Body({ w, commerce }: { w: CommerceWorkspace; commerce: CommerceData })
 
   return <>
     <section className="mt-5 rounded-2xl border bg-card p-5"><p className="text-sm text-muted-foreground">Overall Account Balance</p><p className={`mt-1 text-3xl font-semibold tabular-nums ${tone(total)}`}>{formatNPR(total)}</p></section>
-    <div className="mb-2 mt-6 flex items-center justify-between"><h2 className="text-lg font-semibold">All Accounts</h2>{canManage && <Button size="sm" onClick={() => setDialog({ type: 'new' })}><Plus />New account</Button>}</div>
+    <div className="mb-2 mt-6 flex items-center justify-between"><h2 className="text-lg font-semibold">All Accounts</h2>{canManage && can('accounts.create') && <Button size="sm" onClick={() => setDialog({ type: 'new' })}><Plus />New account</Button>}</div>
     {accounts.error && canManage && <p role="alert" className="mb-2 text-sm text-destructive">Named accounts could not be loaded: {accounts.error.message}</p>}
     <ul className="divide-y rounded-2xl border bg-card">{rows.map(r => { const Icon = icon[r.kind]; return <li key={r.key} className="flex items-center gap-3 px-4 py-4">
       <span className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-secondary text-primary"><Icon className="size-5" /></span>
@@ -43,7 +45,7 @@ function Body({ w, commerce }: { w: CommerceWorkspace; commerce: CommerceData })
       {r.account && canManage && <span className="flex shrink-0 gap-1"><Button size="icon" variant="ghost" title={`Adjust ${r.account.name}`} aria-label={`Adjust ${r.account.name}`} onClick={() => setDialog({ type: 'adjust', account: r.account! })}><Pencil /></Button><Button size="icon" variant="ghost" title={`Transfer from ${r.account.name}`} aria-label={`Transfer from ${r.account.name}`} onClick={() => setDialog({ type: 'transfer', account: r.account! })}><ArrowLeftRight /></Button></span>}
     </li>; })}
       {!rows.length && <li className="px-4 py-10 text-center text-sm text-muted-foreground">No accounts yet.</li>}</ul>
-    {canManage && accounts.data && !named.length && <p className="mt-3 text-sm text-muted-foreground">Add your banks, wallets and safe with <strong>New account</strong>, then choose one whenever you take a payment or record an expense.</p>}
+    {canManage && can('accounts.create') && accounts.data && !named.length && <p className="mt-3 text-sm text-muted-foreground">Add your banks, wallets and safe with <strong>New account</strong>, then choose one whenever you take a payment or record an expense.</p>}
     <div className="mt-5 flex flex-wrap gap-2"><Button asChild variant="outline"><Link to="/accounting" search={{ view: 'cashbook' }}>Open cash book</Link></Button><Button asChild variant="outline"><Link to="/cash-counters">Cash counters</Link></Button></div>
     {dialog?.type === 'new' && <NewAccountDialog w={w} periods={periods} onClose={() => setDialog(null)} />}
     {dialog?.type === 'adjust' && <AdjustDialog w={w} periods={periods} account={dialog.account} onClose={() => setDialog(null)} />}

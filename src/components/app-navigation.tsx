@@ -46,12 +46,18 @@ function Row({ entry, pathname }: { entry: Entry; pathname: string }) {
   return <Link to={entry.to!} aria-current={active ? 'page' : undefined} className={`${base} ${active ? 'bg-primary text-primary-foreground shadow-sm' : 'text-foreground/80 hover:bg-secondary'}`}><entry.icon className="size-4 shrink-0" />{entry.name}</Link>;
 }
 
+import { useCan } from './permission-checklist';
+import { routePermission } from '@/lib/permissions';
 export function AppNavigation({ children, pathname }: { children: ReactNode; pathname: string }) {
   const load = useServerFn(listBusinesses); const client = useQueryClient(); const navigate = useNavigate();
   const [person, setPerson] = useState('');
   const businesses = useQuery({ queryKey: ['businesses'], queryFn: () => load() });
   // Same rule as before: administrator-only links appear for owners and admins.
   const admin = businesses.data?.some(b => b.role === 'owner' || b.role === 'admin');
+  const can = useCan(businesses.data?.[0]?.id ?? '');
+  const visible = (to?: string) => !to || !routePermission[to] || can(routePermission[to]!);
+  const allow = (list: Entry[]) => list.filter(e => visible(e.to)).map(e => e.children ? { ...e, children: e.children.filter(c => visible(c.to)) } : e);
+  const deniedPage = Object.keys(routePermission).some(r => isActive(pathname, r) && !visible(r));
   const businessName = businesses.data?.[0]?.name ?? 'BizSathi';
   useEffect(() => { supabase.auth.getUser().then(({ data }) => { const u = data.user; setPerson((u?.user_metadata?.['full_name'] as string | undefined) || u?.email?.split('@')[0] || ''); }); }, []);
   const management: Entry[] = [
@@ -69,9 +75,9 @@ export function AppNavigation({ children, pathname }: { children: ReactNode; pat
         <div className="p-4"><div className="flex items-center gap-3 rounded-xl border px-3 py-2.5"><span className="flex size-9 items-center justify-center rounded-lg bg-primary/10 text-primary"><Building2 className="size-5" /></span><span className="min-w-0 flex-1 truncate text-sm font-semibold">{businessName}</span></div></div>
         <nav aria-label="Main navigation" className="flex-1 space-y-1 overflow-y-auto px-3 pb-4">
           <p className="px-3 pb-1 pt-2 text-sm text-muted-foreground">Business</p>
-          {business.map(e => <Row key={e.name} entry={e} pathname={pathname} />)}
+          {allow(business).map(e => <Row key={e.name} entry={e} pathname={pathname} />)}
           <p className="px-3 pb-1 pt-5 text-sm text-muted-foreground">Management</p>
-          {management.map(e => <Row key={e.name} entry={e} pathname={pathname} />)}
+          {allow(management).map(e => <Row key={e.name} entry={e} pathname={pathname} />)}
         </nav>
       </aside>
 
@@ -88,7 +94,7 @@ export function AppNavigation({ children, pathname }: { children: ReactNode; pat
         <CommandPalette variant="icon" shortcut={false} />
       </header>
 
-      <div className="min-w-0 pb-24 lg:pb-0">{children}</div>
+      <div className="min-w-0 pb-24 lg:pb-0">{deniedPage ? <main className="mx-auto max-w-xl px-5 py-16 text-center"><h1 className="brand text-2xl">No access</h1><p className="mt-3 text-sm text-muted-foreground">Your administrator has turned off access to this page.</p></main> : children}</div>
 
       {pathname === '/dashboard' && <Link to="/sales" search={{ new: '1' }} className="fixed bottom-20 right-4 z-30 flex h-12 items-center gap-2 rounded-full bg-primary px-5 text-sm font-semibold text-primary-foreground shadow-lg lg:hidden"><Plus className="size-4" />New sale</Link>}
 

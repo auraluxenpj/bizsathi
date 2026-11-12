@@ -1,3 +1,4 @@
+import { useCan } from './permission-checklist';
 import { useRef, useState } from 'react';
 import { useServerFn } from '@tanstack/react-start';
 import { Upload } from 'lucide-react';
@@ -11,6 +12,7 @@ type Props = { businessId: string; kind: 'customer' | 'supplier'; existing: { na
 const readText = (file: File): Promise<string> => typeof file.text === 'function' ? file.text() : new Promise((resolve, reject) => { const r = new FileReader(); r.onload = () => resolve(String(r.result)); r.onerror = () => reject(new Error('File could not be read.')); r.readAsText(file); });
 
 export function PartyImport({ businessId, kind, existing, onDone }: Props) {
+  const can = useCan(businessId);
   const save = useServerFn(saveParty); const input = useRef<HTMLInputElement>(null);
   const [preview, setPreview] = useState<{ fresh: ImportedParty[]; known: number; blank: number; repeated: number } | null>(null);
   const [busy, setBusy] = useState(false); const [done, setDone] = useState(0); const [message, setMessage] = useState('');
@@ -36,7 +38,7 @@ export function PartyImport({ businessId, kind, existing, onDone }: Props) {
   }
   return <>
     <input ref={input} type="file" accept=".csv,text/csv" className="sr-only" aria-label="Party CSV file" onChange={e => choose(e.target.files?.[0])} />
-    <Button variant="outline" onClick={() => input.current?.click()}><Upload />Import CSV</Button>
+    {can('features.import') && <Button variant="outline" onClick={() => input.current?.click()}><Upload />Import CSV</Button>}
     {(preview || message) && <div className="basis-full rounded-lg border bg-card p-4 text-sm">
       {preview && <>
         <p className="font-medium">{preview.fresh.length} new {kind}{preview.fresh.length === 1 ? '' : 's'} ready to import</p>

@@ -211,6 +211,13 @@
       "when": 1794472307564,
       "tag": "0029_member_permission_denials",
       "breakpoints": true
+    },
+    {
+      "idx": 30,
+      "version": "7",
+      "when": 1794472631702,
+      "tag": "0030_permission_checklist_headers",
+      "breakpoints": true
     }
   ]
 }
