@@ -14,7 +14,7 @@ function normalizeSkuDigits(sku: string): string {
 
 export function generateSkuBarcode(sku: string): string {
   const base = Array.from(normalizeSkuDigits(sku), Number);
-  const sum = base.reduce((total, digit, index) => total + digit * EAN13_WEIGHTS[index], 0);
+  const sum = base.reduce((total, digit, index) => total + digit * (index % 2 === 0 ? 1 : 3), 0);
   const checkDigit = (10 - (sum % 10)) % 10;
   return `${base.join('')}${checkDigit}`;
 }
@@ -31,6 +31,6 @@ export function isValidEan13(value: string): boolean {
   if (!/^\d{13}$/.test(value)) return false;
   const digits = value.split('').map(Number);
   const checkDigit = digits.at(-1) ?? 0;
-  const computed = (10 - (digits.slice(0, 12).reduce((sum, digit, index) => sum + digit * EAN13_WEIGHTS[index], 0) % 10)) % 10;
+  const computed = (10 - (digits.slice(0, 12).reduce((sum, digit, index) => sum + digit * (index % 2 === 0 ? 1 : 3), 0) % 10)) % 10;
   return checkDigit === computed;
 }
