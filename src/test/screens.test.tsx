@@ -243,7 +243,7 @@ describe('Point of sale', () => {
     expect(screen.getByLabelText('quantity line 1')).toHaveValue(2);
     expect(screen.queryByLabelText('quantity line 2')).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Preview' }));
-    const receipt = screen.getByLabelText('Receipt preview');
+    const receipt = screen.getByRole('article', { name: 'Receipt preview' });
     expect(within(receipt).getAllByText('Rs. 3,000.00').length).toBeGreaterThan(0);
     expect(confirm).not.toHaveBeenCalled();
   });
