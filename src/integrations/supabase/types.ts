@@ -1992,6 +1992,10 @@ export type Database = {
         Args: { _account: string; _receipt: string; _request: Json }
         Returns: string
       }
+      convert_quotation: {
+        Args: { _business: string; _date: string; _id: string; _period: string }
+        Returns: string
+      }
       create_business: {
         Args: { _legal_name?: string; _name: string; _pan_vat?: string }
         Returns: string
@@ -2141,6 +2145,7 @@ export type Database = {
         Args: { _business_id: string; _rows: Json }
         Returns: number
       }
+      save_quotation: { Args: { _request: Json }; Returns: string }
       set_branch_access: {
         Args: {
           _allowed: boolean

@@ -183,6 +183,13 @@
       "when": 1794470963289,
       "tag": "0025_sales_cash_flow_settings",
       "breakpoints": true
+    },
+    {
+      "idx": 26,
+      "version": "7",
+      "when": 1794470999502,
+      "tag": "0026_quotation_operations",
+      "breakpoints": true
     }
   ]
 }
