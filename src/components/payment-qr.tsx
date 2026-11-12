@@ -1,0 +1,5 @@
+import {useQuery} from '@tanstack/react-query';
+import {useServerFn} from '@tanstack/react-start';
+import {getPaymentQr} from '@/lib/sales-cash-flow.functions';
+export function usePaymentQr(businessId:string){const load=useServerFn(getPaymentQr);return useQuery({queryKey:['payment-qr',businessId],queryFn:()=>load({data:{businessId}}),enabled:!!businessId,staleTime:300000,refetchInterval:1800000,retry:false});}
+export function PaymentQr({businessId}:{businessId:string}){const q=usePaymentQr(businessId);if(q.error)return <p className="mt-4 text-xs text-destructive">Payment QR unavailable</p>;if(!q.data?.url)return null;return <section aria-label="Payment QR" className="mt-4 flex flex-col items-center gap-1 border-t pt-3 text-center text-xs"><img src={q.data.url} alt={`${q.data.provider||'Business'} payment QR`} className="h-auto w-[35mm] max-w-full object-contain"/><p className="font-semibold">{q.data.provider} · {q.data.payee}</p>{q.data.instructions&&<p className="max-w-xs break-words">{q.data.instructions}</p>}</section>;}

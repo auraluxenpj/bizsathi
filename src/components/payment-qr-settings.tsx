@@ -1,0 +1,16 @@
+import {useState,useRef} from 'react';
+import {useQueryClient} from '@tanstack/react-query';
+import {useServerFn} from '@tanstack/react-start';
+import {Upload,Trash2} from 'lucide-react';
+import {supabase} from '@/integrations/supabase/client';
+import {savePaymentQr} from '@/lib/sales-cash-flow.functions';
+import {Button} from './ui/button';
+import {Input} from './ui/input';
+import {PaymentQr} from './payment-qr';
+import type {CommerceWorkspace} from './commerce-workspace';
+export function PaymentQrSettings({w}:{w:CommerceWorkspace}){
+ const s=w.commerce.data?.settings;const save=useServerFn(savePaymentQr);const client=useQueryClient();const file=useRef<HTMLInputElement>(null);
+ const [provider,setProvider]=useState(s?.payment_provider??''),[payee,setPayee]=useState(s?.payment_payee??''),[instructions,setInstructions]=useState(s?.payment_instructions??''),[image,setImage]=useState<File|null>(null),[busy,setBusy]=useState(false),[message,setMessage]=useState('');
+ async function submit(remove=false){setBusy(true);setMessage('');try{let path=remove?null:s?.payment_qr_path??null;if(!remove&&image){if(!['image/png','image/jpeg'].includes(image.type)||image.size>2*1024*1024)throw new Error('Choose a PNG or JPG under 2 MB.');path=`${w.businessId}/${crypto.randomUUID()}.${image.type==='image/png'?'png':'jpg'}`;const r=await supabase.storage.from('payment-qr').upload(path,image,{contentType:image.type,upsert:false});if(r.error)throw new Error('QR image could not be uploaded.');}await save({data:{businessId:w.businessId,path,provider:remove?'':provider,payee:remove?'':payee,instructions:remove?'':instructions}});setImage(null);if(remove){setProvider('');setPayee('');setInstructions('');}await client.invalidateQueries();setMessage(remove?'Payment QR removed.':'Payment QR saved.');}catch(e){setMessage(e instanceof Error?e.message:'Payment QR could not be saved.');}finally{setBusy(false);}}
+ return <section className="border-y py-6"><h2 className="brand text-xl">Payment QR</h2><form className="mt-4 grid max-w-xl gap-4" onSubmit={e=>{e.preventDefault();submit();}}><label className="text-sm">Provider<Input aria-label="QR provider" placeholder="Fonepay / eSewa / Bank" maxLength={80} value={provider} onChange={e=>setProvider(e.target.value)}/></label><label className="text-sm">Payee<Input aria-label="QR payee" maxLength={160} value={payee} onChange={e=>setPayee(e.target.value)}/></label><label className="text-sm">Payment details<Input aria-label="QR payment details" maxLength={500} value={instructions} onChange={e=>setInstructions(e.target.value)}/></label><input ref={file} hidden type="file" accept="image/png,image/jpeg" onChange={e=>setImage(e.target.files?.[0]??null)}/><div className="flex flex-wrap gap-2"><Button type="button" variant="outline" onClick={()=>file.current?.click()}><Upload/>{image?image.name:'Upload QR image'}</Button><Button disabled={busy}>{busy?'Saving…':'Save payment QR'}</Button>{s?.payment_qr_path&&<Button type="button" variant="ghost" disabled={busy} onClick={()=>{if(window.confirm('Remove the business payment QR?'))submit(true);}}><Trash2/>Remove</Button>}</div><PaymentQr businessId={w.businessId}/>{message&&<p role="status" className="text-sm">{message}</p>}</form></section>;
+}
