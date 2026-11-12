@@ -1526,6 +1526,7 @@ export type Database = {
           category: string
           created_at: string
           id: string
+          image_path: string | null
           is_active: boolean
           name: string
           updated_at: string
@@ -1535,6 +1536,7 @@ export type Database = {
           category?: string
           created_at?: string
           id?: string
+          image_path?: string | null
           is_active?: boolean
           name: string
           updated_at?: string
@@ -1544,6 +1546,7 @@ export type Database = {
           category?: string
           created_at?: string
           id?: string
+          image_path?: string | null
           is_active?: boolean
           name?: string
           updated_at?: string
