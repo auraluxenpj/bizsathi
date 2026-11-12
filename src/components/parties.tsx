@@ -16,6 +16,7 @@ import { accountsOfKind, rememberAccount, rememberedAccount } from '@/lib/accoun
 import { paymentInput } from '@/lib/commerce-schemas';
 import { allBalances, allocatePayment, ledgerEntries, outstandingInvoices, totalOutstanding } from '@/lib/party-ledger';
 import { formatBsAd, formatNPR, todayAd } from '@/lib/format';
+import { customerLoyalty } from '@/lib/loyalty';
 
 type Party = { id: string; name: string; phone: string; kind: string; is_active: boolean; credit_limit?:number|string|null };
 type Tab = 'all' | 'receive' | 'give';
@@ -105,6 +106,7 @@ export function Parties() {
   const toReceive = [...balances.values()].filter(v => v > 0).reduce((s, v) => s + v, 0);
   const toGive = [...balances.values()].filter(v => v < 0).reduce((s, v) => s - v, 0);
   const selected = parties.find(p => p.id === search.party);
+  const loyalty = (phone:string) => customerLoyalty(phone,w.inventory.data?.loyalty ?? []);
 
   const head = <header className="flex flex-wrap items-center justify-between gap-3 print:hidden">
     <h1 className="text-2xl font-bold">{selected ? selected.name : 'Parties'}</h1>

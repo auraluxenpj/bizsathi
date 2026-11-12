@@ -24,7 +24,9 @@ export const getInventory = createServerFn({method:'GET'}).middleware([requireSu
  const movements=[];
  for(let offset=0;;offset+=1000){const page=await context.supabase.from('commerce_stock_movements').select('id,variant_id,branch_id,quantity,kind,reference,reason,created_at,document_id').eq('business_id',data.businessId).order('created_at',{ascending:false}).order('id').range(offset,offset+999);if(page.error)throw new Error('Invoice stock history could not be loaded.');movements.push(...(page.data??[]).map(m=>({...m,operation_id:m.document_id})));if((page.data?.length??0)<1000)break;}
  for(let offset=0;;offset+=1000){const page=await context.supabase.from('stock_movements').select('id,variant_id,branch_id,quantity,kind,reference,reason,created_at,operation_id').eq('business_id',data.businessId).order('created_at',{ascending:false}).order('id').range(offset,offset+999);if(page.error)throw new Error('Stock history could not be loaded.');movements.push(...(page.data ?? []));if((page.data?.length ?? 0)<1000)break;}
- return {variants,parties,movements:movements.sort((a,b)=>b.created_at.localeCompare(a.created_at))};
+ const loyalty=[];
+ for(let offset=0;;offset+=1000){const page=await context.supabase.rpc('read_customer_loyalty',{_business_id:data.businessId}).order('mobile').range(offset,offset+999);if(page.error)throw new Error('Customer loyalty could not be loaded.');loyalty.push(...(page.data ?? []));if((page.data?.length ?? 0)<1000)break;}
+ return {variants,parties,loyalty,movements:movements.sort((a,b)=>b.created_at.localeCompare(a.created_at))};
 });
 export const saveCatalogue = createServerFn({method:'POST'}).middleware([requireSupabaseAuth]).inputValidator(catalogueInput).handler(async ({data,context})=>{
  const {data:count,error}=await context.supabase.rpc('save_catalogue_variant',{_business_id:data.businessId,_rows:data.rows.map(({opening_stock:_o,...row})=>row)});

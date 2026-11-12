@@ -10,6 +10,7 @@ import { partyInput } from '@/lib/inventory-schemas';
 import { makeCsv } from '@/lib/inventory-csv';
 import { PartyImport } from './party-import';
 import { downloadCsv } from '@/lib/download-csv';
+import { customerLoyalty } from '@/lib/loyalty';
 const blank={name:'',phone:'',email:'',address:'',pan_vat_number:'',is_active:true};
 export function Contacts(){const w=useInventoryWorkspace();const save=useServerFn(saveParty);const [kind,setKind]=useState<'customer'|'supplier'>('customer');const [search,setSearch]=useState('');const [open,setOpen]=useState(false);const [id,setId]=useState<string>();const [draft,setDraft]=useState(blank);const [status,setStatus]=useState('');
  useEffect(()=>{setOpen(false);setId(undefined);setDraft(blank);setStatus('');},[w.businessId]);
