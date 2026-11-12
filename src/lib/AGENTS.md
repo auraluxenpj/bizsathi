@@ -1,0 +1,2 @@
+- Quotations use atomic DB conversion and a separate quotation link; confirmation preserves snapshot pricing/customer details through the existing commerce RPC, so returns and financial posting retain their original source semantics.
+- Payment QR is private tenant storage and display-only; credit limits are administrator settings evaluated against authorized ledger evidence, so neither a scan nor an alert implies payment or bypasses posting checks.
