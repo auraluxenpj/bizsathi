@@ -17,6 +17,7 @@ const icon = { cash: Banknote, bank: Landmark, wallet: Smartphone } as const;
 const tone = (v: number) => (v < 0 ? 'text-red-500' : 'text-emerald-600');
 
 function Body({ w, commerce }: { w: CommerceWorkspace; commerce: CommerceData }) {
+  const can = useCan(w.businessId);
   const canManage = ['owner', 'admin', 'accountant'].includes(commerce.role);
   const load = useServerFn(getAccountBalances);
   const accounts = useQuery({ queryKey: ['accounts', w.businessId], queryFn: () => load({ data: { businessId: w.businessId } }), enabled: canManage, retry: false });
@@ -53,6 +54,6 @@ function Body({ w, commerce }: { w: CommerceWorkspace; commerce: CommerceData })
 }
 
 export function CashBank() {
-  const w = useCommerce(); const can = useCan(w.businessId);
+  const w = useCommerce();
   return <Screen title="Cash & Bank Accounts" w={w}>{({ commerce }) => <Body w={w} commerce={commerce} />}</Screen>;
 }
