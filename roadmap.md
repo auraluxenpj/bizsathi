@@ -44,3 +44,11 @@
 - [ ] Verify signed-in finding/decision/profile saves and AI read-back — one auth user now exists, but no business or administrator membership exists.
 - [x] Run two-business mutation tests for review events in an isolated database; no live synthetic records used.
 - [ ] Receipt/invoice upload with AI reading & categorizing into exportable expenses list (awaiting scope answers)
+
+## Karobar reports
+- [x] Profit & Loss (last purchase price costing, expenses by category)
+- [ ] Business Status snapshot
+- [ ] Inventory stock status
+- [ ] Staff report
+- [ ] Day Book
+- [ ] Cash in hand / Bank statement prefilters
