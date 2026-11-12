@@ -14,7 +14,7 @@ BEGIN
  req:=jsonb_build_object('businessId',b,'id',sale,'branchId',br,'periodId',per,'date','2026-10-27','kind','sale','status','confirmed','reference','LOY-1','lines',jsonb_build_array(jsonb_build_object('variantId',v,'quantity',5,'price',50,'discount',0,'taxRate',0)),'payments',jsonb_build_array(jsonb_build_object('id',gen_random_uuid(),'method','bank','amount',250,'reference','LOY-1')));
  rejected:=false; BEGIN PERFORM public.post_commerce_document(req); EXCEPTION WHEN raise_exception THEN rejected:=true; END; ASSERT rejected,'Mobile is mandatory';
  ASSERT NOT EXISTS(SELECT 1 FROM public.commerce_documents WHERE id=sale),'Denied sale is atomic';
- rejected:=false; BEGIN PERFORM public.post_commerce_document(req||jsonb_build_object('mobile','9612345678')); EXCEPTION WHEN raise_exception THEN rejected:=true; END; ASSERT rejected,'Invalid mobile denied';
+ rejected:=false; BEGIN PERFORM public.post_commerce_document(req||jsonb_build_object('mobile','961234567')); EXCEPTION WHEN raise_exception THEN rejected:=true; END; ASSERT rejected,'Invalid mobile denied';
  PERFORM public.post_commerce_document(req||jsonb_build_object('id',gen_random_uuid(),'status','draft','payments','[]'::jsonb)); ASSERT (SELECT count(*) FROM public.customer_memberships WHERE business_id=b)=0,'Drafts never award';
  req:=req||jsonb_build_object('mobile','+977 984-123-4567'); PERFORM public.post_commerce_document(req); PERFORM public.post_commerce_document(req);
  SELECT id INTO mid FROM public.customer_memberships WHERE business_id=b AND mobile='9841234567'; ASSERT mid IS NOT NULL,'Mobile normalized';
