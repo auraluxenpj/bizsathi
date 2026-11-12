@@ -2,7 +2,7 @@ import {QueryClient,QueryClientProvider} from '@tanstack/react-query';
 import {render,screen,fireEvent,waitFor} from '@testing-library/react';
 import {describe,it,expect,vi} from 'vitest';
 import {useState} from 'react';
-const api=vi.hoisted(()=>({save:vi.fn(async()=>({ok:true})),qr:{url:'data:image/png;base64,iVBORw0KGgo=',provider:'Fonepay',payee:'Auraluxe',instructions:'Use invoice reference'}}));
+const api=vi.hoisted(()=>({save:vi.fn(async(_request:unknown)=>({ok:true})),qr:{url:'data:image/png;base64,iVBORw0KGgo=',provider:'Fonepay',payee:'Auraluxe',instructions:'Use invoice reference'}}));
 vi.mock('@tanstack/react-start',()=>({useServerFn:(f:unknown)=>f}));
 vi.mock('@/lib/sales-cash-flow.functions',()=>({getPaymentQr:async()=>api.qr,saveCreditLimit:(r:unknown)=>api.save(r)}));
 import {InvoiceSheet} from '@/components/invoice-print';
