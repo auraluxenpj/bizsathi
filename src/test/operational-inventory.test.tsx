@@ -1,3 +1,4 @@
+vi.mock('@/lib/sales-cash-flow.functions',()=>({getPaymentQr:async()=>({url:null,provider:'',payee:'',instructions:''}),saveCreditLimit:vi.fn(),savePaymentQr:vi.fn()}));
 import {QueryClient,QueryClientProvider} from '@tanstack/react-query';
 import {createMemoryHistory,createRootRoute,createRouter,RouterProvider} from '@tanstack/react-router';
 import {render,screen,fireEvent,waitFor} from '@testing-library/react';
