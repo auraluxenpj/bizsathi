@@ -1,4 +1,5 @@
 # Security review workspace
+- [ ] Sales & Cash Flow bundle: quotations with exact-detail conversion to sale, configurable printable payment QR, manual WhatsApp party statements, and customer credit-limit alerts; audited, awaiting plan approval.
 - [x] Match myBillBook 40/48-label A4 sticker sizes and alignment: measured reference PDFs, added 52.5 × 29.7 mm 4×10 and 48.63 × 23.92 mm 4×12 layouts with reference margins/gaps; 23 focused tests passed, signed-in PDF page counts/cell positions and mobile controls verified. Physical printer alignment remains unverified.
 - [x] Operational inventory bundle: dedicated reason-logged adjustments/disposals, selected invoice-item returns with credit/refund tracking, 24/30 A4 and thermal labels; 293 tests passed, signed-in desktop/mobile correction previews and actual PDF sheet layouts verified without live stock changes.
 - [ ] Operational bundle live stock/return confirmation and physical sticker alignment: live sales currently contain drafts only, so confirmed-invoice returns/refunds and stock mutations were not executed; requires legitimate operational transactions and the user's label printer/stock.
