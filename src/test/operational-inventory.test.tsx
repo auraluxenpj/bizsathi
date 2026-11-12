@@ -66,4 +66,15 @@ describe('Operational inventory confirmations',()=>{
   await waitFor(()=>expect(fns.payment).toHaveBeenCalledTimes(1));
   expect(fns.payment.mock.calls[0]?.[0].data).toMatchObject({documentId:credit.id,amount:200,method:'bank',reference:'Refund SRN-01'});
  });
+ it('purchase returns prefill only received goods and keep their supplier invoice linkage',async()=>{
+  documents=[{...original,kind:'purchase'},{...original,id:'receipt',source_id:I.invoice,kind:'goods_receipt',lines:[{...original.lines[0],quantity:4,total:400}] as typeof original.lines}];
+  mount(<DocumentEditor w={workspace} kind="purchase_return" sourceId={I.invoice} onSaved={()=>{}}/>);
+  expect(await screen.findByLabelText('quantity line 1')).toHaveValue(4);
+  fireEvent.change(screen.getByLabelText('quantity line 1'),{target:{value:'5'}});
+  expect(screen.getByRole('button',{name:'Confirm purchase return'})).toBeDisabled();
+  fireEvent.change(screen.getByLabelText('quantity line 1'),{target:{value:'2'}});
+  fireEvent.click(screen.getByRole('button',{name:'Confirm purchase return'}));
+  await waitFor(()=>expect(fns.confirm).toHaveBeenCalledTimes(1));
+  expect(fns.confirm.mock.calls[0]?.[0].data).toMatchObject({kind:'purchase_return',sourceId:I.invoice,lines:[{variantId:I.variant,quantity:2}]});
+ });
 });
