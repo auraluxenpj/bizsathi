@@ -1,4 +1,5 @@
 # Security review workspace
+- [ ] Update mobile loyalty to 10 points per NPR 100; show customer phone-linked points and confirmed purchase counts; verify without changing real sales.
 - [x] Sales & Cash Flow bundle: protected quotations and atomic exact-detail conversion to unconfirmed sale, private printable payment QR settings, reviewed manual WhatsApp statements and customer credit alerts; 311 tests passed and isolated stock/loyalty/retry/branch/tenant checks rolled back, signed-in desktop/mobile entry/settings and real-party statement preview verified.
 - [ ] Sales bundle live save/conversion, real QR upload/scan/print and recipient statement delivery: requires legitimate quotation details and Auraluxe's actual payment QR; no live records were changed and no messages sent.
 - [x] Match myBillBook 40/48-label A4 sticker sizes and alignment: measured reference PDFs, added 52.5 × 29.7 mm 4×10 and 48.63 × 23.92 mm 4×12 layouts with reference margins/gaps; 23 focused tests passed, signed-in PDF page counts/cell positions and mobile controls verified. Physical printer alignment remains unverified.
