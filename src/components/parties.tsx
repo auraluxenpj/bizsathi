@@ -1,3 +1,5 @@
+import {CreditAlert,CreditLimitEditor} from './party-credit';
+import {PartyStatementShare} from './party-statement-share';
 import { useMemo, useRef, useState } from 'react';
 import { Link, useNavigate, useSearch } from '@tanstack/react-router';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
@@ -15,7 +17,7 @@ import { paymentInput } from '@/lib/commerce-schemas';
 import { allBalances, allocatePayment, ledgerEntries, outstandingInvoices, totalOutstanding } from '@/lib/party-ledger';
 import { formatBsAd, formatNPR, todayAd } from '@/lib/format';
 
-type Party = { id: string; name: string; phone: string; kind: string; is_active: boolean };
+type Party = { id: string; name: string; phone: string; kind: string; is_active: boolean; credit_limit?:number|string|null };
 type Tab = 'all' | 'receive' | 'give';
 
 function BalanceText({ value }: { value: number }) {
@@ -125,8 +127,9 @@ export function Parties() {
       <Button variant="ghost" className="mt-2 print:hidden" onClick={() => navigate({ to: '/parties', search: {} })}><ArrowLeft />All parties</Button>
       <section className="mt-2 flex flex-wrap items-center justify-between gap-4 rounded-xl border bg-card p-5">
         <div><p className="text-sm capitalize text-muted-foreground">{selected.kind}{selected.phone ? <> · <Phone className="inline size-3" /> {selected.phone}</> : null}</p><p className="mt-2 text-2xl font-semibold tabular-nums"><BalanceText value={bal(selected.id)} /></p></div>
-        <Button variant="outline" className="print:hidden" onClick={() => window.print()}><Printer />Print statement</Button>
+        <div className="flex flex-wrap gap-2 print:hidden"><PartyStatementShare businessId={w.businessId} business={data.business.name} party={selected.name} phone={selected.phone} balance={bal(selected.id)} invoices={owedRows.map(o=>({reference:o.doc.reference,outstanding:o.outstanding}))}/><Button variant="outline" onClick={() => window.print()}><Printer />Print statement</Button></div>
       </section>
+      {selected.kind==='customer'&&<section className="border-b py-4 print:hidden"><CreditAlert balance={bal(selected.id)} limit={selected.credit_limit==null?null:Number(selected.credit_limit)}/>{['owner','admin'].includes(data.role)&&<CreditLimitEditor key={selected.id} businessId={w.businessId} partyId={selected.id} limit={selected.credit_limit==null?null:Number(selected.credit_limit)}/>}</section>}
       {owedRows.length > 0 && <section className="mt-5 print:hidden"><h2 className="text-sm font-semibold">Unpaid {selected.kind === 'supplier' ? 'bills' : 'invoices'} · {formatNPR(totalOutstanding(owedRows))}</h2><ul className="mt-2 divide-y rounded-xl border bg-card text-sm">{owedRows.map(o => <li key={o.doc.id} className="flex items-center justify-between gap-3 px-4 py-3"><span className="min-w-0"><span className="block break-words font-medium">{o.doc.reference}</span><span className="block text-xs text-muted-foreground">{formatBsAd(o.doc.document_date)}</span></span><span className="shrink-0 font-medium tabular-nums">{formatNPR(o.outstanding)}</span></li>)}</ul></section>}
       <section className="mt-5"><h2 className="text-sm font-semibold">Ledger</h2>
         <div className="mt-2 overflow-x-auto rounded-xl border bg-card"><table className="w-full min-w-[34rem] text-sm"><thead className="border-b bg-secondary/40 text-left text-xs text-muted-foreground"><tr><th className="px-4 py-2 font-medium">Date</th><th className="px-4 py-2 font-medium">Entry</th><th className="px-4 py-2 text-right font-medium">Amount</th><th className="px-4 py-2 text-right font-medium">Balance</th></tr></thead>
@@ -144,7 +147,7 @@ export function Parties() {
       <div className="flex rounded-lg border p-0.5 text-sm">{([['all', 'All'], ['receive', 'To Receive'], ['give', 'To Give']] as const).map(([k, l]) => <button key={k} type="button" aria-pressed={tab === k} onClick={() => setTab(k)} className={`rounded-md px-3 py-1.5 ${tab === k ? 'bg-primary text-primary-foreground' : 'text-muted-foreground'}`}>{l}</button>)}</div>
       <div className="flex min-w-48 flex-1 items-center gap-2 rounded-lg border bg-card px-3"><Search className="size-4 text-muted-foreground" /><Input aria-label="Search parties" className="h-10 border-0 px-0 shadow-none focus-visible:ring-0" placeholder="Search by name or phone" value={text} onChange={e => setText(e.target.value)} /></div>
     </div>
-    <ul className="mt-4 divide-y rounded-xl border bg-card">{list.map(p => <li key={p.id}><button type="button" className="flex min-h-16 w-full items-center justify-between gap-3 px-4 py-3 text-left hover:bg-secondary/40" onClick={() => navigate({ to: '/parties', search: { party: p.id } })}><span className="min-w-0"><span className="block break-words font-medium">{p.name}</span><span className="block text-xs capitalize text-muted-foreground">{p.kind}{p.phone ? ` · ${p.phone}` : ''}</span></span><span className="shrink-0 text-sm tabular-nums"><BalanceText value={bal(p.id)} /></span></button></li>)}
+    <ul className="mt-4 divide-y rounded-xl border bg-card">{list.map(p => <li key={p.id}><button type="button" className="flex min-h-16 w-full items-center justify-between gap-3 px-4 py-3 text-left hover:bg-secondary/40" onClick={() => navigate({ to: '/parties', search: { party: p.id } })}><span className="min-w-0"><span className="block break-words font-medium">{p.name}</span><span className="block text-xs capitalize text-muted-foreground">{p.kind}{p.phone ? ` · ${p.phone}` : ''}</span>{p.kind==='customer'&&p.credit_limit!=null&&bal(p.id)>Number(p.credit_limit)&&<span className="block text-xs text-destructive">Credit limit exceeded · {formatNPR(p.credit_limit)}</span>}</span><span className="shrink-0 text-sm tabular-nums"><BalanceText value={bal(p.id)} /></span></button></li>)}
       {!list.length && <li className="px-4 py-12 text-center text-sm text-muted-foreground">{parties.length ? 'No parties match.' : 'No parties yet. Add your first customer or supplier.'}</li>}</ul>
   </>);
 }

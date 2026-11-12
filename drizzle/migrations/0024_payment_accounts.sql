@@ -1,3 +1,4 @@
+-- The content of this migration cannot be applied: named accounts and capital account rules already exist in the hosted database.
 -- 0024: Named bank, wallet and cash-safe accounts.
 -- Layered on top of the existing books:
 --  * the chart of accounts gains one account, 'capital', used only for opening balances and adjustments;
@@ -8,226 +9,226 @@
 -- Roll forward with a new migration; never edit this one.
 
 -- ---------- 1. Books ----------
-DO $patch$
-DECLARE def text; patched text; chk text;
-BEGIN
-  SELECT pg_get_constraintdef(oid) INTO chk FROM pg_constraint WHERE conname = 'commerce_journal_entries_account_code_check' AND conrelid = 'public.commerce_journal_entries'::regclass;
-  IF chk IS NULL OR position('''capital''' IN chk) > 0 THEN RAISE EXCEPTION 'Unexpected account code constraint'; END IF;
-  patched := replace(chk, 'ARRAY[''cash''::text,', 'ARRAY[''capital''::text, ''cash''::text,');
-  IF patched = chk THEN RAISE EXCEPTION 'Account code list not recognised'; END IF;
-  EXECUTE 'ALTER TABLE public.commerce_journal_entries DROP CONSTRAINT commerce_journal_entries_account_code_check';
-  EXECUTE 'ALTER TABLE public.commerce_journal_entries ADD CONSTRAINT commerce_journal_entries_account_code_check ' || patched;
+-- DO $patch$
+-- DECLARE def text; patched text; chk text;
+-- BEGIN
+--   SELECT pg_get_constraintdef(oid) INTO chk FROM pg_constraint WHERE conname = 'commerce_journal_entries_account_code_check' AND conrelid = 'public.commerce_journal_entries'::regclass;
+--   IF chk IS NULL OR position('''capital''' IN chk) > 0 THEN RAISE EXCEPTION 'Unexpected account code constraint'; END IF;
+--   patched := replace(chk, 'ARRAY[''cash''::text,', 'ARRAY[''capital''::text, ''cash''::text,');
+--   IF patched = chk THEN RAISE EXCEPTION 'Account code list not recognised'; END IF;
+--   EXECUTE 'ALTER TABLE public.commerce_journal_entries DROP CONSTRAINT commerce_journal_entries_account_code_check';
+--   EXECUTE 'ALTER TABLE public.commerce_journal_entries ADD CONSTRAINT commerce_journal_entries_account_code_check ' || patched;
 
-  def := pg_get_functiondef('public.guard_voucher_journal()'::regprocedure);
-  patched := replace(def, 'NEW.account_code NOT IN (''bank'',''wallet'',', 'NEW.account_code NOT IN (''cash'',''capital'',''bank'',''wallet'',');
-  IF patched = def THEN RAISE EXCEPTION 'guard_voucher_journal not recognised'; END IF;
-  EXECUTE patched;
+--   def := pg_get_functiondef('public.guard_voucher_journal()'::regprocedure);
+--   patched := replace(def, 'NEW.account_code NOT IN (''bank'',''wallet'',', 'NEW.account_code NOT IN (''cash'',''capital'',''bank'',''wallet'',');
+--   IF patched = def THEN RAISE EXCEPTION 'guard_voucher_journal not recognised'; END IF;
+--   EXECUTE patched;
 
-  def := pg_get_functiondef('public.post_accounting_voucher(jsonb)'::regprocedure);
-  patched := replace(def, 'ac NOT IN (''bank'',''wallet'',', 'ac NOT IN (''cash'',''capital'',''bank'',''wallet'',');
-  IF patched = def THEN RAISE EXCEPTION 'voucher account list not recognised'; END IF;
-  def := patched;
-  patched := replace(def, '(ac IN (''bank'',''wallet'') AND c>0)', '(ac IN (''bank'',''wallet'',''cash'') AND c>0)');
-  IF patched = def THEN RAISE EXCEPTION 'expense credit rule not recognised'; END IF;
-  EXECUTE patched;
-END $patch$;
+--   def := pg_get_functiondef('public.post_accounting_voucher(jsonb)'::regprocedure);
+--   patched := replace(def, 'ac NOT IN (''bank'',''wallet'',', 'ac NOT IN (''cash'',''capital'',''bank'',''wallet'',');
+--   IF patched = def THEN RAISE EXCEPTION 'voucher account list not recognised'; END IF;
+--   def := patched;
+--   patched := replace(def, '(ac IN (''bank'',''wallet'') AND c>0)', '(ac IN (''bank'',''wallet'',''cash'') AND c>0)');
+--   IF patched = def THEN RAISE EXCEPTION 'expense credit rule not recognised'; END IF;
+--   EXECUTE patched;
+-- END $patch$;
 
 -- ---------- 2. Sub-ledger ----------
-CREATE TABLE public.payment_accounts(
-  id uuid PRIMARY KEY,
-  business_id uuid NOT NULL REFERENCES public.businesses(id) ON DELETE RESTRICT,
-  name text NOT NULL CHECK(char_length(btrim(name)) BETWEEN 1 AND 80),
-  kind text NOT NULL CHECK(kind IN ('cash','bank','wallet')),
-  is_active boolean NOT NULL DEFAULT true,
-  created_by uuid NOT NULL DEFAULT auth.uid(),
-  created_at timestamptz NOT NULL DEFAULT now()
-);
-CREATE UNIQUE INDEX payment_accounts_name_idx ON public.payment_accounts(business_id, lower(btrim(name)));
-CREATE TABLE public.account_movements(
-  id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-  business_id uuid NOT NULL REFERENCES public.businesses(id) ON DELETE RESTRICT,
-  account_id uuid NOT NULL REFERENCES public.payment_accounts(id) ON DELETE RESTRICT,
-  amount numeric(16,2) NOT NULL CHECK(amount <> 0),
-  source_type text NOT NULL CHECK(source_type IN ('payment','voucher')),
-  source_id uuid NOT NULL,
-  entry_date date NOT NULL,
-  memo text NOT NULL DEFAULT '' CHECK(char_length(memo) <= 200),
-  created_at timestamptz NOT NULL DEFAULT now(),
-  UNIQUE(account_id, source_type, source_id)
-);
-CREATE INDEX account_movements_account_idx ON public.account_movements(account_id, entry_date);
-ALTER TABLE public.payment_accounts ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.account_movements ENABLE ROW LEVEL SECURITY;
-CREATE POLICY payment_accounts_read ON public.payment_accounts FOR SELECT TO authenticated USING(public.has_business_role(business_id,'accountant'));
-CREATE POLICY account_movements_read ON public.account_movements FOR SELECT TO authenticated USING(public.has_business_role(business_id,'accountant'));
-REVOKE ALL ON public.payment_accounts, public.account_movements FROM PUBLIC, anon, authenticated;
-GRANT SELECT ON public.payment_accounts, public.account_movements TO authenticated;
+-- CREATE TABLE public.payment_accounts(
+--   id uuid PRIMARY KEY,
+--   business_id uuid NOT NULL REFERENCES public.businesses(id) ON DELETE RESTRICT,
+--   name text NOT NULL CHECK(char_length(btrim(name)) BETWEEN 1 AND 80),
+--   kind text NOT NULL CHECK(kind IN ('cash','bank','wallet')),
+--   is_active boolean NOT NULL DEFAULT true,
+--   created_by uuid NOT NULL DEFAULT auth.uid(),
+--   created_at timestamptz NOT NULL DEFAULT now()
+-- );
+-- CREATE UNIQUE INDEX payment_accounts_name_idx ON public.payment_accounts(business_id, lower(btrim(name)));
+-- CREATE TABLE public.account_movements(
+--   id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+--   business_id uuid NOT NULL REFERENCES public.businesses(id) ON DELETE RESTRICT,
+--   account_id uuid NOT NULL REFERENCES public.payment_accounts(id) ON DELETE RESTRICT,
+--   amount numeric(16,2) NOT NULL CHECK(amount <> 0),
+--   source_type text NOT NULL CHECK(source_type IN ('payment','voucher')),
+--   source_id uuid NOT NULL,
+--   entry_date date NOT NULL,
+--   memo text NOT NULL DEFAULT '' CHECK(char_length(memo) <= 200),
+--   created_at timestamptz NOT NULL DEFAULT now(),
+--   UNIQUE(account_id, source_type, source_id)
+-- );
+-- CREATE INDEX account_movements_account_idx ON public.account_movements(account_id, entry_date);
+-- ALTER TABLE public.payment_accounts ENABLE ROW LEVEL SECURITY;
+-- ALTER TABLE public.account_movements ENABLE ROW LEVEL SECURITY;
+-- CREATE POLICY payment_accounts_read ON public.payment_accounts FOR SELECT TO authenticated USING(public.has_business_role(business_id,'accountant'));
+-- CREATE POLICY account_movements_read ON public.account_movements FOR SELECT TO authenticated USING(public.has_business_role(business_id,'accountant'));
+-- REVOKE ALL ON public.payment_accounts, public.account_movements FROM PUBLIC, anon, authenticated;
+-- GRANT SELECT ON public.payment_accounts, public.account_movements TO authenticated;
 
 -- Opening balances, adjustments and transfers are recorded as ordinary journal vouchers, so the books always agree.
-CREATE FUNCTION public.pa_load(_business uuid, _account uuid, _need_active boolean DEFAULT true) RETURNS public.payment_accounts
-LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
-DECLARE a public.payment_accounts;
-BEGIN
-  SELECT * INTO a FROM public.payment_accounts WHERE id = _account AND business_id = _business;
-  IF NOT FOUND THEN RAISE EXCEPTION 'Account not found'; END IF;
-  IF _need_active AND NOT a.is_active THEN RAISE EXCEPTION 'Account is not active'; END IF;
-  RETURN a;
-END $$;
+-- CREATE FUNCTION public.pa_load(_business uuid, _account uuid, _need_active boolean DEFAULT true) RETURNS public.payment_accounts
+-- LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
+-- DECLARE a public.payment_accounts;
+-- BEGIN
+--   SELECT * INTO a FROM public.payment_accounts WHERE id = _account AND business_id = _business;
+--   IF NOT FOUND THEN RAISE EXCEPTION 'Account not found'; END IF;
+--   IF _need_active AND NOT a.is_active THEN RAISE EXCEPTION 'Account is not active'; END IF;
+--   RETURN a;
+-- END $$;
 
-CREATE FUNCTION public.pa_balance(_account uuid) RETURNS numeric
-LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public AS $$ SELECT coalesce(sum(amount),0) FROM public.account_movements WHERE account_id = _account $$;
+-- CREATE FUNCTION public.pa_balance(_account uuid) RETURNS numeric
+-- LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public AS $$ SELECT coalesce(sum(amount),0) FROM public.account_movements WHERE account_id = _account $$;
 
-CREATE FUNCTION public.pa_journal(_b uuid, _br uuid, _per uuid, _req uuid, _date date, _ref text, _reason text, _debit text, _credit text, _amount numeric) RETURNS uuid
-LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
-BEGIN
-  RETURN public.post_accounting_voucher(jsonb_build_object('businessId',_b,'branchId',_br,'periodId',_per,'id',_req,'date',_date,'kind','journal','reference',_ref,'reason',_reason,
-    'lines',jsonb_build_array(jsonb_build_object('account',_debit,'debit',to_char(_amount,'FM999999999999990.00'),'credit','0'),jsonb_build_object('account',_credit,'debit','0','credit',to_char(_amount,'FM999999999999990.00')))));
-END $$;
+-- CREATE FUNCTION public.pa_journal(_b uuid, _br uuid, _per uuid, _req uuid, _date date, _ref text, _reason text, _debit text, _credit text, _amount numeric) RETURNS uuid
+-- LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
+-- BEGIN
+--   RETURN public.post_accounting_voucher(jsonb_build_object('businessId',_b,'branchId',_br,'periodId',_per,'id',_req,'date',_date,'kind','journal','reference',_ref,'reason',_reason,
+--     'lines',jsonb_build_array(jsonb_build_object('account',_debit,'debit',to_char(_amount,'FM999999999999990.00'),'credit','0'),jsonb_build_object('account',_credit,'debit','0','credit',to_char(_amount,'FM999999999999990.00')))));
+-- END $$;
 
-CREATE FUNCTION public.create_payment_account(_business uuid, _branch uuid, _period uuid, _id uuid, _name text, _kind text, _opening numeric, _date date) RETURNS uuid
-LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
-DECLARE a public.payment_accounts; vid uuid;
-BEGIN
-  IF auth.uid() IS NULL OR _business IS NULL OR _id IS NULL OR NOT public.has_business_role(_business,'accountant') OR NOT public.can_access_branch(_business,_branch) THEN RAISE EXCEPTION 'Account access denied'; END IF;
-  IF _kind NOT IN ('cash','bank','wallet') OR _opening IS NULL OR _opening < 0 OR _opening <> round(_opening,2) OR _opening >= 10000000000000000 THEN RAISE EXCEPTION 'Invalid account details'; END IF;
-  PERFORM pg_advisory_xact_lock(hashtextextended(_business::text,0));
-  SELECT * INTO a FROM public.payment_accounts WHERE id = _id;
-  IF FOUND THEN
-    IF a.business_id = _business AND a.kind = _kind AND lower(btrim(a.name)) = lower(btrim(_name)) THEN RETURN a.id; END IF;
-    RAISE EXCEPTION 'Request identifier conflict';
-  END IF;
-  INSERT INTO public.payment_accounts(id, business_id, name, kind, created_by) VALUES(_id, _business, btrim(_name), _kind, auth.uid());
-  IF _opening > 0 THEN
-    vid := public.pa_journal(_business,_branch,_period,_id,_date,'OPEN-'||upper(left(replace(_id::text,'-',''),6)),'Opening balance: '||btrim(_name),_kind,'capital',_opening);
-    INSERT INTO public.account_movements(business_id,account_id,amount,source_type,source_id,entry_date,memo) VALUES(_business,_id,_opening,'voucher',vid,_date,'Opening balance');
-  END IF;
-  RETURN _id;
-END $$;
+-- CREATE FUNCTION public.create_payment_account(_business uuid, _branch uuid, _period uuid, _id uuid, _name text, _kind text, _opening numeric, _date date) RETURNS uuid
+-- LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
+-- DECLARE a public.payment_accounts; vid uuid;
+-- BEGIN
+--   IF auth.uid() IS NULL OR _business IS NULL OR _id IS NULL OR NOT public.has_business_role(_business,'accountant') OR NOT public.can_access_branch(_business,_branch) THEN RAISE EXCEPTION 'Account access denied'; END IF;
+--   IF _kind NOT IN ('cash','bank','wallet') OR _opening IS NULL OR _opening < 0 OR _opening <> round(_opening,2) OR _opening >= 10000000000000000 THEN RAISE EXCEPTION 'Invalid account details'; END IF;
+--   PERFORM pg_advisory_xact_lock(hashtextextended(_business::text,0));
+--   SELECT * INTO a FROM public.payment_accounts WHERE id = _id;
+--   IF FOUND THEN
+--     IF a.business_id = _business AND a.kind = _kind AND lower(btrim(a.name)) = lower(btrim(_name)) THEN RETURN a.id; END IF;
+--     RAISE EXCEPTION 'Request identifier conflict';
+--   END IF;
+--   INSERT INTO public.payment_accounts(id, business_id, name, kind, created_by) VALUES(_id, _business, btrim(_name), _kind, auth.uid());
+--   IF _opening > 0 THEN
+--     vid := public.pa_journal(_business,_branch,_period,_id,_date,'OPEN-'||upper(left(replace(_id::text,'-',''),6)),'Opening balance: '||btrim(_name),_kind,'capital',_opening);
+--     INSERT INTO public.account_movements(business_id,account_id,amount,source_type,source_id,entry_date,memo) VALUES(_business,_id,_opening,'voucher',vid,_date,'Opening balance');
+--   END IF;
+--   RETURN _id;
+-- END $$;
 
-CREATE FUNCTION public.adjust_payment_account(_request jsonb) RETURNS uuid
-LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
-DECLARE b uuid:=(_request->>'businessId')::uuid; br uuid:=(_request->>'branchId')::uuid; per uuid:=(_request->>'periodId')::uuid; req uuid:=(_request->>'id')::uuid; acc uuid:=(_request->>'accountId')::uuid;
-  dt date:=(_request->>'date')::date; target numeric:=(_request->>'target')::numeric; a public.payment_accounts; cur numeric; delta numeric; vid uuid;
-BEGIN
-  IF auth.uid() IS NULL OR b IS NULL OR req IS NULL OR NOT public.has_business_role(b,'accountant') OR NOT public.can_access_branch(b,br) THEN RAISE EXCEPTION 'Account access denied'; END IF;
-  IF target IS NULL OR target <> round(target,2) OR abs(target) >= 10000000000000000 THEN RAISE EXCEPTION 'Invalid balance'; END IF;
-  PERFORM pg_advisory_xact_lock(hashtextextended(b::text,0));
-  IF EXISTS(SELECT 1 FROM public.accounting_vouchers WHERE business_id=b AND request_id=req) THEN RETURN (SELECT id FROM public.accounting_vouchers WHERE business_id=b AND request_id=req); END IF;
-  a := public.pa_load(b, acc);
-  cur := public.pa_balance(acc); delta := target - cur;
-  IF delta = 0 THEN RAISE EXCEPTION 'Balance is already correct'; END IF;
-  IF delta > 0 THEN vid := public.pa_journal(b,br,per,req,dt,'ADJ-'||upper(left(replace(req::text,'-',''),6)),'Balance adjustment: '||a.name,a.kind,'capital',delta);
-  ELSE vid := public.pa_journal(b,br,per,req,dt,'ADJ-'||upper(left(replace(req::text,'-',''),6)),'Balance adjustment: '||a.name,'capital',a.kind,-delta); END IF;
-  INSERT INTO public.account_movements(business_id,account_id,amount,source_type,source_id,entry_date,memo) VALUES(b,acc,delta,'voucher',vid,dt,'Balance adjustment');
-  RETURN vid;
-END $$;
+-- CREATE FUNCTION public.adjust_payment_account(_request jsonb) RETURNS uuid
+-- LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
+-- DECLARE b uuid:=(_request->>'businessId')::uuid; br uuid:=(_request->>'branchId')::uuid; per uuid:=(_request->>'periodId')::uuid; req uuid:=(_request->>'id')::uuid; acc uuid:=(_request->>'accountId')::uuid;
+--   dt date:=(_request->>'date')::date; target numeric:=(_request->>'target')::numeric; a public.payment_accounts; cur numeric; delta numeric; vid uuid;
+-- BEGIN
+--   IF auth.uid() IS NULL OR b IS NULL OR req IS NULL OR NOT public.has_business_role(b,'accountant') OR NOT public.can_access_branch(b,br) THEN RAISE EXCEPTION 'Account access denied'; END IF;
+--   IF target IS NULL OR target <> round(target,2) OR abs(target) >= 10000000000000000 THEN RAISE EXCEPTION 'Invalid balance'; END IF;
+--   PERFORM pg_advisory_xact_lock(hashtextextended(b::text,0));
+--   IF EXISTS(SELECT 1 FROM public.accounting_vouchers WHERE business_id=b AND request_id=req) THEN RETURN (SELECT id FROM public.accounting_vouchers WHERE business_id=b AND request_id=req); END IF;
+--   a := public.pa_load(b, acc);
+--   cur := public.pa_balance(acc); delta := target - cur;
+--   IF delta = 0 THEN RAISE EXCEPTION 'Balance is already correct'; END IF;
+--   IF delta > 0 THEN vid := public.pa_journal(b,br,per,req,dt,'ADJ-'||upper(left(replace(req::text,'-',''),6)),'Balance adjustment: '||a.name,a.kind,'capital',delta);
+--   ELSE vid := public.pa_journal(b,br,per,req,dt,'ADJ-'||upper(left(replace(req::text,'-',''),6)),'Balance adjustment: '||a.name,'capital',a.kind,-delta); END IF;
+--   INSERT INTO public.account_movements(business_id,account_id,amount,source_type,source_id,entry_date,memo) VALUES(b,acc,delta,'voucher',vid,dt,'Balance adjustment');
+--   RETURN vid;
+-- END $$;
 
-CREATE FUNCTION public.transfer_between_accounts(_request jsonb) RETURNS uuid
-LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
-DECLARE b uuid:=(_request->>'businessId')::uuid; br uuid:=(_request->>'branchId')::uuid; per uuid:=(_request->>'periodId')::uuid; req uuid:=(_request->>'id')::uuid;
-  f uuid:=(_request->>'fromAccountId')::uuid; t uuid:=(_request->>'toAccountId')::uuid; dt date:=(_request->>'date')::date; amt numeric:=(_request->>'amount')::numeric; fa public.payment_accounts; ta public.payment_accounts; vid uuid;
-BEGIN
-  IF auth.uid() IS NULL OR b IS NULL OR req IS NULL OR NOT public.has_business_role(b,'accountant') OR NOT public.can_access_branch(b,br) THEN RAISE EXCEPTION 'Account access denied'; END IF;
-  IF amt IS NULL OR amt <= 0 OR amt <> round(amt,2) OR amt >= 10000000000000000 OR f = t THEN RAISE EXCEPTION 'Invalid transfer'; END IF;
-  PERFORM pg_advisory_xact_lock(hashtextextended(b::text,0));
-  IF EXISTS(SELECT 1 FROM public.accounting_vouchers WHERE business_id=b AND request_id=req) THEN RETURN (SELECT id FROM public.accounting_vouchers WHERE business_id=b AND request_id=req); END IF;
-  fa := public.pa_load(b,f); ta := public.pa_load(b,t);
-  IF public.pa_balance(f) < amt THEN RAISE EXCEPTION 'Insufficient account balance'; END IF;
-  vid := public.pa_journal(b,br,per,req,dt,'TRF-'||upper(left(replace(req::text,'-',''),6)),'Transfer: '||fa.name||' to '||ta.name,ta.kind,fa.kind,amt);
-  INSERT INTO public.account_movements(business_id,account_id,amount,source_type,source_id,entry_date,memo) VALUES(b,f,-amt,'voucher',vid,dt,'Transfer to '||ta.name),(b,t,amt,'voucher',vid,dt,'Transfer from '||fa.name);
-  RETURN vid;
-END $$;
+-- CREATE FUNCTION public.transfer_between_accounts(_request jsonb) RETURNS uuid
+-- LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
+-- DECLARE b uuid:=(_request->>'businessId')::uuid; br uuid:=(_request->>'branchId')::uuid; per uuid:=(_request->>'periodId')::uuid; req uuid:=(_request->>'id')::uuid;
+--   f uuid:=(_request->>'fromAccountId')::uuid; t uuid:=(_request->>'toAccountId')::uuid; dt date:=(_request->>'date')::date; amt numeric:=(_request->>'amount')::numeric; fa public.payment_accounts; ta public.payment_accounts; vid uuid;
+-- BEGIN
+--   IF auth.uid() IS NULL OR b IS NULL OR req IS NULL OR NOT public.has_business_role(b,'accountant') OR NOT public.can_access_branch(b,br) THEN RAISE EXCEPTION 'Account access denied'; END IF;
+--   IF amt IS NULL OR amt <= 0 OR amt <> round(amt,2) OR amt >= 10000000000000000 OR f = t THEN RAISE EXCEPTION 'Invalid transfer'; END IF;
+--   PERFORM pg_advisory_xact_lock(hashtextextended(b::text,0));
+--   IF EXISTS(SELECT 1 FROM public.accounting_vouchers WHERE business_id=b AND request_id=req) THEN RETURN (SELECT id FROM public.accounting_vouchers WHERE business_id=b AND request_id=req); END IF;
+--   fa := public.pa_load(b,f); ta := public.pa_load(b,t);
+--   IF public.pa_balance(f) < amt THEN RAISE EXCEPTION 'Insufficient account balance'; END IF;
+--   vid := public.pa_journal(b,br,per,req,dt,'TRF-'||upper(left(replace(req::text,'-',''),6)),'Transfer: '||fa.name||' to '||ta.name,ta.kind,fa.kind,amt);
+--   INSERT INTO public.account_movements(business_id,account_id,amount,source_type,source_id,entry_date,memo) VALUES(b,f,-amt,'voucher',vid,dt,'Transfer to '||ta.name),(b,t,amt,'voucher',vid,dt,'Transfer from '||fa.name);
+--   RETURN vid;
+-- END $$;
 
 -- ---------- 3. Tagging what the existing functions posted ----------
-CREATE FUNCTION public.pa_tag_payment(_b uuid, _payment uuid, _account uuid) RETURNS void
-LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
-DECLARE p public.commerce_payments; a public.payment_accounts;
-BEGIN
-  SELECT * INTO p FROM public.commerce_payments WHERE id = _payment AND business_id = _b;
-  IF NOT FOUND THEN RAISE EXCEPTION 'Payment not found'; END IF;
-  a := public.pa_load(_b,_account);
-  IF p.method = 'cash' THEN RAISE EXCEPTION 'Cash from the counter is not tagged to an account'; END IF;
-  IF a.kind <> p.method THEN RAISE EXCEPTION 'Account type does not match the payment method'; END IF;
-  INSERT INTO public.account_movements(business_id,account_id,amount,source_type,source_id,entry_date,memo)
-    VALUES(_b,_account,CASE WHEN p.direction = 'in' THEN p.amount ELSE -p.amount END,'payment',_payment,p.payment_date,'Payment') ON CONFLICT (account_id, source_type, source_id) DO NOTHING;
-END $$;
+-- CREATE FUNCTION public.pa_tag_payment(_b uuid, _payment uuid, _account uuid) RETURNS void
+-- LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
+-- DECLARE p public.commerce_payments; a public.payment_accounts;
+-- BEGIN
+--   SELECT * INTO p FROM public.commerce_payments WHERE id = _payment AND business_id = _b;
+--   IF NOT FOUND THEN RAISE EXCEPTION 'Payment not found'; END IF;
+--   a := public.pa_load(_b,_account);
+--   IF p.method = 'cash' THEN RAISE EXCEPTION 'Cash from the counter is not tagged to an account'; END IF;
+--   IF a.kind <> p.method THEN RAISE EXCEPTION 'Account type does not match the payment method'; END IF;
+--   INSERT INTO public.account_movements(business_id,account_id,amount,source_type,source_id,entry_date,memo)
+--     VALUES(_b,_account,CASE WHEN p.direction = 'in' THEN p.amount ELSE -p.amount END,'payment',_payment,p.payment_date,'Payment') ON CONFLICT (account_id, source_type, source_id) DO NOTHING;
+-- END $$;
 
-CREATE FUNCTION public.post_commerce_document_with_accounts(_request jsonb, _accounts jsonb) RETURNS uuid
-LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
-DECLARE doc uuid; m jsonb; b uuid:=(_request->>'businessId')::uuid;
-BEGIN
-  IF jsonb_typeof(_accounts) IS DISTINCT FROM 'array' OR jsonb_array_length(_accounts) > 20 THEN RAISE EXCEPTION 'Invalid account choices'; END IF;
-  doc := public.post_commerce_document(_request);
-  FOR m IN SELECT value FROM jsonb_array_elements(_accounts) LOOP
-    IF NOT EXISTS(SELECT 1 FROM public.commerce_payments WHERE id = (m->>'paymentId')::uuid AND document_id = doc) THEN RAISE EXCEPTION 'Payment does not belong to this document'; END IF;
-    PERFORM public.pa_tag_payment(b,(m->>'paymentId')::uuid,(m->>'accountId')::uuid);
-  END LOOP;
-  RETURN doc;
-END $$;
+-- CREATE FUNCTION public.post_commerce_document_with_accounts(_request jsonb, _accounts jsonb) RETURNS uuid
+-- LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
+-- DECLARE doc uuid; m jsonb; b uuid:=(_request->>'businessId')::uuid;
+-- BEGIN
+--   IF jsonb_typeof(_accounts) IS DISTINCT FROM 'array' OR jsonb_array_length(_accounts) > 20 THEN RAISE EXCEPTION 'Invalid account choices'; END IF;
+--   doc := public.post_commerce_document(_request);
+--   FOR m IN SELECT value FROM jsonb_array_elements(_accounts) LOOP
+--     IF NOT EXISTS(SELECT 1 FROM public.commerce_payments WHERE id = (m->>'paymentId')::uuid AND document_id = doc) THEN RAISE EXCEPTION 'Payment does not belong to this document'; END IF;
+--     PERFORM public.pa_tag_payment(b,(m->>'paymentId')::uuid,(m->>'accountId')::uuid);
+--   END LOOP;
+--   RETURN doc;
+-- END $$;
 
-CREATE FUNCTION public.post_commerce_payment_with_account(_request jsonb, _account uuid) RETURNS uuid
-LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
-DECLARE pay uuid;
-BEGIN
-  pay := public.post_commerce_payment(_request);
-  PERFORM public.pa_tag_payment((_request->>'businessId')::uuid, pay, _account);
-  RETURN pay;
-END $$;
+-- CREATE FUNCTION public.post_commerce_payment_with_account(_request jsonb, _account uuid) RETURNS uuid
+-- LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
+-- DECLARE pay uuid;
+-- BEGIN
+--   pay := public.post_commerce_payment(_request);
+--   PERFORM public.pa_tag_payment((_request->>'businessId')::uuid, pay, _account);
+--   RETURN pay;
+-- END $$;
 
-CREATE FUNCTION public.pa_tag_expense(_b uuid, _voucher uuid, _account uuid) RETURNS void
-LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
-DECLARE a public.payment_accounts; v public.accounting_vouchers; amt numeric; code text;
-BEGIN
-  SELECT * INTO v FROM public.accounting_vouchers WHERE id = _voucher AND business_id = _b;
-  IF NOT FOUND OR v.kind <> 'expense' THEN RAISE EXCEPTION 'Only expense vouchers can be tagged'; END IF;
-  a := public.pa_load(_b,_account);
-  SELECT account_code, credit INTO code, amt FROM public.commerce_journal_entries WHERE source_id = _voucher AND source_type = 'voucher' AND credit > 0 LIMIT 1;
-  IF code IS DISTINCT FROM a.kind THEN RAISE EXCEPTION 'Account type does not match how the expense was paid'; END IF;
-  INSERT INTO public.account_movements(business_id,account_id,amount,source_type,source_id,entry_date,memo) VALUES(_b,_account,-amt,'voucher',_voucher,v.voucher_date,'Expense') ON CONFLICT (account_id, source_type, source_id) DO NOTHING;
-END $$;
+-- CREATE FUNCTION public.pa_tag_expense(_b uuid, _voucher uuid, _account uuid) RETURNS void
+-- LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
+-- DECLARE a public.payment_accounts; v public.accounting_vouchers; amt numeric; code text;
+-- BEGIN
+--   SELECT * INTO v FROM public.accounting_vouchers WHERE id = _voucher AND business_id = _b;
+--   IF NOT FOUND OR v.kind <> 'expense' THEN RAISE EXCEPTION 'Only expense vouchers can be tagged'; END IF;
+--   a := public.pa_load(_b,_account);
+--   SELECT account_code, credit INTO code, amt FROM public.commerce_journal_entries WHERE source_id = _voucher AND source_type = 'voucher' AND credit > 0 LIMIT 1;
+--   IF code IS DISTINCT FROM a.kind THEN RAISE EXCEPTION 'Account type does not match how the expense was paid'; END IF;
+--   INSERT INTO public.account_movements(business_id,account_id,amount,source_type,source_id,entry_date,memo) VALUES(_b,_account,-amt,'voucher',_voucher,v.voucher_date,'Expense') ON CONFLICT (account_id, source_type, source_id) DO NOTHING;
+-- END $$;
 
-CREATE FUNCTION public.post_accounting_voucher_with_account(_request jsonb, _account uuid) RETURNS uuid
-LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
-DECLARE vid uuid;
-BEGIN
-  vid := public.post_accounting_voucher(_request);
-  PERFORM public.pa_tag_expense((_request->>'businessId')::uuid, vid, _account);
-  RETURN vid;
-END $$;
+-- CREATE FUNCTION public.post_accounting_voucher_with_account(_request jsonb, _account uuid) RETURNS uuid
+-- LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
+-- DECLARE vid uuid;
+-- BEGIN
+--   vid := public.post_accounting_voucher(_request);
+--   PERFORM public.pa_tag_expense((_request->>'businessId')::uuid, vid, _account);
+--   RETURN vid;
+-- END $$;
 
-CREATE FUNCTION public.confirm_expense_receipt_with_account(_receipt uuid, _request jsonb, _account uuid) RETURNS uuid
-LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
-DECLARE vid uuid;
-BEGIN
-  vid := public.confirm_expense_receipt(_receipt, _request);
-  PERFORM public.pa_tag_expense((_request->>'businessId')::uuid, vid, _account);
-  RETURN vid;
-END $$;
+-- CREATE FUNCTION public.confirm_expense_receipt_with_account(_receipt uuid, _request jsonb, _account uuid) RETURNS uuid
+-- LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
+-- DECLARE vid uuid;
+-- BEGIN
+--   vid := public.confirm_expense_receipt(_receipt, _request);
+--   PERFORM public.pa_tag_expense((_request->>'businessId')::uuid, vid, _account);
+--   RETURN vid;
+-- END $$;
 
 -- A reversal of a tagged voucher puts the money back in the same account.
-CREATE FUNCTION public.pa_mirror_reversal() RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
-BEGIN
-  INSERT INTO public.account_movements(business_id,account_id,amount,source_type,source_id,entry_date,memo)
-    SELECT m.business_id, m.account_id, -m.amount, 'voucher', NEW.id, NEW.voucher_date, 'Reversal' FROM public.account_movements m WHERE m.source_type = 'voucher' AND m.source_id = NEW.reverses_id
-    ON CONFLICT (account_id, source_type, source_id) DO NOTHING;
-  RETURN NEW;
-END $$;
-CREATE TRIGGER accounting_vouchers_mirror_reversal AFTER INSERT ON public.accounting_vouchers FOR EACH ROW WHEN (NEW.kind = 'reversal') EXECUTE FUNCTION public.pa_mirror_reversal();
+-- CREATE FUNCTION public.pa_mirror_reversal() RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
+-- BEGIN
+--   INSERT INTO public.account_movements(business_id,account_id,amount,source_type,source_id,entry_date,memo)
+--     SELECT m.business_id, m.account_id, -m.amount, 'voucher', NEW.id, NEW.voucher_date, 'Reversal' FROM public.account_movements m WHERE m.source_type = 'voucher' AND m.source_id = NEW.reverses_id
+--     ON CONFLICT (account_id, source_type, source_id) DO NOTHING;
+--   RETURN NEW;
+-- END $$;
+-- CREATE TRIGGER accounting_vouchers_mirror_reversal AFTER INSERT ON public.accounting_vouchers FOR EACH ROW WHEN (NEW.kind = 'reversal') EXECUTE FUNCTION public.pa_mirror_reversal();
 
 -- Balances per account, plus whatever the books hold that was never tagged (money moved before accounts existed).
-CREATE FUNCTION public.account_balances(_business uuid) RETURNS jsonb
-LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path = public AS $$
-DECLARE k text; gl numeric; tagged numeric; unassigned jsonb := '{}'::jsonb;
-BEGIN
-  IF auth.uid() IS NULL OR NOT public.has_business_role(_business,'accountant') THEN RAISE EXCEPTION 'Account access denied'; END IF;
-  FOREACH k IN ARRAY ARRAY['cash','bank','wallet'] LOOP
-    SELECT coalesce(sum(debit - credit),0) INTO gl FROM public.commerce_journal_entries WHERE business_id = _business AND account_code = k;
-    SELECT coalesce(sum(m.amount),0) INTO tagged FROM public.account_movements m JOIN public.payment_accounts a ON a.id = m.account_id WHERE a.business_id = _business AND a.kind = k;
-    unassigned := unassigned || jsonb_build_object(k, gl - tagged);
-  END LOOP;
-  RETURN jsonb_build_object('accounts', coalesce((SELECT jsonb_agg(jsonb_build_object('id',a.id,'name',a.name,'kind',a.kind,'isActive',a.is_active,'balance',public.pa_balance(a.id)) ORDER BY a.kind, lower(a.name)) FROM public.payment_accounts a WHERE a.business_id = _business),'[]'::jsonb), 'unassigned', unassigned);
-END $$;
+-- CREATE FUNCTION public.account_balances(_business uuid) RETURNS jsonb
+-- LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path = public AS $$
+-- DECLARE k text; gl numeric; tagged numeric; unassigned jsonb := '{}'::jsonb;
+-- BEGIN
+--   IF auth.uid() IS NULL OR NOT public.has_business_role(_business,'accountant') THEN RAISE EXCEPTION 'Account access denied'; END IF;
+--   FOREACH k IN ARRAY ARRAY['cash','bank','wallet'] LOOP
+--     SELECT coalesce(sum(debit - credit),0) INTO gl FROM public.commerce_journal_entries WHERE business_id = _business AND account_code = k;
+--     SELECT coalesce(sum(m.amount),0) INTO tagged FROM public.account_movements m JOIN public.payment_accounts a ON a.id = m.account_id WHERE a.business_id = _business AND a.kind = k;
+--     unassigned := unassigned || jsonb_build_object(k, gl - tagged);
+--   END LOOP;
+--   RETURN jsonb_build_object('accounts', coalesce((SELECT jsonb_agg(jsonb_build_object('id',a.id,'name',a.name,'kind',a.kind,'isActive',a.is_active,'balance',public.pa_balance(a.id)) ORDER BY a.kind, lower(a.name)) FROM public.payment_accounts a WHERE a.business_id = _business),'[]'::jsonb), 'unassigned', unassigned);
+-- END $$;
 
-REVOKE EXECUTE ON FUNCTION public.pa_load(uuid,uuid,boolean), public.pa_balance(uuid), public.pa_journal(uuid,uuid,uuid,uuid,date,text,text,text,text,numeric), public.pa_tag_payment(uuid,uuid,uuid), public.pa_tag_expense(uuid,uuid,uuid), public.pa_mirror_reversal() FROM PUBLIC, anon, authenticated;
-REVOKE EXECUTE ON FUNCTION public.create_payment_account(uuid,uuid,uuid,uuid,text,text,numeric,date), public.adjust_payment_account(jsonb), public.transfer_between_accounts(jsonb), public.post_commerce_document_with_accounts(jsonb,jsonb), public.post_commerce_payment_with_account(jsonb,uuid), public.post_accounting_voucher_with_account(jsonb,uuid), public.confirm_expense_receipt_with_account(uuid,jsonb,uuid), public.account_balances(uuid) FROM PUBLIC, anon;
-GRANT EXECUTE ON FUNCTION public.create_payment_account(uuid,uuid,uuid,uuid,text,text,numeric,date), public.adjust_payment_account(jsonb), public.transfer_between_accounts(jsonb), public.post_commerce_document_with_accounts(jsonb,jsonb), public.post_commerce_payment_with_account(jsonb,uuid), public.post_accounting_voucher_with_account(jsonb,uuid), public.confirm_expense_receipt_with_account(uuid,jsonb,uuid), public.account_balances(uuid) TO authenticated;
+-- REVOKE EXECUTE ON FUNCTION public.pa_load(uuid,uuid,boolean), public.pa_balance(uuid), public.pa_journal(uuid,uuid,uuid,uuid,date,text,text,text,text,numeric), public.pa_tag_payment(uuid,uuid,uuid), public.pa_tag_expense(uuid,uuid,uuid), public.pa_mirror_reversal() FROM PUBLIC, anon, authenticated;
+-- REVOKE EXECUTE ON FUNCTION public.create_payment_account(uuid,uuid,uuid,uuid,text,text,numeric,date), public.adjust_payment_account(jsonb), public.transfer_between_accounts(jsonb), public.post_commerce_document_with_accounts(jsonb,jsonb), public.post_commerce_payment_with_account(jsonb,uuid), public.post_accounting_voucher_with_account(jsonb,uuid), public.confirm_expense_receipt_with_account(uuid,jsonb,uuid), public.account_balances(uuid) FROM PUBLIC, anon;
+-- GRANT EXECUTE ON FUNCTION public.create_payment_account(uuid,uuid,uuid,uuid,text,text,numeric,date), public.adjust_payment_account(jsonb), public.transfer_between_accounts(jsonb), public.post_commerce_document_with_accounts(jsonb,jsonb), public.post_commerce_payment_with_account(jsonb,uuid), public.post_accounting_voucher_with_account(jsonb,uuid), public.confirm_expense_receipt_with_account(uuid,jsonb,uuid), public.account_balances(uuid) TO authenticated;

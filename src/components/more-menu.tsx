@@ -16,6 +16,7 @@ const main: Item[] = [
   { to: '/profile', label: 'Account Settings', icon: UserCog },
 ];
 const utilities: Item[] = [
+  {to:'/quotations',label:'Quotations / Estimates',icon:NotebookPen},
   { to: '/expense-receipts', label: 'Scan Receipts', icon: ScanLine, badge: 'New' },
   { to: '/bill-gallery', label: 'Bill Gallery', icon: ImageIcon, badge: 'New' },
   { to: '/notebook', label: 'Notebook', icon: NotebookPen, badge: 'New' },

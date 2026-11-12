@@ -176,6 +176,34 @@
       "when": 1794022717675,
       "tag": "0024_payment_accounts",
       "breakpoints": true
+    },
+    {
+      "idx": 25,
+      "version": "7",
+      "when": 1794470963289,
+      "tag": "0025_sales_cash_flow_settings",
+      "breakpoints": true
+    },
+    {
+      "idx": 26,
+      "version": "7",
+      "when": 1794470999502,
+      "tag": "0026_quotation_operations",
+      "breakpoints": true
+    },
+    {
+      "idx": 27,
+      "version": "7",
+      "when": 1794471404623,
+      "tag": "0027_quotation_atomic_link_guard",
+      "breakpoints": true
+    },
+    {
+      "idx": 28,
+      "version": "7",
+      "when": 1794471463320,
+      "tag": "0028_quotation_customer_snapshot_guard",
+      "breakpoints": true
     }
   ]
 }

@@ -1,0 +1,14 @@
+import {z} from 'zod';
+import Decimal from 'decimal.js';
+import {commerceLine} from './commerce-schemas';
+import {formatNPR} from './format';
+const id=z.string().uuid();
+const date=z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
+export const quotationInput=z.object({businessId:id,id,revision:z.number().int().nonnegative(),branchId:id,partyId:id,reference:z.string().trim().min(1).max(200),date,expiresOn:date.nullable(),status:z.enum(['draft','sent','accepted','declined']),mobile:z.string().trim().max(40),lines:z.array(commerceLine).min(1).max(100)}).refine(q=>!q.expiresOn||q.expiresOn>=q.date,'Expiry must not precede quotation date.');
+export type QuotationInput=z.infer<typeof quotationInput>;
+export const creditInput=z.object({businessId:id,partyId:id,limit:z.number().finite().min(0).max(999999999).refine(n=>new Decimal(n).decimalPlaces()<=2,'Use at most two decimals.').nullable()});
+export const paymentSettingsInput=z.object({businessId:id,path:z.string().max(250).nullable(),provider:z.string().trim().max(80),payee:z.string().trim().max(160),instructions:z.string().trim().max(500)});
+export type PaymentQr={url:string|null;provider:string;payee:string;instructions:string};
+export function creditAlert(outstanding:number,limit:number|null|undefined,unpaid=0){if(limit==null)return null;const current=Decimal.max(0,outstanding);const proposed=current.plus(Decimal.max(0,unpaid));return {current:current.toNumber(),proposed:proposed.toNumber(),limit,exceeded:current.gt(limit),wouldExceed:proposed.gt(limit),excess:Decimal.max(0,proposed.minus(limit)).toNumber()};}
+export function statementMessage({business,party,date,balance,invoices,payment,scope}:{business:string;party:string;date:string;balance:number;invoices:{reference:string;outstanding:number}[];payment?:PaymentQr|undefined;scope:string}){return [`${business} — Party statement`,`Party: ${party}`,`As of: ${date}`,`Scope: ${scope}`,balance===0?'Balance: Settled':`${balance>0?'To receive from party':'To pay to party'}: ${formatNPR(Math.abs(balance))}`,invoices.length?`Unpaid invoices (${invoices.length}):\n${invoices.slice(0,12).map(i=>`${i.reference}: ${formatNPR(i.outstanding)}`).join('\n')}${invoices.length>12?'\nAdditional invoices available on request.':''}`:'No unpaid invoices.',balance>0&&payment?[payment.provider,payment.payee,payment.instructions].filter(Boolean).join('\n'):''].filter(Boolean).join('\n\n');}
+export function customerSnapshot(value:unknown):{name:string;phone:string;address:string;pan:string}|null{if(!value||typeof value!=='object'||Array.isArray(value))return null;const r=value as Record<string,unknown>;return {name:String(r['name']??''),phone:String(r['phone']??''),address:String(r['address']??''),pan:String(r['pan']??'')};}

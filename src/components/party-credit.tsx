@@ -1,0 +1,9 @@
+import {useState} from 'react';
+import {useServerFn} from '@tanstack/react-start';
+import {useQueryClient} from '@tanstack/react-query';
+import {creditAlert} from '@/lib/sales-cash-flow';
+import {saveCreditLimit} from '@/lib/sales-cash-flow.functions';
+import {formatNPR} from '@/lib/format';
+import {Button} from './ui/button';import {Input} from './ui/input';
+export function CreditAlert({balance,limit,unpaid=0}:{balance:number;limit:number|null|undefined;unpaid?:number}){const a=creditAlert(balance,limit,unpaid);if(!a||!a.wouldExceed)return null;return <p role="alert" className="mt-3 border-l-2 border-destructive pl-3 text-sm text-destructive">{a.exceeded?'Customer credit limit exceeded':'This unpaid sale would exceed the credit limit'} · Limit {formatNPR(a.limit)} · Outstanding {formatNPR(a.current)}{unpaid>0?` · After sale ${formatNPR(a.proposed)}`:''} (authorized branches)</p>;}
+export function CreditLimitEditor({businessId,partyId,limit}:{businessId:string;partyId:string;limit:number|null}){const [value,setValue]=useState(limit==null?'':String(limit)),[message,setMessage]=useState(''),[busy,setBusy]=useState(false);const save=useServerFn(saveCreditLimit);const client=useQueryClient();return <form className="mt-4 flex flex-wrap items-end gap-3" onSubmit={async e=>{e.preventDefault();setBusy(true);try{await save({data:{businessId,partyId,limit:value.trim()===''?null:Number(value)}});await client.invalidateQueries();setMessage('Credit limit saved.');}catch(e){setMessage(e instanceof Error?e.message:'Could not save limit.');}finally{setBusy(false);}}}><label className="text-sm">Customer credit limit (NPR)<Input aria-label="Customer credit limit" placeholder="No configured limit" type="number" min="0" max="999999999" step="0.01" value={value} onChange={e=>setValue(e.target.value)}/></label><Button variant="outline" disabled={busy}>Save limit</Button>{message&&<p role="status" className="basis-full text-sm">{message}</p>}</form>;}

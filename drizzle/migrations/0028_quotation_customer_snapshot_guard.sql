@@ -1,0 +1,3 @@
+CREATE FUNCTION public.verify_quotation_customer_snapshot() RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER SET search_path=public AS $$ DECLARE c jsonb;BEGIN IF NEW.quotation_id IS NOT NULL THEN SELECT customer INTO c FROM public.quotations WHERE id=NEW.quotation_id AND business_id=NEW.business_id;IF NEW.request->'customerSnapshot' IS DISTINCT FROM c THEN RAISE EXCEPTION 'Quotation customer snapshot must be preserved';END IF;END IF;RETURN NEW;END $$;
+REVOKE ALL ON FUNCTION public.verify_quotation_customer_snapshot() FROM PUBLIC,anon,authenticated;
+CREATE TRIGGER zz_quotation_customer_snapshot BEFORE INSERT ON public.commerce_documents FOR EACH ROW EXECUTE FUNCTION public.verify_quotation_customer_snapshot();
