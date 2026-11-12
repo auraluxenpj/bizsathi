@@ -501,6 +501,10 @@ export type Database = {
           calendar_system: string
           currency: string
           fiscal_year_start_month: number
+          payment_instructions: string
+          payment_payee: string
+          payment_provider: string
+          payment_qr_path: string | null
           timezone: string
           updated_at: string
           vat_rate: number
@@ -511,6 +515,10 @@ export type Database = {
           calendar_system?: string
           currency?: string
           fiscal_year_start_month?: number
+          payment_instructions?: string
+          payment_payee?: string
+          payment_provider?: string
+          payment_qr_path?: string | null
           timezone?: string
           updated_at?: string
           vat_rate?: number
@@ -521,6 +529,10 @@ export type Database = {
           calendar_system?: string
           currency?: string
           fiscal_year_start_month?: number
+          payment_instructions?: string
+          payment_payee?: string
+          payment_provider?: string
+          payment_qr_path?: string | null
           timezone?: string
           updated_at?: string
           vat_rate?: number
@@ -669,6 +681,7 @@ export type Database = {
           lines: Json
           party_id: string | null
           period_id: string
+          quotation_id: string | null
           reference: string
           request: Json
           source_id: string | null
@@ -688,6 +701,7 @@ export type Database = {
           lines: Json
           party_id?: string | null
           period_id: string
+          quotation_id?: string | null
           reference: string
           request: Json
           source_id?: string | null
@@ -707,6 +721,7 @@ export type Database = {
           lines?: Json
           party_id?: string | null
           period_id?: string
+          quotation_id?: string | null
           reference?: string
           request?: Json
           source_id?: string | null
@@ -757,6 +772,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "financial_periods"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "commerce_quotation_fk"
+            columns: ["business_id", "quotation_id"]
+            isOneToOne: false
+            referencedRelation: "quotations"
+            referencedColumns: ["business_id", "id"]
           },
         ]
       }
@@ -1255,6 +1277,7 @@ export type Database = {
           address: string
           business_id: string
           created_at: string
+          credit_limit: number | null
           email: string
           id: string
           is_active: boolean
@@ -1268,6 +1291,7 @@ export type Database = {
           address?: string
           business_id: string
           created_at?: string
+          credit_limit?: number | null
           email?: string
           id?: string
           is_active?: boolean
@@ -1281,6 +1305,7 @@ export type Database = {
           address?: string
           business_id?: string
           created_at?: string
+          credit_limit?: number | null
           email?: string
           id?: string
           is_active?: boolean
@@ -1462,6 +1487,102 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      quotations: {
+        Row: {
+          actor_id: string
+          branch_id: string
+          business_id: string
+          created_at: string
+          customer: Json
+          expires_on: string | null
+          id: string
+          lines: Json
+          party_id: string
+          quotation_date: string
+          reference: string
+          request: Json
+          revision: number
+          sale_id: string | null
+          status: string
+          total: number
+          updated_at: string
+        }
+        Insert: {
+          actor_id: string
+          branch_id: string
+          business_id: string
+          created_at?: string
+          customer: Json
+          expires_on?: string | null
+          id: string
+          lines: Json
+          party_id: string
+          quotation_date: string
+          reference: string
+          request: Json
+          revision?: number
+          sale_id?: string | null
+          status?: string
+          total: number
+          updated_at?: string
+        }
+        Update: {
+          actor_id?: string
+          branch_id?: string
+          business_id?: string
+          created_at?: string
+          customer?: Json
+          expires_on?: string | null
+          id?: string
+          lines?: Json
+          party_id?: string
+          quotation_date?: string
+          reference?: string
+          request?: Json
+          revision?: number
+          sale_id?: string | null
+          status?: string
+          total?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "quotations_actor_id_fkey"
+            columns: ["actor_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "quotations_business_id_branch_id_fkey"
+            columns: ["business_id", "branch_id"]
+            isOneToOne: false
+            referencedRelation: "branches"
+            referencedColumns: ["business_id", "id"]
+          },
+          {
+            foreignKeyName: "quotations_business_id_fkey"
+            columns: ["business_id"]
+            isOneToOne: false
+            referencedRelation: "businesses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "quotations_business_id_party_id_fkey"
+            columns: ["business_id", "party_id"]
+            isOneToOne: false
+            referencedRelation: "parties"
+            referencedColumns: ["business_id", "id"]
+          },
+          {
+            foreignKeyName: "quotations_sale_id_fkey"
+            columns: ["sale_id"]
+            isOneToOne: false
+            referencedRelation: "commerce_documents"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       roles: {
         Row: {

@@ -176,6 +176,13 @@
       "when": 1794022717675,
       "tag": "0024_payment_accounts",
       "breakpoints": true
+    },
+    {
+      "idx": 25,
+      "version": "7",
+      "when": 1794470963289,
+      "tag": "0025_sales_cash_flow_settings",
+      "breakpoints": true
     }
   ]
 }
