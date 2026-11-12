@@ -22,6 +22,9 @@ describe('Invoice return quantities and settlements',()=>{
 });
 const product:LabelProduct={id,sku:'AL-SKU-01',name:'Item',price:200,barcode:null};
 describe('Barcode label sheet layouts',()=>{
+ it('matches the reference 40-label A4 cells without margins or gaps',()=>{expect(labelFormats['a4-40']).toMatchObject({columns:4,rows:10,width:52.5,height:29.7,gap:0,top:0,left:0,pageWidth:210,pageHeight:297});expect(labelPages([{product,copies:41}],'a4-40').map(p=>p.filter(Boolean).length)).toEqual([40,1]);});
+ it('matches the reference 48-label size, sheet margins and horizontal pitch',()=>{expect(labelFormats['a4-48']).toMatchObject({columns:4,rows:12,width:48.63,height:23.92,gap:2.5,top:4.98,left:6.99,pageWidth:210,pageHeight:297});expect(labelPages([{product,copies:49}],'a4-48').map(p=>p.filter(Boolean).length)).toEqual([48,1]);});
+ it('respects used slots on the new 48-label sheet',()=>{const pages=labelPages([{product,copies:2}],'a4-48',48);expect(pages[0]?.[46]).toBeNull();expect(pages[0]?.[47]).toBe(product);expect(pages[1]?.[0]).toBe(product);});
  it('places 24 labels on each 3 by 8 A4 sheet',()=>{const pages=labelPages([{product,copies:25}],'a4-24');expect(pages.map(p=>p.filter(Boolean).length)).toEqual([24,1]);expect(labelFormats['a4-24'].columns).toBe(3);expect(labelFormats['a4-24'].rows).toBe(8);});
  it('places 30 labels on each 3 by 10 A4 sheet',()=>{const pages=labelPages([{product,copies:31}],'a4-30');expect(pages.map(p=>p.filter(Boolean).length)).toEqual([30,1]);expect(labelFormats['a4-30'].columns).toBe(3);expect(labelFormats['a4-30'].rows).toBe(10);});
  it('keeps used starting slots empty on only the first sheet',()=>{const pages=labelPages([{product,copies:24}],'a4-24',3);expect(pages[0]?.slice(0,3)).toEqual([null,null,product]);expect(pages[1]?.[0]).toEqual(product);});

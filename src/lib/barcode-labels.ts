@@ -1,4 +1,6 @@
 export const labelFormats = {
+  'a4-40': {name:'A4 · 40 labels · 52.5 × 29.7 mm',columns:4,rows:10,width:52.5,height:29.7,pageWidth:210,pageHeight:297,gap:0,top:0,left:0},
+  'a4-48': {name:'A4 · 48 labels · 48.63 × 23.92 mm',columns:4,rows:12,width:48.63,height:23.92,pageWidth:210,pageHeight:297,gap:2.5,top:4.98,left:6.99},
   'a4-24': {name:'A4 · 24 labels',columns:3,rows:8,width:63.5,height:33.9,pageWidth:210,pageHeight:297,gap:2.5,top:12.9,left:7.25},
   'a4-30': {name:'A4 · 30 labels',columns:3,rows:10,width:63.5,height:25.4,pageWidth:210,pageHeight:297,gap:2.5,top:21.5,left:7.25},
   'thermal-50': {name:'Thermal · 50 × 25 mm',columns:1,rows:1,width:50,height:25,pageWidth:50,pageHeight:25,gap:0,top:0,left:0},
