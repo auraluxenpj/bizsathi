@@ -1193,6 +1193,48 @@ export type Database = {
           },
         ]
       }
+      loyalty_redemptions: {
+        Row: {
+          actor_id: string
+          branch_id: string
+          business_id: string
+          created_at: string
+          discount: number
+          document_id: string
+          id: string
+          kind: string
+          membership_id: string
+          points: number
+          sale_id: string
+        }
+        Insert: {
+          actor_id: string
+          branch_id: string
+          business_id: string
+          created_at?: string
+          discount: number
+          document_id: string
+          id?: string
+          kind: string
+          membership_id: string
+          points: number
+          sale_id: string
+        }
+        Update: {
+          actor_id?: string
+          branch_id?: string
+          business_id?: string
+          created_at?: string
+          discount?: number
+          document_id?: string
+          id?: string
+          kind?: string
+          membership_id?: string
+          points?: number
+          sale_id?: string
+        }
+        Relationships: []
+      }
       loyalty_point_events: {
         Row: {
           actor_id: string
@@ -2176,6 +2218,10 @@ export type Database = {
       read_business_report_snapshot: {
         Args: { _branch_id?: string; _business_id: string; _through?: string }
         Returns: Json
+      }
+      loyalty_available_points: {
+        Args: { _business: string; _mobile: string }
+        Returns: number
       }
       read_customer_loyalty: {
         Args: { _business_id: string }

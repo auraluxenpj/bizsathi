@@ -18,7 +18,7 @@ export function useInvoiceLayout(): [InvoiceLayout, (l: InvoiceLayout) => void] 
 
 export type InvoiceData = {
   business: string; pan: string; reference: string; date: string; status: string; kind: string; branch: string;
-  businessId?:string; address?:string; partyPan?:string; party: string; phone: string; lines: InvoiceLine[]; subtotal: number; tax: number; total: number; paid: number; returned: number; outstanding: number; docId: string;
+  businessId?:string; address?:string; partyPan?:string; party: string; phone: string; lines: InvoiceLine[]; subtotal: number; tax: number; total: number; paid: number; returned: number; outstanding: number; docId: string; loyalty?: { points: number; discount: number } | undefined;
 };
 export const messageFor = (d: InvoiceData) => invoiceMessage({ business: d.business, reference: d.reference, date: d.date, kind: d.kind, party: d.party, lines: d.lines, total: d.total, paid: d.paid, outstanding: d.outstanding });
 
@@ -44,6 +44,7 @@ export function InvoiceActions({ data, layout, onLayout, onStatus }: { data: Inv
 
 function Totals({ d, compact }: { d: InvoiceData; compact?: boolean }) {
   const rows: [string, number][] = [['Subtotal', d.subtotal], ['VAT', d.tax], ['Total', d.total]];
+  if (d.loyalty && d.loyalty.points > 0) rows.push([`Includes loyalty discount (${d.loyalty.points} points)`, d.loyalty.discount]);
   const isReturn = d.kind === 'sale_return' || d.kind === 'purchase_return';
   if (d.paid > 0) rows.push([isReturn ? 'Refund recorded' : 'Paid', d.paid]);
   if (d.returned > 0) rows.push(['Returned', d.returned]);

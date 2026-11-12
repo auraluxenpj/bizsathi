@@ -23,6 +23,10 @@ const reasons: [RegExp, string][] = [
   [/^Invalid (transfer|balance|account details|account choices)$/, 'Please check the amount and accounts and try again.'],
   [/^Account access denied$/, 'Only accountants and administrators can manage accounts.'],
   [/^Payment does not belong to this document$/, 'That payment does not belong to this sale.'],
+  [/^Loyalty points balance is lower than the points requested$/, 'The customer does not have enough loyalty points for this. Check their balance again and lower the points to use.'],
+  [/^Loyalty points cannot cover the whole sale$/, 'Points cannot pay for the whole sale. Keep at least a little payable, or use fewer points.'],
+  [/^Loyalty discount (must equal|exceeds)|^Invalid loyalty redemption$/, 'The loyalty discount did not match the points used. Reopen the sale and try again.'],
+  [/^Restored loyalty points exceed/, 'Those points were already given back for this sale.'],
   [/^Discount exceeds line amount$/, 'A discount is larger than the line amount.'],
 ];
 
