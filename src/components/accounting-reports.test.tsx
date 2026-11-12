@@ -16,6 +16,6 @@ it('full print and CSV request every matching row, not only the displayed page',
  render(<QueryClientProvider client={new QueryClient({defaultOptions:{queries:{retry:false}}})}><AccountingReports/></QueryClientProvider>);
  await screen.findByText('ROW-50');expect(screen.queryByText('ROW-65')).not.toBeInTheDocument();
  fireEvent.click(screen.getByRole('button',{name:'CSV'}));await waitFor(()=>expect(mocks.download).toHaveBeenCalled());expect(mocks.download.mock.calls[0]?.[1]).toContain('ROW-65');
- fireEvent.click(screen.getByRole('button',{name:'Full print / PDF'}));await screen.findByRole('heading',{name:'Full report · 65 rows'});expect(screen.getByLabelText('Business report print')).toHaveTextContent('ROW-65');
+ fireEvent.click(screen.getByRole('button',{name:'Print'}));await screen.findByRole('heading',{name:'Full report · 65 rows'});expect(screen.getByLabelText('Business report print')).toHaveTextContent('ROW-65');
  expect(mocks.load.mock.calls.filter(([arg])=>arg.data.export)).toHaveLength(2);
 });
