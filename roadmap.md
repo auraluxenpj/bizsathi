@@ -52,3 +52,6 @@
 - [x] Staff report
 - [x] Day Book
 - [x] Cash in hand / Bank statement prefilters
+- [x] Report PDF export
+- [x] Report date presets (Today, This month, This financial year)
+- [x] Report previous-period comparison
