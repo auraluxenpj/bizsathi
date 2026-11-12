@@ -11,7 +11,7 @@ export function PurchaseOrders(){
  const w=useCommerce();const data=w.commerce.data;const [editor,setEditor]=useState<Editor|null>(null);const [filter,setFilter]=useState<PoStatus|'all'>('pending');const [notice,setNotice]=useState('');
  const docs=(data?.documents??[]) as unknown as PoDoc[];const parties=w.inventory.data?.parties??[];const canWrite=['owner','admin'].includes(data?.role??'');const today=todayAd();
  const orders=docs.filter(d=>d.kind==='purchase_order').map(o=>({o,s:orderStatus(o,docs)})).filter(r=>filter==='all'||r.s===filter).sort((a,b)=>b.o.document_date.localeCompare(a.o.document_date));
- const businessName=w.access.data?.business?.name??'Auraluxe';
+ const businessName='Auraluxe';
  function send(o:PoDoc){const p=parties.find(x=>x.id===o.party_id);const msg=orderMessage(businessName,p?.name??'Supplier',o,readLines(o.lines));const link=p?.phone?whatsappLink(p.phone,msg):null;if(link)window.open(link,'_blank','noopener');else{void navigator.clipboard?.writeText(msg);setNotice('Supplier has no valid mobile; order text copied instead.');}}
  return <CommerceFrame w={w} title="Purchase orders" active="/purchases">{editor?<><Button className="mt-5" variant="ghost" onClick={()=>setEditor(null)}><ArrowLeft/>Orders</Button><h2 className="brand mt-5 text-xl">{editor.kind==='purchase'?'Purchase bill from order':'New purchase order'}</h2><DocumentEditor key={`${editor.kind}:${editor.sourceId??''}`} w={w} kind={editor.kind} sourceId={editor.sourceId} onSaved={()=>setEditor(null)}/></>:<section className="py-6 space-y-5">
   <p className="text-sm text-muted-foreground">Orders never change stock or accounts. Confirm the order to mark it sent, then convert it to a purchase bill when goods arrive.</p>
