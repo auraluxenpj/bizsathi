@@ -1,5 +1,3 @@
-const EAN13_WEIGHTS = [1, 3, 1, 3, 1, 3, 1, 3, 1, 3, 1, 3];
-
 function normalizeSkuDigits(sku: string): string {
   const cleaned = sku.trim().toUpperCase().replace(/[^A-Z0-9]/g, '');
   if (!cleaned) return '000000000000';
