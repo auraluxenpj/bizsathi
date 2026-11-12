@@ -43,7 +43,9 @@ export function parseCatalogueCsv(text:string, businessId:string): CatalogueRow[
    barcode: generateBarcodeFromSkuIfNeeded(r['sku'] ?? '', r['barcode']?.trim() || ''),
    unit: r['unit']?.trim() || 'pcs',
    selling_price: csvNumber(r['selling_price']),
-   reorder_level: csvNumber(r['reorder_level'])
+   reorder_level: csvNumber(r['reorder_level']),
+   opening_stock: csvNumber(r['opening_stock']),
+   purchase_price: csvNumber(r['purchase_price'])
  }))}).rows;
 }
 export function makeCsv(rows: Record<string, unknown>[], fields?:string[]) { return Papa.unparse(rows, {escapeFormulae:true,columns:fields}); }
