@@ -11,6 +11,8 @@ const headerAliases: Record<string, string[]> = {
  barcode: ['barcode'],
  unit: ['unit', 'Primary Unit'],
  selling_price: ['selling_price', 'Selling Price', 'Sales Price', 'Price', 'Rate'],
+ opening_stock: ['opening_stock', 'Opening Stock', 'Opening Qty'],
+ description: ['description', 'Description'],
  reorder_level: ['reorder_level', 'Reorder Level', 'Low Stock', 'Low Stock Threshold'],
 };
 const canonicalHeaders = new Map(Object.entries(headerAliases).flatMap(([column, aliases]) => aliases.map(alias => [alias.toLowerCase(), column] as const)));
@@ -32,7 +34,10 @@ export function parseCatalogueCsv(text:string, businessId:string): CatalogueRow[
  if(!parsed.meta.fields?.includes('product_name') || !parsed.meta.fields.includes('sku')) throw new Error('CSV requires product_name and sku columns.');
  return catalogueInput.parse({businessId,rows:parsed.data.map(r => ({
    ...r,
-   variant_name: r['variant_name']?.trim() || 'Standard',
+   // Karobar sheets list one row per size; group them by Description and use the SKU suffix as the size.
+   ...(()=>{const group=r['description']?.trim(); const sku=r['sku']?.trim() ?? ''; const explicit=r['variant_name']?.trim();
+     if(!group || explicit) return {variant_name: explicit || 'Standard'};
+     const cut=sku.lastIndexOf('-'); return {product_name: group, variant_name: cut>0 && cut<sku.length-1 ? sku.slice(cut+1) : 'Standard'};})(),
    sku: r['sku']?.trim() || '',
    barcode: generateBarcodeFromSkuIfNeeded(r['sku'] ?? '', r['barcode']?.trim() || ''),
    unit: r['unit']?.trim() || 'pcs',
