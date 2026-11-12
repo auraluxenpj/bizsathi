@@ -1,6 +1,6 @@
 import { describe,it,expect } from 'vitest';
 import { stockInput, stockBalances, catalogueRow } from './inventory-schemas';
-import { makeCsv, parseCatalogueCsv } from './inventory-csv';
+import { makeCsv, makeCatalogueCsv, parseCatalogueCsv } from './inventory-csv';
 const a='10000000-0000-4000-8000-000000000001', b='10000000-0000-4000-8000-000000000002';
 const stock={businessId:a,id:a,variantId:a,branchId:a,kind:'receive',quantity:1,reference:'GRN-1',reason:'Received delivery'};
 describe('Inventory integrity',()=>{
@@ -69,5 +69,27 @@ describe('Karobar item sheet', () => {
   expect(rows.map(r => [r.product_name, r.variant_name, r.opening_stock])).toEqual([['ANUSHREE01','M',1],['ANUSHREE01','XL',3]]);
   expect(rows[0]!.purchase_price).toBe(1347);
   expect(rows[0]!.selling_price).toBe(1999);
+ });
+});
+describe('Product purchase price import and export', () => {
+ const row = {product_name:'Shirt',category:'Clothing',variant_name:'M',sku:'S1',barcode:'123',unit:'pcs',selling_price:'1999.00',purchase_price:'1347.50',reorder_level:2};
+ it('exports saved purchase costs and imports them without loss', () => {
+  const csv = makeCatalogueCsv([row], true);
+  expect(csv.split('\r\n')[0]?.split(',')).toContain('purchase_price');
+  expect(parseCatalogueCsv(csv, a)[0]).toMatchObject({sku:'S1',selling_price:1999,purchase_price:1347.5});
+ });
+ it('omits purchase costs when cost viewing is denied', () => {
+  const csv = makeCatalogueCsv([row], false);
+  expect(csv).not.toContain('purchase_price');
+  expect(csv).not.toContain('1347.50');
+ });
+ it.each(['purchase_price','Purchase Price','Cost Price'])('imports formatted costs from %s', header => {
+  expect(parseCatalogueCsv(`product_name,sku,${header}\nShirt,S1,"NPR 1,347.50"`, a)[0]?.purchase_price).toBe(1347.5);
+ });
+ it.each(['-1','12abc','1.234'])('rejects invalid purchase costs %s', price => {
+  expect(() => parseCatalogueCsv(`product_name,sku,purchase_price\nShirt,S1,${price}`, a)).toThrow();
+ });
+ it('accepts older exports without a cost column', () => {
+  expect(parseCatalogueCsv('product_name,category,variant_name,sku,barcode,unit,selling_price,reorder_level\nAURA LUXE01,Kurti set 3 Piece,Standard,AL-ALA01,,pcs,1999,0', a)[0]?.purchase_price).toBe(0);
  });
 });

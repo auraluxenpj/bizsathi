@@ -2,7 +2,7 @@ import Papa from 'papaparse';
 import { generateBarcodeFromSkuIfNeeded } from './barcode';
 import { catalogueInput, type CatalogueRow } from './inventory-schemas';
 
-export const catalogueColumns = ['product_name','category','variant_name','sku','barcode','unit','selling_price','reorder_level'];
+export const catalogueColumns = ['product_name','category','variant_name','sku','barcode','unit','selling_price','purchase_price','reorder_level'];
 const headerAliases: Record<string, string[]> = {
  product_name: ['product_name', 'Item Name', 'item_name', 'Product Name', 'Product', 'Name'],
  category: ['category'],
@@ -49,3 +49,6 @@ export function parseCatalogueCsv(text:string, businessId:string): CatalogueRow[
  }))}).rows;
 }
 export function makeCsv(rows: Record<string, unknown>[], fields?:string[]) { return Papa.unparse(rows, {escapeFormulae:true,columns:fields}); }
+export function makeCatalogueCsv(rows: Record<string, unknown>[], canViewPurchasePrice: boolean) {
+ return makeCsv(rows, catalogueColumns.filter(column => canViewPurchasePrice || column !== 'purchase_price'));
+}
