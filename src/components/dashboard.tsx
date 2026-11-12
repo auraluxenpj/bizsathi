@@ -64,14 +64,11 @@ export function Dashboard() {
   const allTime = d ? commerceTotals(d, branchId, '0000-01-01', '9999-12-31') : null;
   const expenses = d && month ? d.journals.filter(j => (!branchId || j.branch_id === branchId) && j.account_code.startsWith('expense') && j.entry_date >= month.fromAd && j.entry_date <= month.toAd).reduce((s, j) => s + Number(j.debit), 0) : 0;
   const todaySales = d ? d.documents.filter(x => x.status === 'confirmed' && (!branchId || x.branch_id === branchId) && x.document_date === today && (x.kind === 'sale' || x.kind === 'sale_return')).reduce((sum, x) => sum + ((x.kind === 'sale') ? Number(x.total) : -Number(x.total)), 0) : 0;
-  const todayPurchases = d ? d.documents.filter(x => x.status === 'confirmed' && (!branchId || x.branch_id === branchId) && x.document_date === today && (x.kind === 'purchase' || x.kind === 'purchase_return')).reduce((sum, x) => sum + ((x.kind === 'purchase') ? Number(x.total) : -Number(x.total)), 0) : 0;
   const todayExpenseTotal = d ? d.journals.filter(j => (!branchId || j.branch_id === branchId) && j.entry_date === today && j.account_code.startsWith('expense')).reduce((s, j) => s + Number(j.debit), 0) : 0;
-  const dailyGrossProfit = todaySales - (todayPurchases * 0.85);
-  const monthlyGrossProfit = (monthly?.sales ?? 0) - (monthly?.purchases ?? 0) * 0.85;
   const cashBalance = allTime?.cash ?? 0;
   const customerOutstanding = allTime?.receivables ?? 0;
   const supplierOutstanding = allTime?.payables ?? 0;
-  const currentSummary = range === 'day' ? { sales: todaySales, expenses: todayExpenseTotal, gross: dailyGrossProfit, cash: cashBalance, receivables: customerOutstanding, payables: supplierOutstanding } : { sales: monthly?.sales ?? 0, expenses: expenses, gross: monthlyGrossProfit, cash: cashBalance, receivables: customerOutstanding, payables: supplierOutstanding };
+  const currentSummary = range === 'day' ? { sales: todaySales, expenses: todayExpenseTotal, cash: cashBalance, receivables: customerOutstanding, payables: supplierOutstanding } : { sales: monthly?.sales ?? 0, expenses: expenses, cash: cashBalance, receivables: customerOutstanding, payables: supplierOutstanding };
   const recent = d?.documents.filter(x => x.status === 'confirmed' && (!branchId || x.branch_id === branchId)).slice(0, 6) ?? [];
   const monthName = month?.name ?? 'This month';
 
@@ -103,11 +100,12 @@ export function Dashboard() {
     <section aria-label="Summary" className="mt-5 grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-6">
       <StatCard locale={locale} label={range === 'day' ? t(locale, 'Today sales') : `${t(locale, 'Sales')} (${t(locale, monthName)})`} value={money(currentSummary.sales)} icon={Tag} tint="bg-emerald-50" iconTone="text-emerald-600" to="/sales" />
       <StatCard locale={locale} label={range === 'day' ? t(locale, 'Today expenses') : `${t(locale, 'Expenses')} (${t(locale, monthName)})`} value={money(currentSummary.expenses)} icon={Wallet} tint="bg-rose-50" iconTone="text-rose-600" to="/expenses" />
-      <StatCard locale={locale} label={t(locale, 'Gross profit')} value={money(currentSummary.gross)} icon={ArrowUp} tint="bg-violet-50" iconTone="text-violet-600" to="/reports" />
+      <StatCard locale={locale} label={t(locale, 'Gross profit')} value={t(locale, 'Not available')} icon={ArrowUp} tint="bg-violet-50" iconTone="text-violet-600" to="/reports" />
       <StatCard locale={locale} label={t(locale, 'Cash and bank balance')} value={money(currentSummary.cash)} icon={Landmark} tint="bg-blue-50" iconTone="text-blue-600" to="/cash-bank" />
       <StatCard locale={locale} label={t(locale, 'Customer outstanding')} value={money(currentSummary.receivables)} icon={ArrowDown} tint="bg-emerald-50" iconTone="text-emerald-600" to="/parties" />
       <StatCard locale={locale} label={t(locale, 'Supplier outstanding')} value={money(currentSummary.payables)} icon={ArrowUp} tint="bg-rose-50" iconTone="text-rose-600" to="/parties" />
     </section>
+    <p className="mt-2 text-xs text-muted-foreground">{t(locale, 'Gross profit is unavailable until cost of goods sold can be calculated from verified inventory costs.')}</p>
 
     <section aria-label="Quick actions" className="mt-6">
       <div className="mb-2 flex items-center justify-between"><h2 className="text-lg font-semibold">{t(locale, 'Quick actions')}</h2><span className="text-xs text-muted-foreground">{t(locale, 'Approximate based on current ledger records')}</span></div>
