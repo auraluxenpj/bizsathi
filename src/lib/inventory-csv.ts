@@ -2,12 +2,13 @@ import Papa from 'papaparse';
 import { generateBarcodeFromSkuIfNeeded } from './barcode';
 import { catalogueInput, type CatalogueRow } from './inventory-schemas';
 
-export const catalogueColumns = ['product_name','category','variant_name','sku','barcode','unit','selling_price','purchase_price','reorder_level'];
+export const catalogueColumns = ['product_name','category','variant_name','sku','model_code','barcode','unit','selling_price','purchase_price','reorder_level'];
 const headerAliases: Record<string, string[]> = {
  product_name: ['product_name', 'Item Name', 'item_name', 'Product Name', 'Product', 'Name'],
  category: ['category'],
  variant_name: ['variant_name', 'Variant / Size', 'Variant', 'Size'],
  sku: ['sku', 'Generated SKU', 'Item Code', 'Code'],
+ model_code: ['model_code', 'Model Code', 'Model', 'Model No', 'Model Number'],
  barcode: ['barcode'],
  unit: ['unit', 'Primary Unit'],
  selling_price: ['selling_price', 'Selling Price', 'Sales Price', 'Price', 'Rate'],
@@ -40,6 +41,7 @@ export function parseCatalogueCsv(text:string, businessId:string): CatalogueRow[
      if(!group || explicit) return {variant_name: explicit || 'Standard'};
      const cut=sku.lastIndexOf('-'); return {product_name: group, variant_name: cut>0 && cut<sku.length-1 ? sku.slice(cut+1) : 'Standard'};})(),
    sku: r['sku']?.trim() || '',
+   model_code: r['model_code']?.trim() || '',
    barcode: generateBarcodeFromSkuIfNeeded(r['sku'] ?? '', r['barcode']?.trim() || ''),
    unit: r['unit']?.trim() || 'pcs',
    selling_price: csvNumber(r['selling_price']),
