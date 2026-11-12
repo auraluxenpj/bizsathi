@@ -47,8 +47,8 @@
 
 ## Karobar reports
 - [x] Profit & Loss (last purchase price costing, expenses by category)
-- [ ] Business Status snapshot
-- [ ] Inventory stock status
-- [ ] Staff report
-- [ ] Day Book
-- [ ] Cash in hand / Bank statement prefilters
+- [x] Business Status snapshot
+- [x] Inventory stock status
+- [x] Staff report
+- [x] Day Book
+- [x] Cash in hand / Bank statement prefilters

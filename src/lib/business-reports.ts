@@ -23,6 +23,7 @@ export function costOfGoods(docs:DocLines){
  return byDoc;
 }
 export function buildBusinessReport(s:BusinessSnapshot,f:ReportInput,docLines:DocLines=[]){
+ const actor=(id:string|undefined)=>s.users.find(u=>u.id===id)?.name??id??'Unattributed';
  const inScope=(r:{business_id:string;branch_id:string})=>r.business_id===f.businessId&&(!f.branchId||r.branch_id===f.branchId);
  const D=(v:Decimal.Value)=>new Decimal(v).toFixed(2);const done=(rows:ReportRow[],notice:string)=>({rows,totals:{debit:'0.00',credit:'0.00',difference:'0.00'},evidence:[],hasRecords:rows.length>0,notice});
  const stockRows=()=>{const bal=new Map<string,Decimal>();for(const m of s.movements.filter(m=>inScope(m)&&m.movement_date<=f.to))bal.set(m.variant_id,(bal.get(m.variant_id)??new Decimal(0)).plus(m.quantity));return s.variants.filter(v=>v.business_id===f.businessId&&v.is_active).map(v=>{const q=bal.get(v.id)??new Decimal(0);return {Product:v.name,SKU:v.sku,'In stock':q.toFixed(3),Unit:v.unit,'Low stock level':new Decimal(v.reorder_level).toFixed(3),Status:q.lte(v.reorder_level)?'LOW STOCK':'OK'};});};
@@ -49,7 +50,6 @@ export function buildBusinessReport(s:BusinessSnapshot,f:ReportInput,docLines:Do
  }
  const userId=supportsUser(f.view)?f.userId:undefined;
  const scoped=(r:{business_id:string;branch_id:string})=>r.business_id===f.businessId&&(!f.branchId||r.branch_id===f.branchId);
- const actor=(id:string|undefined)=>s.users.find(u=>u.id===id)?.name??id??'Unattributed';
  const branch=(id:string)=>s.branches.find(b=>b.id===id)?.name??id;
  if(unavailableReports[f.view])return{rows:[] as ReportRow[],totals:{debit:'0.00',credit:'0.00',difference:'0.00'},evidence:[],hasRecords:false,notice:unavailableReports[f.view]};
  if(f.view==='stock'||f.view==='lowstock'){
