@@ -1,5 +1,7 @@
 import Papa from 'papaparse';
+import { generateBarcodeFromSkuIfNeeded } from './barcode';
 import { catalogueInput, type CatalogueRow } from './inventory-schemas';
+
 export const catalogueColumns = ['product_name','category','variant_name','sku','barcode','unit','selling_price','reorder_level'];
 const headerAliases: Record<string, string[]> = {
  product_name: ['product_name', 'Item Name', 'item_name', 'Product Name', 'Product', 'Name'],
@@ -19,7 +21,7 @@ function normalizeHeader(header: string) {
 function csvNumber(value: string | undefined): number {
  const trimmed = value?.trim() ?? '';
  if (!trimmed) return 0;
- const cleaned = trimmed.replace(/^[\p{L}\p{Sc}]+\.?\s*/u, '').replace(/[,\s]/g, '').replace(/\/-$/, '');
+ const cleaned = trimmed.replace(/^[\p{L}\p{Sc}]+\.?\s*/u, '').replace(/[,&\s]/g, '').replace(/\/-$/, '');
  // Reject malformed values rather than silently importing a partial number.
  return /^[+-]?(?:\d+(?:\.\d*)?|\.\d+)$/.test(cleaned) ? Number(cleaned) : NaN;
 }
@@ -28,6 +30,14 @@ export function parseCatalogueCsv(text:string, businessId:string): CatalogueRow[
  const firstError=parsed.errors[0];
  if(firstError) throw new Error(`CSV row ${ (firstError.row ?? 0)+2 }: ${firstError.message}`);
  if(!parsed.meta.fields?.includes('product_name') || !parsed.meta.fields.includes('sku')) throw new Error('CSV requires product_name and sku columns.');
- return catalogueInput.parse({businessId,rows:parsed.data.map(r=>({...r,variant_name:r['variant_name']?.trim() || 'Standard',unit:r['unit']?.trim() || 'pcs',selling_price:csvNumber(r['selling_price']),reorder_level:csvNumber(r['reorder_level'])}))}).rows;
+ return catalogueInput.parse({businessId,rows:parsed.data.map(r => ({
+   ...r,
+   variant_name: r['variant_name']?.trim() || 'Standard',
+   sku: r['sku']?.trim() || '',
+   barcode: generateBarcodeFromSkuIfNeeded(r['sku'] ?? '', r['barcode']?.trim() || ''),
+   unit: r['unit']?.trim() || 'pcs',
+   selling_price: csvNumber(r['selling_price']),
+   reorder_level: csvNumber(r['reorder_level'])
+ }))}).rows;
 }
 export function makeCsv(rows: Record<string, unknown>[], fields?:string[]) { return Papa.unparse(rows, {escapeFormulae:true,columns:fields}); }
