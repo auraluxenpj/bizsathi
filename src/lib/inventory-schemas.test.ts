@@ -16,12 +16,12 @@ import { catalogueInput as ci } from './inventory-schemas';
 describe('Master sheet catalogue CSV compatibility', () => {
  it('parses the original format with all catalogue values', () => {
   expect(parseCatalogueCsv('product_name,category,variant_name,sku,barcode,unit,selling_price,reorder_level\nShirt,Clothing,Large,S1,123,pcs,1250.50,2.5', a)).toEqual([
-   {product_name:'Shirt',category:'Clothing',variant_name:'Large',sku:'S1',barcode:'123',unit:'pcs',selling_price:1250.5,reorder_level:2.5,opening_stock:0},
+   {product_name:'Shirt',category:'Clothing',variant_name:'Large',sku:'S1',barcode:'123',unit:'pcs',selling_price:1250.5,reorder_level:2.5,opening_stock:0,purchase_price:0},
   ]);
  });
  it('parses master sheet headers and formatted currency and quantities', () => {
   expect(parseCatalogueCsv('Item Name,Category,Variant / Size,Generated SKU,Barcode,Primary Unit,Selling Price,Reorder Level\nShirt,Clothing,Large,S1,123,pcs,"NPR 1,250.50","1,000"', a)).toEqual([
-   {product_name:'Shirt',category:'Clothing',variant_name:'Large',sku:'S1',barcode:'123',unit:'pcs',selling_price:1250.5,reorder_level:1000,opening_stock:0},
+   {product_name:'Shirt',category:'Clothing',variant_name:'Large',sku:'S1',barcode:'123',unit:'pcs',selling_price:1250.5,reorder_level:1000,opening_stock:0,purchase_price:0},
   ]);
  });
  const aliasSets = [
@@ -67,6 +67,7 @@ describe('Karobar item sheet', () => {
  it('groups sizes under the Description and reads opening stock', () => {
   const rows = parseKarobar(csv, '00000000-0000-4000-8000-000000000000');
   expect(rows.map(r => [r.product_name, r.variant_name, r.opening_stock])).toEqual([['ANUSHREE01','M',1],['ANUSHREE01','XL',3]]);
+  expect(rows[0]!.purchase_price).toBe(1347);
   expect(rows[0]!.selling_price).toBe(1999);
  });
 });
