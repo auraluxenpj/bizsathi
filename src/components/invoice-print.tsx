@@ -43,9 +43,10 @@ export function InvoiceActions({ data, layout, onLayout, onStatus }: { data: Inv
 
 function Totals({ d, compact }: { d: InvoiceData; compact?: boolean }) {
   const rows: [string, number][] = [['Subtotal', d.subtotal], ['VAT', d.tax], ['Total', d.total]];
-  if (d.paid > 0) rows.push(['Paid', d.paid]);
+  const isReturn = d.kind === 'sale_return' || d.kind === 'purchase_return';
+  if (d.paid > 0) rows.push([isReturn ? 'Refund recorded' : 'Paid', d.paid]);
   if (d.returned > 0) rows.push(['Returned', d.returned]);
-  if (d.outstanding > 0) rows.push(['Balance due', d.outstanding]);
+  if (d.outstanding > 0) rows.push([isReturn ? 'Refund due' : 'Balance due', d.outstanding]);
   return <dl className={`space-y-1 ${compact ? 'text-xs' : 'ml-auto max-w-xs text-sm'}`}>{rows.map(([label, value]) => <div key={label} className={`flex justify-between gap-4 ${label === 'Total' ? 'border-t pt-1 font-semibold' : ''}`}><dt>{label}</dt><dd className="tabular-nums">{formatNPR(value)}</dd></div>)}</dl>;
 }
 

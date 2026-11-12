@@ -47,6 +47,8 @@
   --color-ring: var(--ring);
   --color-ring-offset-background: var(--background);
   --color-hero-scrim: var(--hero-scrim);
+  --color-print-paper: var(--print-paper);
+  --color-print-ink: var(--print-ink);
   --color-chart-1: var(--chart-1);
   --color-chart-2: var(--chart-2);
   --color-chart-3: var(--chart-3);
@@ -63,6 +65,8 @@
 }
 
 :root {
+  --print-paper: oklch(1 0 0);
+  --print-ink: oklch(0 0 0);
   --radius: 0.5rem;
   --hero-scrim: oklch(0.18 0.02 160 / 60%);
   --background: oklch(1 0 0);
@@ -100,6 +104,8 @@
 }
 
 .dark {
+  --print-paper: oklch(1 0 0);
+  --print-ink: oklch(0 0 0);
   --hero-scrim: oklch(0.18 0.02 160 / 60%);
   --background: oklch(0.129 0.042 264.695);
   --foreground: oklch(0.984 0.003 247.858);
@@ -148,6 +154,23 @@
 }
 .brand { font-family: 'Manrope', sans-serif; }
 * { letter-spacing: 0; }
+.sticker-preview { width: 260px; max-width: 100%; }
+.barcode-sticker { display: flex; flex-direction: column; align-items: center; justify-content: center; overflow: hidden; min-width: 0; padding: 1mm 2mm; background: var(--print-paper); color: var(--print-ink); }
+.sticker-name { font-size: 8pt; line-height: 1.1; text-align: center; max-width: 100%; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.sticker-code { font-family: monospace; font-size: 8pt; line-height: 1.1; overflow-wrap: anywhere; text-align: center; }
+.sticker-price { font-size: 8pt; line-height: 1.1; }
+.sticker-barcode { display: block; width: 100%; max-width: 100%; height: 12mm; flex-shrink: 0; }
+.barcode-print-root { display: none; }
+.barcode-label-page { display: grid; box-sizing: border-box; row-gap: 0; break-after: page; overflow: hidden; }
+.barcode-label-page:last-child { break-after: auto; }
+@media print {
+ body:has(.barcode-print-root) { margin: 0; background: var(--print-paper); }
+ body:has(.barcode-print-root) > :not(.barcode-print-root) { display: none !important; }
+ .barcode-print-root { display: block; }
+ .barcode-print-root, .barcode-print-root * { visibility: visible; }
+ .barcode-label-pages { margin: 0; }
+ .barcode-sticker { break-inside: avoid; }
+}
 @media print {
  body:has([aria-label="Business report print"]) > *:not(:has([aria-label="Business report print"])):not([aria-label="Business report print"]) { display: none; }
  body * { visibility: hidden; }
