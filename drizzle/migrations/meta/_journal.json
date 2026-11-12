@@ -204,6 +204,13 @@
       "when": 1794471463320,
       "tag": "0028_quotation_customer_snapshot_guard",
       "breakpoints": true
+    },
+    {
+      "idx": 29,
+      "version": "7",
+      "when": 1794472307564,
+      "tag": "0029_member_permission_denials",
+      "breakpoints": true
     }
   ]
 }

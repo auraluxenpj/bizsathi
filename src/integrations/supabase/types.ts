@@ -1272,6 +1272,52 @@ export type Database = {
           },
         ]
       }
+      member_permission_denials: {
+        Row: {
+          business_id: string
+          created_at: string
+          granted_by: string
+          permission: string
+          user_id: string
+        }
+        Insert: {
+          business_id: string
+          created_at?: string
+          granted_by: string
+          permission: string
+          user_id: string
+        }
+        Update: {
+          business_id?: string
+          created_at?: string
+          granted_by?: string
+          permission?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "member_permission_denials_business_id_fkey"
+            columns: ["business_id"]
+            isOneToOne: false
+            referencedRelation: "businesses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "member_permission_denials_granted_by_fkey"
+            columns: ["granted_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "member_permission_denials_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       parties: {
         Row: {
           address: string
@@ -2030,6 +2076,10 @@ export type Database = {
         Args: { _business_id: string; _min_role: string }
         Returns: boolean
       }
+      has_permission: {
+        Args: { _business: string; _perm: string }
+        Returns: boolean
+      }
       inv_sync_push: { Args: { _items: Json }; Returns: Json }
       is_business_member: { Args: { _business_id: string }; Returns: boolean }
       normalize_member_mobile: { Args: { _mobile: string }; Returns: string }
@@ -2157,6 +2207,10 @@ export type Database = {
       }
       set_financial_period_status: {
         Args: { _period_id: string; _status: string }
+        Returns: undefined
+      }
+      set_member_permissions: {
+        Args: { _business: string; _denied: string[]; _user: string }
         Returns: undefined
       }
       shares_business_with: { Args: { _other: string }; Returns: boolean }
