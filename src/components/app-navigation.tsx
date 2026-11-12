@@ -94,7 +94,7 @@ export function AppNavigation({ children, pathname }: { children: ReactNode; pat
         <CommandPalette variant="icon" shortcut={false} />
       </header>
 
-      <div className="min-w-0 pb-24 lg:pb-0">{children}</div>
+      <div className="min-w-0 pb-24 lg:pb-0">{deniedPage ? <main className="mx-auto max-w-xl px-5 py-16 text-center"><h1 className="brand text-2xl">No access</h1><p className="mt-3 text-sm text-muted-foreground">Your administrator has turned off access to this page.</p></main> : children}</div>
 
       {pathname === '/dashboard' && <Link to="/sales" search={{ new: '1' }} className="fixed bottom-20 right-4 z-30 flex h-12 items-center gap-2 rounded-full bg-primary px-5 text-sm font-semibold text-primary-foreground shadow-lg lg:hidden"><Plus className="size-4" />New sale</Link>}
 
