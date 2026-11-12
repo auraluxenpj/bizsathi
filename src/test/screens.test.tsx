@@ -233,6 +233,32 @@ describe('Paying an expense from a named account', () => {
 });
 
 describe('Point of sale', () => {
+  it('adds repeated barcode entries to one cart line and retains its exact checkout total', async () => {
+    mount(<Pos />);
+    const barcode = await screen.findByLabelText('Barcode input');
+    for (let i=0;i<2;i++) {
+      fireEvent.change(barcode, { target: { value: 'AL-001' } });
+      fireEvent.click(screen.getByRole('button', { name: 'Add scanned item' }));
+    }
+    expect(screen.getByLabelText('quantity line 1')).toHaveValue(2);
+    expect(screen.queryByLabelText('quantity line 2')).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Preview' }));
+    const receipt = screen.getByLabelText('Receipt preview');
+    expect(within(receipt).getAllByText('Rs. 3,000.00').length).toBeGreaterThan(0);
+    expect(confirm).not.toHaveBeenCalled();
+  });
+  it('leaves the cart unchanged for an unknown barcode and adjusts quantity with touch controls', async () => {
+    mount(<Pos />);
+    const barcode = await screen.findByLabelText('Barcode input');
+    fireEvent.change(barcode, { target: { value: 'UNKNOWN' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Add scanned item' }));
+    expect(screen.queryByLabelText('quantity line 1')).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: /Silk Saree/ }));
+    fireEvent.click(screen.getByRole('button', { name: 'Increase quantity line 1' }));
+    expect(screen.getByLabelText('quantity line 1')).toHaveValue(2);
+    fireEvent.click(screen.getByRole('button', { name: 'Decrease quantity line 1' }));
+    expect(screen.getByLabelText('quantity line 1')).toHaveValue(1);
+  });
   it('is a standalone sale screen with no device passphrase', async () => {
     mount(<Pos />);
     expect(await screen.findByRole('heading', { name: /Point of sale/ })).toBeInTheDocument();
