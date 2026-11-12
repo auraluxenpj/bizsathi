@@ -7,6 +7,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 const acct = vi.hoisted(() => ({ list: [] as { id: string; name: string; kind: string; isActive: boolean; balance: number }[], tagged: vi.fn(async (_: unknown) => 'ok') }));
 const record = vi.fn(async (_: unknown) => 'ok');
 const commerce = {
+  business:{name:'Auraluxe'},
   role: 'owner', userId: '66666666-6666-4666-8666-666666666666', counters: [], journals: [],
   periods: [{ id: '44444444-4444-4444-8444-444444444444', status: 'open', start_date: '2026-01-01', end_date: '2026-12-31', name: 'FY' }],
   documents: [

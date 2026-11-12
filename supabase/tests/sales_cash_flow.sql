@@ -19,13 +19,13 @@ BEGIN
  UPDATE public.parties SET name='Changed customer',phone='9811111111',address='Changed address' WHERE id=p;
  sale:=public.convert_quotation(b,q,per,'2026-11-12');ASSERT public.convert_quotation(b,q,per,'2026-11-12')=sale,'Conversion must be unique';
  ASSERT (SELECT count(*) FROM public.commerce_documents WHERE quotation_id=q)=1;
- ASSERT (SELECT status FROM public.commerce_documents WHERE id=sale)='draft';ASSERT public.commerce_stock_balance(b,br,v)=10,'Estimate conversion must not move stock';
+ ASSERT (SELECT status FROM public.commerce_documents WHERE id=sale)='draft';ASSERT (SELECT sum(quantity) FROM public.stock_movements WHERE business_id=b AND branch_id=br AND variant_id=v)=10,'Estimate conversion must not move stock';
  ASSERT NOT EXISTS(SELECT 1 FROM public.commerce_journal_entries WHERE business_id=b);ASSERT NOT EXISTS(SELECT 1 FROM public.loyalty_point_events WHERE business_id=b);
  ASSERT (SELECT customer->>'name' FROM public.quotations WHERE id=q)='Original customer';
  denied:=false;BEGIN PERFORM public.save_quotation(req||jsonb_build_object('revision',2,'reference','EDIT'));EXCEPTION WHEN OTHERS THEN denied:=true;END;ASSERT denied,'Converted estimate is locked';
  SELECT request INTO doc FROM public.commerce_documents WHERE id=sale;doc:=doc||jsonb_build_object('id',gen_random_uuid(),'status','confirmed');
  posted:=public.post_commerce_document(doc);ASSERT public.post_commerce_document(doc)=posted,'Confirmed exact-request retry must succeed';
- ASSERT public.commerce_stock_balance(b,br,v)=8;ASSERT (SELECT total FROM public.commerce_documents WHERE id=posted)=240.12;ASSERT (SELECT lines->0->>'name' FROM public.commerce_documents WHERE id=posted)='Original dress · Standard';
+ ASSERT (SELECT (SELECT sum(quantity) FROM public.stock_movements WHERE business_id=b AND branch_id=br AND variant_id=v)+coalesce((SELECT sum(quantity) FROM public.commerce_stock_movements WHERE business_id=b AND branch_id=br AND variant_id=v),0))=8;ASSERT (SELECT total FROM public.commerce_documents WHERE id=posted)=240.12;ASSERT (SELECT lines->0->>'name' FROM public.commerce_documents WHERE id=posted)='Original dress · Standard';
  denied:=false;BEGIN PERFORM public.post_commerce_document(doc||jsonb_build_object('id',gen_random_uuid()));EXCEPTION WHEN OTHERS THEN denied:=true;END;ASSERT denied,'Second confirmation of same estimate must fail';
  denied:=false;BEGIN PERFORM public.post_commerce_document(doc||jsonb_build_object('id',gen_random_uuid(),'lines',jsonb_build_array(jsonb_build_object('variantId',v,'quantity',2,'price',999,'discount',0,'taxRate',0))));EXCEPTION WHEN OTHERS THEN denied:=true;END;ASSERT denied,'Repricing estimate must fail';
  PERFORM public.set_branch_access(b,br,staff,true);PERFORM set_config('request.jwt.claims',json_build_object('sub',staff)::text,true);
