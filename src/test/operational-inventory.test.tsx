@@ -1,0 +1,72 @@
+import {QueryClient,QueryClientProvider} from '@tanstack/react-query';
+import {createMemoryHistory,createRootRoute,createRouter,RouterProvider} from '@tanstack/react-router';
+import {render,screen,fireEvent,waitFor} from '@testing-library/react';
+import {beforeEach,describe,it,expect,vi} from 'vitest';
+import type {ReactNode} from 'react';
+const fns=vi.hoisted(()=>({post:vi.fn(),confirm:vi.fn(),payment:vi.fn()}));
+vi.mock('@tanstack/react-start',()=>({useServerFn:(f:unknown)=>f}));
+vi.mock('@/lib/inventory.functions',()=>({postStock:(r:unknown)=>fns.post(r)}));
+vi.mock('@/lib/commerce.functions',()=>({confirmDocument:(r:unknown)=>fns.confirm(r),recordPayment:(r:unknown)=>fns.payment(r),recordCounter:vi.fn(),findCommerceDocument:vi.fn()}));
+vi.mock('@/lib/accounts.functions',()=>({getAccountBalances:async()=>({accounts:[]}),confirmDocumentTagged:vi.fn()}));
+vi.mock('@/components/trading-settings',()=>({TradingSettings:()=>null}));
+vi.mock('@/components/commerce-workspace',async importOriginal=>{
+  const actual=await importOriginal<typeof import('@/components/commerce-workspace')>();
+  return {...actual,useCommerce:()=>workspace,CommerceFrame:({children}:{children:ReactNode})=><>{children}</>};
+});
+import {StockCorrection} from '@/components/stock-correction';
+import {DocumentEditor} from '@/components/document-editor';
+import {TradingDocuments} from '@/components/trading-documents';
+import type {CommerceWorkspace} from '@/components/commerce-workspace';
+import type {Workspace} from '@/components/inventory-workspace';
+const I={business:'11111111-1111-4111-8111-111111111111',branch:'22222222-2222-4222-8222-222222222222',variant:'33333333-3333-4333-8333-333333333333',period:'44444444-4444-4444-8444-444444444444',invoice:'55555555-5555-4555-8555-555555555555',party:'66666666-6666-4666-8666-666666666666',user:'77777777-7777-4777-8777-777777777777'};
+const original={id:I.invoice,source_id:null,kind:'sale',status:'confirmed',reference:'INV-01',branch_id:I.branch,party_id:I.party,total:1000,subtotal:1000,tax:0,document_date:'2026-11-12',lines:[{variantId:I.variant,name:'Dress',sku:'AL-DRESS',quantity:10,price:100,discount:0,taxRate:0,total:1000}],request:{mobile:'9812345678'}};
+let documents:typeof original[]=[];
+const commerce=()=>({business:{name:'Auraluxe',legal_name:'Auraluxe',pan_vat_number:''},role:'owner',userId:I.user,settings:{vat_registered:false,vat_rate:0,currency:'NPR'},periods:[{id:I.period,status:'open',start_date:'2020-01-01',end_date:'2099-12-31'}],documents,payments:[{id:'pay',document_id:I.invoice,amount:400,method:'bank'}],counters:[],memberships:[],loyalty:[]});
+const inventory={variants:[{id:I.variant,is_active:true,name:'Standard',sku:'AL-DRESS',selling_price:100,unit:'pcs',products:{name:'Dress',is_active:true}}],movements:[{branch_id:I.branch,variant_id:I.variant,quantity:10}],parties:[{id:I.party,name:'Customer',kind:'customer',is_active:true,phone:'9812345678'}]};
+const workspace={businessId:I.business,commerce:{get data(){return commerce();}},inventory:{data:inventory,refetch:vi.fn()},access:{data:{branches:[{id:I.branch,name:'Main',is_active:true}]}}} as unknown as CommerceWorkspace;
+function mount(ui:ReactNode){const root=createRootRoute({component:()=> <>{ui}</>});const router=createRouter({routeTree:root,history:createMemoryHistory({initialEntries:['/sales']})});return render(<QueryClientProvider client={new QueryClient({defaultOptions:{queries:{retry:false}}})}><RouterProvider router={router}/></QueryClientProvider>);}
+beforeEach(()=>{documents=[structuredClone(original)];sessionStorage.clear();fns.post.mockReset().mockResolvedValue({id:'op'});fns.confirm.mockReset().mockResolvedValue({id:'return'});fns.payment.mockReset().mockResolvedValue({id:'refund'});vi.spyOn(window,'confirm').mockReturnValue(true);});
+describe('Operational inventory confirmations',()=>{
+ it('posts an expired disposal as the exact negative stock request and logged reason',async()=>{
+  mount(<StockCorrection w={workspace as unknown as Workspace} branch={I.branch} onStatus={()=>{}}/>);
+  fireEvent.click(await screen.findByRole('button',{name:'Dispose stock'}));
+  fireEvent.change(screen.getByLabelText('Correction product'),{target:{value:I.variant}});
+  fireEvent.change(screen.getByLabelText('Correction quantity'),{target:{value:'2'}});
+  fireEvent.change(screen.getByLabelText('Disposal reason'),{target:{value:'expired'}});
+  fireEvent.change(screen.getByLabelText('Correction reason'),{target:{value:'Expired batch'}});
+  fireEvent.change(screen.getByLabelText('Correction reference'),{target:{value:'DIS-01'}});
+  fireEvent.click(screen.getByRole('button',{name:'Confirm disposal'}));
+  await waitFor(()=>expect(fns.post).toHaveBeenCalledTimes(1));
+  expect(fns.post.mock.calls[0]?.[0].data).toMatchObject({businessId:I.business,branchId:I.branch,variantId:I.variant,kind:'adjustment',quantity:-2,reason:'Disposal · expired: Expired batch',reference:'DIS-01'});
+ });
+ it('retains the same disposal identifier after an interrupted confirmation',async()=>{
+  fns.post.mockRejectedValueOnce(new Error('Interrupted'));
+  mount(<StockCorrection w={workspace as unknown as Workspace} branch={I.branch} onStatus={()=>{}}/>);
+  fireEvent.click(await screen.findByRole('button',{name:'Dispose stock'}));
+  for(const [label,value] of [['Correction product',I.variant],['Correction quantity','1'],['Correction reason','Damaged'],['Correction reference','DIS-02']])fireEvent.change(screen.getByLabelText(label),{target:{value}});
+  fireEvent.click(screen.getByRole('button',{name:'Confirm disposal'}));
+  await screen.findByText('Interrupted');fireEvent.click(screen.getByRole('button',{name:'Retry same correction'}));
+  await waitFor(()=>expect(fns.post).toHaveBeenCalledTimes(2));
+  expect(fns.post.mock.calls[0]?.[0]).toEqual(fns.post.mock.calls[1]?.[0]);
+ });
+ it('posts selected sale return quantities against the original invoice, not another sale',async()=>{
+  documents.push({...original,id:'prior',source_id:I.invoice,kind:'sale_return',total:200,lines:[{...original.lines[0],quantity:2,total:200}] as typeof original.lines});
+  mount(<DocumentEditor w={workspace} kind="sale_return" sourceId={I.invoice} onSaved={()=>{}}/>);
+  expect(await screen.findByLabelText('quantity line 1')).toHaveValue(8);
+  fireEvent.change(screen.getByLabelText('quantity line 1'),{target:{value:'3'}});
+  fireEvent.click(screen.getByRole('button',{name:'Confirm sale return'}));
+  await waitFor(()=>expect(fns.confirm).toHaveBeenCalledTimes(1));
+  expect(fns.confirm.mock.calls[0]?.[0].data).toMatchObject({sourceId:I.invoice,branchId:I.branch,kind:'sale_return',status:'confirmed',lines:[{variantId:I.variant,quantity:3,price:100}],payments:[]});
+ });
+ it('offers only the settled refundable amount on a linked credit note',async()=>{
+  const credit={...original,id:'88888888-8888-4888-8888-888888888888',source_id:I.invoice,kind:'sale_return',reference:'SRN-01',total:800,subtotal:800,lines:[{...original.lines[0],quantity:8,total:800}] as typeof original.lines};documents.push(credit);
+  mount(<TradingDocuments mode="sale"/>);
+  fireEvent.click(await screen.findByText('SRN-01'));
+  fireEvent.click(screen.getByRole('button',{name:'Record refund'}));
+  expect(screen.getByLabelText('Payment amount')).toHaveValue(200);
+  fireEvent.change(screen.getByLabelText('Payment method'),{target:{value:'bank'}});
+  fireEvent.click(screen.getByRole('button',{name:'Confirm refund'}));
+  await waitFor(()=>expect(fns.payment).toHaveBeenCalledTimes(1));
+  expect(fns.payment.mock.calls[0]?.[0].data).toMatchObject({documentId:credit.id,amount:200,method:'bank',reference:'Refund SRN-01'});
+ });
+});
