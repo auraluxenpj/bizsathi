@@ -71,4 +71,14 @@ export const setBranchAccess = createServerFn({ method: 'POST' }).middleware([re
   const { error } = await context.supabase.rpc('set_branch_access', { _business_id: data.businessId, _branch_id: data.branchId, _user_id: data.userId, _allowed: data.allowed });
   if (error) throw new Error('Branch access could not be changed.');
   return { ok: true };
+});import { permissionInput } from './permissions';
+export const getMemberPermissions = createServerFn({ method: 'GET' }).middleware([requireSupabaseAuth]).inputValidator(tenantInput).handler(async ({ data, context }) => {
+  const r = await context.supabase.from('member_permission_denials').select('user_id,permission').eq('business_id', data.businessId);
+  if (r.error) throw new Error('Permissions could not be loaded.');
+  return { userId: context.userId, denials: r.data ?? [] };
+});
+export const saveMemberPermissions = createServerFn({ method: 'POST' }).middleware([requireSupabaseAuth]).inputValidator(permissionInput).handler(async ({ data, context }) => {
+  const r = await context.supabase.rpc('set_member_permissions', { _business: data.businessId, _user: data.userId, _denied: data.denied });
+  if (r.error) throw new Error(r.error.message.replace(/^.*?: /, ''));
+  return { ok: true };
 });
