@@ -55,3 +55,35 @@ export function makeCsv(rows: Record<string, unknown>[], fields?:string[]) { ret
 export function makeCatalogueCsv(rows: Record<string, unknown>[], canViewPurchasePrice: boolean) {
  return makeCsv(rows, catalogueColumns.filter(column => canViewPurchasePrice || column !== 'purchase_price'));
 }
+
+type SheetRow = { product_name: string; variant_name: string; sku: string; barcode: string };
+export type CatalogueProblems = { duplicateSkus: { sku: string; count: number }[]; existingSkus: string[]; duplicateBarcodes: string[]; any: boolean };
+
+/** Finds what would make the all-or-nothing import fail, before anything is sent: SKUs repeated in the file, SKUs already in use, repeated barcodes. */
+export function catalogueProblems(rows: SheetRow[], existingSkus: Set<string>): CatalogueProblems {
+  const seen = new Map<string, number>(); const barcodes = new Map<string, number>();
+  for (const r of rows) {
+    seen.set(r.sku, (seen.get(r.sku) ?? 0) + 1);
+    if (r.barcode) barcodes.set(r.barcode, (barcodes.get(r.barcode) ?? 0) + 1);
+  }
+  const duplicateSkus = [...seen].filter(([, n]) => n > 1).map(([sku, count]) => ({ sku, count }));
+  const existing = [...seen.keys()].filter((sku) => existingSkus.has(sku));
+  const duplicateBarcodes = [...barcodes].filter(([, n]) => n > 1).map(([b]) => b);
+  return { duplicateSkus, existingSkus: existing, duplicateBarcodes, any: duplicateSkus.length + existing.length + duplicateBarcodes.length > 0 };
+}
+
+const suffixOf = (variant: string) => variant.trim().toUpperCase().replace(/[^A-Z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+
+/** Gives each row of a repeated SKU its own SKU by adding the variant (size) name: AL-KURTI-001 becomes AL-KURTI-001-M, AL-KURTI-001-L. Other rows are untouched. */
+export function makeSkusUnique<T extends { sku: string; variant_name: string }>(rows: T[]): { rows: T[]; changed: number } {
+  const counts = new Map<string, number>();
+  for (const r of rows) counts.set(r.sku, (counts.get(r.sku) ?? 0) + 1);
+  let changed = 0;
+  const out = rows.map((r) => {
+    const suffix = suffixOf(r.variant_name);
+    if ((counts.get(r.sku) ?? 0) < 2 || !suffix) return r;
+    changed++;
+    return { ...r, sku: `${r.sku}-${suffix}` };
+  });
+  return { rows: out, changed };
+}
