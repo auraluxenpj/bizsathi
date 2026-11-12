@@ -19,7 +19,7 @@ export function Pos() {
       <h1 className="truncate text-base font-semibold">{name ? `${name} · ` : ''}Point of sale</h1>
       <Button asChild variant="outline" size="sm"><Link to="/sales">Sales</Link></Button>
     </header>
-    <main className="mx-auto max-w-4xl px-4">
+    <main className="mx-auto max-w-[1600px] px-4 md:px-6">
       {!w.businessId ? <section className="py-16 text-center"><Building2 className="mx-auto mb-4 size-9 text-primary" /><h2 className="text-xl font-semibold">No business linked yet</h2><Button asChild className="mt-5"><Link to="/businesses">Business setup</Link></Button></section>
         : error ? <div className="py-8"><p role="alert" className="text-sm text-destructive">{error}</p><Button className="mt-4" variant="outline" onClick={() => { w.commerce.refetch(); w.access.refetch(); w.inventory.refetch(); }}>Try again</Button></div>
         : !ready ? <p role="status" className="py-8 text-sm">Loading point of sale…</p>

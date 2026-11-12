@@ -14,6 +14,57 @@ export type Database = {
   }
   public: {
     Tables: {
+      account_movements: {
+        Row: {
+          account_id: string
+          amount: number
+          business_id: string
+          created_at: string
+          entry_date: string
+          id: number
+          memo: string
+          source_id: string
+          source_type: string
+        }
+        Insert: {
+          account_id: string
+          amount: number
+          business_id: string
+          created_at?: string
+          entry_date: string
+          id?: never
+          memo?: string
+          source_id: string
+          source_type: string
+        }
+        Update: {
+          account_id?: string
+          amount?: number
+          business_id?: string
+          created_at?: string
+          entry_date?: string
+          id?: never
+          memo?: string
+          source_id?: string
+          source_type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "account_movements_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "payment_accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "account_movements_business_id_fkey"
+            columns: ["business_id"]
+            isOneToOne: false
+            referencedRelation: "businesses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       accounting_vouchers: {
         Row: {
           actor_id: string
@@ -1249,6 +1300,44 @@ export type Database = {
           },
         ]
       }
+      payment_accounts: {
+        Row: {
+          business_id: string
+          created_at: string
+          created_by: string
+          id: string
+          is_active: boolean
+          kind: string
+          name: string
+        }
+        Insert: {
+          business_id: string
+          created_at?: string
+          created_by?: string
+          id: string
+          is_active?: boolean
+          kind: string
+          name: string
+        }
+        Update: {
+          business_id?: string
+          created_at?: string
+          created_by?: string
+          id?: string
+          is_active?: boolean
+          kind?: string
+          name?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payment_accounts_business_id_fkey"
+            columns: ["business_id"]
+            isOneToOne: false
+            referencedRelation: "businesses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       product_variants: {
         Row: {
           barcode: string | null
@@ -1732,10 +1821,12 @@ export type Database = {
         Args: { _token_hash: string }
         Returns: string
       }
+      account_balances: { Args: { _business: string }; Returns: Json }
       add_business_member: {
         Args: { _business_id: string; _role: string; _user_id: string }
         Returns: string
       }
+      adjust_payment_account: { Args: { _request: Json }; Returns: string }
       archive_business: { Args: { _business_id: string }; Returns: undefined }
       begin_website_stock_sync: {
         Args: { _branch_id: string; _business_id: string; _lease_id: string }
@@ -1776,6 +1867,10 @@ export type Database = {
         Args: { _receipt_id: string; _request: Json }
         Returns: string
       }
+      confirm_expense_receipt_with_account: {
+        Args: { _account: string; _receipt: string; _request: Json }
+        Returns: string
+      }
       create_business: {
         Args: { _legal_name?: string; _name: string; _pan_vat?: string }
         Returns: string
@@ -1786,6 +1881,19 @@ export type Database = {
           _email: string
           _role: string
           _token_hash: string
+        }
+        Returns: string
+      }
+      create_payment_account: {
+        Args: {
+          _branch: string
+          _business: string
+          _date: string
+          _id: string
+          _kind: string
+          _name: string
+          _opening: number
+          _period: string
         }
         Returns: string
       }
@@ -1800,10 +1908,64 @@ export type Database = {
       inv_sync_push: { Args: { _items: Json }; Returns: Json }
       is_business_member: { Args: { _business_id: string }; Returns: boolean }
       normalize_member_mobile: { Args: { _mobile: string }; Returns: string }
+      pa_balance: { Args: { _account: string }; Returns: number }
+      pa_journal: {
+        Args: {
+          _amount: number
+          _b: string
+          _br: string
+          _credit: string
+          _date: string
+          _debit: string
+          _per: string
+          _reason: string
+          _ref: string
+          _req: string
+        }
+        Returns: string
+      }
+      pa_load: {
+        Args: { _account: string; _business: string; _need_active?: boolean }
+        Returns: {
+          business_id: string
+          created_at: string
+          created_by: string
+          id: string
+          is_active: boolean
+          kind: string
+          name: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "payment_accounts"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      pa_tag_expense: {
+        Args: { _account: string; _b: string; _voucher: string }
+        Returns: undefined
+      }
+      pa_tag_payment: {
+        Args: { _account: string; _b: string; _payment: string }
+        Returns: undefined
+      }
       post_accounting_voucher: { Args: { _request: Json }; Returns: string }
+      post_accounting_voucher_with_account: {
+        Args: { _account: string; _request: Json }
+        Returns: string
+      }
       post_cash_counter_event: { Args: { _request: Json }; Returns: string }
       post_commerce_document: { Args: { _request: Json }; Returns: string }
+      post_commerce_document_with_accounts: {
+        Args: { _accounts: Json; _request: Json }
+        Returns: string
+      }
       post_commerce_payment: { Args: { _request: Json }; Returns: string }
+      post_commerce_payment_with_account: {
+        Args: { _account: string; _request: Json }
+        Returns: string
+      }
       post_stock_operation: {
         Args: {
           _branch_id: string
@@ -1872,6 +2034,7 @@ export type Database = {
         Returns: undefined
       }
       shares_business_with: { Args: { _other: string }; Returns: boolean }
+      transfer_between_accounts: { Args: { _request: Json }; Returns: string }
       transfer_business_ownership: {
         Args: { _business_id: string; _new_owner: string }
         Returns: undefined
