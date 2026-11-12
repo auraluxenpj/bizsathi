@@ -27,9 +27,17 @@ export const getInventory = createServerFn({method:'GET'}).middleware([requireSu
  return {variants,parties,movements:movements.sort((a,b)=>b.created_at.localeCompare(a.created_at))};
 });
 export const saveCatalogue = createServerFn({method:'POST'}).middleware([requireSupabaseAuth]).inputValidator(catalogueInput).handler(async ({data,context})=>{
- const {data:count,error}=await context.supabase.rpc('save_catalogue_variant',{_business_id:data.businessId,_rows:data.rows});
+ const {data:count,error}=await context.supabase.rpc('save_catalogue_variant',{_business_id:data.businessId,_rows:data.rows.map(({opening_stock:_o,...row})=>row)});
  if(error) throw new Error('Products were not saved. Check administrator access and duplicate product variants, SKUs or barcodes.');
- return {count};
+ const stocked=data.rows.filter(r=>r.opening_stock>0); let opened=0; const skipped:string[]=[];
+ if(data.openingBranchId&&stocked.length){
+  const ids=new Map<string,string>();
+  for(let i=0;i<stocked.length;i+=200){const {data:found}=await context.supabase.from('product_variants').select('id,sku').eq('business_id',data.businessId).in('sku',stocked.slice(i,i+200).map(r=>r.sku));for(const v of found ?? [])ids.set(v.sku,v.id);}
+  for(const r of stocked){const variantId=ids.get(r.sku);if(!variantId){skipped.push(r.sku);continue;}
+   const {error:stockError}=await context.supabase.rpc('post_stock_request',{_request:{businessId:data.businessId,id:crypto.randomUUID(),variantId,branchId:data.openingBranchId,destinationBranchId:null,kind:'opening',quantity:r.opening_stock,reference:'Item import',reason:'Opening stock from sheet import'}});
+   if(stockError)skipped.push(r.sku);else opened++;}
+ }
+ return {count,opened,skipped};
 });
 export const editVariant = createServerFn({method:'POST'}).middleware([requireSupabaseAuth]).inputValidator(variantEditInput).handler(async ({data,context})=>{
  const {data:allowed,error:accessError}=await context.supabase.rpc('has_business_role',{_business_id:data.businessId,_min_role:'admin'});

@@ -16,12 +16,12 @@ import { catalogueInput as ci } from './inventory-schemas';
 describe('Master sheet catalogue CSV compatibility', () => {
  it('parses the original format with all catalogue values', () => {
   expect(parseCatalogueCsv('product_name,category,variant_name,sku,barcode,unit,selling_price,reorder_level\nShirt,Clothing,Large,S1,123,pcs,1250.50,2.5', a)).toEqual([
-   {product_name:'Shirt',category:'Clothing',variant_name:'Large',sku:'S1',barcode:'123',unit:'pcs',selling_price:1250.5,reorder_level:2.5},
+   {product_name:'Shirt',category:'Clothing',variant_name:'Large',sku:'S1',barcode:'123',unit:'pcs',selling_price:1250.5,reorder_level:2.5,opening_stock:0},
   ]);
  });
  it('parses master sheet headers and formatted currency and quantities', () => {
   expect(parseCatalogueCsv('Item Name,Category,Variant / Size,Generated SKU,Barcode,Primary Unit,Selling Price,Reorder Level\nShirt,Clothing,Large,S1,123,pcs,"NPR 1,250.50","1,000"', a)).toEqual([
-   {product_name:'Shirt',category:'Clothing',variant_name:'Large',sku:'S1',barcode:'123',unit:'pcs',selling_price:1250.5,reorder_level:1000},
+   {product_name:'Shirt',category:'Clothing',variant_name:'Large',sku:'S1',barcode:'123',unit:'pcs',selling_price:1250.5,reorder_level:1000,opening_stock:0},
   ]);
  });
  const aliasSets = [
@@ -59,4 +59,14 @@ d2('catalogue import limit', () => {
   const biz = '00000000-0000-4000-8000-000000000001';
   i2('accepts 5000 rows', () => { e2(ci.safeParse({ businessId: biz, rows: Array.from({ length: 5000 }, (_, n) => row(n)) }).success).toBe(true); });
   i2('rejects 5001 rows', () => { e2(ci.safeParse({ businessId: biz, rows: Array.from({ length: 5001 }, (_, n) => row(n)) }).success).toBe(false); });
+});
+
+import { parseCatalogueCsv as parseKarobar } from './inventory-csv';
+describe('Karobar item sheet', () => {
+ const csv = 'Item Name,Category,Sales Price,Purchase Price,Item Code,Opening Stock,Primary Unit,MRP Price,Wholesale Price,Low Stock,HS Code,Description\nAL-ALA01-M,Kurti set 3 Piece,"1,999","1,347",ALA01-M,1,PIECES,"2,020","1,616",0,,ANUSHREE01\nAL-ALA01-XL,Kurti set 3 Piece,"1,999","1,347",ALA01-XL,3,PIECES,"2,020","1,616",0,,ANUSHREE01';
+ it('groups sizes under the Description and reads opening stock', () => {
+  const rows = parseKarobar(csv, '00000000-0000-4000-8000-000000000000');
+  expect(rows.map(r => [r.product_name, r.variant_name, r.opening_stock])).toEqual([['ANUSHREE01','M',1],['ANUSHREE01','XL',3]]);
+  expect(rows[0]!.selling_price).toBe(1999);
+ });
 });
