@@ -1,4 +1,5 @@
 import { describe,it,expect } from 'vitest';
+import { readFileSync } from 'node:fs';
 import { stockInput, stockBalances, catalogueRow } from './inventory-schemas';
 import { makeCsv, makeCatalogueCsv, parseCatalogueCsv } from './inventory-csv';
 const a='10000000-0000-4000-8000-000000000001', b='10000000-0000-4000-8000-000000000002';
@@ -72,6 +73,10 @@ describe('Karobar item sheet', () => {
  });
 });
 describe('Product purchase price import and export', () => {
+ it('imports the downloadable template with its example purchase cost', () => {
+  const csv = readFileSync(new URL('../../public/downloads/product-import-template.csv', import.meta.url), 'utf8');
+  expect(parseCatalogueCsv(csv, a)).toEqual([{product_name:'Example Kurti Set',category:'Kurti set 3 Piece',variant_name:'M',sku:'EXAMPLE-KURTI-M',barcode:'EXAMPLE-KURTI-M',unit:'pcs',selling_price:1999,purchase_price:1347.5,reorder_level:2,opening_stock:0}]);
+ });
  const row = {product_name:'Shirt',category:'Clothing',variant_name:'M',sku:'S1',barcode:'123',unit:'pcs',selling_price:'1999.00',purchase_price:'1347.50',reorder_level:2};
  it('exports saved purchase costs and imports them without loss', () => {
   const csv = makeCatalogueCsv([row], true);
