@@ -1,0 +1,1 @@
+ALTER TABLE public.quotations ALTER CONSTRAINT quotations_sale_id_fkey DEFERRABLE INITIALLY DEFERRED;
