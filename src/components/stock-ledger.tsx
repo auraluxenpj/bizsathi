@@ -10,6 +10,7 @@ import { stockInput, stockBalances } from '@/lib/inventory-schemas';
 import { makeCsv } from '@/lib/inventory-csv';
 import { downloadCsv } from '@/lib/download-csv';
 import { WebsiteStockSync } from './website-stock-sync';
+import { StockCorrection } from './stock-correction';
 export function StockLedger(){const w=useInventoryWorkspace();const post=useServerFn(postStock);const [branch,setBranch]=useState('');const [low,setLow]=useState(false);const [open,setOpen]=useState(false);const [status,setStatus]=useState('');
  const [draft,setDraft]=useState({id:'',variantId:'',branchId:'',destinationBranchId:'',kind:'receive',quantity:'',reference:'',reason:''});const [locked,setLocked]=useState(false);
  useEffect(()=>{setOpen(false);setBranch('');setLocked(false);setStatus('');},[w.businessId]);
