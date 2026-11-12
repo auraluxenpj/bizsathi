@@ -14,6 +14,15 @@ const reasons: [RegExp, string][] = [
   [/^Request identifier conflict$/, 'This request was already used with different details. Start it again.'],
   [/^Contact required$/, 'Choose a customer or supplier for this document.'],
   [/^Active matching contact required$/, 'The chosen customer or supplier is not active.'],
+  [/^Insufficient account balance$/, 'That account does not have enough balance for this.'],
+  [/^Account type does not match/, 'The chosen account is the wrong type for this payment (bank, wallet or cash safe).'],
+  [/^Account is not active$/, 'That account has been switched off.'],
+  [/^Account not found$/, 'That account could not be found.'],
+  [/^Cash from the counter is not tagged/, 'Counter cash goes to the till, not to a named account.'],
+  [/^Balance is already correct$/, 'The balance is already that amount.'],
+  [/^Invalid (transfer|balance|account details|account choices)$/, 'Please check the amount and accounts and try again.'],
+  [/^Account access denied$/, 'Only accountants and administrators can manage accounts.'],
+  [/^Payment does not belong to this document$/, 'That payment does not belong to this sale.'],
   [/^Discount exceeds line amount$/, 'A discount is larger than the line amount.'],
 ];
 

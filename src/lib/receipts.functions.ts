@@ -45,12 +45,14 @@ export const listReceipts = createServerFn({ method: 'GET' }).middleware([requir
   return { receipts: list.map(({ file_path, ...r }) => ({ ...r, url: urls.get(file_path) ?? null })) };
 });
 
-export const confirmReceipt = createServerFn({ method: 'POST' }).middleware([requireSupabaseAuth]).inputValidator(tenant.extend({ receiptId: id, request: voucherInput })).handler(async ({ data, context }) => {
+export const confirmReceipt = createServerFn({ method: 'POST' }).middleware([requireSupabaseAuth]).inputValidator(tenant.extend({ receiptId: id, request: voucherInput, accountId: id.optional() })).handler(async ({ data, context }) => {
   await requireAccountant(context, data.businessId);
   if (data.request.businessId !== data.businessId || data.request.kind !== 'expense') throw new Error('This is not an expense for this business.');
-  const { data: voucher, error } = await context.supabase.rpc('confirm_expense_receipt', { _receipt_id: data.receiptId, _request: data.request });
+  const { data: voucher, error } = data.accountId
+    ? await (context.supabase as unknown as { rpc: (fn: string, args: Record<string, unknown>) => Promise<{ data: unknown; error: { message: string } | null }> }).rpc('confirm_expense_receipt_with_account', { _receipt: data.receiptId, _request: data.request, _account: data.accountId })
+    : await context.supabase.rpc('confirm_expense_receipt', { _receipt_id: data.receiptId, _request: data.request });
   if (error) throw new Error('The expense could not be posted. Check the date is in an open period, the branch is yours, and the receipt is still waiting.');
-  return { voucherId: voucher };
+  return { voucherId: voucher as string };
 });
 
 export const rejectReceipt = createServerFn({ method: 'POST' }).middleware([requireSupabaseAuth]).inputValidator(tenant.extend({ receiptId: id, note: z.string().trim().min(1).max(500) })).handler(async ({ data, context }) => {

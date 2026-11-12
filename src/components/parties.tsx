@@ -1,6 +1,6 @@
 import { useMemo, useRef, useState } from 'react';
 import { Link, useNavigate, useSearch } from '@tanstack/react-router';
-import { useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useServerFn } from '@tanstack/react-start';
 import { ArrowDown, ArrowLeft, ArrowUp, Building2, Phone, Plus, Printer, Search } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -9,6 +9,8 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { DualDateInput } from './dual-date-input';
 import { useCommerce, type CommerceWorkspace } from './commerce-workspace';
 import { recordPayment } from '@/lib/commerce.functions';
+import { getAccountBalances, recordPaymentTagged } from '@/lib/accounts.functions';
+import { accountsOfKind, rememberAccount, rememberedAccount } from '@/lib/account-schemas';
 import { paymentInput } from '@/lib/commerce-schemas';
 import { allBalances, allocatePayment, ledgerEntries, outstandingInvoices, totalOutstanding } from '@/lib/party-ledger';
 import { formatBsAd, formatNPR, todayAd } from '@/lib/format';
@@ -25,8 +27,11 @@ function BalanceText({ value }: { value: number }) {
 // invoices, oldest first. Each part goes through the existing post_commerce_payment function, so
 // every database check (roles, open period, cash counter, no overpayment) still applies.
 function PaymentDialog({ w, mode, party, parties, onClose, onDone }: { w: CommerceWorkspace; mode: 'in' | 'out'; party?: Party; parties: Party[]; onClose: () => void; onDone: (m: string) => void }) {
-  const client = useQueryClient(); const record = useServerFn(recordPayment);
+  const client = useQueryClient(); const record = useServerFn(recordPayment); const recordTagged = useServerFn(recordPaymentTagged); const loadAccounts = useServerFn(getAccountBalances);
   const data = w.commerce.data!;
+  const accountsQuery = useQuery({ queryKey: ['accounts', w.businessId], queryFn: () => loadAccounts({ data: { businessId: w.businessId } }), enabled: ['owner', 'admin', 'accountant'].includes(data.role), retry: false });
+  const named = accountsQuery.data?.accounts ?? [];
+  const [accountId, setAccountId] = useState('');
   const kind = mode === 'in' ? 'sale' : 'purchase';
   const candidates = parties.filter(p => p.kind === (mode === 'in' ? 'customer' : 'supplier'));
   const [partyId, setPartyId] = useState(party?.id ?? '');
@@ -54,7 +59,7 @@ function PaymentDialog({ w, mode, party, parties, onClose, onDone }: { w: Commer
           return paymentInput.parse({ id: crypto.randomUUID(), businessId: w.businessId, documentId: a.documentId, periodId: period.id, date, method, amount: a.amount, sessionId: session, reference });
         });
       }
-      for (const r of batch.current) { if (done.current.has(r.id)) continue; await record({ data: r }); done.current.add(r.id); }
+      for (const r of batch.current) { if (done.current.has(r.id)) continue; if (accountId && method !== 'cash') await recordTagged({ data: { request: r, accountId } }); else await record({ data: r }); done.current.add(r.id); }
       await client.invalidateQueries();
       onDone(`${formatNPR(Number(amount))} ${mode === 'in' ? 'received from' : 'paid to'} ${chosen?.name}.`);
     } catch (e) {
@@ -73,8 +78,9 @@ function PaymentDialog({ w, mode, party, parties, onClose, onDone }: { w: Commer
         {partyId && <div className="rounded-lg bg-secondary/50 p-3 text-sm"><div className="flex items-center justify-between"><span>Outstanding</span><span className="font-semibold">{formatNPR(owed)}</span></div>{!rows.length && <p className="mt-2 text-muted-foreground">No unpaid {kind === 'sale' ? 'sales' : 'purchases'} for this party.</p>}</div>}
         <div className="grid grid-cols-2 gap-3">
           <label className="block text-sm">Amount (NPR)<div className="mt-1 flex gap-2"><Input aria-label="Payment amount" className="h-11" type="number" inputMode="decimal" min="0" step="0.01" value={amount} disabled={busy} onChange={e => { setAmount(e.target.value); reset(); }} /><Button type="button" variant="outline" className="h-11" disabled={!owed || busy} onClick={() => { setAmount(String(owed)); reset(); }}>Full</Button></div></label>
-          <label className="block text-sm">Method<select aria-label="Payment method" className="mt-1 h-11 w-full rounded-md border bg-card px-3" value={method} disabled={busy} onChange={e => { setMethod(e.target.value as typeof method); reset(); }}><option value="cash">Cash</option><option value="bank">Bank</option><option value="wallet">Wallet</option></select></label>
+          <label className="block text-sm">Method<select aria-label="Payment method" className="mt-1 h-11 w-full rounded-md border bg-card px-3" value={method} disabled={busy} onChange={e => { const m = e.target.value as typeof method; setMethod(m); setAccountId(m === 'cash' ? '' : rememberedAccount(w.businessId, m, accountsOfKind(named, m))); reset(); }}><option value="cash">Cash</option><option value="bank">Bank</option><option value="wallet">Wallet</option></select></label>
         </div>
+        {method !== 'cash' && accountsOfKind(named, method).length > 0 && <label className="block text-sm">Account<select aria-label="Payment account" className="mt-1 h-11 w-full rounded-md border bg-card px-3" value={accountId} disabled={busy} onChange={e => { setAccountId(e.target.value); rememberAccount(w.businessId, method, e.target.value); reset(); }}><option value="">Not assigned</option>{accountsOfKind(named, method).map(a => <option key={a.id} value={a.id}>{a.name}</option>)}</select></label>}
         <DualDateInput value={date} onChange={d => { setDate(d); reset(); }} />
         <label className="block text-sm">Note (optional)<Input className="mt-1 h-11" maxLength={160} value={note} disabled={busy} onChange={e => { setNote(e.target.value); reset(); }} /></label>
         {preview.length > 0 && <ul className="divide-y rounded-lg border text-sm">{preview.map(p => <li key={p.documentId} className="flex justify-between gap-3 px-3 py-2"><span className="min-w-0 break-words">{p.reference}</span><span className="shrink-0 tabular-nums">{formatNPR(p.amount)}</span></li>)}</ul>}

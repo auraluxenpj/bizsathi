@@ -12,6 +12,8 @@ class ResizeObserverStub { observe() {} unobserve() {} disconnect() {} }
 (globalThis as unknown as { ResizeObserver: unknown }).ResizeObserver = ResizeObserverStub;
 Element.prototype.scrollIntoView = () => {};
 const auth = vi.hoisted(() => ({ user: { email: 'vikky@example.com', user_metadata: { full_name: 'Vikky' } } as { email: string; user_metadata: Record<string, string> } | null }));
+const ACC = { bank: 'aaaaaaaa-1111-4111-8111-aaaaaaaaaaaa', bank2: 'aaaaaaaa-2222-4222-8222-aaaaaaaaaaaa', wallet: 'aaaaaaaa-3333-4333-8333-aaaaaaaaaaaa' };
+const acct = vi.hoisted(() => ({ list: [] as { id: string; name: string; kind: string; isActive: boolean; balance: number }[], tagged: vi.fn(async (_: unknown) => ({ id: '99999999-9999-4999-8999-999999999990' })), voucher: vi.fn(async (_: unknown) => ({ id: 'v1' })) }));
 const confirm = vi.fn(async (_: unknown) => ({ id: '99999999-9999-4999-8999-999999999999' }));
 const createPeriod = vi.fn(async (_: unknown) => ({ ok: true }));
 const counter = vi.fn(async (_: unknown) => { state.counter = true; return 'ok'; });
@@ -25,6 +27,7 @@ const commerce = () => ({
 
 vi.mock('@tanstack/react-start', () => ({ useServerFn: (f: unknown) => f, createServerFn: () => { throw new Error('not used'); } }));
 vi.mock('@/lib/commerce.functions', () => ({ getCommerce: async () => commerce(), confirmDocument: (a: unknown) => confirm(a), findCommerceDocument: vi.fn(), createTradingPeriod: (a: unknown) => createPeriod(a), recordCounter: (a: unknown) => counter(a), recordPayment: vi.fn(), saveTradingSettings: vi.fn() }));
+vi.mock('@/lib/accounts.functions', () => ({ getAccountBalances: async () => ({ accounts: acct.list, unassigned: { cash: 0, bank: 0, wallet: 0 } }), confirmDocumentTagged: (a: unknown) => acct.tagged(a), recordPaymentTagged: vi.fn(), postVoucherTagged: (a: unknown) => acct.voucher(a), createAccount: vi.fn(), adjustAccount: vi.fn(), transferBetweenAccounts: vi.fn() }));
 vi.mock('@/lib/business.functions', () => ({ getBusinessAccess: async () => ({ branches: [{ id: ID.br, name: 'Main', is_active: true }] }), listBusinesses: async () => [{ id: ID.biz, name: 'Auraluxe', role: 'owner' }] }));
 vi.mock('@/lib/inventory.functions', () => ({ getInventory: async () => ({
   movements: [{ variant_id: ID.v1, branch_id: ID.br, quantity: 3 }],
@@ -59,7 +62,7 @@ function SaleEditor() {
 }
 const noOpenPeriodLabel = () => expect(screen.queryByText(/open period/i)).not.toBeInTheDocument();
 
-beforeEach(() => { auth.user = { email: 'vikky@example.com', user_metadata: { full_name: 'Vikky' } }; confirm.mockClear(); createPeriod.mockClear(); counter.mockClear(); sessionStorage.clear(); state.counter = true; state.periods = [{ id: ID.per, name: 'FY test', status: 'open', start_date: '2020-01-01', end_date: '2099-12-31' }]; });
+beforeEach(() => { acct.list = []; acct.tagged.mockClear(); acct.voucher.mockClear(); localStorage.clear(); auth.user = { email: 'vikky@example.com', user_metadata: { full_name: 'Vikky' } }; confirm.mockClear(); createPeriod.mockClear(); counter.mockClear(); sessionStorage.clear(); state.counter = true; state.periods = [{ id: ID.per, name: 'FY test', status: 'open', start_date: '2020-01-01', end_date: '2099-12-31' }]; });
 
 describe('Dashboard', () => {
   it('shows the Karobar-style cards, chart and quick actions', async () => {
@@ -161,6 +164,71 @@ describe('Why a sale cannot be confirmed', () => {
     expect(await screen.findByText('Only 3 in stock here.')).toBeInTheDocument();
     expect(why()).toHaveTextContent(/Not enough stock for Silk Saree \(3 in stock here\)/);
     expect(screen.getByRole('button', { name: /Confirm sale/ })).toBeDisabled();
+  });
+});
+
+describe('Choosing which account a payment goes to', () => {
+  const named = () => { acct.list = [{ id: ACC.bank, name: 'Himalayan Bank', kind: 'bank', isActive: true, balance: 5000 }, { id: ACC.bank2, name: 'NIC Asia', kind: 'bank', isActive: true, balance: 100 }, { id: ACC.wallet, name: 'eSewa', kind: 'wallet', isActive: true, balance: 0 }]; };
+  const addSaree = async () => { fireEvent.change(await screen.findByLabelText('Product search or barcode'), { target: { value: 'saree' } }); fireEvent.click(await screen.findByRole('button', { name: /Silk Saree/ })); fireEvent.change(screen.getByLabelText('Customer mobile'), { target: { value: '9812345678' } }); };
+  it('tags a bank payment to the chosen account and remembers it for next time', async () => {
+    named(); mount(<SaleEditor />); await addSaree();
+    fireEvent.click(screen.getByRole('button', { name: /^Bank$/ }));
+    const pick = await screen.findByLabelText('Payment account 1');
+    expect(within(pick).getAllByRole('option').map(o => o.textContent)).toEqual(['Not assigned', 'Himalayan Bank', 'NIC Asia']);
+    fireEvent.change(pick, { target: { value: ACC.bank2 } });
+    vi.spyOn(window, 'confirm').mockReturnValue(true);
+    fireEvent.click(screen.getByRole('button', { name: /Confirm sale/ }));
+    await waitFor(() => expect(acct.tagged).toHaveBeenCalledTimes(1));
+    expect(confirm).not.toHaveBeenCalled();
+    const sent = (acct.tagged.mock.calls[0]![0] as { data: { request: { payments: { id: string; method: string }[] }; accounts: { paymentId: string; accountId: string }[] } }).data;
+    expect(sent.accounts).toEqual([{ paymentId: sent.request.payments[0]!.id, accountId: ACC.bank2 }]);
+    expect(localStorage.getItem(`bizsathi.account:${ID.biz}:bank`)).toBe(ACC.bank2);
+  });
+  it('preselects the last account used, and wallet payments only offer wallet accounts', async () => {
+    named(); localStorage.setItem(`bizsathi.account:${ID.biz}:wallet`, ACC.wallet);
+    mount(<SaleEditor />); await addSaree();
+    fireEvent.click(screen.getByRole('button', { name: /^Wallet$/ }));
+    const pick = await screen.findByLabelText('Payment account 1') as HTMLSelectElement;
+    expect(pick.value).toBe(ACC.wallet); expect(within(pick).getAllByRole('option').map(o => o.textContent)).toEqual(['Not assigned', 'eSewa']);
+  });
+  it('leaves the payment untagged when no account is chosen, and never offers accounts for counter cash', async () => {
+    named(); mount(<SaleEditor />); await addSaree();
+    fireEvent.click(screen.getByRole('button', { name: /^Cash$/ }));
+    expect(screen.queryByLabelText('Payment account 1')).not.toBeInTheDocument();
+    vi.spyOn(window, 'confirm').mockReturnValue(true);
+    fireEvent.click(screen.getByRole('button', { name: /Confirm sale/ }));
+    await waitFor(() => expect(confirm).toHaveBeenCalledTimes(1));
+    expect(acct.tagged).not.toHaveBeenCalled();
+  });
+  it('shows no account pickers when no accounts exist yet', async () => {
+    mount(<SaleEditor />); await addSaree();
+    fireEvent.click(screen.getByRole('button', { name: /^Bank$/ }));
+    await waitFor(() => expect(screen.getByLabelText('Payment amount 1')).toBeInTheDocument());
+    expect(screen.queryByLabelText('Payment account 1')).not.toBeInTheDocument();
+  });
+});
+
+describe('Paying an expense from a named account', () => {
+  it('posts the expense against the account that was chosen', async () => {
+    acct.list = [{ id: ACC.bank, name: 'Himalayan Bank', kind: 'bank', isActive: true, balance: 5000 }, { id: ACC.wallet, name: 'eSewa', kind: 'wallet', isActive: true, balance: 0 }];
+    mount(<VoucherWorkspace businessId={ID.biz} />);
+    const pick = await screen.findByLabelText('Paid from account');
+    expect(within(pick).getAllByRole('option').map(o => o.textContent)).toEqual(['Not assigned', 'Himalayan Bank']);
+    fireEvent.change(pick, { target: { value: ACC.bank } });
+    fireEvent.change(screen.getByLabelText('Voucher reference'), { target: { value: 'RENT-11' } });
+    fireEvent.change(screen.getByLabelText('Voucher reason'), { target: { value: 'Shop rent' } });
+    fireEvent.change(screen.getByLabelText('Expense amount'), { target: { value: '4000' } });
+    fireEvent.click(screen.getByRole('button', { name: /Review voucher/ }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Confirm posting' }));
+    await waitFor(() => expect(acct.voucher).toHaveBeenCalledTimes(1));
+    const sent = (acct.voucher.mock.calls[0]![0] as { data: { accountId: string; request: { kind: string; lines: { account: string; debit: string; credit: string }[] } } }).data;
+    expect(sent.accountId).toBe(ACC.bank);
+    expect(sent.request).toMatchObject({ kind: 'expense', lines: [{ debit: '4000', credit: '0' }, { account: 'bank', debit: '0', credit: '4000' }] });
+  });
+  it('has no account picker until accounts exist', async () => {
+    mount(<VoucherWorkspace businessId={ID.biz} />);
+    await screen.findByLabelText('Voucher reference');
+    expect(screen.queryByLabelText('Paid from account')).not.toBeInTheDocument();
   });
 });
 

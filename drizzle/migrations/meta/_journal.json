@@ -169,6 +169,13 @@
       "when": 1794022657675,
       "tag": "0023_catalogue_import_5000",
       "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "7",
+      "when": 1794022717675,
+      "tag": "0024_payment_accounts",
+      "breakpoints": true
     }
   ]
 }

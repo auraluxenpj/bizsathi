@@ -9,9 +9,11 @@ const fns = vi.hoisted(() => ({
   scan: vi.fn(async (_: unknown) => ({ id: 'new', aiError: null as string | null })), confirm: vi.fn(async (_: unknown) => ({ voucherId: 'v1' })), reject: vi.fn(async (_: unknown) => ({ ok: true })),
   upload: vi.fn(async (_p: string, _f: unknown, _o: unknown) => ({ error: null as unknown })), remove: vi.fn(async (_: unknown) => ({ error: null })),
 }));
+const acct = vi.hoisted(() => ({ list: [] as { id: string; name: string; kind: string; isActive: boolean; balance: number }[] }));
 const receipts = vi.hoisted(() => ({ rows: [] as unknown[] }));
 const row = (o: Record<string, unknown>) => ({ id: 'r1', file_name: 'power.jpg', mime_type: 'image/jpeg', status: 'needs_review', ai_extraction: null, ai_error: null, reviewed: null, review_note: null, voucher_id: null, uploaded_by: 'u', created_at: '2026-11-06T05:00:00Z', reviewed_at: null, url: 'https://files.example/power.jpg', ...o });
 vi.mock('@tanstack/react-start', () => ({ useServerFn: (f: unknown) => f, createServerFn: () => { throw new Error('not used'); } }));
+vi.mock('@/lib/accounts.functions', () => ({ getAccountBalances: async () => ({ accounts: acct.list, unassigned: { cash: 0, bank: 0, wallet: 0 } }), confirmDocumentTagged: vi.fn(), recordPaymentTagged: vi.fn(), postVoucherTagged: vi.fn(), createAccount: vi.fn(), adjustAccount: vi.fn(), transferBetweenAccounts: vi.fn() }));
 vi.mock('@/lib/inventory-queries', () => ({ businessQuery: { queryKey: ['businesses'], queryFn: async () => [{ id: BIZ, name: 'Auraluxe', role: ctx.role }] } }));
 vi.mock('@/lib/vouchers.functions', () => ({ getVoucherWorkspace: async () => ({ userId: 'u', role: ctx.role, branches: [{ id: BR, name: 'Main' }], periods: [{ id: PER, name: 'FY', start_date: '2026-01-01', end_date: '2026-12-31' }], vouchers: [] }) }));
 vi.mock('@/lib/receipts.functions', () => ({ listReceipts: async () => ({ receipts: receipts.rows }), scanReceipt: (a: unknown) => fns.scan(a), confirmReceipt: (a: unknown) => fns.confirm(a), rejectReceipt: (a: unknown) => fns.reject(a) }));
@@ -25,7 +27,7 @@ function mount() {
   return render(<QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}><RouterProvider router={router} /></QueryClientProvider>);
 }
 const ai = { supplier: 'Nepal Power', invoiceNumber: 'INV-77', date: '2026-11-05', total: '1250.00', vat: null, category: 'expense_utilities', categoryReason: 'Electricity bill' };
-beforeEach(() => { ctx.role = 'accountant'; Object.values(fns).forEach(f => f.mockClear()); fns.upload.mockResolvedValue({ error: null }); sessionStorage.clear(); receipts.rows = [row({ ai_extraction: ai })]; });
+beforeEach(() => { acct.list = []; localStorage.clear(); ctx.role = 'accountant'; Object.values(fns).forEach(f => f.mockClear()); fns.upload.mockResolvedValue({ error: null }); sessionStorage.clear(); receipts.rows = [row({ ai_extraction: ai })]; });
 
 describe('Scan Receipts', () => {
   it('lists receipts waiting for review with the AI suggestions', async () => {
@@ -77,6 +79,21 @@ describe('Reviewing a receipt', () => {
     const sent = (fns.confirm.mock.calls[0]![0] as { data: { businessId: string; receiptId: string; request: Record<string, unknown> } }).data;
     expect(sent).toMatchObject({ businessId: BIZ, receiptId: 'r1' });
     expect(sent.request).toMatchObject({ kind: 'expense', businessId: BIZ, branchId: BR, periodId: PER, date: '2026-11-05', reference: expect.stringMatching(/^INV-77-/), reason: 'Nepal Power', lines: [{ account: 'expense_utilities', debit: '1200', credit: '0' }, { account: 'wallet', debit: '0', credit: '1200' }] });
+  });
+  it('can pay a scanned expense from the safe and records which account it came from', async () => {
+    const SAFE = 'aaaaaaaa-2222-4222-8222-aaaaaaaaaaaa';
+    acct.list = [{ id: 'aaaaaaaa-1111-4111-8111-aaaaaaaaaaaa', name: 'Himalayan Bank', kind: 'bank', isActive: true, balance: 100 }, { id: SAFE, name: 'Home Safe', kind: 'cash', isActive: true, balance: 9000 }];
+    mount(); fireEvent.click(await screen.findByText('Nepal Power'));
+    const d = await screen.findByRole('dialog');
+    fireEvent.change(within(d).getByLabelText('Paid from'), { target: { value: 'cash' } });
+    const pick = await within(d).findByLabelText('Paid from account');
+    expect(within(pick).getAllByRole('option').map(o => o.textContent)).toEqual(['Not assigned', 'Home Safe']);
+    fireEvent.change(pick, { target: { value: SAFE } });
+    await waitFor(() => expect(within(d).getByRole('button', { name: /Confirm and post/ })).toBeEnabled());
+    fireEvent.click(within(d).getByRole('button', { name: /Confirm and post/ }));
+    await waitFor(() => expect(fns.confirm).toHaveBeenCalledTimes(1));
+    const sent = (fns.confirm.mock.calls[0]![0] as { data: { accountId: string; request: { lines: { account: string }[] } } }).data;
+    expect(sent.accountId).toBe(SAFE); expect(sent.request.lines.map(l => l.account)).toEqual(['expense_utilities', 'cash']);
   });
   it('keeps the same request id when a failed post is retried, so it can never post twice', async () => {
     fns.confirm.mockRejectedValueOnce(new Error('The expense could not be posted.'));

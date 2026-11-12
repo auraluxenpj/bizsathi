@@ -6,7 +6,7 @@ export const receiptTypes = { 'image/jpeg': 'jpg', 'image/png': 'png', 'applicat
 export type ReceiptType = keyof typeof receiptTypes;
 export const MAX_RECEIPT_BYTES = 8 * 1024 * 1024;
 export const receiptCategories = voucherAccounts.filter(([id]) => id.startsWith('expense_')).map(([id, label]) => ({ id, label }));
-export const paymentMethods = [{ id: 'bank', label: 'Bank' }, { id: 'wallet', label: 'Digital wallet' }] as const;
+export const paymentMethods = [{ id: 'bank', label: 'Bank' }, { id: 'wallet', label: 'Digital wallet' }, { id: 'cash', label: 'Cash (safe)' }] as const;
 const categoryIds: readonly string[] = receiptCategories.map(c => c.id);
 
 export function checkReceiptFile(file: { type: string; size: number }): string | null {
@@ -54,7 +54,7 @@ export const receiptCode = (receiptId: string) => receiptId.replace(/-/g, '').sl
 /** The invoice number a posted reference was built from. */
 export const invoiceFromReference = (reference: string) => reference.replace(/-[0-9A-F]{6}$/, '').trim().toLowerCase();
 
-export type ReviewFields = { id: string; businessId: string; branchId: string; periodId: string; date: string; supplier: string; invoiceNumber: string; amount: string; category: string; method: 'bank' | 'wallet'; note: string; receiptId: string };
+export type ReviewFields = { id: string; businessId: string; branchId: string; periodId: string; date: string; supplier: string; invoiceNumber: string; amount: string; category: string; method: 'bank' | 'wallet' | 'cash'; note: string; receiptId: string };
 /** The same expense entry the Expense screen posts: debit the category, credit bank or wallet. */
 export function buildExpenseRequest(f: ReviewFields): VoucherRequest {
   // The books require a unique reference per business, and invoice numbers repeat across suppliers, so a short receipt code is appended.

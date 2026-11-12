@@ -11,6 +11,8 @@ import { PeriodNotice } from './period-notice';
 import { WorkspacePage, type WorkspaceContext } from './workspace-page';
 import { supabase } from '@/integrations/supabase/client';
 import { getVoucherWorkspace } from '@/lib/vouchers.functions';
+import { getAccountBalances } from '@/lib/accounts.functions';
+import { accountsOfKind, rememberAccount, rememberedAccount } from '@/lib/account-schemas';
 import { confirmReceipt, listReceipts, rejectReceipt, scanReceipt } from '@/lib/receipts.functions';
 import { buildExpenseRequest, checkReceiptFile, emptyExtraction, findDuplicate, normalizeExtraction, normalizeMoney, paymentMethods, receiptCategories, receiptPath, type Extraction, type ReceiptType } from '@/lib/receipt-schemas';
 import { formatBsAd, formatNPR, todayAd } from '@/lib/format';
@@ -28,9 +30,12 @@ const postedAmount = (reviewed: unknown) => (reviewed as { lines?: { debit?: str
 function ReviewDialog({ ctx, receipt, posted, onClose }: { ctx: WorkspaceContext; receipt: Receipt; posted: Receipt[]; onClose: () => void }) {
   const client = useQueryClient(); const loadWorkspace = useServerFn(getVoucherWorkspace); const confirm = useServerFn(confirmReceipt); const reject = useServerFn(rejectReceipt);
   const ws = useQuery({ queryKey: ['voucher-workspace', ctx.businessId], queryFn: () => loadWorkspace({ data: { businessId: ctx.businessId } }) });
+  const loadAccounts = useServerFn(getAccountBalances);
+  const accountList = useQuery({ queryKey: ['accounts', ctx.businessId], queryFn: () => loadAccounts({ data: { businessId: ctx.businessId } }), enabled: ctx.canAccount, retry: false });
+  const named = accountList.data?.accounts ?? []; const [accountId, setAccountId] = useState('');
   const ai: Extraction = useMemo(() => normalizeExtraction(receipt.ai_extraction ?? emptyExtraction), [receipt.ai_extraction]);
   const open = receipt.status === 'needs_review';
-  const [f, setF] = useState({ supplier: ai.supplier ?? '', invoiceNumber: ai.invoiceNumber ?? '', date: ai.date ?? todayAd(), amount: ai.total ?? '', category: ai.category ?? 'expense_operating', method: 'bank' as 'bank' | 'wallet', note: '', branchId: '' });
+  const [f, setF] = useState({ supplier: ai.supplier ?? '', invoiceNumber: ai.invoiceNumber ?? '', date: ai.date ?? todayAd(), amount: ai.total ?? '', category: ai.category ?? 'expense_operating', method: 'bank' as 'bank' | 'wallet' | 'cash', note: '', branchId: '' });
   const [rejecting, setRejecting] = useState(false); const [reason, setReason] = useState(''); const [error, setError] = useState('');
   const branches = ws.data?.branches ?? []; const branchId = f.branchId || (branches.length === 1 ? branches[0]!.id : '');
   const period = ws.data?.periods.find(p => f.date >= p.start_date && f.date <= p.end_date);
@@ -38,7 +43,7 @@ function ReviewDialog({ ctx, receipt, posted, onClose }: { ctx: WorkspaceContext
   const duplicate = open && findDuplicate(f.invoiceNumber, f.amount, posted);
   const done = () => { client.invalidateQueries({ queryKey: ['receipts', ctx.businessId] }); client.invalidateQueries({ queryKey: ['voucher-workspace', ctx.businessId] }); onClose(); };
   const post = useMutation({
-    mutationFn: () => confirm({ data: { businessId: ctx.businessId, receiptId: receipt.id, request: buildExpenseRequest({ id: requestId(receipt.id), businessId: ctx.businessId, branchId, periodId: period!.id, date: f.date, supplier: f.supplier, invoiceNumber: f.invoiceNumber, amount: f.amount, category: f.category, method: f.method, note: f.note, receiptId: receipt.id }) } }),
+    mutationFn: () => confirm({ data: { businessId: ctx.businessId, receiptId: receipt.id, ...(accountId ? { accountId } : {}), request: buildExpenseRequest({ id: requestId(receipt.id), businessId: ctx.businessId, branchId, periodId: period!.id, date: f.date, supplier: f.supplier, invoiceNumber: f.invoiceNumber, amount: f.amount, category: f.category, method: f.method, note: f.note, receiptId: receipt.id }) } }),
     onSuccess: done, onError: e => setError(e instanceof Error ? e.message : 'Could not post this expense.'),
   });
   const rejectIt = useMutation({ mutationFn: () => reject({ data: { businessId: ctx.businessId, receiptId: receipt.id, note: reason } }), onSuccess: done, onError: e => setError(e instanceof Error ? e.message : 'Could not reject this receipt.') });
@@ -61,11 +66,12 @@ function ReviewDialog({ ctx, receipt, posted, onClose }: { ctx: WorkspaceContext
         <DualDateInput value={f.date} onChange={d => setF({ ...f, date: d })} label="Bill date" />
         <label className="block text-sm">Category<select aria-label="Category" className="mt-1 h-11 w-full rounded-md border bg-card px-3" value={f.category} onChange={e => setF({ ...f, category: e.target.value })}>{receiptCategories.map(c => <option key={c.id} value={c.id}>{c.label}</option>)}</select></label>
         <div className="grid grid-cols-2 gap-3">
-          <label className="block text-sm">Paid from<select aria-label="Paid from" className="mt-1 h-11 w-full rounded-md border bg-card px-3" value={f.method} onChange={e => setF({ ...f, method: e.target.value as 'bank' | 'wallet' })}>{paymentMethods.map(m => <option key={m.id} value={m.id}>{m.label}</option>)}</select></label>
+          <label className="block text-sm">Paid from<select aria-label="Paid from" className="mt-1 h-11 w-full rounded-md border bg-card px-3" value={f.method} onChange={e => { const m = e.target.value as 'bank' | 'wallet' | 'cash'; setF({ ...f, method: m }); setAccountId(rememberedAccount(ctx.businessId, m, accountsOfKind(named, m))); }}>{paymentMethods.map(m => <option key={m.id} value={m.id}>{m.label}</option>)}</select></label>
           {branches.length > 1 ? <label className="block text-sm">Branch<select aria-label="Branch" className="mt-1 h-11 w-full rounded-md border bg-card px-3" value={branchId} onChange={e => setF({ ...f, branchId: e.target.value })}><option value="">Choose…</option>{branches.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}</select></label> : <p className="self-end pb-3 text-xs text-muted-foreground">{branches[0]?.name ?? ''}</p>}
         </div>
+        {accountsOfKind(named, f.method).length > 0 && <label className="block text-sm">Account<select aria-label="Paid from account" className="mt-1 h-11 w-full rounded-md border bg-card px-3" value={accountId} onChange={e => { setAccountId(e.target.value); rememberAccount(ctx.businessId, f.method, e.target.value); }}><option value="">Not assigned</option>{accountsOfKind(named, f.method).map(a => <option key={a.id} value={a.id}>{a.name}</option>)}</select></label>}
         <label className="block text-sm">Note (optional)<Input aria-label="Note" className="mt-1 h-11" maxLength={300} value={f.note} onChange={e => setF({ ...f, note: e.target.value })} /></label>
-        <p className="text-xs text-muted-foreground">Cash payments are not supported here. Record those on the Expenses screen.</p>
+        <p className="text-xs text-muted-foreground">Cash means money taken from your safe. Cash from the shop counter is recorded on the Expenses screen.</p>
         {ws.data && !period && <PeriodNotice businessId={ctx.businessId} date={f.date} />}
         {duplicate && <p role="alert" className="rounded-lg bg-amber-50 p-3 text-sm text-amber-900">An expense with this invoice number and amount was already posted. Check it is not a duplicate.</p>}
         {error && <p role="alert" className="text-sm text-destructive">{error}</p>}
