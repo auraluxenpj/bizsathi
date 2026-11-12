@@ -218,6 +218,13 @@
       "when": 1794472631702,
       "tag": "0030_permission_checklist_headers",
       "breakpoints": true
+    },
+    {
+      "idx": 31,
+      "version": "7",
+      "when": 1794474096249,
+      "tag": "0031_variant_purchase_price",
+      "breakpoints": true
     }
   ]
 }

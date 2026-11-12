@@ -1418,6 +1418,7 @@ export type Database = {
           is_active: boolean
           name: string
           product_id: string
+          purchase_price: number
           reorder_level: number
           selling_price: number
           sku: string
@@ -1432,6 +1433,7 @@ export type Database = {
           is_active?: boolean
           name?: string
           product_id: string
+          purchase_price?: number
           reorder_level?: number
           selling_price?: number
           sku: string
@@ -1446,6 +1448,7 @@ export type Database = {
           is_active?: boolean
           name?: string
           product_id?: string
+          purchase_price?: number
           reorder_level?: number
           selling_price?: number
           sku?: string
