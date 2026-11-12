@@ -1,4 +1,5 @@
 # Security review workspace
+- [ ] Match myBillBook 40/48-label A4 sticker sizes and alignment; verify printed page counts and label positions.
 - [x] Operational inventory bundle: dedicated reason-logged adjustments/disposals, selected invoice-item returns with credit/refund tracking, 24/30 A4 and thermal labels; 293 tests passed, signed-in desktop/mobile correction previews and actual PDF sheet layouts verified without live stock changes.
 - [ ] Operational bundle live stock/return confirmation and physical sticker alignment: live sales currently contain drafts only, so confirmed-invoice returns/refunds and stock mutations were not executed; requires legitimate operational transactions and the user's label printer/stock.
 - [x] POS & Sales UI overhaul: touch catalogue grid, barcode entry, quantity controls and unconfirmed receipt preview; 30 focused tests passed, signed-in real-catalogue POS and New sale verified on desktop/mobile without posting or changing live records.

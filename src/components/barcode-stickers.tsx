@@ -18,7 +18,7 @@ function Sticker({product,price}:{product:LabelProduct;price:boolean}) {
 }
 export function BarcodeStickers({products}:{products:LabelProduct[]}) {
   const [open,setOpen]=useState(false),[search,setSearch]=useState(''),[copies,setCopies]=useState<Record<string,number>>({});
-  const [format,setFormat]=useState<LabelFormat>('a4-24'),[start,setStart]=useState(1),[price,setPrice]=useState(false);
+  const [format,setFormat]=useState<LabelFormat>('a4-40'),[start,setStart]=useState(1),[price,setPrice]=useState(false);
   const [printing,setPrinting]=useState(false),[error,setError]=useState('');
   const selected=products.filter(p=>(copies[p.id]??0)>0);
   let pages:(LabelProduct|null)[][]=[];let validation='';
