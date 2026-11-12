@@ -1,5 +1,6 @@
 import {describe,it,expect} from 'vitest';
 import {costOfGoods} from './business-reports';
+import Decimal from 'decimal.js';
 const line=(variantId:string,quantity:number,price:number,discount=0)=>({variantId,quantity,price,discount,taxRate:0});
 describe('cost of goods uses last purchase price',()=>{
  it('uses the most recent purchase on or before the sale date',()=>{const c=costOfGoods([{id:'p1',kind:'purchase',document_date:'2026-01-01',lines:[line('a',10,100)]},{id:'p2',kind:'purchase',document_date:'2026-02-01',lines:[line('a',5,120)]},{id:'s',kind:'sale',document_date:'2026-02-10',lines:[line('a',2,200)]}]);expect(c.get('s')?.cost.toFixed(2)).toBe('240.00');});
