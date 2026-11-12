@@ -5,13 +5,13 @@ import type { ReportInput } from '@/lib/accounting';
 type Item = { label: string; icon: LucideIcon; view?: ReportInput['view']; to?: '/transactions' };
 const popular: Item[] = [
   { label: 'Sales Report', icon: Tag, view: 'sales' },
-  { label: 'Day Book', icon: CalendarDays, view: 'ledger' },
+  { label: 'Day Book', icon: CalendarDays, view: 'daybook' },
   { label: 'All Transactions Report', icon: Banknote, to: '/transactions' },
   { label: 'Profit & Loss Report', icon: BarChart3, view: 'profit' },
   { label: 'Party Statement', icon: Users, view: 'statement' },
-  { label: 'Cash In Hand Statement', icon: Wallet, view: 'cashbook' },
-  { label: 'Bank Statement', icon: Landmark, view: 'cashbook' },
-  { label: 'Staff Report', icon: UserRound, view: 'sales' },
+  { label: 'Cash In Hand Statement', icon: Wallet, view: 'cash' },
+  { label: 'Bank Statement', icon: Landmark, view: 'bank' },
+  { label: 'Staff Report', icon: UserRound, view: 'staff' },
 ];
 const all: Item[] = [
   { label: 'Parties Report', icon: Users, view: 'outstanding' },

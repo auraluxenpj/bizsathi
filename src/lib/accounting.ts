@@ -2,7 +2,7 @@ import Decimal from 'decimal.js';
 import {z} from 'zod';
 
 const date = z.string().regex(/^\d{4}-\d{2}-\d{2}$/).refine(v=>{const d=new Date(`${v}T00:00:00Z`);return !Number.isNaN(d.valueOf())&&d.toISOString().slice(0,10)===v;},'Use a valid date.');
-export const reportInput=z.object({businessId:z.string().uuid(),branchId:z.string().uuid().optional(),from:date,to:date,view:z.enum(['accounts','ledger','trial','sales','purchases','statement','outstanding','cashbook','vat','expenses','customer','supplier','receivables','payables','stock','lowstock','valuation','profit','balance','cashflow']),userId:z.string().uuid().optional(),account:z.string().default('all'),partyId:z.string().uuid().optional(),page:z.number().int().min(1).default(1),export:z.boolean().default(false)}).refine(v=>v.from<=v.to,'Start date must precede end date.');
+export const reportInput=z.object({businessId:z.string().uuid(),branchId:z.string().uuid().optional(),from:date,to:date,view:z.enum(['accounts','ledger','trial','sales','purchases','statement','outstanding','cashbook','vat','expenses','customer','supplier','receivables','payables','stock','lowstock','valuation','profit','balance','cashflow','staff','daybook','cash','bank']),userId:z.string().uuid().optional(),account:z.string().default('all'),partyId:z.string().uuid().optional(),page:z.number().int().min(1).default(1),export:z.boolean().default(false)}).refine(v=>v.from<=v.to,'Start date must precede end date.');
 export type ReportInput=z.infer<typeof reportInput>;
 const scoped={id:z.string(),business_id:z.string(),branch_id:z.string()};
 export const snapshotSchema=z.object({
