@@ -1,0 +1,199 @@
+diff --git a/drizzle/migrations/0033_variant_model_code.sql b/drizzle/migrations/0033_variant_model_code.sql
+new file mode 100644
+index 0000000..0272e23
+--- /dev/null
++++ b/drizzle/migrations/0033_variant_model_code.sql
+@@ -0,0 +1,19 @@
++-- 0033: optional model code on product variants, exported/imported with the SKU so stock can be matched with the website.
++-- Additive and safe to re-run. Not unique on purpose: several variants (sizes/colours) can share one model code.
++-- Only save_catalogue_variant is replaced: its body is the 0031 definition plus model_code; checks and grants are unchanged.
++ALTER TABLE public.product_variants ADD COLUMN IF NOT EXISTS model_code text;
++ALTER TABLE public.product_variants DROP CONSTRAINT IF EXISTS product_variants_model_code_clean;
++ALTER TABLE public.product_variants ADD CONSTRAINT product_variants_model_code_clean CHECK (model_code IS NULL OR (model_code = btrim(model_code) AND length(model_code) BETWEEN 1 AND 64));
++CREATE INDEX IF NOT EXISTS product_variants_model_code_idx ON public.product_variants (business_id, lower(model_code)) WHERE model_code IS NOT NULL;
++CREATE OR REPLACE FUNCTION public.save_catalogue_variant(_business_id uuid, _rows jsonb)
++ RETURNS integer LANGUAGE plpgsql SECURITY DEFINER SET search_path TO 'public'
++AS $function$
++DECLARE r jsonb; p uuid; n integer:=0;
++BEGIN
++ IF NOT public.has_business_role(_business_id,'admin') THEN RAISE EXCEPTION 'Administrator access required'; END IF;
++ IF jsonb_typeof(_rows)<>'array' OR jsonb_array_length(_rows) NOT BETWEEN 1 AND 5000 THEN RAISE EXCEPTION 'Expected 1 to 5000 rows'; END IF;
++ FOR r IN SELECT value FROM jsonb_array_elements(_rows) LOOP
++ INSERT INTO public.products(business_id,name,category) VALUES(_business_id,btrim(r->>'product_name'),coalesce(r->>'category','')) ON CONFLICT(business_id,name) DO UPDATE SET name=EXCLUDED.name RETURNING id INTO p;
++ INSERT INTO public.product_variants(business_id,product_id,name,sku,barcode,unit,selling_price,reorder_level,purchase_price,model_code) VALUES(_business_id,p,coalesce(nullif(btrim(r->>'variant_name'),''),'Standard'),btrim(r->>'sku'),nullif(btrim(r->>'barcode'),''),coalesce(nullif(btrim(r->>'unit'),''),'pcs'),coalesce((r->>'selling_price')::numeric,0),coalesce((r->>'reorder_level')::numeric,0),coalesce((r->>'purchase_price')::numeric,0),nullif(btrim(r->>'model_code'),'')); n:=n+1;
++ END LOOP; RETURN n;
++END $function$;
+diff --git a/public/downloads/product-import-template.csv b/public/downloads/product-import-template.csv
+index d137bf9..242296d 100644
+--- a/public/downloads/product-import-template.csv
++++ b/public/downloads/product-import-template.csv
+@@ -1,2 +1,2 @@
+-product_name,category,variant_name,sku,barcode,unit,selling_price,purchase_price,reorder_level,opening_stock
+-Example Kurti Set,Kurti set 3 Piece,M,EXAMPLE-KURTI-M,,pcs,1999.00,1347.50,2,0
+\ No newline at end of file
++product_name,category,variant_name,sku,model_code,barcode,unit,selling_price,purchase_price,reorder_level,opening_stock
++Example Kurti Set,Kurti set 3 Piece,M,EXAMPLE-KURTI-M,EXAMPLE-MODEL,,pcs,1999.00,1347.50,2,0
+diff --git a/src/components/products.tsx b/src/components/products.tsx
+index a42ed04..5d3e818 100644
+--- a/src/components/products.tsx
++++ b/src/components/products.tsx
+@@ -13,7 +13,7 @@ import { downloadCsv } from '@/lib/download-csv';
+ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+ import { defaultCatalogueSpreadsheet } from '@/lib/google-sheet-catalogue';
+ import { BarcodeStickers } from './barcode-stickers';
+-const blank:CatalogueRow={product_name:'',category:'',variant_name:'Standard',sku:'',barcode:'',unit:'pcs',selling_price:0,reorder_level:0,opening_stock:0,purchase_price:0};
++const blank:CatalogueRow={product_name:'',category:'',variant_name:'Standard',sku:'',model_code:'',barcode:'',unit:'pcs',selling_price:0,reorder_level:0,opening_stock:0,purchase_price:0};
+ export function Products(){
+  const w=useInventoryWorkspace(); const can=useCan(w.businessId); const save=useServerFn(saveCatalogue);const edit=useServerFn(editVariant); const upload=useRef<HTMLInputElement>(null);
+  const fetchSheet=useServerFn(fetchGoogleSheetCatalogue);
+@@ -23,11 +23,11 @@ export function Products(){
+  const mutation=useMutation({mutationFn:async()=>editing?edit({data:{businessId:w.businessId,id:editing,values:{...catalogueRow.parse(draft),is_active:active}}}):save({data:{businessId:w.businessId,rows:[catalogueRow.parse(draft)]}}),onSuccess:()=>{setStatus('Product saved.');setOpen(false);setDraft(blank);w.inventory.refetch();},onError:e=>setStatus(e.message)});
+  const importing=useMutation({mutationFn:()=>save({data:{businessId:w.businessId,rows:preview,openingBranchId:stockBranch||undefined}}),onSuccess:r=>{setStatus(`${r.count} variants imported${r.opened?` · opening stock added for ${r.opened}`:''}${r.skipped?.length?` · opening stock skipped for ${r.skipped.length} (already recorded or not found)`:''}.`);setPreview([]);setSheetOpen(false);w.inventory.refetch();},onError:e=>setStatus(e.message)});
+  const fetchingSheet=useMutation({mutationFn:()=>fetchSheet({data:{businessId:w.businessId,spreadsheetIdOrUrl:spreadsheet,sheetName}}),onSuccess:rows=>{setPreview(rows);setSheetError('');setStatus('');},onError:e=>{setPreview([]);setSheetError(e.message);}});
+- const rows=w.inventory.data?.variants ?? [];const filtered=rows.filter(v=>`${v.products?.name} ${v.name} ${v.sku} ${v.barcode ?? ''}`.toLowerCase().includes(search.toLowerCase()));
++ const rows=w.inventory.data?.variants ?? [];const filtered=rows.filter(v=>`${v.products?.name} ${v.name} ${v.sku} ${v.model_code ?? ''} ${v.barcode ?? ''}`.toLowerCase().includes(search.toLowerCase()));
+  const renderPreview=()=>(<section className="mb-6 border-y py-5"><h2 className="brand text-xl">Import preview · {preview.length} variants</h2><p role="status" className="mt-2 text-sm text-muted-foreground">All rows validated · {new Set(preview.map(row=>row.product_name)).size} products</p><div className="mt-3 overflow-x-auto"><table className="w-full text-left text-sm"><thead><tr><th className="p-2">Product</th><th className="p-2">Variant</th><th className="p-2">SKU</th><th className="p-2">Price · NPR</th>{can('other.purchase_price')&&<th className="p-2">Purchase price · NPR</th>}<th className="p-2">Opening stock</th></tr></thead><tbody>{preview.slice(0,10).map((r,i)=><tr key={i}><td className="p-2">{r.product_name}</td><td className="p-2">{r.variant_name}</td><td className="p-2">{r.sku}</td><td className="p-2">{r.selling_price.toFixed(2)}</td>{can('other.purchase_price')&&<td className="p-2">{r.purchase_price.toFixed(2)}</td>}<td className="p-2">{r.opening_stock}</td></tr>)}</tbody></table></div>{preview.some(r=>r.opening_stock>0)&&<label className="mt-4 block text-sm sm:max-w-xs">Add opening stock to branch<select aria-label="Opening stock branch" className="mt-1 h-10 w-full rounded-md border bg-background px-3" value={stockBranch} onChange={e=>setOpeningBranch(e.target.value)}>{branches.map(b=><option key={b.id} value={b.id}>{b.name}</option>)}</select></label>}<div className="mt-4 flex gap-2"><Button disabled={importing.isPending} onClick={()=>{if(window.confirm(`Import ${preview.length} new variants into this business?`))importing.mutate();}}><Upload/>Confirm import</Button><Button variant="ghost" disabled={importing.isPending} onClick={()=>setPreview([])}>Cancel</Button></div></section>);
+- return <InventoryWorkspace workspace={w} title="Products" active="/products"><div className="flex flex-wrap items-center justify-between gap-3 py-6"><Input aria-label="Search products" className="sm:max-w-xs" placeholder="Search name, SKU or barcode" value={search} onChange={e=>setSearch(e.target.value)}/><div className="flex flex-wrap gap-2"><BarcodeStickers key={w.businessId} products={rows.filter(v=>v.is_active&&v.products?.is_active).map(v=>({id:v.id,sku:v.sku,barcode:v.barcode,name:`${v.products?.name??''} · ${v.name}`,price:Number(v.selling_price)}))}/><Button variant="outline" onClick={()=>downloadCsv('products.csv',makeCatalogueCsv(rows.map(v=>({product_name:v.products?.name,category:v.products?.category,variant_name:v.name,sku:v.sku,barcode:v.barcode,unit:v.unit,selling_price:v.selling_price,purchase_price:v.purchase_price,reorder_level:v.reorder_level})),can('other.purchase_price')))}><Download/>Export</Button>{w.manager&&<>{can('features.import')&&<><Button variant="outline" onClick={()=>upload.current?.click()}><Upload/>Import CSV</Button><Button variant="outline" asChild><a href="/downloads/product-import-template.csv" download="auraluxe-product-import-template.csv"><Download/>CSV template</a></Button><Button variant="outline" onClick={()=>{setPreview([]);setSheetError('');setSheetOpen(true);}}><Sheet/>Import from Google Sheets</Button></>}{can('inventory.create')&&<Button onClick={()=>{setDraft(blank);setEditing('');setOpen(true);setStatus('');}}><Plus/>Add product</Button>}</>}</div></div><input ref={upload} type="file" accept=".csv,text/csv" hidden onChange={async e=>{const file=e.target.files?.[0];if(!file)return;try{if(file.size>2_000_000)throw new Error('CSV must be smaller than 2 MB.');setPreview(parseCatalogueCsv(await file.text(),w.businessId));setStatus('');}catch(error){setStatus(error instanceof Error?error.message:'CSV could not be read.');}e.target.value='';}}/>{status&&<p role="status" className="mb-5 border-l-2 border-primary pl-3 text-sm">{status}</p>}
++ return <InventoryWorkspace workspace={w} title="Products" active="/products"><div className="flex flex-wrap items-center justify-between gap-3 py-6"><Input aria-label="Search products" className="sm:max-w-xs" placeholder="Search name, SKU, model code or barcode" value={search} onChange={e=>setSearch(e.target.value)}/><div className="flex flex-wrap gap-2"><BarcodeStickers key={w.businessId} products={rows.filter(v=>v.is_active&&v.products?.is_active).map(v=>({id:v.id,sku:v.sku,barcode:v.barcode,name:`${v.products?.name??''} · ${v.name}`,price:Number(v.selling_price)}))}/><Button variant="outline" onClick={()=>downloadCsv('products.csv',makeCatalogueCsv(rows.map(v=>({product_name:v.products?.name,category:v.products?.category,variant_name:v.name,sku:v.sku,model_code:v.model_code,barcode:v.barcode,unit:v.unit,selling_price:v.selling_price,purchase_price:v.purchase_price,reorder_level:v.reorder_level})),can('other.purchase_price')))}><Download/>Export</Button>{w.manager&&<>{can('features.import')&&<><Button variant="outline" onClick={()=>upload.current?.click()}><Upload/>Import CSV</Button><Button variant="outline" asChild><a href="/downloads/product-import-template.csv" download="auraluxe-product-import-template.csv"><Download/>CSV template</a></Button><Button variant="outline" onClick={()=>{setPreview([]);setSheetError('');setSheetOpen(true);}}><Sheet/>Import from Google Sheets</Button></>}{can('inventory.create')&&<Button onClick={()=>{setDraft(blank);setEditing('');setOpen(true);setStatus('');}}><Plus/>Add product</Button>}</>}</div></div><input ref={upload} type="file" accept=".csv,text/csv" hidden onChange={async e=>{const file=e.target.files?.[0];if(!file)return;try{if(file.size>2_000_000)throw new Error('CSV must be smaller than 2 MB.');setPreview(parseCatalogueCsv(await file.text(),w.businessId));setStatus('');}catch(error){setStatus(error instanceof Error?error.message:'CSV could not be read.');}e.target.value='';}}/>{status&&<p role="status" className="mb-5 border-l-2 border-primary pl-3 text-sm">{status}</p>}
+  {!sheetOpen&&preview.length>0&&renderPreview()}
+  <Dialog open={sheetOpen} onOpenChange={value=>{if(!fetchingSheet.isPending&&!importing.isPending){setSheetOpen(value);setPreview([]);setSheetError('');}}}><DialogContent className="max-h-[85dvh] max-w-3xl overflow-y-auto" aria-describedby={undefined}><DialogHeader><DialogTitle>Import from Google Sheets</DialogTitle></DialogHeader><label className="text-sm">Spreadsheet URL or ID<Input aria-label="Spreadsheet URL or ID" value={spreadsheet} disabled={fetchingSheet.isPending||importing.isPending} onChange={e=>{setSpreadsheet(e.target.value);setPreview([]);setSheetError('');}}/></label><label className="text-sm">Sheet tab<Input aria-label="Sheet tab" value={sheetName} disabled={fetchingSheet.isPending||importing.isPending} onChange={e=>{setSheetName(e.target.value);setPreview([]);setSheetError('');}}/></label><Button disabled={!spreadsheet.trim()||!sheetName.trim()||fetchingSheet.isPending||importing.isPending} onClick={()=>{setPreview([]);setSheetError('');fetchingSheet.mutate();}}><Sheet/>{fetchingSheet.isPending?'Fetching…':'Fetch & Preview'}</Button>{sheetError&&<p role="alert" className="text-sm text-destructive">{sheetError}</p>}{status&&<p role="status" className="text-sm">{status}</p>}{preview.length>0&&renderPreview()}</DialogContent></Dialog>
+- {open&&w.manager&&<section className="mb-6 border-y py-6"><div className="mb-5 flex justify-between"><h2 className="brand text-xl">{editing?'Edit variant':'New product / variant'}</h2><Button size="icon" variant="ghost" title="Close form" onClick={()=>setOpen(false)}><X/></Button></div><form className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4" onSubmit={e=>{e.preventDefault();mutation.mutate();}}>{(['product_name','category','variant_name','sku','barcode','unit','selling_price',...(can('other.purchase_price')?['purchase_price'] as const:[]),'reorder_level'] as const).map(key=><label key={key} className="text-sm">{{product_name:'Product name',category:'Category',variant_name:'Variant name',sku:'SKU',barcode:'Barcode (optional)',unit:'Unit',selling_price:'Selling price · NPR',purchase_price:'Purchase price · NPR',reorder_level:'Low-stock threshold'}[key]}<Input required={!['category','barcode'].includes(key)} disabled={!!editing&&['product_name','category'].includes(key)} type={['selling_price','purchase_price','reorder_level'].includes(key)?'number':'text'} min="0" step={['selling_price','purchase_price'].includes(key)?'0.01':'0.001'} value={draft[key]} onChange={e=>setDraft({...draft,[key]:['selling_price','purchase_price','reorder_level'].includes(key)?Number(e.target.value):e.target.value})}/></label>)}{editing&&<label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={active} onChange={e=>setActive(e.target.checked)}/>Active variant</label>}<div className="flex items-end"><Button disabled={mutation.isPending}>{mutation.isPending?'Saving…':'Save product'}</Button></div></form></section>}
+- {!rows.length?<section className="border-y py-16 text-center"><Package className="mx-auto mb-4 size-9 text-muted-foreground"/><h2 className="brand text-xl">No products yet</h2></section>:<div className="overflow-x-auto border-y"><table className="w-full min-w-[720px] text-left text-sm"><thead className="bg-muted"><tr>{['Product / variant','SKU / barcode','Unit','Price · NPR',...(can('other.purchase_price')?['Purchase price · NPR']:[]),'Low stock','Status',''].map((s,i)=><th key={i} className="p-4 font-medium">{s}</th>)}</tr></thead><tbody>{filtered.map(v=><tr key={v.id} className="border-t"><td className="p-4"><p className="font-medium">{v.products?.name}</p><p className="mt-1 text-xs text-muted-foreground">{v.name} · {v.products?.category || 'Uncategorized'}</p></td><td className="p-4">{v.sku}<p className="mt-1 text-xs text-muted-foreground">{v.barcode}</p></td><td className="p-4">{v.unit}</td><td className="p-4 tabular-nums">{Number(v.selling_price).toFixed(2)}</td>{can('other.purchase_price')&&<td className="p-4 tabular-nums">{Number(v.purchase_price).toFixed(2)}</td>}<td className="p-4">{v.reorder_level}</td><td className="p-4">{v.is_active&&v.products?.is_active?'Active':'Inactive'}</td><td className="p-4">{w.manager&&<Button size="icon" variant="ghost" title={`Edit ${v.sku}`} onClick={()=>{setEditing(v.id);setActive(v.is_active);setDraft({product_name:v.products?.name ?? '',category:v.products?.category ?? '',variant_name:v.name,sku:v.sku,barcode:v.barcode ?? '',unit:v.unit,selling_price:Number(v.selling_price),reorder_level:Number(v.reorder_level),opening_stock:0,purchase_price:Number(v.purchase_price)});setOpen(true);}}><Pencil/></Button>}</td></tr>)}</tbody></table>{!filtered.length&&<p className="p-8 text-sm text-muted-foreground">No matching products.</p>}</div>}</InventoryWorkspace>;
++ {open&&w.manager&&<section className="mb-6 border-y py-6"><div className="mb-5 flex justify-between"><h2 className="brand text-xl">{editing?'Edit variant':'New product / variant'}</h2><Button size="icon" variant="ghost" title="Close form" onClick={()=>setOpen(false)}><X/></Button></div><form className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4" onSubmit={e=>{e.preventDefault();mutation.mutate();}}>{(['product_name','category','variant_name','sku','model_code','barcode','unit','selling_price',...(can('other.purchase_price')?['purchase_price'] as const:[]),'reorder_level'] as const).map(key=><label key={key} className="text-sm">{{product_name:'Product name',category:'Category',variant_name:'Variant name',sku:'SKU',model_code:'Model code (optional)',barcode:'Barcode (optional)',unit:'Unit',selling_price:'Selling price · NPR',purchase_price:'Purchase price · NPR',reorder_level:'Low-stock threshold'}[key]}<Input required={!['category','barcode','model_code'].includes(key)} disabled={!!editing&&['product_name','category'].includes(key)} type={['selling_price','purchase_price','reorder_level'].includes(key)?'number':'text'} min="0" step={['selling_price','purchase_price'].includes(key)?'0.01':'0.001'} value={draft[key]} onChange={e=>setDraft({...draft,[key]:['selling_price','purchase_price','reorder_level'].includes(key)?Number(e.target.value):e.target.value})}/></label>)}{editing&&<label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={active} onChange={e=>setActive(e.target.checked)}/>Active variant</label>}<div className="flex items-end"><Button disabled={mutation.isPending}>{mutation.isPending?'Saving…':'Save product'}</Button></div></form></section>}
++ {!rows.length?<section className="border-y py-16 text-center"><Package className="mx-auto mb-4 size-9 text-muted-foreground"/><h2 className="brand text-xl">No products yet</h2></section>:<div className="overflow-x-auto border-y"><table className="w-full min-w-[720px] text-left text-sm"><thead className="bg-muted"><tr>{['Product / variant','SKU / barcode','Unit','Price · NPR',...(can('other.purchase_price')?['Purchase price · NPR']:[]),'Low stock','Status',''].map((s,i)=><th key={i} className="p-4 font-medium">{s}</th>)}</tr></thead><tbody>{filtered.map(v=><tr key={v.id} className="border-t"><td className="p-4"><p className="font-medium">{v.products?.name}</p><p className="mt-1 text-xs text-muted-foreground">{v.name} · {v.products?.category || 'Uncategorized'}</p></td><td className="p-4">{v.sku}<p className="mt-1 text-xs text-muted-foreground">{v.barcode}</p></td><td className="p-4">{v.unit}</td><td className="p-4 tabular-nums">{Number(v.selling_price).toFixed(2)}</td>{can('other.purchase_price')&&<td className="p-4 tabular-nums">{Number(v.purchase_price).toFixed(2)}</td>}<td className="p-4">{v.reorder_level}</td><td className="p-4">{v.is_active&&v.products?.is_active?'Active':'Inactive'}</td><td className="p-4">{w.manager&&<Button size="icon" variant="ghost" title={`Edit ${v.sku}`} onClick={()=>{setEditing(v.id);setActive(v.is_active);setDraft({product_name:v.products?.name ?? '',category:v.products?.category ?? '',variant_name:v.name,sku:v.sku,model_code:v.model_code ?? '',barcode:v.barcode ?? '',unit:v.unit,selling_price:Number(v.selling_price),reorder_level:Number(v.reorder_level),opening_stock:0,purchase_price:Number(v.purchase_price)});setOpen(true);}}><Pencil/></Button>}</td></tr>)}</tbody></table>{!filtered.length&&<p className="p-8 text-sm text-muted-foreground">No matching products.</p>}</div>}</InventoryWorkspace>;
+ }
+\ No newline at end of file
+diff --git a/src/integrations/supabase/types.ts b/src/integrations/supabase/types.ts
+index 0be2bc2..7c08f2e 100644
+--- a/src/integrations/supabase/types.ts
++++ b/src/integrations/supabase/types.ts
+@@ -1419,6 +1419,7 @@ export type Database = {
+           created_at: string
+           id: string
+           is_active: boolean
++          model_code: string | null
+           name: string
+           product_id: string
+           purchase_price: number
+@@ -1434,6 +1435,7 @@ export type Database = {
+           created_at?: string
+           id?: string
+           is_active?: boolean
++          model_code?: string | null
+           name?: string
+           product_id: string
+           purchase_price?: number
+@@ -1449,6 +1451,7 @@ export type Database = {
+           created_at?: string
+           id?: string
+           is_active?: boolean
++          model_code?: string | null
+           name?: string
+           product_id?: string
+           purchase_price?: number
+diff --git a/src/lib/inventory-csv.ts b/src/lib/inventory-csv.ts
+index 80b63f6..8325df4 100644
+--- a/src/lib/inventory-csv.ts
++++ b/src/lib/inventory-csv.ts
+@@ -2,12 +2,13 @@ import Papa from 'papaparse';
+ import { generateBarcodeFromSkuIfNeeded } from './barcode';
+ import { catalogueInput, type CatalogueRow } from './inventory-schemas';
+ 
+-export const catalogueColumns = ['product_name','category','variant_name','sku','barcode','unit','selling_price','purchase_price','reorder_level'];
++export const catalogueColumns = ['product_name','category','variant_name','sku','model_code','barcode','unit','selling_price','purchase_price','reorder_level'];
+ const headerAliases: Record<string, string[]> = {
+  product_name: ['product_name', 'Item Name', 'item_name', 'Product Name', 'Product', 'Name'],
+  category: ['category'],
+  variant_name: ['variant_name', 'Variant / Size', 'Variant', 'Size'],
+  sku: ['sku', 'Generated SKU', 'Item Code', 'Code'],
++ model_code: ['model_code', 'Model Code', 'Model', 'Model No', 'Model Number'],
+  barcode: ['barcode'],
+  unit: ['unit', 'Primary Unit'],
+  selling_price: ['selling_price', 'Selling Price', 'Sales Price', 'Price', 'Rate'],
+@@ -40,6 +41,7 @@ export function parseCatalogueCsv(text:string, businessId:string): CatalogueRow[
+      if(!group || explicit) return {variant_name: explicit || 'Standard'};
+      const cut=sku.lastIndexOf('-'); return {product_name: group, variant_name: cut>0 && cut<sku.length-1 ? sku.slice(cut+1) : 'Standard'};})(),
+    sku: r['sku']?.trim() || '',
++   model_code: r['model_code']?.trim() || '',
+    barcode: generateBarcodeFromSkuIfNeeded(r['sku'] ?? '', r['barcode']?.trim() || ''),
+    unit: r['unit']?.trim() || 'pcs',
+    selling_price: csvNumber(r['selling_price']),
+diff --git a/src/lib/inventory-schemas.test.ts b/src/lib/inventory-schemas.test.ts
+index ecd8c85..c60c9a6 100644
+--- a/src/lib/inventory-schemas.test.ts
++++ b/src/lib/inventory-schemas.test.ts
+@@ -17,12 +17,12 @@ import { catalogueInput as ci } from './inventory-schemas';
+ describe('Master sheet catalogue CSV compatibility', () => {
+  it('parses the original format with all catalogue values', () => {
+   expect(parseCatalogueCsv('product_name,category,variant_name,sku,barcode,unit,selling_price,reorder_level\nShirt,Clothing,Large,S1,123,pcs,1250.50,2.5', a)).toEqual([
+-   {product_name:'Shirt',category:'Clothing',variant_name:'Large',sku:'S1',barcode:'123',unit:'pcs',selling_price:1250.5,reorder_level:2.5,opening_stock:0,purchase_price:0},
++   {product_name:'Shirt',category:'Clothing',variant_name:'Large',sku:'S1',model_code:'',barcode:'123',unit:'pcs',selling_price:1250.5,reorder_level:2.5,opening_stock:0,purchase_price:0},
+   ]);
+  });
+  it('parses master sheet headers and formatted currency and quantities', () => {
+   expect(parseCatalogueCsv('Item Name,Category,Variant / Size,Generated SKU,Barcode,Primary Unit,Selling Price,Reorder Level\nShirt,Clothing,Large,S1,123,pcs,"NPR 1,250.50","1,000"', a)).toEqual([
+-   {product_name:'Shirt',category:'Clothing',variant_name:'Large',sku:'S1',barcode:'123',unit:'pcs',selling_price:1250.5,reorder_level:1000,opening_stock:0,purchase_price:0},
++   {product_name:'Shirt',category:'Clothing',variant_name:'Large',sku:'S1',model_code:'',barcode:'123',unit:'pcs',selling_price:1250.5,reorder_level:1000,opening_stock:0,purchase_price:0},
+   ]);
+  });
+  const aliasSets = [
+diff --git a/src/lib/inventory-schemas.ts b/src/lib/inventory-schemas.ts
+index 6a59e26..672ecf0 100644
+--- a/src/lib/inventory-schemas.ts
++++ b/src/lib/inventory-schemas.ts
+@@ -1,7 +1,7 @@
+ import { z } from 'zod';
+ const id = z.string().uuid();
+ const amount = (decimals: number) => z.coerce.number().finite().nonnegative().max(999999999).refine(n => Math.abs(n * 10 ** decimals - Math.round(n * 10 ** decimals)) < 0.00001, `Use at most ${decimals} decimal places.`);
+-export const catalogueRow = z.object({ product_name: z.string().trim().min(1).max(200), category: z.string().trim().max(100).default(''), variant_name: z.string().trim().min(1).max(100).default('Standard'), sku: z.string().trim().min(1).max(80), barcode: z.string().trim().max(100).default(''), unit: z.string().trim().min(1).max(30).default('pcs'), selling_price: amount(2).default(0), reorder_level: amount(3).default(0), opening_stock: amount(3).default(0), purchase_price: amount(2).default(0) });
++export const catalogueRow = z.object({ product_name: z.string().trim().min(1).max(200), category: z.string().trim().max(100).default(''), variant_name: z.string().trim().min(1).max(100).default('Standard'), sku: z.string().trim().min(1).max(80), model_code: z.string().trim().max(64).default(''), barcode: z.string().trim().max(100).default(''), unit: z.string().trim().min(1).max(30).default('pcs'), selling_price: amount(2).default(0), reorder_level: amount(3).default(0), opening_stock: amount(3).default(0), purchase_price: amount(2).default(0) });
+ export const catalogueInput = z.object({ businessId: id, rows: z.array(catalogueRow).min(1).max(5000), openingBranchId: id.optional() });
+ export const variantEditInput = z.object({ businessId: id, id, values: catalogueRow.omit({ product_name: true, category: true }).extend({ is_active: z.boolean() }) });
+ export const partyInput = z.object({ businessId: id, id: id.optional(), kind: z.enum(['customer','supplier']), name: z.string().trim().min(1).max(200), phone: z.string().trim().max(50).default(''), email: z.union([z.literal(''),z.string().email().max(254)]).default(''), address: z.string().trim().max(500).default(''), pan_vat_number: z.string().trim().max(50).default(''), is_active: z.boolean().default(true) });
+diff --git a/src/lib/inventory.functions.ts b/src/lib/inventory.functions.ts
+index 5343a39..c6a7145 100644
+--- a/src/lib/inventory.functions.ts
++++ b/src/lib/inventory.functions.ts
+@@ -44,7 +44,7 @@ export const saveCatalogue = createServerFn({method:'POST'}).middleware([require
+ export const editVariant = createServerFn({method:'POST'}).middleware([requireSupabaseAuth]).inputValidator(variantEditInput).handler(async ({data,context})=>{
+  const {data:allowed,error:accessError}=await context.supabase.rpc('has_business_role',{_business_id:data.businessId,_min_role:'admin'});
+  if(accessError || !allowed) throw new Error('Administrator access is required.');
+- const v=data.values; const {data:saved,error}=await context.supabase.from('product_variants').update({name:v.variant_name,sku:v.sku,barcode:v.barcode || null,unit:v.unit,selling_price:v.selling_price,purchase_price:v.purchase_price,reorder_level:v.reorder_level,is_active:v.is_active}).eq('business_id',data.businessId).eq('id',data.id).select('id').single();
++ const v=data.values; const {data:saved,error}=await context.supabase.from('product_variants').update({name:v.variant_name,sku:v.sku,model_code:v.model_code || null,barcode:v.barcode || null,unit:v.unit,selling_price:v.selling_price,purchase_price:v.purchase_price,reorder_level:v.reorder_level,is_active:v.is_active}).eq('business_id',data.businessId).eq('id',data.id).select('id').single();
+  if(error || !saved) throw new Error('Variant could not be updated. Check unique SKU and barcode.'); return {ok:true};
+ });
+ export const saveParty = createServerFn({method:'POST'}).middleware([requireSupabaseAuth]).inputValidator(partyInput).handler(async ({data,context})=>{
+diff --git a/src/lib/model-code.test.ts b/src/lib/model-code.test.ts
+new file mode 100644
+index 0000000..fe8dd68
+--- /dev/null
++++ b/src/lib/model-code.test.ts
+@@ -0,0 +1,28 @@
++import { describe, it, expect } from 'vitest';
++import { catalogueRow } from './inventory-schemas';
++import { makeCatalogueCsv, parseCatalogueCsv, catalogueColumns } from './inventory-csv';
++import { parseGoogleSheetValues } from './google-sheet-catalogue';
++const biz = '10000000-0000-4000-8000-000000000001';
++describe('Model code in catalogue sheets', () => {
++  it('imports a Model Code column next to the SKU', () => {
++    const [row] = parseCatalogueCsv('product_name,sku,Model Code,selling_price\nKurti,AL-K-M, M100 ,2500', biz);
++    expect(row).toMatchObject({ sku: 'AL-K-M', model_code: 'M100' });
++  });
++  it('accepts the alias Model and leaves old sheets without the column blank', () => {
++    expect(parseCatalogueCsv('product_name,sku,Model\nA,S1,X9', biz)[0]!.model_code).toBe('X9');
++    expect(parseCatalogueCsv('product_name,sku\nA,S1', biz)[0]!.model_code).toBe('');
++  });
++  it('exports model_code right after sku and round-trips', () => {
++    expect(catalogueColumns.indexOf('model_code')).toBe(catalogueColumns.indexOf('sku') + 1);
++    const csv = makeCatalogueCsv([{ product_name: 'Kurti', variant_name: 'M', sku: 'AL-K-M', model_code: 'M100', barcode: '', unit: 'pcs', selling_price: 1, purchase_price: 1, reorder_level: 0 }], true);
++    expect(csv.split('\n')[0]).toContain('sku,model_code,barcode');
++    expect(parseCatalogueCsv(csv, biz)[0]).toMatchObject({ sku: 'AL-K-M', model_code: 'M100' });
++  });
++  it('Google Sheet values use the same column', () => {
++    const rows = parseGoogleSheetValues([['product_name', 'sku', 'model_code'], ['A', 'S1', 'M7']], biz);
++    expect(rows[0]!.model_code).toBe('M7');
++  });
++  it('rejects a model code over 64 characters', () => {
++    expect(catalogueRow.safeParse({ product_name: 'A', sku: 'S', model_code: 'x'.repeat(65) }).success).toBe(false);
++  });
++});
