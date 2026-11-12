@@ -17,7 +17,7 @@ const business: Entry[] = [
   { name: 'Transactions', icon: ArrowLeftRight, to: '/transactions' },
   { name: 'Parties', icon: UserRound, to: '/parties' },
   { name: 'Inventory', icon: Package, to: '/products' },
-  { name: 'Sales', icon: Receipt, children: [{ to: '/sales', name: 'Sales invoices' }, { to: '/pos', name: 'Quick POS' }, { to: '/cash-counters', name: 'Cash counters' }] },
+  { name: 'Sales', icon: Receipt, children: [{ to: '/sales', name: 'Sales invoices' }, { to: '/quotations', name: 'Quotations / estimates' }, { to: '/pos', name: 'Quick POS' }, { to: '/cash-counters', name: 'Cash counters' }] },
   { name: 'Purchase', icon: ShoppingCart, to: '/purchases' },
   { name: 'Expense', icon: Wallet, to: '/expenses' },
   { name: 'Cash & Bank', icon: Landmark, to: '/cash-bank' },

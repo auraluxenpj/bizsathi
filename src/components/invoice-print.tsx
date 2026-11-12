@@ -1,3 +1,4 @@
+import {PaymentQr} from './payment-qr';
 import { useEffect, useState, type ReactNode } from 'react';
 import { MessageCircle, MessageSquare, Printer, Share2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -17,7 +18,7 @@ export function useInvoiceLayout(): [InvoiceLayout, (l: InvoiceLayout) => void] 
 
 export type InvoiceData = {
   business: string; pan: string; reference: string; date: string; status: string; kind: string; branch: string;
-  party: string; phone: string; lines: InvoiceLine[]; subtotal: number; tax: number; total: number; paid: number; returned: number; outstanding: number; docId: string;
+  businessId?:string; address?:string; partyPan?:string; party: string; phone: string; lines: InvoiceLine[]; subtotal: number; tax: number; total: number; paid: number; returned: number; outstanding: number; docId: string;
 };
 export const messageFor = (d: InvoiceData) => invoiceMessage({ business: d.business, reference: d.reference, date: d.date, kind: d.kind, party: d.party, lines: d.lines, total: d.total, paid: d.paid, outstanding: d.outstanding });
 
@@ -62,6 +63,7 @@ export function InvoiceSheet({ data: d, layout, extra }: { data: InvoiceData; la
         <ul className="space-y-1">{d.lines.map(l => <li key={l.sku + l.name}><p className="break-words">{l.name}</p><p className="flex justify-between"><span>{l.quantity} × {l.price.toFixed(2)}</span><span className="tabular-nums">{l.total.toFixed(2)}</span></p></li>)}</ul>
         <div className="my-2 border-t border-dashed pt-2"><Totals d={d} compact /></div>
         {extra}
+        {d.kind==='sale'&&d.businessId&&<PaymentQr businessId={d.businessId}/>}
         <p className="mt-3 text-center">Thank you! Visit again.</p>
       </article>
     ) : (
@@ -70,8 +72,9 @@ export function InvoiceSheet({ data: d, layout, extra }: { data: InvoiceData; la
           <div><h2 className="brand text-2xl">{d.business}</h2>{d.pan && <p className="mt-2 text-sm text-neutral-600">PAN/VAT {d.pan}</p>}{d.branch && <p className="text-sm text-neutral-600">{d.branch}</p>}</div>
           <div className="text-right text-sm"><p className="text-lg font-semibold uppercase tracking-wide">{invoiceTitle(d.kind)}</p><p className="font-semibold">{d.reference}</p><p>{formatBsAd(d.date)}</p><p className="capitalize">{d.status}</p></div>
         </div>
-        <div className="my-5 text-sm"><p className="text-xs uppercase text-neutral-500">{d.kind.startsWith('purchase') ? 'Supplier' : 'Bill to'}</p><p className="font-medium">{d.party || 'Walk-in customer'}</p>{d.phone && <p>{d.phone}</p>}</div>
+        <div className="my-5 text-sm"><p className="text-xs uppercase text-neutral-500">{d.kind.startsWith('purchase') ? 'Supplier' : 'Bill to'}</p><p className="font-medium">{d.party || 'Walk-in customer'}</p>{d.phone && <p>{d.phone}</p>}{d.address&&<p>{d.address}</p>}{d.partyPan&&<p>PAN/VAT {d.partyPan}</p>}</div>
         {extra}
+        {d.kind==='sale'&&d.businessId&&<PaymentQr businessId={d.businessId}/>}
         <div className="overflow-x-auto"><table className="w-full min-w-[420px] text-left text-sm"><thead><tr className="border-b text-xs uppercase text-neutral-500"><th className="py-2">Item</th><th>Qty</th><th>Rate</th><th className="text-right">Amount</th></tr></thead>
           <tbody>{d.lines.map(l => <tr key={l.sku + l.name} className="border-b"><td className="py-3">{l.name}<span className="block text-xs text-neutral-500">{l.sku}</span></td><td>{l.quantity}</td><td className="tabular-nums">{l.price.toFixed(2)}</td><td className="text-right tabular-nums">{l.total.toFixed(2)}</td></tr>)}</tbody></table></div>
         <div className="mt-6"><Totals d={d} /></div>
