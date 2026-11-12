@@ -17,7 +17,7 @@ const blank:CatalogueRow={product_name:'',category:'',variant_name:'Standard',sk
 export function Products(){
  const w=useInventoryWorkspace(); const can=useCan(w.businessId); const save=useServerFn(saveCatalogue);const edit=useServerFn(editVariant); const upload=useRef<HTMLInputElement>(null);
  const fetchSheet=useServerFn(fetchGoogleSheetCatalogue);
- const [sheetOpen,setSheetOpen]=useState(false);const [spreadsheet,setSpreadsheet]=useState(defaultCatalogueSpreadsheet);const [sheetName,setSheetName]=useState('Inventory & Catalogue');const [sheetError,setSheetError]=useState('');
+ const [sheetOpen,setSheetOpen]=useState(false);const [spreadsheet,setSpreadsheet]=useState(defaultCatalogueSpreadsheet);const [sheetName,setSheetName]=useState('Karobar');const [sheetError,setSheetError]=useState('');
  const [open,setOpen]=useState(false);const [editing,setEditing]=useState('');const [active,setActive]=useState(true);const [draft,setDraft]=useState(blank);const [search,setSearch]=useState('');const [status,setStatus]=useState('');const [preview,setPreview]=useState<CatalogueRow[]>([]);
  useEffect(()=>{setOpen(false);setSheetOpen(false);setSheetError('');setEditing('');setDraft(blank);setPreview([]);setStatus('');},[w.businessId]);
  const mutation=useMutation({mutationFn:async()=>editing?edit({data:{businessId:w.businessId,id:editing,values:{...catalogueRow.parse(draft),is_active:active}}}):save({data:{businessId:w.businessId,rows:[catalogueRow.parse(draft)]}}),onSuccess:()=>{setStatus('Product saved.');setOpen(false);setDraft(blank);w.inventory.refetch();},onError:e=>setStatus(e.message)});
