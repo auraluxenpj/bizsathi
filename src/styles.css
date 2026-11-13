@@ -1,189 +1,2485 @@
-@import "tailwindcss" source(none);
-@source "../src";
-@import "tw-animate-css";
+import { useEffect, useState } from 'react';
+import { Link } from '@tanstack/react-router';
+import { useServerFn } from '@tanstack/react-start';
+import { useQuery } from '@tanstack/react-query';
+import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
+import { ArrowDown, ArrowUp, BarChart3, Building2, Calculator, Eye, Landmark, MessageSquareText, Package, Plus, Receipt, ShoppingCart, Tag, UserPlus, Wallet, Zap, type LucideIcon } from 'lucide-react';
+import Decimal from 'decimal.js';
+import { Button } from '@/components/ui/button';
+import { Switch } from '@/components/ui/switch';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { getBusinessAccess, listBusinesses } from '@/lib/business.functions';
+import { authorizedSelection } from '@/lib/dashboard-data';
+import { LowStockSummary, useLowStock } from './low-stock-summary';
+import { getCommerce } from '@/lib/commerce.functions';
+import { commerceTotals } from '@/lib/commerce-totals';
+import { addDaysAd, bsMonthInfo, bsShort, compactNPR, formatBsAd, formatNPR, todayAd } from '@/lib/format';
+import { supabase } from '@/integrations/supabase/client';
 
-@custom-variant dark (&:is(.dark *));
+const selectClass = 'mt-1 h-10 w-full rounded-xl border border-emerald-100 bg-white px-3 text-sm text-foreground shadow-sm outline-none transition focus:border-emerald-300';
 
-/*
- * Design system definition.
- *
- * The @theme inline block maps CSS custom properties to Tailwind utility
- * classes (e.g. --color-primary -> bg-primary, text-primary).
- *
- * The :root and .dark blocks define the actual color values using oklch.
- * All colors MUST use oklch format.
- *
- * To add a new semantic color:
- * 1. Add the variable to :root (light value) and .dark (dark value)
- * 2. Register it in @theme inline as --color-<name>: var(--<name>)
- */
+function StatCard({ label, value, icon: Icon, tint, iconTone, to }: { label: string; value: string; icon: LucideIcon; tint: string; iconTone: string; to?: string }) {
+  const body = (
+    <>
+      <div className="flex size-10 items-center justify-center rounded-xl bg-white/80 shadow-sm ring-1 ring-emerald-100">
+        <Icon className={`size-4 ${iconTone}`} />
+      </div>
+      <p className="mt-4 text-[11px] font-medium uppercase tracking-[0.2em] text-emerald-900/60">{label}</p>
+      <p className="mt-2 break-words text-xl font-semibold tabular-nums text-emerald-950 sm:text-2xl">{value}</p>
+    </>
+  );
 
-@theme inline {
-  --radius-sm: calc(var(--radius) - 4px);
-  --radius-md: calc(var(--radius) - 2px);
-  --radius-lg: var(--radius);
-  --radius-xl: calc(var(--radius) + 4px);
-  --radius-2xl: calc(var(--radius) + 8px);
-  --radius-3xl: calc(var(--radius) + 12px);
-  --radius-4xl: calc(var(--radius) + 16px);
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --color-card: var(--card);
-  --color-card-foreground: var(--card-foreground);
-  --color-popover: var(--popover);
-  --color-popover-foreground: var(--popover-foreground);
-  --color-primary: var(--primary);
-  --color-primary-foreground: var(--primary-foreground);
-  --color-secondary: var(--secondary);
-  --color-secondary-foreground: var(--secondary-foreground);
-  --color-muted: var(--muted);
-  --color-muted-foreground: var(--muted-foreground);
-  --color-accent: var(--accent);
-  --color-accent-foreground: var(--accent-foreground);
-  --color-destructive: var(--destructive);
-  --color-destructive-foreground: var(--destructive-foreground);
-  --color-border: var(--border);
-  --color-input: var(--input);
-  --color-ring: var(--ring);
-  --color-ring-offset-background: var(--background);
-  --color-hero-scrim: var(--hero-scrim);
-  --color-print-paper: var(--print-paper);
-  --color-print-ink: var(--print-ink);
-  --color-chart-1: var(--chart-1);
-  --color-chart-2: var(--chart-2);
-  --color-chart-3: var(--chart-3);
-  --color-chart-4: var(--chart-4);
-  --color-chart-5: var(--chart-5);
-  --color-sidebar: var(--sidebar);
-  --color-sidebar-foreground: var(--sidebar-foreground);
-  --color-sidebar-primary: var(--sidebar-primary);
-  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
-  --color-sidebar-accent: var(--sidebar-accent);
-  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
-  --color-sidebar-border: var(--sidebar-border);
-  --color-sidebar-ring: var(--sidebar-ring);
+  const cls = `min-w-0 rounded-2xl border border-emerald-100 p-4 shadow-[0_12px_28px_rgba(6,78,59,0.06)] ${tint}`;
+  return to ? <Link to={to} className={`${cls} block transition-transform hover:-translate-y-0.5`}>{body}</Link> : <article className={cls}>{body}</article>;
 }
 
-:root {
-  --print-paper: oklch(1 0 0);
-  --print-ink: oklch(0 0 0);
-  --radius: 0.5rem;
-  --hero-scrim: oklch(0.18 0.02 160 / 60%);
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.25 0.013 160);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.129 0.042 264.695);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.129 0.042 264.695);
-  --primary: oklch(0.63 0.15 158);
-  --primary-foreground: oklch(1 0 0);
-  --secondary: oklch(0.96 0.02 166);
-  --secondary-foreground: oklch(0.36 0.06 166);
-  --muted: oklch(0.968 0.007 247.896);
-  --muted-foreground: oklch(0.53 0.01 160);
-  --accent: oklch(0.968 0.007 247.896);
-  --accent-foreground: oklch(0.208 0.042 265.755);
-  --destructive: oklch(0.577 0.245 27.325);
-  --destructive-foreground: oklch(0.984 0.003 247.858);
-  --border: oklch(0.929 0.013 255.508);
-  --input: oklch(0.929 0.013 255.508);
-  --ring: oklch(0.704 0.04 256.788);
-  --chart-1: oklch(0.646 0.222 41.116);
-  --chart-2: oklch(0.6 0.118 184.704);
-  --chart-3: oklch(0.398 0.07 227.392);
-  --chart-4: oklch(0.828 0.189 84.429);
-  --chart-5: oklch(0.769 0.188 70.08);
-  --sidebar: oklch(0.984 0.003 247.858);
-  --sidebar-foreground: oklch(0.129 0.042 264.695);
-  --sidebar-primary: oklch(0.208 0.042 265.755);
-  --sidebar-primary-foreground: oklch(0.984 0.003 247.858);
-  --sidebar-accent: oklch(0.968 0.007 247.896);
-  --sidebar-accent-foreground: oklch(0.208 0.042 265.755);
-  --sidebar-border: oklch(0.929 0.013 255.508);
-  --sidebar-ring: oklch(0.704 0.04 256.788);
+export function Dashboard() {
+  const list = useServerFn(listBusinesses);
+  const getAccess = useServerFn(getBusinessAccess);
+  const businesses = useQuery({ queryKey: ['businesses'], queryFn: () => list() });
+  const [selected, setSelected] = useState('');
+  const [branch, setBranch] = useState('');
+  const [privacy, setPrivacy] = useState(false);
+  const [person, setPerson] = useState('');
+
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data }) => {
+      const u = data.user;
+      setPerson((u?.user_metadata?.['full_name'] as string | undefined) || u?.email?.split('@')[0] || '');
+    });
+  }, []);
+
+  const businessId = authorizedSelection(businesses.data ?? [], selected);
+  const access = useQuery({ queryKey: ['business-access', businessId], queryFn: () => getAccess({ data: { businessId } }), enabled: Boolean(businessId) });
+  const branches = access.data?.branches.filter(b => b.is_active) ?? [];
+  const branchId = branches.some(b => b.id === branch) ? branch : '';
+  const loadCommerce = useServerFn(getCommerce);
+  const commerce = useQuery({ queryKey: ['commerce', businessId], queryFn: () => loadCommerce({ data: { businessId } }), enabled: !!businessId });
+  const lowStock = useLowStock(businessId, branches, branchId);
+  const business = businesses.data?.find(b => b.id === businessId);
+  const today = todayAd();
+  const month = bsMonthInfo(today);
+  const money = (v: number | null | undefined) => (privacy ? 'Rs. ••••' : formatNPR(v));
+
+  const d = commerce.data;
+  const monthly = d && month ? commerceTotals(d, branchId, month.fromAd, month.toAd) : null;
+  const allTime = d ? commerceTotals(d, branchId, '0000-01-01', '9999-12-31') : null;
+  const expenses = d && month ? d.journals.filter(j => (!branchId || j.branch_id === branchId) && j.account_code.startsWith('expense') && j.entry_date >= month.fromAd && j.entry_date <= month.toAd).reduce((sum, j) => sum.add(new Decimal(j.debit).minus(new Decimal(j.credit))), new Decimal(0)).toNumber() : 0;
+
+  const days = Array.from({ length: 7 }, (_, i) => addDaysAd(today, i - 6));
+  const flow = days.map(day => {
+    const rows = d?.journals.filter(j => (!branchId || j.branch_id === branchId) && (j.account_code === 'cash' || j.account_code === 'bank') && j.entry_date === day) ?? [];
+    return { day: bsShort(day), in: rows.reduce((s, j) => s + Number(j.debit), 0), out: rows.reduce((s, j) => s + Number(j.credit), 0) };
+  });
+  const totalIn = flow.reduce((s, r) => s + r.in, 0);
+  const totalOut = flow.reduce((s, r) => s + r.out, 0);
+  const recent = d?.documents.filter(x => x.status === 'confirmed' && (!branchId || x.branch_id === branchId)).slice(0, 6) ?? [];
+  const monthName = month?.name ?? 'This month';
+
+  return (
+    <main className="mx-auto max-w-7xl px-4 py-5 md:px-8 md:py-7">
+      <div className="rounded-[28px] border border-emerald-100 bg-[radial-gradient(circle_at_top,_rgba(16,185,129,0.24),_transparent_40%),linear-gradient(135deg,_#064E3B_0%,_#0f766e_45%,_#0b3d36_100%)] p-5 text-white shadow-[0_24px_60px_rgba(6,78,59,0.28)] md:p-6">
+        <header className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-emerald-100/80">Overview</p>
+            <h1 className="mt-2 text-2xl font-semibold text-white md:text-3xl">Welcome{person ? ` ${person}` : ''}</h1>
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <label className="flex h-10 items-center gap-2 rounded-xl border border-white/15 bg-white/10 px-3 text-sm font-medium text-emerald-50">
+              <Eye className="size-4" />
+              Privacy Mode
+              <Switch checked={privacy} onCheckedChange={setPrivacy} className="data-[state=checked]:bg-emerald-300" />
+            </label>
+            <Button asChild variant="secondary" className="h-10 rounded-xl border border-white/15 bg-white/10 text-white hover:bg-white/15">
+              <Link to="/pos" className="flex items-center gap-2">
+                <Zap className="size-4" /> Quick POS
+              </Link>
+            </Button>
+            <Button asChild className="h-10 rounded-xl bg-white text-emerald-900 hover:bg-emerald-50">
+              <Link to="/sales" search={{ new: '1' }} className="flex items-center gap-2">
+                <Plus className="size-4" /> Sales
+              </Link>
+            </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" className="h-10 rounded-xl border-white/15 bg-transparent text-white hover:bg-white/10">More</Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem asChild><Link to="/purchases" search={{ new: '1' }}>Purchase</Link></DropdownMenuItem>
+                <DropdownMenuItem asChild><Link to="/expenses">Expense</Link></DropdownMenuItem>
+                <DropdownMenuItem asChild><Link to="/reports">Reports</Link></DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+        </header>
+        <p className="mt-3 text-sm text-emerald-100/80">{formatBsAd(today)}{business ? ` · ${business.name}` : ''}</p>
+      </div>
+
+      {(businesses.isPending || (businessId && access.isPending)) && <p role="status" className="py-6 text-sm text-muted-foreground">Loading your workspace…</p>}
+      {(businesses.error || access.error) && (
+        <div className="my-6 flex flex-wrap items-center gap-4 rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+          <p role="alert">{businesses.error?.message || access.error?.message}</p>
+        </div>
+      )}
+
+      {(businesses.data?.length ?? 0) > 1 || branches.length > 1 ? (
+        <div className="mt-4 grid gap-3 sm:grid-cols-2 md:max-w-xl">
+          <label className="text-xs font-medium uppercase tracking-[0.18em] text-emerald-900/60">
+            Business
+            <select aria-label="Dashboard business" className={selectClass} disabled={!businesses.data?.length} value={businessId} onChange={e => setSelected(e.target.value)}>
+              {businesses.data?.map(item => <option key={item.id} value={item.id}>{item.name}</option>)}
+            </select>
+          </label>
+          <label className="text-xs font-medium uppercase tracking-[0.18em] text-emerald-900/60">
+            Branch
+            <select aria-label="Dashboard branch" className={selectClass} disabled={!branches.length} value={branchId} onChange={e => setBranch(e.target.value)}>
+              {branches.map(item => <option key={item.id} value={item.id}>{item.name}</option>)}
+            </select>
+          </label>
+        </div>
+      ) : null}
+
+      {!businesses.isPending && !businesses.error && !businessId && (
+        <section className="my-6 flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-emerald-100 bg-emerald-50/60 p-5">
+          <div>
+            <h2 className="text-lg font-semibold text-emerald-900">No business selected</h2>
+            <p className="text-sm text-emerald-800/70">Select or create a business to view your dashboard.</p>
+          </div>
+          <Button asChild variant="outline" className="border-emerald-200 bg-white text-emerald-900 hover:bg-emerald-50">
+            <Link to="/businesses">Manage businesses</Link>
+          </Button>
+        </section>
+      )}
+
+      {commerce.error && <p role="alert" className="mt-4 text-sm text-destructive">{commerce.error.message}</p>}
+
+      <section aria-label="Summary" className="mt-5 grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-5">
+        <StatCard label="To Receive" value={money(allTime?.receivables)} icon={ArrowDown} tint="bg-gradient-to-br from-emerald-50 to-white" iconTone="text-emerald-700" to="/parties" />
+        <StatCard label="To Give" value={money(allTime?.payables)} icon={ArrowUp} tint="bg-gradient-to-br from-rose-50 to-white" iconTone="text-rose-600" to="/parties" />
+        <StatCard label={`Sales (${monthName})`} value={money(monthly?.sales)} icon={Tag} tint="bg-gradient-to-br from-emerald-50 to-white" iconTone="text-emerald-700" to="/sales" />
+        <StatCard label={`Purchase (${monthName})`} value={money(monthly?.purchases)} icon={ShoppingCart} tint="bg-gradient-to-br from-sky-50 to-white" iconTone="text-sky-700" to="/purchases" />
+        <StatCard label={`Expense (${monthName})`} value={money(expenses)} icon={Wallet} tint="bg-gradient-to-br from-orange-50 to-white" iconTone="text-orange-600" to="/expenses" />
+      </section>
+
+      <section aria-label="Explore app" className="mt-6">
+        <h2 className="mb-2 text-lg font-semibold text-emerald-950">Explore app</h2>
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+          {[
+            { to: '/expenses', label: 'Quick Entry', icon: Calculator },
+            { to: '/pos', label: 'Quick POS', icon: Zap },
+            { to: '/reports', label: 'View Reports', icon: BarChart3 },
+            { to: '/credit-reminder', label: 'Credit Reminder', icon: MessageSquareText, badge: 'New' },
+          ].map(item => (
+            <Link key={item.label} to={item.to} className="group relative flex min-h-28 flex-col items-center justify-center gap-3 rounded-2xl border border-emerald-100 bg-white p-3 text-center text-sm font-medium text-emerald-900 shadow-sm transition-transform hover:-translate-y-0.5 hover:shadow-md">
+              <span className="flex size-10 items-center justify-center rounded-xl bg-emerald-50 text-emerald-700 ring-1 ring-emerald-100">
+                <item.icon className="size-4" />
+              </span>
+              <span>{item.label}</span>
+              {item.badge ? <span className="absolute right-3 top-3 rounded-full bg-emerald-600 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-white">{item.badge}</span> : null}
+            </Link>
+          ))}
+        </div>
+      </section>
+
+      <section aria-label="Shortcuts" className="mt-6">
+        <h2 className="mb-2 text-lg font-semibold text-emerald-950">Shortcuts</h2>
+        <div className="grid grid-cols-2 gap-3 rounded-2xl border border-emerald-100 bg-white p-4 sm:grid-cols-4">
+          {[
+            { to: '/contacts', label: 'Add Party', icon: UserPlus },
+            { to: '/sales', label: 'Sales Invoice', icon: Tag, search: { new: '1' as const } },
+            { to: '/parties', label: 'Payment In', icon: ArrowDown },
+            { to: '/parties', label: 'Payment Out', icon: ArrowUp },
+            { to: '/purchases', label: 'Purchase', icon: ShoppingCart, search: { new: '1' as const } },
+            { to: '/products', label: 'Add Item', icon: Package },
+            { to: '/expenses', label: 'Expense', icon: Wallet },
+            { to: '/cash-bank', label: 'Cash & Bank', icon: Landmark },
+            { to: '/transactions', label: 'Transactions', icon: Receipt },
+            { to: '/calculators', label: 'Calculators', icon: Calculator },
+          ] as { to: string; label: string; icon: LucideIcon; search?: { new: '1' } }[]).map(item => (
+            <Link key={item.label} to={item.to} {...(item.search ? { search: item.search } : {})} className="flex flex-col items-center justify-center gap-2 rounded-xl border border-emerald-100 bg-emerald-50/50 px-3 py-4 text-center text-sm font-medium text-emerald-900 transition-colors hover:bg-emerald-50">
+              <item.icon className="size-4 text-emerald-700" />
+              <span>{item.label}</span>
+            </Link>
+          ))}
+        </div>
+      </section>
+
+      <div className="mt-5 grid gap-5 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
+        <div className="space-y-5">
+          <section aria-label="Cashflow" className="rounded-2xl border border-emerald-100 bg-white p-5 shadow-[0_12px_28px_rgba(6,78,59,0.04)]">
+            <div className="flex items-center justify-between gap-3">
+              <h2 className="text-lg font-semibold text-emerald-950">Cashflow <span className="text-sm font-normal text-muted-foreground">(Last 7 Days)</span></h2>
+            </div>
+            <div className="mt-4 h-64" role="img" aria-label={`Cash in ${formatNPR(totalIn)} and cash out ${formatNPR(totalOut)} over the last 7 days`}>
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={flow} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>
+                  <CartesianGrid strokeDasharray="4 4" vertical={false} stroke="#d1fae5" />
+                  <XAxis dataKey="day" tickLine={false} axisLine={false} fontSize={12} tick={{ fill: '#0f766e' }} />
+                  <YAxis tickFormatter={v => (privacy ? '' : compactNPR(Number(v)))} tickLine={false} axisLine={false} fontSize={12} width={44} tick={{ fill: '#0f766e' }} />
+                  <Tooltip formatter={(v: number) => money(v)} cursor={{ fill: 'rgba(16,185,129,0.06)' }} />
+                  <Bar dataKey="in" name="Money in" fill="#10b981" radius={[4, 4, 0, 0]} maxBarSize={18} />
+                  <Bar dataKey="out" name="Money out" fill="#f59e0b" radius={[4, 4, 0, 0]} maxBarSize={18} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+            <div className="mt-3 flex justify-center gap-8 text-center text-sm">
+              <div>
+                <p className="text-muted-foreground"><span className="mr-2 inline-block size-2 rounded-full bg-emerald-500" />Cash in</p>
+                <p className="mt-1 font-semibold text-emerald-900">{money(totalIn)}</p>
+              </div>
+              <div>
+                <p className="text-muted-foreground"><span className="mr-2 inline-block size-2 rounded-full bg-amber-500" />Cash out</p>
+                <p className="mt-1 font-semibold text-emerald-900">{money(totalOut)}</p>
+              </div>
+            </div>
+          </section>
+
+          <section className="rounded-2xl border border-emerald-100 bg-white p-5 shadow-[0_12px_28px_rgba(6,78,59,0.04)]">
+            <h2 className="text-lg font-semibold text-emerald-950">Recent transactions</h2>
+            <div className="mt-4 space-y-3">
+              {recent.length ? recent.map(x => (
+                <div key={x.id} className="flex items-center justify-between gap-3 rounded-xl border border-emerald-100 bg-emerald-50/40 p-3">
+                  <div>
+                    <p className="text-sm font-medium text-emerald-900">{x.party_name || x.type || 'Transaction'}</p>
+                    <p className="text-xs text-muted-foreground">{x.entry_date || x.date || '—'}</p>
+                  </div>
+                  <p className="text-sm font-semibold tabular-nums text-emerald-900">{money(Number(x.total ?? 0))}</p>
+                </div>
+              )) : <p className="rounded-xl bg-emerald-50 p-4 text-sm text-muted-foreground">No recent confirmed transactions.</p>}
+            </div>
+          </section>
+        </div>
+
+        <div className="space-y-5">
+          <section className="rounded-2xl border border-emerald-100 bg-white p-5 shadow-[0_12px_28px_rgba(6,78,59,0.04)]">
+            <p className="text-sm font-medium uppercase tracking-[0.18em] text-emerald-900/60">Total balance</p>
+            <p className="mt-2 text-3xl font-semibold tabular-nums text-emerald-950">{money((allTime?.receivables ?? 0) - (allTime?.payables ?? 0))}</p>
+            <p className="mt-2 text-sm text-muted-foreground">Cash &amp; Bank overview</p>
+          </section>
+
+          <section className="rounded-2xl border border-emerald-100 bg-white p-5 shadow-[0_12px_28px_rgba(6,78,59,0.04)]">
+            <div className="flex items-center justify-between gap-3">
+              <h2 className="text-lg font-semibold text-emerald-950">Low stock</h2>
+              <Link to="/products" className="text-sm font-medium text-emerald-700">View all</Link>
+            </div>
+            <div className="mt-4">
+              <LowStockSummary lowStock={lowStock} businessId={businessId} />
+            </div>
+          </section>
+        </div>
+      </div>
+    </main>
+  );
 }
 
-.dark {
-  --print-paper: oklch(1 0 0);
-  --print-ink: oklch(0 0 0);
-  --hero-scrim: oklch(0.18 0.02 160 / 60%);
-  --background: oklch(0.129 0.042 264.695);
-  --foreground: oklch(0.984 0.003 247.858);
-  --card: oklch(0.208 0.042 265.755);
-  --card-foreground: oklch(0.984 0.003 247.858);
-  --popover: oklch(0.208 0.042 265.755);
-  --popover-foreground: oklch(0.984 0.003 247.858);
-  --primary: oklch(0.929 0.013 255.508);
-  --primary-foreground: oklch(0.208 0.042 265.755);
-  --secondary: oklch(0.279 0.041 260.031);
-  --secondary-foreground: oklch(0.984 0.003 247.858);
-  --muted: oklch(0.279 0.041 260.031);
-  --muted-foreground: oklch(0.704 0.04 256.788);
-  --accent: oklch(0.279 0.041 260.031);
-  --accent-foreground: oklch(0.984 0.003 247.858);
-  --destructive: oklch(0.704 0.191 22.216);
-  --destructive-foreground: oklch(0.984 0.003 247.858);
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.551 0.027 264.364);
-  --chart-1: oklch(0.488 0.243 264.376);
-  --chart-2: oklch(0.696 0.17 162.48);
-  --chart-3: oklch(0.769 0.188 70.08);
-  --chart-4: oklch(0.627 0.265 303.9);
-  --chart-5: oklch(0.645 0.246 16.439);
-  --sidebar: oklch(0.208 0.042 265.755);
-  --sidebar-foreground: oklch(0.984 0.003 247.858);
-  --sidebar-primary: oklch(0.488 0.243 264.376);
-  --sidebar-primary-foreground: oklch(0.984 0.003 247.858);
-  --sidebar-accent: oklch(0.279 0.041 260.031);
-  --sidebar-accent-foreground: oklch(0.984 0.003 247.858);
-  --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.551 0.027 264.364);
-}
 
-@layer base {
-  * {
-    border-color: var(--color-border);
-  }
 
-  body {
-    font-family: 'DM Sans', sans-serif;
-    background-color: var(--color-background);
-    color: var(--color-foreground);
-  }
-}
-.brand { font-family: 'Manrope', sans-serif; }
-* { letter-spacing: 0; }
-.sticker-preview { width: 260px; max-width: 100%; }
-.barcode-sticker { display: flex; flex-direction: column; align-items: center; justify-content: center; overflow: hidden; min-width: 0; padding: 1mm 2mm; background: var(--print-paper); color: var(--print-ink); }
-.sticker-name { font-size: 8pt; line-height: 1.1; text-align: center; max-width: 100%; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
-.sticker-code { font-family: monospace; font-size: 8pt; line-height: 1.1; overflow-wrap: anywhere; text-align: center; }
-.sticker-price { font-size: 8pt; line-height: 1.1; }
-.sticker-barcode { display: block; width: 100%; max-width: 100%; height: 12mm; flex-shrink: 0; }
-.barcode-print-root { display: none; }
-.barcode-label-page { display: grid; box-sizing: border-box; row-gap: 0; break-after: page; overflow: hidden; }
-.barcode-label-page:last-child { break-after: auto; }
-@media print {
- body:has(.barcode-print-root) { margin: 0; background: var(--print-paper); }
- body:has(.barcode-print-root) > :not(.barcode-print-root) { display: none !important; }
- .barcode-print-root { display: block; }
- .barcode-print-root, .barcode-print-root * { visibility: visible; }
- .barcode-label-pages { margin: 0; }
- .barcode-sticker { break-inside: avoid; }
-}
-@media print {
- body:has([aria-label="Business report print"]) > *:not(:has([aria-label="Business report print"])):not([aria-label="Business report print"]) { display: none; }
- body * { visibility: hidden; }
- [aria-label="Invoice receipt"], [aria-label="Invoice receipt"] * { visibility: visible; }
- [aria-label="Invoice receipt"] { position: absolute; left: 0; top: 0; width: 100%; max-width: none; }
-}
 
-@media print {
- [aria-label="Business report print"], [aria-label="Business report print"] * { visibility: visible; }
- [aria-label="Business report print"] { position: absolute; inset: 0 auto auto 0; width: 100%; max-width: none; overflow: visible; }
- body:has([aria-label="Business report print"]) [role="dialog"] { position: absolute; inset: 0; transform: none; max-height: none; height: auto; overflow: visible; border: none; box-shadow: none; display: block; }
- [aria-label="Business report print"] thead { display: table-header-group; }
- [aria-label="Business report print"] tr { break-inside: avoid; }
- [aria-label="Business report print"] table { table-layout: fixed; }
- [aria-label="Business report print"] th, [aria-label="Business report print"] td { overflow-wrap: anywhere; }
-}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+n
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+n
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+n
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+n
+
+
+
+
+
+
+
+
+
+n
+
+
+
+
+
+
+
+
+
+
+
+
+
+n
+
+
+
+
+
+
+
+
+
+
+
+
+n
+
+
+
+
+
+
+
+
+
+
+
+
+n
+
+
+
+
+
+
+n
+
+
+
+
+
+
+
+n
+
+
+
+
+
+
+n
+
+
+
+
+
+
+
+n
+
+
+
+
+
+
+n
+
+
+
+
+
+
+n
+
+
+
+
+
+
+n
+
+
+
+
+
+
+n
+
+
+
+
+
+
+n
+
+
+
+
+
+
+n
+
+
+
+
+
+n
+
+
+
+
+
+
+
+n
+
+
+
+
+
+
+n
+
+
+
+
+
+
+n
+
+
+
+
+
+n
+
+
+
+n
+
+
+
+
+
+
+n
+
+
+
+
+
+n
+
+
+
+
+
+
+n
+
+
+
+
+
+
+n
+
+
+
+
+
+
+n
+
+
+
+
+
+n
+
+
+
+
+
+
+
+n
+
+
+
+
+
+
+a
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+n
+
+
+
+n
+
+
+
+
+
+
+
+
+
+
+n
+
+
+
+
+
+
+n
+
+
+
+
+
+
+n
+
+
+
+
+
+
+n
+
+
+
+
+
+
+n
+
+
+
+
+
+
+n
+
+
+
+
+
+
+n
+
+
+
+
+
+
+
+n
+
+
+
+n
+
+
+
+
+
+
+
+
+
+
+n
+
+
+
+
+
+
+n
+
+
+
+
+
+
+n
+
+
+
+
+
+
+n
+
+
+
+
+
+
+n
+
+
+
+
+
+
+
+n
+
+
+
+
+
+
+n
+
+
+
+
+
+
+n
+
+
+
+
+
+
+n
+
+
+
+
+
+
+n
+
+
+
+
+
+
+n
+
+
+
+
+
+
+a
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+n
+
+
+
+
+
+
+n
+
+
+
+
+
+
+n
+
+
+
+
+
+
+n
+
+
+
+
+
+
+n
+
+
+
+
+
+
+n
+
+
+
+
+
+
+n
+
+
+
+
+
+n
+
+
+
+
+
+
+n
+
+
+
+
+
+n
+
+
+
+
+
+
+n
+
+
+
+
+
+
+n
+
+
+
+
+
+n
+
+
+
+
+
+
+n
+
+
+
+
+
+
+n
+
+
+
+n
+
+
+
+
+
+
+
+
+
+
+n
+
+
+
+
+n
+
+
+
+
+
+
+
+
+
+
+n
+
+
+
+
+
+n
+
+
+
+
+
+n
+
+
+
+
+
+
+
+n
+
+
+
+
+
+
+n
+
+
+
+
+
+
+n
+
+
+
+
+
+n
+
+
+
+
+
+
+n
+
+
+
+
+
+
+n
+
+
+
+
+
+
+n
+
+
+
+
+
+
+a
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+n
+
+
+n
+
+
+
+
+n
+
+
+
+
+
+
+
+n
+
+
+
+
+
+
+n
+
+
+
+
+
+
+
+n
+
+
+
+
+
+
+n
+
+
+
+
+
+
+n
+
+
+
+
+
+
+a
+
+
+
+
+
+
+
+
+
+
+
+n
+
+
+
+
+
+n
+
+
+
+
+
+n
+
+
+
+
+
+
+a
+
+
+
+
+
+n
+
+
+
+
+n
+
+
+
+
+
+
+n
+
+
+
+
+
+n
+
+
+
+
+
+n
+
+
+
+
+
+
+n
+
+
+
+
+n
+
+
+
+
+
+
+n
+
+
+
+n
+
+
+
+
+
+n
+
+
+
+
+
+n
+
+
+
+
+
+n
+
+
+
+
+
+n
+
+
+
+a
+
+
+
+
+
+
+
+
+
+
+
+n
+
+
+
+
+
+n
+
+
+
+
+
+
+n
+
+
+
+
+
+
+n
+
+
+
+
+
+
+
+n
+
+
+
+
+
+n
+
+
+
+
+
+
+n
+
+
+
+
+
+n
+
+
+
+
+
+
+n
+
+
+
+
+
+n
+
+
+
+
+
+
+n
+
+
+
+
+
+n
+
+
+
+
+
+
+n
+
+
+
+n
+
+
+
+
+
+
+
+
+
+
+
+n
+
+
+
+
+
+
+n
+
+
+
+
+
+n
+
+
+
+
+
+
+n
+
+
+
+
+
+
+n
+
+
+
+
+
+n
+
+
+
+
+
+n
+
+
+
+
+
+
+n
+
+
+
+
+
+n
+
+
+
+
+
+n
+
+
+
+
+
+n
+
+
+
+
+
+n
+
+
+
+
+n
+
+
+
+
+
+
+n
+
+
+
+
+
+
+n
+
+
+
+
+
+
+n
+
+
+
+
+
+n
+
+
+
+
+
+n
+
+
+
+
+
+n
+
+
+
+
+
+n
+
+
+
+
+
+n
+
+
+
+
+
+n
+
+
+
+
+
+n
+
+
+
+
+
+n
+
+
+
+
+
+n
+
+
+
+
+
+n
+
+
+
+n
+
+
+
+
+
+
+n
+
+
+
+
+
+n
+
+
+
+
+
+
+n
+
+
+
+
+
+n
+
+
+
+
+
+n
+
+
+
+
+
+n
+
+
+
+
+
+n
+
+
+
+
+
+n
+
+
+
+
+
+n
+
+
+
+
+
+n
+
+
+
+
+
+n
+
+
+
+
+
+n
+
+
+
+
+
+n
+
+
+
+
+
+n
+
+
+
+n
+
+
+
+
+
+
+
+n
+
+
+
+
+
+n
+
+
+
+
+
+
+n
+
+
+
+
+
+n
+
+
+
+
+
+n
+
+
+
+
+
+n
+
+
+
+
+
+n
+
+
+
+
+
+
+n
+
+
+
+
+
+n
+
+
+
+
+
+n
+
+
+
+
+
+n
+
+
+
+
+
+n
+
+
+
+
+
+n
+
+
+
+a
+
+
+
+
+
+
+
+
+
+
+
+n
+
+
+
+
+
+n
+
+
+
+
+
+n
+
+
+
+
+
+n
+
+
+
+
+
+n
+
+
+
+
+
+n
+
+
+
+
+
+n
+
+
+
+
+
+
+n
+
+
+
+
+
+n
+
+
+
+
+
+n
+
+
+
+
+
+n
+
+
+
+
+
+n
+
+
+
+
+
+n
+
+
+
+
+
+n
+
+
+
+
+
+n
+
+
+
+
+
+n
+
+
+
+
+
+n
+
+
+
+
+
+
+n
+
+
+
+
+
+n
+
+
+
+
+n
+
+
+
+
+
+n
+
+
+
+
+n
+
+
+
+
+
+
+n
+
+
+
+
+
+n
+
+
+
+
+
+
+n
+
+
+
+
+
+
+n
+
+
+
+
+
+n
+
+
+
+
+
+n
+
+
+
+
+
+n
+
+
+
+
+
+n
+
+
+
+
+
+n
+
+
+
+
+
+n
+
+
+
+
+
+n
+
+
+
+
+
+n
+
+
+
+
+
+
+a
+
+
+
+
+
+
+
+
+
+
+n
+
+
+
+
+
+n
+
+
+
+
+
+n
+
+
+
+
+
+n
+
+
+
+
+
+n
+
+
+
+
+
+n
+
+
+
+
+
+n
+
+
+
+
+n
+
+
+
+
+
+
+n
+
+
+
+
+
+n
+
+
+
+
+
+n
+
+
+
+
+
+n
+
+
+
+
+
+n
+
+
+
+
+
+n
+
+
+
+
+
+n
+
+
+
+
+
+n
+
+
+
+
+
+n
+
+
+
+
+
+n
+
+
+
+
+
+n
+
+
+
+
+
+n
+
+
+
+
+
+n
+
+
+
+
+
+n
+
+
+
+
+
+n
+
+
+
+
+
+n
+
+
+
+n
+
+
+
+
+
+
+n
+
+
+
+
+
+n
+
+
+
+
+
+n
+
+
+
+
+
+n
+
+
+
+
+
+n
+
+
+
+
+
+n
+
+
+
+
+
+n
+
+
+
+
+
+n
+
+
+
+
+
+n
+
+
+
+
+
+n
+
+
+
+
+
+n
+
+
+
+
+
+n
+
+
+
+n
+
+
+
+
+
+n
+
+
+
+
+
+n
+
+
+
+
+
+n
+
+
+
+
+
+n
+
+
+
+
+
+n
+
+
+
+
+
+n
+
+
+
+
+
+n
+
+
+
+
+
+{ "}]}
