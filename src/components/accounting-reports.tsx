@@ -1,4 +1,4 @@
-import {useState} from 'react';
+import {useState,useEffect} from 'react';
 import {useSuspenseQuery,useQuery} from '@tanstack/react-query';
 import {useServerFn} from '@tanstack/react-start';
 import {Link} from '@tanstack/react-router';
@@ -13,17 +13,22 @@ import {getAccountingReport} from '@/lib/accounting.functions';
 import {downloadCsv} from '@/lib/download-csv';
 import {makeCsv} from '@/lib/inventory-csv';
 import {VoucherWorkspace} from './voucher-workspace';
-import {presets,presetRange,previousRange,compareRows,mainTotal,type Preset} from '@/lib/report-tools';
+import {previousRange,compareRows,mainTotal} from '@/lib/report-tools';
+import {reportToday,validReportDates,type ReportSearch} from '@/lib/report-filters';
+import {ReportRangeFilters} from './report-range-filters';
 import {downloadReportPdf} from '@/lib/report-pdf';
 import {FileText} from 'lucide-react';
 import {reportViews,supportsUser,unavailableReports,reportColumns,exportReportRows} from '@/lib/business-reports';
 
 const views=reportViews;
 function Choice({label,value,onChange,options,disabled}:{label:string;value:string;onChange:(v:string)=>void;options:{id:string;name:string}[];disabled?:boolean}){return <label className="min-w-0 text-sm">{label}<Select value={value} disabled={disabled??false} onValueChange={onChange}><SelectTrigger aria-label={label} className="mt-2 w-full bg-card"><SelectValue/></SelectTrigger><SelectContent>{options.map(o=><SelectItem key={o.id} value={o.id}>{o.name}</SelectItem>)}</SelectContent></Select></label>;}
-export function AccountingReports({initialView}:{initialView?:string|undefined}={}){
+export function AccountingReports({initialView,search={},onSearchChange}:{initialView?:string|undefined;search?:ReportSearch;onSearchChange?:(next:ReportSearch)=>void}={}){
  const {data:businesses}=useSuspenseQuery(businessQuery);const[selected,setSelected]=useState('');const businessId=authorizedSelection(businesses,selected);
  const[view,setView]=useState<ReportInput['view']>(()=>reportViews.some(([id])=>id===initialView)?initialView as ReportInput['view']:'accounts');const[branch,setBranch]=useState('all');const[period,setPeriod]=useState('all');const[from,setFrom]=useState('2000-01-01');const[to,setTo]=useState(()=>new Date().toISOString().slice(0,10));const[account,setAccount]=useState('all');const[party,setParty]=useState('all');const[page,setPage]=useState(1);const[detail,setDetail]=useState<ReportRow|null>(null);const[exportError,setExportError]=useState('');const[exporting,setExporting]=useState(false);
  const[user,setUser]=useState('all');const[printData,setPrintData]=useState<{rows:ReportRow[];context:Record<string,string>}|null>(null);
+ const effectiveView=search.view??view;const effectiveBranch=search.branch??branch;const effectiveFrom=search.from??from;const effectiveTo=search.to??to;
+ useEffect(()=>{if(search.business)setSelected(search.business);},[search.business]);
+ function changeSearch(next:ReportSearch){if(onSearchChange)onSearchChange({...search,...next});else{if(next.view)setView(next.view);if(next.branch!==undefined)setBranch(next.branch);if(next.from!==undefined)setFrom(next.from);if(next.to!==undefined)setTo(next.to);}reset();}
  const load=useServerFn(getAccountingReport);const filter={businessId,branchId:branch==='all'?undefined:branch,userId:supportsUser(view)&&user!=='all'?user:undefined,from,to,view,account,partyId:party==='all'?undefined:party,page,export:false};
  const report=useQuery({queryKey:['accounting',filter],queryFn:()=>load({data:filter}),enabled:!!businessId&&from<=to&&!!from&&!!to});const data=report.data;
  const[compare,setCompare]=useState(false);const prevRange=previousRange(from,to);
