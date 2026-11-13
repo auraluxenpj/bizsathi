@@ -1,3 +1,4 @@
+import {validateReportSearch} from '@/lib/report-filters';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { RouterProvider, createMemoryHistory, createRootRoute, createRouter,createRoute } from '@tanstack/react-router';
 import { fireEvent, render, screen, within } from '@testing-library/react';
@@ -41,7 +42,7 @@ import { Dashboard } from '@/components/dashboard';
 
 function mount(ui: ReactNode,path='/') {
   const root = createRootRoute({ component: () => <>{ui}</> });
-  const child=createRoute({getParentRoute:()=>root,path,id:path==='/'?undefined:undefined,validateSearch:validateReportSearch});
+  const child=createRoute({getParentRoute:()=>root,path,validateSearch:validateReportSearch});
   const router = createRouter({ routeTree: root.addChildren([child]), history: createMemoryHistory({ initialEntries: [path] }) });
   return render(<QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}><RouterProvider router={router} /></QueryClientProvider>);
 }
@@ -82,7 +83,7 @@ describe('Karobar-style screens', () => {
     expect(screen.getAllByText('Rs. 600.00').length).toBeGreaterThan(0);
     const wa = screen.getByRole('link', { name: /WhatsApp/ });
     expect(wa.getAttribute('href')).toMatch(/^https:\/\/wa\.me\/9779800000000\?text=/);
-    expect(decodeURIComponent(wa.getAttribute('href')!)).toContain('Rs. 600.00');
+    expect(decodeURIComponent(wa.getAttribute('href')??'')).toContain('Rs. 600.00');
     expect(screen.queryByText('Sita Supplies')).not.toBeInTheDocument();
   });
 
