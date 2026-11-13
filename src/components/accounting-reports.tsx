@@ -28,7 +28,7 @@ export function AccountingReports({initialView,search={},onSearchChange}:{initia
  const[user,setUser]=useState('all');const[printData,setPrintData]=useState<{rows:ReportRow[];context:Record<string,string>}|null>(null);
  const view=search.view??localView;const branch=search.branch??localBranch;const from=search.from??localFrom;const to=search.to??localTo;const datesValid=validReportDates(from,to);
  useEffect(()=>{if(search.business)setSelected(search.business);},[search.business]);
- function changeSearch(next:ReportSearch){if(onSearchChange)onSearchChange({...search,...next});else{if(next.view)setView(next.view);if(next.branch!==undefined)setBranch(next.branch);if(next.from!==undefined)setFrom(next.from);if(next.to!==undefined)setTo(next.to);}reset();}
+ function changeSearch(next:ReportSearch){if(onSearchChange)onSearchChange(next);else{if(next.view)setView(next.view);if(next.branch!==undefined)setBranch(next.branch);if(next.from!==undefined)setFrom(next.from);if(next.to!==undefined)setTo(next.to);}reset();}
  const load=useServerFn(getAccountingReport);const filter={businessId,branchId:branch==='all'?undefined:branch,userId:supportsUser(view)&&user!=='all'?user:undefined,from,to,view,account,partyId:party==='all'?undefined:party,page,export:false};
  const report=useQuery({queryKey:['accounting',filter],queryFn:()=>load({data:filter}),enabled:!!businessId&&datesValid});const data=report.data;
  const[compare,setCompare]=useState(false);const prevRange=previousRange(from,to);
