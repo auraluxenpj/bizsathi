@@ -2,7 +2,7 @@ import Papa from 'papaparse';
 import { generateBarcodeFromSkuIfNeeded } from './barcode';
 import { catalogueInput, type CatalogueRow } from './inventory-schemas';
 
-export const catalogueColumns = ['product_name','category','variant_name','sku','model_code','barcode','unit','qty','selling_price','purchase_price','reorder_level'];
+export const catalogueColumns = ['product_name','category','variant_name','sku','model_code','barcode','unit','qty','selling_price','mrp','wholesale_price','purchase_price','reorder_level'];
 const headerAliases: Record<string, string[]> = {
  product_name: ['product_name', 'Item Name', 'item_name', 'Product Name', 'Product', 'Name'],
  category: ['category'],
@@ -12,6 +12,8 @@ const headerAliases: Record<string, string[]> = {
  barcode: ['barcode'],
  unit: ['unit', 'Primary Unit'],
  selling_price: ['selling_price', 'Selling Price', 'Sales Price', 'Price', 'Rate'],
+ mrp: ['mrp', 'MRP', 'M.R.P', 'Maximum Retail Price'],
+ wholesale_price: ['wholesale_price', 'Wholesale Price', 'Wholesale Rate'],
  purchase_price: ['purchase_price', 'Purchase Price', 'Cost Price'],
  // qty is the exported name; on import it is the quantity to open as stock for new items (same as the older opening_stock column).
  opening_stock: ['opening_stock', 'Opening Stock', 'Opening Qty', 'qty', 'Qty', 'Quantity', 'Stock', 'Current Stock'],
@@ -46,6 +48,8 @@ export function parseCatalogueCsv(text:string, businessId:string): CatalogueRow[
    barcode: generateBarcodeFromSkuIfNeeded(r['sku'] ?? '', r['barcode']?.trim() || ''),
    unit: r['unit']?.trim() || 'pcs',
    selling_price: csvNumber(r['selling_price']),
+   mrp: csvNumber(r['mrp']),
+   wholesale_price: csvNumber(r['wholesale_price']),
    reorder_level: csvNumber(r['reorder_level']),
    opening_stock: csvNumber(r['opening_stock']),
    purchase_price: csvNumber(r['purchase_price'])
