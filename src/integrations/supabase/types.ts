@@ -1462,6 +1462,7 @@ export type Database = {
           id: string
           is_active: boolean
           model_code: string | null
+          mrp: number
           name: string
           product_id: string
           purchase_price: number
@@ -1470,6 +1471,7 @@ export type Database = {
           sku: string
           unit: string
           updated_at: string
+          wholesale_price: number
         }
         Insert: {
           barcode?: string | null
@@ -1478,6 +1480,7 @@ export type Database = {
           id?: string
           is_active?: boolean
           model_code?: string | null
+          mrp?: number
           name?: string
           product_id: string
           purchase_price?: number
@@ -1486,6 +1489,7 @@ export type Database = {
           sku: string
           unit?: string
           updated_at?: string
+          wholesale_price?: number
         }
         Update: {
           barcode?: string | null
@@ -1494,6 +1498,7 @@ export type Database = {
           id?: string
           is_active?: boolean
           model_code?: string | null
+          mrp?: number
           name?: string
           product_id?: string
           purchase_price?: number
@@ -1502,6 +1507,7 @@ export type Database = {
           sku?: string
           unit?: string
           updated_at?: string
+          wholesale_price?: number
         }
         Relationships: [
           {
