@@ -1,5 +1,5 @@
 import { useEffect, useState, type ReactNode } from 'react';
-import { Link, useNavigate } from '@tanstack/react-router';
+import { Link, useNavigate,useSearch } from '@tanstack/react-router';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useServerFn } from '@tanstack/react-start';
 import { LayoutDashboard, Receipt, ShoppingCart, Package, UserRound, Wallet, BarChart3, Wrench, UsersRound, UserCog, LogOut, Plus, Menu, ChevronDown, ChevronRight, Building2, ArrowLeftRight, Landmark, type LucideIcon } from 'lucide-react';
@@ -8,6 +8,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { CommandPalette } from '@/components/command-palette';
 import { listBusinesses } from '@/lib/business.functions';
 import { supabase } from '@/integrations/supabase/client';
+import {validateReportSearch} from '@/lib/report-filters';
 
 type Leaf = { to: string; name: string };
 type Entry = { name: string; icon: LucideIcon; to?: string; children?: Leaf[] };
@@ -31,6 +32,7 @@ const bottomTabs: { to: string; name: string; icon: LucideIcon }[] = [
 const isActive = (pathname: string, to: string) => pathname === to || pathname.startsWith(`${to}/`);
 
 function Row({ entry, pathname }: { entry: Entry; pathname: string }) {
+  const search=useSearch({strict:false});const reportLink=['/reports','/accounting','/transactions'].includes(entry.to??'')&&['/reports','/accounting','/transactions'].includes(pathname);
   const childActive = entry.children?.some(c => isActive(pathname, c.to)) ?? false;
   const [open, setOpen] = useState(childActive);
   const base = 'flex min-h-11 w-full items-center gap-3 rounded-lg px-3 text-sm font-medium transition-colors';
@@ -42,8 +44,8 @@ function Row({ entry, pathname }: { entry: Entry; pathname: string }) {
       {(open || childActive) && <div className="ml-7 mt-1 space-y-1 border-l pl-3">{entry.children.map(c => <Link key={c.to} to={c.to} aria-current={isActive(pathname, c.to) ? 'page' : undefined} className={`flex min-h-10 items-center rounded-lg px-3 text-sm ${isActive(pathname, c.to) ? 'font-semibold text-primary' : 'text-foreground/70 hover:bg-secondary'}`}>{c.name}</Link>)}</div>}
     </div>;
   }
-  const active = isActive(pathname, entry.to!);
-  return <Link to={entry.to!} aria-current={active ? 'page' : undefined} className={`${base} ${active ? 'bg-primary text-primary-foreground shadow-sm' : 'text-foreground/80 hover:bg-secondary'}`}><entry.icon className="size-4 shrink-0" />{entry.name}</Link>;
+  if(!entry.to)return null;const active = isActive(pathname, entry.to);
+  return <Link to={entry.to} search={reportLink?validateReportSearch(search):{}} aria-current={active ? 'page' : undefined} className={`${base} ${active ? 'bg-primary text-primary-foreground shadow-sm' : 'text-foreground/80 hover:bg-secondary'}`}><entry.icon className="size-4 shrink-0" />{entry.name}</Link>;
 }
 
 import { useCan } from './permission-checklist';
