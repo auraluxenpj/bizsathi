@@ -1,0 +1,7 @@
+import Decimal from 'decimal.js';
+export type TransactionFilter='all'|'sales'|'purchases'|'in'|'out'|'returns';
+export type TransactionRow={type:string;date:string;branchId:string;party:string;reference:string;label:string;amount:string};
+export function filterTransactions<T extends TransactionRow>(rows:T[],f:{from:string;to:string;branch:string;type:TransactionFilter;search:string}){
+ const q=f.search.trim().toLowerCase();return rows.filter(r=>r.date>=f.from&&r.date<=f.to&&(f.branch==='all'||r.branchId===f.branch)&&(f.type==='all'||(f.type==='sales'&&r.type==='sale')||(f.type==='purchases'&&r.type==='purchase')||(f.type==='in'&&r.type==='payment_in')||(f.type==='out'&&r.type==='payment_out')||(f.type==='returns'&&r.type.endsWith('_return')))&&`${r.party} ${r.reference} ${r.label}`.toLowerCase().includes(q));
+}
+export function transactionTotals(rows:TransactionRow[]){return{documents:rows.filter(r=>!r.type.startsWith('payment_')).reduce((n,r)=>n.plus(new Decimal(r.amount).times(r.type.endsWith('_return')?-1:1)),new Decimal(0)).toFixed(2),paymentsIn:rows.filter(r=>r.type==='payment_in').reduce((n,r)=>n.plus(r.amount),new Decimal(0)).toFixed(2),paymentsOut:rows.filter(r=>r.type==='payment_out').reduce((n,r)=>n.plus(r.amount),new Decimal(0)).toFixed(2)};}

@@ -1,7 +1,7 @@
 import {reportViews} from './business-reports';
 import type {ReportInput} from './accounting';
 
-export type ReportSearch={view?:ReportInput['view'];business?:string;branch?:string;from?:string;to?:string};
+export type ReportSearch={view?:ReportInput['view']|undefined;business?:string|undefined;branch?:string|undefined;from?:string|undefined;to?:string|undefined};
 export function validateReportSearch(s:Record<string,unknown>):ReportSearch{
  const text=(key:string)=>typeof s[key]==='string'?s[key] as string:undefined;
  const view=reportViews.find(([id])=>id===s['view'])?.[0];
