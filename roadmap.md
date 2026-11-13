@@ -1,4 +1,5 @@
 # Security review workspace
+- [x] Consistent report date/branch filters: shared URL-backed selections across report choices, accounting views and transactions; complete filtered totals and CSV/PDF/print context; 40 focused reporting tests plus 4 targeted screen/navigation checks passed; signed-in real sales/low-stock/transaction exports, PDF and print verified without changing live transactions.
 - [ ] Checkout loyalty redemption: audited and approved at 100 points per NPR 1; implementation and verification paused at the user's credit-budget request. Resume atomic discount, available-balance checks, retry protection and source-linked return handling from the approved plan. No checkout or database changes applied.
 - [x] Update mobile loyalty to 10 points per complete NPR 100; customer summaries reuse branch-authorized events and count distinct confirmed sales; legacy return rates preserved; 268 library tests and hosted earning calculations verified.
 - [ ] Verify populated live loyalty awards and customer counts: no confirmed sales exist, and current customer phones are blank or invalid; requires valid customer mobile numbers and legitimate purchases.

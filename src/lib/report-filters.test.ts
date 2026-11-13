@@ -1,0 +1,8 @@
+import {describe,it,expect} from 'vitest';
+import {validateReportSearch,validReportDates} from './report-filters';
+import {filterTransactions,transactionTotals} from './transaction-report';
+describe('shared report selection',()=>{
+ it('retains date and branch choices between report views',()=>{const f={from:'2026-11-01',to:'2026-11-13',branch:'branch-one',business:'business-one'};expect(validateReportSearch({...f,view:'sales'})).toEqual({...f,view:'sales'});expect(validateReportSearch({...f,view:'trial'})).toEqual({...f,view:'trial'});});
+ it('rejects incomplete, impossible or reversed date windows',()=>{expect(validReportDates('','2026-11-13')).toBe(false);expect(validReportDates('2026-02-30','2026-11-13')).toBe(false);expect(validReportDates('2026-11-14','2026-11-13')).toBe(false);expect(validReportDates('2026-11-13','2026-11-13')).toBe(true);});
+ it('transaction totals and export source exclude other branches and out-of-range dates before pagination',()=>{const row={type:'sale',date:'2026-11-01',branchId:'one',party:'Customer',reference:'sale',label:'Sale',amount:'10.01'};const rows=filterTransactions([row,{...row,type:'sale_return',date:'2026-11-13',amount:'1.01'},{...row,type:'payment_in',amount:'5.50'},{...row,branchId:'two',amount:'900'},{...row,date:'2026-10-31',amount:'900'},{...row,date:'2026-11-14',amount:'900'}],{from:'2026-11-01',to:'2026-11-13',branch:'one',type:'all',search:''});expect(rows).toHaveLength(3);expect(transactionTotals(rows)).toEqual({documents:'9.00',paymentsIn:'5.50',paymentsOut:'0.00'});});
+});
