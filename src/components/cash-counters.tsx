@@ -15,6 +15,7 @@ import {
   sanitizeCount,
   type DenominationCounts,
 } from '@/lib/cash-denominations';
+import { canSeeExpectedCash } from '@/lib/cash-counter-access';
 import { PeriodNotice } from './period-notice';
 
 type CounterKind = 'open' | 'in' | 'out' | 'close';
@@ -73,6 +74,9 @@ export function CashCounters() {
   );
   const manager = ['owner', 'admin'].includes(data?.role ?? '');
   const canWrite = ['owner', 'admin', 'accountant', 'staff'].includes(data?.role ?? '');
+  // Staff count blind: no expected figure while a counter is open. The close result (expected and
+  // difference) still appears in the history once they submit.
+  const showExpected = canSeeExpectedCash(data?.role);
 
   // Preview only; the server recomputes expected cash when the counter is closed.
   const expected = own
@@ -161,9 +165,18 @@ export function CashCounters() {
         <p className="mt-3 text-sm text-muted-foreground">
           {own ? `Open · ${w.access.data?.branches.find((b) => b.id === own.branch_id)?.name}` : 'No open counter'}
         </p>
-        <p className="mt-4 text-3xl font-semibold tabular-nums">
-          {expected === null ? '—' : formatNPR(expected.toString())}
-        </p>
+        {showExpected ? (
+          <div className="mt-4">
+            <p className="text-xs text-muted-foreground">Expected cash in drawer</p>
+            <p className="text-3xl font-semibold tabular-nums">
+              {expected === null ? '—' : formatNPR(expected.toString())}
+            </p>
+          </div>
+        ) : own ? (
+          <p className="mt-4 text-sm text-muted-foreground">
+            Count the cash in your drawer and enter it below to close. The expected amount is shown after you submit.
+          </p>
+        ) : null}
         {canWrite && (
           <form
             className="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-3"
