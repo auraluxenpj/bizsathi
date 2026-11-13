@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { RouterProvider, createMemoryHistory, createRootRoute, createRouter } from '@tanstack/react-router';
+import { RouterProvider, createMemoryHistory, createRootRoute, createRouter,createRoute } from '@tanstack/react-router';
 import { fireEvent, render, screen, within } from '@testing-library/react';
 import type { ReactNode } from 'react';
 import { describe, expect, it, vi } from 'vitest';
@@ -19,7 +19,9 @@ const commerce = {
 vi.mock('@tanstack/react-start', () => ({ useServerFn: (f: unknown) => f, createServerFn: () => { throw new Error('not used'); } }));
 vi.mock('@/lib/accounts.functions', () => ({ getAccountBalances: async () => ({ accounts: [], unassigned: { cash: 0, bank: 0, wallet: 0 } }), confirmDocumentTagged: vi.fn(), recordPaymentTagged: vi.fn(), postVoucherTagged: vi.fn(), createAccount: vi.fn(), adjustAccount: vi.fn(), transferBetweenAccounts: vi.fn() }));
 vi.mock('@/lib/commerce.functions', () => ({ getCommerce: async () => commerce, saveTradingSettings: vi.fn(), createTradingPeriod: vi.fn(), recordPayment: vi.fn(), confirmDocument: vi.fn(), findCommerceDocument: vi.fn(), recordCounter: vi.fn() }));
-vi.mock('@/lib/business.functions', () => ({ getBusinessAccess: async () => ({ branches: [{ id: ID.br, name: 'Main', is_active: true }] }), listBusinesses: async () => [{ id: ID.biz, name: 'Auraluxe', role: 'owner' }] }));
+vi.mock('@/lib/business.functions', () => ({ getMemberPermissions:async()=>({userId:ID.user,denials:[]}),getBusinessAccess: async () => ({ branches: [{ id: ID.br, name: 'Main', is_active: true }] }), listBusinesses: async () => [{ id: ID.biz, name: 'Auraluxe', role: 'owner' }] }));
+vi.mock('@/lib/accounting.functions',()=>({getAccountingReport:async()=>({branches:[{id:ID.br,name:'Main'}]})}));
+vi.mock('@/lib/sales-cash-flow.functions',()=>({getPaymentQr:async()=>({url:null}),saveCreditLimit:vi.fn(),savePaymentQr:vi.fn()}));
 vi.mock('@/lib/inventory.functions', () => ({ getInventory: async () => ({ movements: [], variants: [], parties: [
   { id: ID.p1, name: 'Ram Traders', phone: '9800000000', kind: 'customer', is_active: true },
   { id: ID.p2, name: 'Sita Supplies', phone: '', kind: 'supplier', is_active: true },
@@ -37,15 +39,16 @@ import { MoreMenu } from '@/components/more-menu';
 import { AppNavigation } from '@/components/app-navigation';
 import { Dashboard } from '@/components/dashboard';
 
-function mount(ui: ReactNode) {
+function mount(ui: ReactNode,path='/') {
   const root = createRootRoute({ component: () => <>{ui}</> });
-  const router = createRouter({ routeTree: root, history: createMemoryHistory({ initialEntries: ['/'] }) });
+  const child=createRoute({getParentRoute:()=>root,path,id:path==='/'?undefined:undefined,validateSearch:validateReportSearch});
+  const router = createRouter({ routeTree: root.addChildren([child]), history: createMemoryHistory({ initialEntries: [path] }) });
   return render(<QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}><RouterProvider router={router} /></QueryClientProvider>);
 }
 
 describe('Karobar-style screens', () => {
   it('View Reports opens the existing reports', async () => {
-    mount(<ReportsHub />);
+    mount(<ReportsHub />,'/reports');
     expect(await screen.findByText('Popular Reports')).toBeInTheDocument();
     expect(screen.getByRole('link', { name: /Sales Report/ })).toHaveAttribute('href', '/accounting?view=sales');
     expect(screen.getByRole('link', { name: /Profit & Loss Report/ })).toHaveAttribute('href', '/accounting?view=profit');
@@ -55,7 +58,7 @@ describe('Karobar-style screens', () => {
   });
 
   it('Transactions lists sales and payments and filters them', async () => {
-    mount(<Transactions />);
+    mount(<Transactions />,'/transactions');
     expect(await screen.findByText(/Sale · INV-1/)).toBeInTheDocument();
     expect(screen.getByText(/Payment in · first part/)).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Payment In' }));
