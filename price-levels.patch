@@ -1,0 +1,444 @@
+From 44614a68a082595497c7946ef0574f08e4160980 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Fri, 13 Nov 2026 03:01:46 +0000
+Subject: [PATCH] Add MRP and wholesale price levels
+
+Variants get optional MRP and wholesale prices (0 = not set). Sales and POS
+get a Retail/Wholesale level that seeds each line's price; items without a
+wholesale price use retail, hand-edited line prices survive a level switch,
+and the level resets to Retail after each confirmed sale. Posting RPCs are
+untouched: they still take the price from the document line.
+
+- migration 0037: two numeric columns; save_catalogue_variant regenerated
+  from the 0033 body plus the two columns
+- catalogue schema, edit-variant update, CSV export/import (MRP and
+  Wholesale Price aliases) and the downloadable template
+- products page: form fields, table columns, non-blocking price warnings
+- supabase types updated by hand to match the migration
+- tests: price-levels helper, CSV round trip; two exact-match expectations
+  in inventory-schemas.test.ts now include the new fields
+
+Not run: vitest and the CSV tests (vitest, papaparse and decimal.js are not
+installable in this environment). Helper tests were run through a bun:test
+shim; touched files were syntax-checked and the helper, schema and generated
+types were type-checked under the repo's strict flags.
+
+Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01ECmPesAgkmqrmbRpUyFAE1
+---
+ AGENTS.md                                    |  1 +
+ drizzle/migrations/0037_price_levels.sql     | 18 +++++++
+ public/downloads/product-import-template.csv |  4 +-
+ src/components/document-editor.tsx           | 14 +++---
+ src/components/products.tsx                  |  9 ++--
+ src/integrations/supabase/types.ts           |  6 +++
+ src/lib/inventory-csv.ts                     |  6 ++-
+ src/lib/inventory-schemas.test.ts            |  4 +-
+ src/lib/inventory-schemas.ts                 |  2 +-
+ src/lib/inventory.functions.ts               |  2 +-
+ src/lib/price-levels-csv.test.ts             | 36 ++++++++++++++
+ src/lib/price-levels.test.ts                 | 52 ++++++++++++++++++++
+ src/lib/price-levels.ts                      | 30 +++++++++++
+ 13 files changed, 167 insertions(+), 17 deletions(-)
+ create mode 100644 drizzle/migrations/0037_price_levels.sql
+ create mode 100644 src/lib/price-levels-csv.test.ts
+ create mode 100644 src/lib/price-levels.test.ts
+ create mode 100644 src/lib/price-levels.ts
+
+diff --git a/AGENTS.md b/AGENTS.md
+index 6aaeba9..1b4dd9c 100644
+--- a/AGENTS.md
++++ b/AGENTS.md
+@@ -38,3 +38,4 @@
+ - Website stock sync uses one protected Auraluxe fulfilment-branch binding, leased manual server calls, globally deduplicated append-only quantity acknowledgements and conditional website pushes; no financial documents are inferred. Why: preserve branch attribution, cross-administrator retries and concurrent website orders without exposing shared secrets.
+ - Custom member permissions are restrict-only denial rows enforced by BEFORE INSERT/UPDATE triggers via has_permission; roles remain the ceiling. Why: one enforcement point covers every posting RPC without granting extra access.
+ - Page view denials are guarded once in AppNavigation via routePermission; action buttons use useCan. Why: one route guard instead of per-page checks.
++- Catalogue price levels (MRP, wholesale) are reference prices on the variant; a sale's level only seeds each line's price in the client, and posting RPCs keep taking the price from the document line, with a missing wholesale price falling back to retail. Why: no second pricing source in accounting, and hand-edited line prices survive a level switch.
+diff --git a/drizzle/migrations/0037_price_levels.sql b/drizzle/migrations/0037_price_levels.sql
+new file mode 100644
+index 0000000..9f68cf4
+--- /dev/null
++++ b/drizzle/migrations/0037_price_levels.sql
+@@ -0,0 +1,18 @@
++-- 0037: MRP and wholesale price on product variants (price levels for sales).
++-- Additive and safe to re-run. 0 means "not set": wholesale then falls back to selling_price in sales, and MRP is a reference only.
++-- Posting RPCs take the price from each document line, so they are untouched.
++-- Only save_catalogue_variant is replaced: its body is the 0033 definition plus mrp and wholesale_price; checks and grants are unchanged.
++ALTER TABLE public.product_variants ADD COLUMN IF NOT EXISTS mrp numeric(14,2) NOT NULL DEFAULT 0 CHECK (mrp >= 0);
++ALTER TABLE public.product_variants ADD COLUMN IF NOT EXISTS wholesale_price numeric(14,2) NOT NULL DEFAULT 0 CHECK (wholesale_price >= 0);
++CREATE OR REPLACE FUNCTION public.save_catalogue_variant(_business_id uuid, _rows jsonb)
++ RETURNS integer LANGUAGE plpgsql SECURITY DEFINER SET search_path TO 'public'
++AS $function$
++DECLARE r jsonb; p uuid; n integer:=0;
++BEGIN
++ IF NOT public.has_business_role(_business_id,'admin') THEN RAISE EXCEPTION 'Administrator access required'; END IF;
++ IF jsonb_typeof(_rows)<>'array' OR jsonb_array_length(_rows) NOT BETWEEN 1 AND 5000 THEN RAISE EXCEPTION 'Expected 1 to 5000 rows'; END IF;
++ FOR r IN SELECT value FROM jsonb_array_elements(_rows) LOOP
++ INSERT INTO public.products(business_id,name,category) VALUES(_business_id,btrim(r->>'product_name'),coalesce(r->>'category','')) ON CONFLICT(business_id,name) DO UPDATE SET name=EXCLUDED.name RETURNING id INTO p;
++ INSERT INTO public.product_variants(business_id,product_id,name,sku,barcode,unit,selling_price,reorder_level,purchase_price,model_code,mrp,wholesale_price) VALUES(_business_id,p,coalesce(nullif(btrim(r->>'variant_name'),''),'Standard'),btrim(r->>'sku'),nullif(btrim(r->>'barcode'),''),coalesce(nullif(btrim(r->>'unit'),''),'pcs'),coalesce((r->>'selling_price')::numeric,0),coalesce((r->>'reorder_level')::numeric,0),coalesce((r->>'purchase_price')::numeric,0),nullif(btrim(r->>'model_code'),''),coalesce((r->>'mrp')::numeric,0),coalesce((r->>'wholesale_price')::numeric,0)); n:=n+1;
++ END LOOP; RETURN n;
++END $function$;
+diff --git a/public/downloads/product-import-template.csv b/public/downloads/product-import-template.csv
+index 15f5e88..50ad860 100644
+--- a/public/downloads/product-import-template.csv
++++ b/public/downloads/product-import-template.csv
+@@ -1,2 +1,2 @@
+-product_name,category,variant_name,sku,model_code,barcode,unit,qty,selling_price,purchase_price,reorder_level
+-Example Kurti Set,Kurti set 3 Piece,M,EXAMPLE-KURTI-M,EXAMPLE-MODEL,,pcs,0,1999.00,1347.50,2
++product_name,category,variant_name,sku,model_code,barcode,unit,qty,selling_price,mrp,wholesale_price,purchase_price,reorder_level
++Example Kurti Set,Kurti set 3 Piece,M,EXAMPLE-KURTI-M,EXAMPLE-MODEL,,pcs,0,1999.00,2499.00,1750.00,1347.50,2
+diff --git a/src/components/document-editor.tsx b/src/components/document-editor.tsx
+index e07f850..5086dff 100644
+--- a/src/components/document-editor.tsx
++++ b/src/components/document-editor.tsx
+@@ -16,6 +16,7 @@ import {cartTotal,lineTotals,documentInput,counterInput,type CommerceRequest} fr
+ import {DualDateInput} from './dual-date-input';
+ import {PeriodNotice} from './period-notice';
+ import {formatNPR} from '@/lib/format';
++import {levelPrice,repriceLine,type PriceLevel} from '@/lib/price-levels';
+ import {confirmDocumentTagged,getAccountBalances} from '@/lib/accounts.functions';
+ import {accountsOfKind,rememberAccount,rememberedAccount} from '@/lib/account-schemas';
+ import {stockBalances} from '@/lib/inventory-schemas';
+@@ -27,7 +28,7 @@ import {readLines,type CommerceWorkspace} from './commerce-workspace';
+ const referencePrefix:Record<string,string>={sale:'INV',purchase:'BILL',sale_return:'SRN',purchase_return:'PRN',purchase_order:'PO',goods_receipt:'GRN'};
+ function autoReference(kind:string){const d=new Date();const ymd=`${d.getFullYear()}${String(d.getMonth()+1).padStart(2,'0')}${String(d.getDate()).padStart(2,'0')}`;return `${referencePrefix[kind]??'DOC'}-${ymd}-${Math.random().toString(36).slice(2,6).toUpperCase()}`;}
+ export function DocumentEditor({w,kind,sourceId,onSaved,standalone=false}:{w:CommerceWorkspace;kind:CommerceRequest['kind'];sourceId?:string|undefined;onSaved:(id:string)=>void;standalone?:boolean}){
+- const client=useQueryClient();const can=useCan(w.businessId);const fn=useServerFn(confirmDocument);const recordCounterFn=useServerFn(recordCounter);const check=useServerFn(findCommerceDocument);const data=w.commerce.data;const source=data?.documents.find(d=>d.id===sourceId);const isReturn=kind==='sale_return'||kind==='purchase_return';const returnStock=new Map((w.inventory.data?.variants??[]).map(v=>[v.id,stockBalances(w.inventory.data?.movements??[]).get(`${source?.branch_id}:${v.id}`)??0]));const returnItems=source&&isReturn?returnableLines(source,data?.documents??[],returnStock):[];const [branch,setBranch]=useState(source?.branch_id??'');const [date,setDate]=useState(new Date().toLocaleDateString('en-CA'));const [party,setParty]=useState(source?.party_id??'');const [reference,setReference]=useState(()=>isReturn?autoReference(kind):source?.reference??autoReference(kind));const [search,setSearch]=useState('');const [lines,setLines]=useState<CommerceRequest['lines']>(source?(isReturn?returnItems.filter(l=>l.maximum>0).map(l=>returnLine(l,l.maximum)):readLines(source.lines)):[]);const [payments,setPayments]=useState<{method:'cash'|'bank'|'wallet';amount:string;accountId?:string}[]>([]);const [pending,setPending]=useState<CommerceRequest|null>(null);const [message,setMessage]=useState('');const [redeemText,setRedeemText]=useState('');
++ const client=useQueryClient();const can=useCan(w.businessId);const fn=useServerFn(confirmDocument);const recordCounterFn=useServerFn(recordCounter);const check=useServerFn(findCommerceDocument);const data=w.commerce.data;const source=data?.documents.find(d=>d.id===sourceId);const isReturn=kind==='sale_return'||kind==='purchase_return';const returnStock=new Map((w.inventory.data?.variants??[]).map(v=>[v.id,stockBalances(w.inventory.data?.movements??[]).get(`${source?.branch_id}:${v.id}`)??0]));const returnItems=source&&isReturn?returnableLines(source,data?.documents??[],returnStock):[];const [branch,setBranch]=useState(source?.branch_id??'');const [date,setDate]=useState(new Date().toLocaleDateString('en-CA'));const [party,setParty]=useState(source?.party_id??'');const [reference,setReference]=useState(()=>isReturn?autoReference(kind):source?.reference??autoReference(kind));const [search,setSearch]=useState('');const [lines,setLines]=useState<CommerceRequest['lines']>(source?(isReturn?returnItems.filter(l=>l.maximum>0).map(l=>returnLine(l,l.maximum)):readLines(source.lines)):[]);const [payments,setPayments]=useState<{method:'cash'|'bank'|'wallet';amount:string;accountId?:string}[]>([]);const [pending,setPending]=useState<CommerceRequest|null>(null);const [message,setMessage]=useState('');const [redeemText,setRedeemText]=useState('');const [priceLevel,setPriceLevel]=useState<PriceLevel>('retail');
+  const [mobile,setMobile]=useState(typeof source?.request==='object'&&source.request&&'mobile' in source.request?String(source.request['mobile']??''):'');
+  const quotationId=kind==='sale'&&typeof source?.request==='object'&&source.request&&'quotationId' in source.request?String(source.request['quotationId']):undefined;const snapshot=kind==='sale'&&typeof source?.request==='object'&&source.request&&'customerSnapshot' in source.request?customerSnapshot(source.request['customerSnapshot']):null;
+  const checkout=kind==='sale'&&!source;const [barcode,setBarcode]=useState('');const [scanStatus,setScanStatus]=useState('');const [category,setCategory]=useState('');const [preview,setPreview]=useState(false);const barcodeRef=useRef<HTMLInputElement>(null);
+@@ -40,9 +41,10 @@ export function DocumentEditor({w,kind,sourceId,onSaved,standalone=false}:{w:Com
+  const total=cartTotal(billLines);const originalPaid=source?(data?.payments??[]).filter(p=>p.document_id===source.id).reduce((n,p)=>n+Number(p.amount),0):0;const priorReturns=source?(data?.documents??[]).filter(d=>d.source_id===source.id&&d.kind===kind&&d.status==='confirmed'):[];const priorRefunds=(data?.payments??[]).filter(p=>priorReturns.some(d=>d.id===p.document_id)).reduce((n,p)=>n+Number(p.amount),0);const settlement=returnSettlement(Number(source?.total??0),originalPaid,priorReturns.reduce((n,d)=>n+Number(d.total),0),priorRefunds,total);const role=data?.role??'';const allowed=kind==='sale'?['owner','admin','accountant','staff'].includes(role):kind.includes('return')?['owner','admin'].includes(role):['owner','admin','accountant'].includes(role);
+  const tagFn=useServerFn(confirmDocumentTagged);const loadAccounts=useServerFn(getAccountBalances);const tags=useRef<{paymentId:string;accountId:string}[]>([]);
+  const accountList=useQuery({queryKey:['accounts',w.businessId],queryFn:()=>loadAccounts({data:{businessId:w.businessId}}),enabled:!!w.businessId&&['owner','admin','accountant'].includes(data?.role??''),retry:false});const namedAccounts=accountList.data?.accounts??[];
+- const mutation=useMutation({mutationFn:(request:CommerceRequest)=>tags.current.length&&request.status==='confirmed'?tagFn({data:{request:request as Parameters<typeof tagFn>[0]['data']['request'],accounts:tags.current}}):fn({data:request}),onSuccess:async r=>{if(key)sessionStorage.removeItem(key);sessionStorage.removeItem(key+':tags');setPending(null);setMessage('Document confirmed.');await client.invalidateQueries();onSaved(r.id);},onError:e=>setMessage(e.message)});
++ const mutation=useMutation({mutationFn:(request:CommerceRequest)=>tags.current.length&&request.status==='confirmed'?tagFn({data:{request:request as Parameters<typeof tagFn>[0]['data']['request'],accounts:tags.current}}):fn({data:request}),onSuccess:async r=>{if(key)sessionStorage.removeItem(key);sessionStorage.removeItem(key+':tags');setPending(null);setPriceLevel('retail');setMessage('Document confirmed.');await client.invalidateQueries();onSaved(r.id);},onError:e=>setMessage(e.message)});
+  function submit(status:'draft'|'confirmed'){try{const session=data?.counters.find(e=>e.kind==='open'&&e.branch_id===selectedBranch&&e.actor_id===data.userId&&!data.counters.some(c=>c.session_id===e.session_id&&c.kind==='close'))?.session_id??null;const request=documentInput.parse({id:crypto.randomUUID(),businessId:w.businessId,branchId:selectedBranch,periodId:selectedPeriod,date,...(kind==='sale'?{mobile}:{}),partyId:party||null,sourceId:quotationId?null:sourceId??null,...(quotationId?{quotationId,customerSnapshot:snapshot??undefined}:{}),kind,status,reference,lines:status==='confirmed'?billLines:lines,...(status==='confirmed'&&requested>0?{redeemPoints:requested}:{}),payments:status==='confirmed'?payments.filter(p=>Number(p.amount)>0).map(p=>({id:crypto.randomUUID(),method:p.method,amount:Number(p.amount),sessionId:p.method==='cash'?session:null,reference})):[]});const paid=payments.filter(p=>Number(p.amount)>0);const chosen=status==='confirmed'?paid.flatMap((p,i)=>{const payment=request.payments?.[i];return p.method!=='cash'&&p.accountId&&payment?[{paymentId:payment.id,accountId:p.accountId}]:[];}):[];tags.current=chosen;try{sessionStorage.setItem(key+':tags',JSON.stringify(chosen));}catch{/* ignore */}savePending(key,request);setPending(request);mutation.mutate(request);}catch(e){setMessage(e instanceof Error?e.message:'Check document fields.');}}
+- const add=(id:string)=>{const v=variants.find(v=>v.id===id);if(!v)return;const existing=lines.find(l=>l.variantId===id);setLines(existing?lines.map(l=>l.variantId===id?{...l,quantity:l.quantity+1}:l):[...lines,{variantId:id,quantity:1,price:Number(v.selling_price),discount:0,taxRate:data?.settings.vat_registered?Number(data.settings.vat_rate):0}]);};
++ const add=(id:string)=>{const v=variants.find(v=>v.id===id);if(!v)return;const existing=lines.find(l=>l.variantId===id);setLines(existing?lines.map(l=>l.variantId===id?{...l,quantity:l.quantity+1}:l):[...lines,{variantId:id,quantity:1,price:levelPrice(v,priceLevel),discount:0,taxRate:data?.settings.vat_registered?Number(data.settings.vat_rate):0}]);};
++ const changeLevel=(next:PriceLevel)=>{setLines(lines.map(l=>{const v=variants.find(x=>x.id===l.variantId);return v?{...l,price:repriceLine(l.price,v,priceLevel,next)}:l;}));setPriceLevel(next);};
+ 
+  const openSession=data?.counters.find(e=>e.kind==='open'&&e.branch_id===selectedBranch&&e.actor_id===data.userId&&!data.counters.some(c=>c.session_id===e.session_id&&c.kind==='close'))?.session_id??null;
+  const onHand=(variantId:string)=>stockBalances(w.inventory.data?.movements??[]).get(`${selectedBranch}:${variantId}`)??0;
+@@ -64,14 +66,14 @@ export function DocumentEditor({w,kind,sourceId,onSaved,standalone=false}:{w:Com
+   <form className="mt-3 flex min-w-0 items-center gap-2" onSubmit={e=>{e.preventDefault();scan();}}><ScanBarcode className="size-5 shrink-0 text-primary"/><Input ref={barcodeRef} aria-label="Barcode input" placeholder="Scan barcode or enter SKU" className="h-12 min-w-0 font-mono" value={barcode} onChange={e=>setBarcode(e.target.value)}/><Button type="submit" variant="secondary" className="h-12 w-12 shrink-0" aria-label="Add scanned item" title="Add scanned item"><Plus/></Button></form>
+   {scanStatus&&<p role="status" className="mt-2 text-sm text-muted-foreground">{scanStatus}</p>}
+   <div role="group" aria-label="Product categories" className="my-4 flex flex-wrap gap-2"><Button variant={!category?'secondary':'outline'} className="min-h-11" aria-pressed={!category} onClick={()=>setCategory('')}>All items</Button>{categories.map(c=><Button key={c} className="min-h-11 max-w-full whitespace-normal" variant={category===c?'secondary':'outline'} aria-pressed={category===c} onClick={()=>setCategory(c)}>{c}</Button>)}</div>
+-  <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-3 2xl:grid-cols-4">{catalogue.map(v=>{const available=onHand(v.id);const qty=lines.find(l=>l.variantId===v.id)?.quantity??0;return <Button key={v.id} variant="outline" className="relative h-auto min-h-44 min-w-0 flex-col items-start justify-between gap-4 whitespace-normal p-4 text-left shadow-none" onClick={()=>add(v.id)}><span className="flex w-full items-center justify-between gap-2"><Package className="size-6 text-primary"/>{qty>0&&<span className="rounded-md bg-primary px-2 py-1 text-xs text-primary-foreground">{qty}</span>}</span><span className="w-full break-words"><span className="block font-semibold">{v.products?.name}</span><span className="mt-1 block text-xs text-muted-foreground">{v.name} · {v.sku}</span></span><span className="flex w-full flex-wrap justify-between gap-2"><span className="font-semibold tabular-nums">{formatNPR(v.selling_price)}</span><span className={available<=0?'text-xs text-destructive':'text-xs text-muted-foreground'}>{available} {v.unit}</span></span></Button>;})}</div>
++  <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-3 2xl:grid-cols-4">{catalogue.map(v=>{const available=onHand(v.id);const qty=lines.find(l=>l.variantId===v.id)?.quantity??0;return <Button key={v.id} variant="outline" className="relative h-auto min-h-44 min-w-0 flex-col items-start justify-between gap-4 whitespace-normal p-4 text-left shadow-none" onClick={()=>add(v.id)}><span className="flex w-full items-center justify-between gap-2"><Package className="size-6 text-primary"/>{qty>0&&<span className="rounded-md bg-primary px-2 py-1 text-xs text-primary-foreground">{qty}</span>}</span><span className="w-full break-words"><span className="block font-semibold">{v.products?.name}</span><span className="mt-1 block text-xs text-muted-foreground">{v.name} · {v.sku}</span></span><span className="flex w-full flex-wrap justify-between gap-2"><span className="font-semibold tabular-nums">{formatNPR(levelPrice(v,priceLevel))}</span><span className={available<=0?'text-xs text-destructive':'text-xs text-muted-foreground'}>{available} {v.unit}</span></span></Button>;})}</div>
+   {!catalogue.length&&<div className="border-y py-16 text-center"><Package className="mx-auto mb-3 size-8 text-muted-foreground"/><p className="text-sm text-muted-foreground">{variants.length?'No matching items.':'No active catalogue items.'}</p></div>}
+  </section>}
+  <div className="min-w-0">
+  {checkout&&<div className="mb-4 flex items-center justify-between gap-3 border-b pb-4"><h2 className="brand text-xl font-semibold">Current sale <span className="text-sm text-muted-foreground">({lines.reduce((n,l)=>n+l.quantity,0)})</span></h2><Button variant="ghost" className="h-11" onClick={()=>setPreview(true)}><ReceiptText/>Receipt</Button></div>}
+  <div className={checkout?'grid gap-3 sm:grid-cols-2 xl:grid-cols-2':'grid gap-3 sm:grid-cols-2 lg:grid-cols-4'}>
+   <label className="text-sm">{isSales?'Customer':'Supplier'}<select aria-label="Document contact" className={fieldClass} value={party} disabled={!!source} onChange={e=>{setParty(e.target.value);setMobile(contacts.find(p=>p.id===e.target.value)?.phone??'');}}><option value="">{isSales?'Walk-in customer':'Select supplier'}</option>{contacts.map(p=><option key={p.id} value={p.id}>{p.name}</option>)}</select></label>
+-  {kind==='sale'&&<label className="text-sm">Customer mobile · required<Input aria-label="Customer mobile" className="mt-1 h-11" type="tel" inputMode="tel" autoComplete="tel" maxLength={40} value={mobile} disabled={!!quotationId} onChange={e=>{setMobile(e.target.value);setRedeemText('');}}/>{membershipNumber(mobile)&&<span className="mt-1 block text-xs text-muted-foreground">{membershipNumber(mobile)} · {earnedPoints(total)} points</span>}</label>}
++  {checkout&&<label className="text-sm">Price level<select aria-label="Price level" className="mt-1 h-11 w-full rounded-md border bg-background px-3" value={priceLevel} disabled={!!pending} onChange={e=>changeLevel(e.target.value as PriceLevel)}><option value="retail">Retail</option><option value="wholesale">Wholesale</option></select><span className="mt-1 block text-xs text-muted-foreground">Items without a wholesale price use the retail price.</span></label>}{kind==='sale'&&<label className="text-sm">Customer mobile · required<Input aria-label="Customer mobile" className="mt-1 h-11" type="tel" inputMode="tel" autoComplete="tel" maxLength={40} value={mobile} disabled={!!quotationId} onChange={e=>{setMobile(e.target.value);setRedeemText('');}}/>{membershipNumber(mobile)&&<span className="mt-1 block text-xs text-muted-foreground">{membershipNumber(mobile)} · {earnedPoints(total)} points</span>}</label>}
+   {checkout&&!!mobileKey&&<div className="text-sm"><p aria-live="polite">Points available: <span className="font-semibold tabular-nums">{balanceQuery.isLoading?'checking…':balanceQuery.isError?'could not check':available}</span> · 100 points = NPR 1</p><div className="mt-1 flex gap-2"><Input aria-label="Points to redeem" className="h-11" type="number" inputMode="numeric" min={0} max={maxPoints} step={1} placeholder="Points to use (optional)" value={redeemText} disabled={maxPoints<=0} onChange={e=>setRedeemText(e.target.value)}/><Button type="button" variant="outline" className="h-11 shrink-0" disabled={maxPoints<=0} onClick={()=>setRedeemText(String(maxPoints))}>Use maximum</Button></div>{requested>0&&<p className="mt-1 text-xs text-muted-foreground">Loyalty discount {formatNPR(pointsToNpr(requested))} · {available-requested} points left · earns {earnedPoints(total)} points on {formatNPR(total)}</p>}{Number(redeemText)>maxPoints&&maxPoints>=0&&<p className="mt-1 text-xs text-muted-foreground">Limited to {maxPoints} points (balance or sale value).</p>}</div>}
+   {can('other.change_date')?<DualDateInput value={date} onChange={setDate}/>:<p className="mt-1 text-sm">{date} <span className="text-xs text-muted-foreground">(date locked)</span></p>}
+   <label className="text-sm">Reference<Input required className="mt-1 h-11" maxLength={200} value={reference} onChange={e=>setReference(e.target.value)}/></label>
+@@ -80,7 +82,7 @@ export function DocumentEditor({w,kind,sourceId,onSaved,standalone=false}:{w:Com
+  {kind==='sale'&&party&&<CreditAlert balance={partyBalance(party,data?.documents??[],data?.payments??[])} limit={contacts.find(p=>p.id===party)?.credit_limit==null?null:Number(contacts.find(p=>p.id===party)?.credit_limit)} unpaid={Math.max(0,total-payments.reduce((n,p)=>n+(Number(p.amount)||0),0))}/>}
+  {!!data&&!selectedPeriod&&<PeriodNotice businessId={w.businessId} date={date}/>}
+  {!source&&!checkout&&<div className="relative mt-4"><div className="flex items-center gap-2 rounded-lg border bg-card px-3"><Search className="size-4 shrink-0 text-muted-foreground"/><Input aria-label="Product search or barcode" autoFocus className="h-12 border-0 bg-transparent px-0 shadow-none focus-visible:ring-0" placeholder="Search item, SKU or scan barcode" value={search} onChange={e=>setSearch(e.target.value)} onKeyDown={e=>{if(e.key==='Enter'){e.preventDefault();const v=variants.find(v=>v.barcode===search||v.sku===search)??(found.length===1?found[0]:undefined);if(v){add(v.id);setSearch('');}}}}/>{search&&<Button type="button" variant="ghost" size="icon" title="Clear search" onClick={()=>setSearch('')}><X/></Button>}</div>
+-  {search.trim()&&<ul className="absolute inset-x-0 top-14 z-10 max-h-72 divide-y overflow-y-auto rounded-lg border bg-card shadow-lg">{found.length?found.map(v=>{const onHand=stock.get(`${selectedBranch}:${v.id}`)??0;return <li key={v.id}><button type="button" className="flex min-h-14 w-full items-center justify-between gap-3 px-3 py-2 text-left hover:bg-secondary" onClick={()=>{add(v.id);setSearch('');}}><span className="min-w-0 text-sm"><span className="block break-words font-medium">{v.products?.name} · {v.name}</span><span className="block text-xs text-muted-foreground">{v.sku} · In stock {onHand} {v.unit}</span></span><span className="shrink-0 text-sm tabular-nums">{formatNPR(v.selling_price)}</span></button></li>;}):<li className="px-3 py-4 text-sm text-muted-foreground">No matching items.</li>}</ul>}</div>}
++  {search.trim()&&<ul className="absolute inset-x-0 top-14 z-10 max-h-72 divide-y overflow-y-auto rounded-lg border bg-card shadow-lg">{found.length?found.map(v=>{const onHand=stock.get(`${selectedBranch}:${v.id}`)??0;return <li key={v.id}><button type="button" className="flex min-h-14 w-full items-center justify-between gap-3 px-3 py-2 text-left hover:bg-secondary" onClick={()=>{add(v.id);setSearch('');}}><span className="min-w-0 text-sm"><span className="block break-words font-medium">{v.products?.name} · {v.name}</span><span className="block text-xs text-muted-foreground">{v.sku} · In stock {onHand} {v.unit}</span></span><span className="shrink-0 text-sm tabular-nums">{formatNPR(levelPrice(v,priceLevel))}</span></button></li>;}):<li className="px-3 py-4 text-sm text-muted-foreground">No matching items.</li>}</ul>}</div>}
+  {isReturn&&source&&<section aria-label="Return credit review" className="mt-5 border-y py-4"><h2 className="text-base font-semibold">Return items · {source.reference}</h2><div className="mt-3 space-y-3">{returnItems.map(item=>{const chosen=lines.some(l=>l.variantId===item.variantId);return <label key={item.variantId} className="flex items-center gap-3 text-sm"><input type="checkbox" aria-label={`Return ${item.sku}`} checked={chosen} disabled={item.maximum<=0} onChange={e=>setLines(e.target.checked?[...lines,returnLine(item,item.maximum)]:lines.filter(l=>l.variantId!==item.variantId))}/><span className="min-w-0 break-words">{item.name} · {item.sku}<span className="mt-1 block text-xs text-muted-foreground">Invoice {item.quantity} · Returned {item.returned}{kind==='purchase_return'?` · Received ${item.received}`:''} · Available {item.maximum}</span></span></label>;})}</div><dl className="mt-4 grid grid-cols-2 gap-3 text-sm">{[['Return credit',total],['Applied to unpaid invoice',settlement.applied],['Refund available',Math.min(total,settlement.refundable)],['Prior refunds recorded',settlement.refundsPaid]].map(([label,value])=><div key={String(label)}><dt className="text-xs text-muted-foreground">{label}</dt><dd className="mt-1 font-semibold tabular-nums">{formatNPR(Number(value))}</dd></div>)}</dl></section>}
+  <div className="mt-4 space-y-2">{!lines.length&&<p className="rounded-lg border border-dashed py-10 text-center text-sm text-muted-foreground">Your cart is empty.</p>}{lines.map((l,index)=>{const v=variants.find(v=>v.id===l.variantId);const originalLine=sourceLines(source?.lines).find(r=>r.variantId===l.variantId);const lineTotal=lineTotals(l).total;const locked=!!quotationId||!!source&&source.status==='confirmed'&&kind!=='purchase';return <div key={l.variantId} className="rounded-lg border bg-card p-3"><div className="flex items-start justify-between gap-3"><p className="min-w-0 break-words text-sm font-medium">{quotationId?originalLine?.name:v?.products?.name??originalLine?.name} · {quotationId?originalLine?.sku:v?.sku??originalLine?.sku}</p><div className="flex shrink-0 items-center gap-1"><span className="text-sm font-semibold tabular-nums">{formatNPR(lineTotal)}</span><Button variant="ghost" size="icon" title="Remove line" disabled={!!quotationId} onClick={()=>setLines(lines.filter((_,i)=>i!==index))}><Trash2/></Button></div></div>{kind==='sale'&&l.quantity>onHand(l.variantId)&&<p className="mt-1 text-xs text-destructive">Only {onHand(l.variantId)} in stock here.</p>}{checkout&&<div className="mt-3 flex items-center gap-2"><Button variant="outline" className="size-11" title="Decrease quantity" aria-label={`Decrease quantity line ${index+1}`} disabled={l.quantity<=1} onClick={()=>setLines(lines.map((r,i)=>i===index?{...r,quantity:Math.max(1,r.quantity-1)}:r))}><Minus/></Button><span className="min-w-10 text-center font-semibold tabular-nums">{l.quantity}</span><Button variant="outline" className="size-11" title="Increase quantity" aria-label={`Increase quantity line ${index+1}`} onClick={()=>add(l.variantId)}><Plus/></Button><span className="ml-auto text-xs text-muted-foreground">{onHand(l.variantId)} {v?.unit} available</span></div>}<div className="mt-2 grid grid-cols-4 gap-2">{(['quantity','price','discount','taxRate'] as const).map(field=><label className="text-[11px] text-muted-foreground" key={field}>{{quantity:'Qty',price:'Rate',discount:'Discount',taxRate:'VAT %'}[field]}<Input aria-label={`${field} line ${index+1}`} className="mt-1 h-10 px-2 text-sm text-foreground" type="number" inputMode="decimal" min="0" step={field==='quantity'?'0.001':'0.01'} max={isReturn&&field==='quantity'?returnItems.find(r=>r.variantId===l.variantId)?.maximum:undefined} disabled={!!quotationId||locked&&field!=='quantity'} value={l[field]} onChange={e=>setLines(lines.map((r,i)=>i===index?(isReturn&&field==='quantity'&&originalLine?returnLine(originalLine,Number(e.target.value)):{...r,[field]:Number(e.target.value)}):r))}/></label>)}</div></div>;})}</div>
+  {showPayments&&<section className="mt-5"><div className="mb-2 flex flex-wrap items-center justify-between gap-2"><h2 className="text-sm font-semibold">{kind.includes('return')?'Refund':'Payment'}</h2><div className="flex flex-wrap gap-2">{(['cash','bank','wallet'] as const).map(m=><Button key={m} type="button" size="sm" variant="outline" disabled={!lines.length||balanceDue<=0} onClick={()=>setPayments([...payments,{method:m,amount:balanceDue.toFixed(2),accountId:m==='cash'?'':rememberedAccount(w.businessId,m,accountsOfKind(namedAccounts,m))}])}><Plus/>{m==='cash'?'Cash':m==='bank'?'Bank':'Wallet'}</Button>)}</div></div>{payments.map((p,index)=><div key={index} className="mb-2 flex flex-wrap gap-2"><select aria-label={`Payment method ${index+1}`} className="h-11 rounded-md border bg-card px-3 text-sm" value={p.method} onChange={e=>setPayments(payments.map((r,i)=>i===index?{...r,method:e.target.value as typeof p.method,accountId:''}:r))}>{['cash','bank','wallet'].map(m=><option key={m} value={m}>{m}</option>)}</select>{p.method!=='cash'&&accountsOfKind(namedAccounts,p.method).length>0&&<select aria-label={`Payment account ${index+1}`} className="h-11 max-w-40 rounded-md border bg-card px-2 text-sm" value={p.accountId??''} onChange={e=>{rememberAccount(w.businessId,p.method,e.target.value);setPayments(payments.map((r,i)=>i===index?{...r,accountId:e.target.value}:r));}}><option value="">Not assigned</option>{accountsOfKind(namedAccounts,p.method).map(a=><option key={a.id} value={a.id}>{a.name}</option>)}</select>}<Input aria-label={`Payment amount ${index+1}`} className="h-11 min-w-0 flex-1 basis-24" type="number" inputMode="decimal" min="0" step="0.01" value={p.amount} onChange={e=>setPayments(payments.map((r,i)=>i===index?{...r,amount:e.target.value}:r))}/><Button size="icon" variant="ghost" title="Remove payment" onClick={()=>setPayments(payments.filter((_,i)=>i!==index))}><Trash2/></Button></div>)}</section>}
+diff --git a/src/components/products.tsx b/src/components/products.tsx
+index cdabc74..b43b2b1 100644
+--- a/src/components/products.tsx
++++ b/src/components/products.tsx
+@@ -15,7 +15,8 @@ import { downloadCsv } from '@/lib/download-csv';
+ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+ import { defaultCatalogueSpreadsheet } from '@/lib/google-sheet-catalogue';
+ import { BarcodeStickers } from './barcode-stickers';
+-const blank:CatalogueRow={product_name:'',category:'',variant_name:'Standard',sku:'',model_code:'',barcode:'',unit:'pcs',selling_price:0,reorder_level:0,opening_stock:0,purchase_price:0};
++import { priceWarnings } from '@/lib/price-levels';
++const blank:CatalogueRow={product_name:'',category:'',variant_name:'Standard',sku:'',model_code:'',barcode:'',unit:'pcs',selling_price:0,reorder_level:0,opening_stock:0,purchase_price:0,mrp:0,wholesale_price:0};
+ export function Products(){
+  const w=useInventoryWorkspace(); const can=useCan(w.businessId); const save=useServerFn(saveCatalogue);const edit=useServerFn(editVariant); const upload=useRef<HTMLInputElement>(null);
+  const fetchSheet=useServerFn(fetchGoogleSheetCatalogue);
+@@ -28,9 +29,9 @@ export function Products(){
+  const loadImages=useServerFn(listProductImages);const images=useQuery({queryKey:['product-images',w.businessId],queryFn:()=>loadImages({data:{businessId:w.businessId}}),staleTime:600000}).data?.images??{};
+  const rows=w.inventory.data?.variants ?? [];const stockTotals=variantStockTotals(w.inventory.data?.movements ?? []);const filtered=rows.filter(v=>`${v.products?.name} ${v.name} ${v.sku} ${v.model_code ?? ''} ${v.barcode ?? ''}`.toLowerCase().includes(search.toLowerCase()));
+  const renderPreview=()=>(<section className="mb-6 border-y py-5"><h2 className="brand text-xl">Import preview · {preview.length} variants</h2><p role="status" className="mt-2 text-sm text-muted-foreground">All rows validated · {new Set(preview.map(row=>row.product_name)).size} products</p><div className="mt-3 overflow-x-auto"><table className="w-full text-left text-sm"><thead><tr><th className="p-2">Product</th><th className="p-2">Variant</th><th className="p-2">SKU</th><th className="p-2">Price · NPR</th>{can('other.purchase_price')&&<th className="p-2">Purchase price · NPR</th>}<th className="p-2">Qty (opening stock)</th></tr></thead><tbody>{preview.slice(0,10).map((r,i)=><tr key={i}><td className="p-2">{r.product_name}</td><td className="p-2">{r.variant_name}</td><td className="p-2">{r.sku}</td><td className="p-2">{r.selling_price.toFixed(2)}</td>{can('other.purchase_price')&&<td className="p-2">{r.purchase_price.toFixed(2)}</td>}<td className="p-2">{r.opening_stock}</td></tr>)}</tbody></table></div>{preview.some(r=>r.opening_stock>0)&&<label className="mt-4 block text-sm sm:max-w-xs">Add opening stock to branch<select aria-label="Opening stock branch" className="mt-1 h-10 w-full rounded-md border bg-background px-3" value={stockBranch} onChange={e=>setOpeningBranch(e.target.value)}>{branches.map(b=><option key={b.id} value={b.id}>{b.name}</option>)}</select></label>}<div className="mt-4 flex gap-2"><Button disabled={importing.isPending} onClick={()=>{if(window.confirm(`Import ${preview.length} new variants into this business?`))importing.mutate();}}><Upload/>Confirm import</Button><Button variant="ghost" disabled={importing.isPending} onClick={()=>setPreview([])}>Cancel</Button></div></section>);
+- return <InventoryWorkspace workspace={w} title="Products" active="/products"><div className="flex flex-wrap items-center justify-between gap-3 py-6"><Input aria-label="Search products" className="sm:max-w-xs" placeholder="Search name, SKU, model code or barcode" value={search} onChange={e=>setSearch(e.target.value)}/><div className="flex flex-wrap gap-2"><BarcodeStickers key={w.businessId} products={rows.filter(v=>v.is_active&&v.products?.is_active).map(v=>({id:v.id,sku:v.sku,barcode:v.barcode,name:`${v.products?.name??''} · ${v.name}`,price:Number(v.selling_price)}))}/><Button variant="outline" onClick={()=>downloadCsv('products.csv',makeCatalogueCsv(rows.map(v=>({product_name:v.products?.name,category:v.products?.category,variant_name:v.name,sku:v.sku,model_code:v.model_code,barcode:v.barcode,unit:v.unit,qty:stockTotals.get(v.id)??0,selling_price:v.selling_price,purchase_price:v.purchase_price,reorder_level:v.reorder_level})),can('other.purchase_price')))}><Download/>Export</Button>{w.manager&&<>{can('features.import')&&<><Button variant="outline" onClick={()=>upload.current?.click()}><Upload/>Import CSV</Button><Button variant="outline" asChild><a href="/downloads/product-import-template.csv" download="auraluxe-product-import-template.csv"><Download/>CSV template</a></Button><Button variant="outline" onClick={()=>{setPreview([]);setSheetError('');setSheetOpen(true);}}><Sheet/>Import from Google Sheets</Button></>}{can('inventory.create')&&<Button onClick={()=>{setDraft(blank);setEditing('');setOpen(true);setStatus('');}}><Plus/>Add product</Button>}</>}</div></div><input ref={upload} type="file" accept=".csv,text/csv" hidden onChange={async e=>{const file=e.target.files?.[0];if(!file)return;try{if(file.size>2_000_000)throw new Error('CSV must be smaller than 2 MB.');setPreview(parseCatalogueCsv(await file.text(),w.businessId));setStatus('');}catch(error){setStatus(error instanceof Error?error.message:'CSV could not be read.');}e.target.value='';}}/>{status&&<p role="status" className="mb-5 border-l-2 border-primary pl-3 text-sm">{status}</p>}
++ return <InventoryWorkspace workspace={w} title="Products" active="/products"><div className="flex flex-wrap items-center justify-between gap-3 py-6"><Input aria-label="Search products" className="sm:max-w-xs" placeholder="Search name, SKU, model code or barcode" value={search} onChange={e=>setSearch(e.target.value)}/><div className="flex flex-wrap gap-2"><BarcodeStickers key={w.businessId} products={rows.filter(v=>v.is_active&&v.products?.is_active).map(v=>({id:v.id,sku:v.sku,barcode:v.barcode,name:`${v.products?.name??''} · ${v.name}`,price:Number(v.selling_price)}))}/><Button variant="outline" onClick={()=>downloadCsv('products.csv',makeCatalogueCsv(rows.map(v=>({product_name:v.products?.name,category:v.products?.category,variant_name:v.name,sku:v.sku,model_code:v.model_code,barcode:v.barcode,unit:v.unit,qty:stockTotals.get(v.id)??0,selling_price:v.selling_price,mrp:v.mrp,wholesale_price:v.wholesale_price,purchase_price:v.purchase_price,reorder_level:v.reorder_level})),can('other.purchase_price')))}><Download/>Export</Button>{w.manager&&<>{can('features.import')&&<><Button variant="outline" onClick={()=>upload.current?.click()}><Upload/>Import CSV</Button><Button variant="outline" asChild><a href="/downloads/product-import-template.csv" download="auraluxe-product-import-template.csv"><Download/>CSV template</a></Button><Button variant="outline" onClick={()=>{setPreview([]);setSheetError('');setSheetOpen(true);}}><Sheet/>Import from Google Sheets</Button></>}{can('inventory.create')&&<Button onClick={()=>{setDraft(blank);setEditing('');setOpen(true);setStatus('');}}><Plus/>Add product</Button>}</>}</div></div><input ref={upload} type="file" accept=".csv,text/csv" hidden onChange={async e=>{const file=e.target.files?.[0];if(!file)return;try{if(file.size>2_000_000)throw new Error('CSV must be smaller than 2 MB.');setPreview(parseCatalogueCsv(await file.text(),w.businessId));setStatus('');}catch(error){setStatus(error instanceof Error?error.message:'CSV could not be read.');}e.target.value='';}}/>{status&&<p role="status" className="mb-5 border-l-2 border-primary pl-3 text-sm">{status}</p>}
+  {!sheetOpen&&preview.length>0&&renderPreview()}
+  <Dialog open={sheetOpen} onOpenChange={value=>{if(!fetchingSheet.isPending&&!importing.isPending){setSheetOpen(value);setPreview([]);setSheetError('');}}}><DialogContent className="max-h-[85dvh] max-w-3xl overflow-y-auto" aria-describedby={undefined}><DialogHeader><DialogTitle>Import from Google Sheets</DialogTitle></DialogHeader><label className="text-sm">Spreadsheet URL or ID<Input aria-label="Spreadsheet URL or ID" value={spreadsheet} disabled={fetchingSheet.isPending||importing.isPending} onChange={e=>{setSpreadsheet(e.target.value);setPreview([]);setSheetError('');}}/></label><label className="text-sm">Sheet tab<Input aria-label="Sheet tab" value={sheetName} disabled={fetchingSheet.isPending||importing.isPending} onChange={e=>{setSheetName(e.target.value);setPreview([]);setSheetError('');}}/></label><Button disabled={!spreadsheet.trim()||!sheetName.trim()||fetchingSheet.isPending||importing.isPending} onClick={()=>{setPreview([]);setSheetError('');fetchingSheet.mutate();}}><Sheet/>{fetchingSheet.isPending?'Fetching…':'Fetch & Preview'}</Button>{sheetError&&<p role="alert" className="text-sm text-destructive">{sheetError}</p>}{status&&<p role="status" className="text-sm">{status}</p>}{preview.length>0&&renderPreview()}</DialogContent></Dialog>
+- {open&&w.manager&&<section className="mb-6 border-y py-6"><div className="mb-5 flex justify-between"><h2 className="brand text-xl">{editing?'Edit variant':'New product / variant'}</h2><Button size="icon" variant="ghost" title="Close form" onClick={()=>setOpen(false)}><X/></Button></div>{editing&&(()=>{const ev=rows.find(r=>r.id===editing);return ev?<ProductImageField key={ev.product_id} businessId={w.businessId} productId={ev.product_id} productName={ev.products?.name??ev.name} url={images[ev.product_id]}/>:null;})()}{!editing&&<p className="mb-4 text-xs text-muted-foreground">Save the product first, then edit it to add its photo.</p>}<form className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4" onSubmit={e=>{e.preventDefault();mutation.mutate();}}>{(['product_name','category','variant_name','sku','model_code','barcode','unit','selling_price',...(can('other.purchase_price')?['purchase_price'] as const:[]),'reorder_level'] as const).map(key=><label key={key} className="text-sm">{{product_name:'Product name',category:'Category',variant_name:'Variant name',sku:'SKU',model_code:'Model code (optional)',barcode:'Barcode (optional)',unit:'Unit',selling_price:'Selling price · NPR',purchase_price:'Purchase price · NPR',reorder_level:'Low-stock threshold'}[key]}<Input required={!['category','barcode','model_code'].includes(key)} disabled={!!editing&&['product_name','category'].includes(key)} type={['selling_price','purchase_price','reorder_level'].includes(key)?'number':'text'} min="0" step={['selling_price','purchase_price'].includes(key)?'0.01':'0.001'} value={draft[key]} onChange={e=>setDraft({...draft,[key]:['selling_price','purchase_price','reorder_level'].includes(key)?Number(e.target.value):e.target.value})}/></label>)}{editing&&<label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={active} onChange={e=>setActive(e.target.checked)}/>Active variant</label>}<div className="flex items-end"><Button disabled={mutation.isPending}>{mutation.isPending?'Saving…':'Save product'}</Button></div></form></section>}
+- {!rows.length?<section className="border-y py-16 text-center"><Package className="mx-auto mb-4 size-9 text-muted-foreground"/><h2 className="brand text-xl">No products yet</h2></section>:<div className="overflow-x-auto border-y"><table className="w-full min-w-[720px] text-left text-sm"><thead className="bg-muted"><tr>{['Product / variant','SKU / barcode','Unit','Price · NPR',...(can('other.purchase_price')?['Purchase price · NPR']:[]),'Low stock','Status',''].map((s,i)=><th key={i} className="p-4 font-medium">{s}</th>)}</tr></thead><tbody>{filtered.map(v=><tr key={v.id} className="border-t"><td className="p-4"><div className="flex items-center gap-3"><ProductThumb url={images[v.product_id]} name={v.products?.name??v.name}/><div><p className="font-medium">{v.products?.name}</p><p className="mt-1 text-xs text-muted-foreground">{v.name} · {v.products?.category || 'Uncategorized'}</p></div></div></td><td className="p-4">{v.sku}<p className="mt-1 text-xs text-muted-foreground">{v.barcode}</p></td><td className="p-4">{v.unit}</td><td className="p-4 tabular-nums">{Number(v.selling_price).toFixed(2)}</td>{can('other.purchase_price')&&<td className="p-4 tabular-nums">{Number(v.purchase_price).toFixed(2)}</td>}<td className="p-4">{v.reorder_level}</td><td className="p-4">{v.is_active&&v.products?.is_active?'Active':'Inactive'}</td><td className="p-4">{w.manager&&<Button size="icon" variant="ghost" title={`Edit ${v.sku}`} onClick={()=>{setEditing(v.id);setActive(v.is_active);setDraft({product_name:v.products?.name ?? '',category:v.products?.category ?? '',variant_name:v.name,sku:v.sku,model_code:v.model_code ?? '',barcode:v.barcode ?? '',unit:v.unit,selling_price:Number(v.selling_price),reorder_level:Number(v.reorder_level),opening_stock:0,purchase_price:Number(v.purchase_price)});setOpen(true);}}><Pencil/></Button>}</td></tr>)}</tbody></table>{!filtered.length&&<p className="p-8 text-sm text-muted-foreground">No matching products.</p>}</div>}</InventoryWorkspace>;
++ {open&&w.manager&&<section className="mb-6 border-y py-6"><div className="mb-5 flex justify-between"><h2 className="brand text-xl">{editing?'Edit variant':'New product / variant'}</h2><Button size="icon" variant="ghost" title="Close form" onClick={()=>setOpen(false)}><X/></Button></div>{editing&&(()=>{const ev=rows.find(r=>r.id===editing);return ev?<ProductImageField key={ev.product_id} businessId={w.businessId} productId={ev.product_id} productName={ev.products?.name??ev.name} url={images[ev.product_id]}/>:null;})()}{!editing&&<p className="mb-4 text-xs text-muted-foreground">Save the product first, then edit it to add its photo.</p>}<form className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4" onSubmit={e=>{e.preventDefault();mutation.mutate();}}>{(['product_name','category','variant_name','sku','model_code','barcode','unit','selling_price','mrp','wholesale_price',...(can('other.purchase_price')?['purchase_price'] as const:[]),'reorder_level'] as const).map(key=><label key={key} className="text-sm">{{product_name:'Product name',category:'Category',variant_name:'Variant name',sku:'SKU',model_code:'Model code (optional)',barcode:'Barcode (optional)',unit:'Unit',selling_price:'Retail / selling price · NPR',mrp:'MRP · NPR (optional)',wholesale_price:'Wholesale price · NPR (optional)',purchase_price:'Purchase price · NPR',reorder_level:'Low-stock threshold'}[key]}<Input required={!['category','barcode','model_code','mrp','wholesale_price'].includes(key)} disabled={!!editing&&['product_name','category'].includes(key)} type={['selling_price','mrp','wholesale_price','purchase_price','reorder_level'].includes(key)?'number':'text'} min="0" step={['selling_price','mrp','wholesale_price','purchase_price'].includes(key)?'0.01':'0.001'} value={draft[key]} onChange={e=>setDraft({...draft,[key]:['selling_price','mrp','wholesale_price','purchase_price','reorder_level'].includes(key)?Number(e.target.value):e.target.value})}/></label>)}{priceWarnings(draft).map(m=><p key={m} role="status" className="text-xs text-amber-600 sm:col-span-2 lg:col-span-4">{m}</p>)}{editing&&<label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={active} onChange={e=>setActive(e.target.checked)}/>Active variant</label>}<div className="flex items-end"><Button disabled={mutation.isPending}>{mutation.isPending?'Saving…':'Save product'}</Button></div></form></section>}
++ {!rows.length?<section className="border-y py-16 text-center"><Package className="mx-auto mb-4 size-9 text-muted-foreground"/><h2 className="brand text-xl">No products yet</h2></section>:<div className="overflow-x-auto border-y"><table className="w-full min-w-[900px] text-left text-sm"><thead className="bg-muted"><tr>{['Product / variant','SKU / barcode','Unit','Price · NPR','MRP · NPR','Wholesale · NPR',...(can('other.purchase_price')?['Purchase price · NPR']:[]),'Low stock','Status',''].map((s,i)=><th key={i} className="p-4 font-medium">{s}</th>)}</tr></thead><tbody>{filtered.map(v=><tr key={v.id} className="border-t"><td className="p-4"><div className="flex items-center gap-3"><ProductThumb url={images[v.product_id]} name={v.products?.name??v.name}/><div><p className="font-medium">{v.products?.name}</p><p className="mt-1 text-xs text-muted-foreground">{v.name} · {v.products?.category || 'Uncategorized'}</p></div></div></td><td className="p-4">{v.sku}<p className="mt-1 text-xs text-muted-foreground">{v.barcode}</p></td><td className="p-4">{v.unit}</td><td className="p-4 tabular-nums">{Number(v.selling_price).toFixed(2)}</td><td className="p-4 tabular-nums">{Number(v.mrp)>0?Number(v.mrp).toFixed(2):'—'}</td><td className="p-4 tabular-nums">{Number(v.wholesale_price)>0?Number(v.wholesale_price).toFixed(2):'—'}</td>{can('other.purchase_price')&&<td className="p-4 tabular-nums">{Number(v.purchase_price).toFixed(2)}</td>}<td className="p-4">{v.reorder_level}</td><td className="p-4">{v.is_active&&v.products?.is_active?'Active':'Inactive'}</td><td className="p-4">{w.manager&&<Button size="icon" variant="ghost" title={`Edit ${v.sku}`} onClick={()=>{setEditing(v.id);setActive(v.is_active);setDraft({product_name:v.products?.name ?? '',category:v.products?.category ?? '',variant_name:v.name,sku:v.sku,model_code:v.model_code ?? '',barcode:v.barcode ?? '',unit:v.unit,selling_price:Number(v.selling_price),reorder_level:Number(v.reorder_level),opening_stock:0,purchase_price:Number(v.purchase_price),mrp:Number(v.mrp)||0,wholesale_price:Number(v.wholesale_price)||0});setOpen(true);}}><Pencil/></Button>}</td></tr>)}</tbody></table>{!filtered.length&&<p className="p-8 text-sm text-muted-foreground">No matching products.</p>}</div>}</InventoryWorkspace>;
+ }
+\ No newline at end of file
+diff --git a/src/integrations/supabase/types.ts b/src/integrations/supabase/types.ts
+index 09a9bc9..b25937e 100644
+--- a/src/integrations/supabase/types.ts
++++ b/src/integrations/supabase/types.ts
+@@ -1462,6 +1462,7 @@ export type Database = {
+           id: string
+           is_active: boolean
+           model_code: string | null
++          mrp: number
+           name: string
+           product_id: string
+           purchase_price: number
+@@ -1470,6 +1471,7 @@ export type Database = {
+           sku: string
+           unit: string
+           updated_at: string
++          wholesale_price: number
+         }
+         Insert: {
+           barcode?: string | null
+@@ -1478,6 +1480,7 @@ export type Database = {
+           id?: string
+           is_active?: boolean
+           model_code?: string | null
++          mrp?: number
+           name?: string
+           product_id: string
+           purchase_price?: number
+@@ -1486,6 +1489,7 @@ export type Database = {
+           sku: string
+           unit?: string
+           updated_at?: string
++          wholesale_price?: number
+         }
+         Update: {
+           barcode?: string | null
+@@ -1494,6 +1498,7 @@ export type Database = {
+           id?: string
+           is_active?: boolean
+           model_code?: string | null
++          mrp?: number
+           name?: string
+           product_id?: string
+           purchase_price?: number
+@@ -1502,6 +1507,7 @@ export type Database = {
+           sku?: string
+           unit?: string
+           updated_at?: string
++          wholesale_price?: number
+         }
+         Relationships: [
+           {
+diff --git a/src/lib/inventory-csv.ts b/src/lib/inventory-csv.ts
+index cafbfc2..70325c5 100644
+--- a/src/lib/inventory-csv.ts
++++ b/src/lib/inventory-csv.ts
+@@ -2,7 +2,7 @@ import Papa from 'papaparse';
+ import { generateBarcodeFromSkuIfNeeded } from './barcode';
+ import { catalogueInput, type CatalogueRow } from './inventory-schemas';
+ 
+-export const catalogueColumns = ['product_name','category','variant_name','sku','model_code','barcode','unit','qty','selling_price','purchase_price','reorder_level'];
++export const catalogueColumns = ['product_name','category','variant_name','sku','model_code','barcode','unit','qty','selling_price','mrp','wholesale_price','purchase_price','reorder_level'];
+ const headerAliases: Record<string, string[]> = {
+  product_name: ['product_name', 'Item Name', 'item_name', 'Product Name', 'Product', 'Name'],
+  category: ['category'],
+@@ -12,6 +12,8 @@ const headerAliases: Record<string, string[]> = {
+  barcode: ['barcode'],
+  unit: ['unit', 'Primary Unit'],
+  selling_price: ['selling_price', 'Selling Price', 'Sales Price', 'Price', 'Rate'],
++ mrp: ['mrp', 'MRP', 'M.R.P', 'Maximum Retail Price'],
++ wholesale_price: ['wholesale_price', 'Wholesale Price', 'Wholesale Rate'],
+  purchase_price: ['purchase_price', 'Purchase Price', 'Cost Price'],
+  // qty is the exported name; on import it is the quantity to open as stock for new items (same as the older opening_stock column).
+  opening_stock: ['opening_stock', 'Opening Stock', 'Opening Qty', 'qty', 'Qty', 'Quantity', 'Stock', 'Current Stock'],
+@@ -46,6 +48,8 @@ export function parseCatalogueCsv(text:string, businessId:string): CatalogueRow[
+    barcode: generateBarcodeFromSkuIfNeeded(r['sku'] ?? '', r['barcode']?.trim() || ''),
+    unit: r['unit']?.trim() || 'pcs',
+    selling_price: csvNumber(r['selling_price']),
++   mrp: csvNumber(r['mrp']),
++   wholesale_price: csvNumber(r['wholesale_price']),
+    reorder_level: csvNumber(r['reorder_level']),
+    opening_stock: csvNumber(r['opening_stock']),
+    purchase_price: csvNumber(r['purchase_price'])
+diff --git a/src/lib/inventory-schemas.test.ts b/src/lib/inventory-schemas.test.ts
+index c60c9a6..b784bf6 100644
+--- a/src/lib/inventory-schemas.test.ts
++++ b/src/lib/inventory-schemas.test.ts
+@@ -17,12 +17,12 @@ import { catalogueInput as ci } from './inventory-schemas';
+ describe('Master sheet catalogue CSV compatibility', () => {
+  it('parses the original format with all catalogue values', () => {
+   expect(parseCatalogueCsv('product_name,category,variant_name,sku,barcode,unit,selling_price,reorder_level\nShirt,Clothing,Large,S1,123,pcs,1250.50,2.5', a)).toEqual([
+-   {product_name:'Shirt',category:'Clothing',variant_name:'Large',sku:'S1',model_code:'',barcode:'123',unit:'pcs',selling_price:1250.5,reorder_level:2.5,opening_stock:0,purchase_price:0},
++   {product_name:'Shirt',category:'Clothing',variant_name:'Large',sku:'S1',model_code:'',barcode:'123',unit:'pcs',selling_price:1250.5,reorder_level:2.5,opening_stock:0,purchase_price:0,mrp:0,wholesale_price:0},
+   ]);
+  });
+  it('parses master sheet headers and formatted currency and quantities', () => {
+   expect(parseCatalogueCsv('Item Name,Category,Variant / Size,Generated SKU,Barcode,Primary Unit,Selling Price,Reorder Level\nShirt,Clothing,Large,S1,123,pcs,"NPR 1,250.50","1,000"', a)).toEqual([
+-   {product_name:'Shirt',category:'Clothing',variant_name:'Large',sku:'S1',model_code:'',barcode:'123',unit:'pcs',selling_price:1250.5,reorder_level:1000,opening_stock:0,purchase_price:0},
++   {product_name:'Shirt',category:'Clothing',variant_name:'Large',sku:'S1',model_code:'',barcode:'123',unit:'pcs',selling_price:1250.5,reorder_level:1000,opening_stock:0,purchase_price:0,mrp:0,wholesale_price:0},
+   ]);
+  });
+  const aliasSets = [
+diff --git a/src/lib/inventory-schemas.ts b/src/lib/inventory-schemas.ts
+index 91ff3b6..c468188 100644
+--- a/src/lib/inventory-schemas.ts
++++ b/src/lib/inventory-schemas.ts
+@@ -1,7 +1,7 @@
+ import { z } from 'zod';
+ const id = z.string().uuid();
+ const amount = (decimals: number) => z.coerce.number().finite().nonnegative().max(999999999).refine(n => Math.abs(n * 10 ** decimals - Math.round(n * 10 ** decimals)) < 0.00001, `Use at most ${decimals} decimal places.`);
+-export const catalogueRow = z.object({ product_name: z.string().trim().min(1).max(200), category: z.string().trim().max(100).default(''), variant_name: z.string().trim().min(1).max(100).default('Standard'), sku: z.string().trim().min(1).max(80), model_code: z.string().trim().max(64).default(''), barcode: z.string().trim().max(100).default(''), unit: z.string().trim().min(1).max(30).default('pcs'), selling_price: amount(2).default(0), reorder_level: amount(3).default(0), opening_stock: amount(3).default(0), purchase_price: amount(2).default(0) });
++export const catalogueRow = z.object({ product_name: z.string().trim().min(1).max(200), category: z.string().trim().max(100).default(''), variant_name: z.string().trim().min(1).max(100).default('Standard'), sku: z.string().trim().min(1).max(80), model_code: z.string().trim().max(64).default(''), barcode: z.string().trim().max(100).default(''), unit: z.string().trim().min(1).max(30).default('pcs'), selling_price: amount(2).default(0), reorder_level: amount(3).default(0), opening_stock: amount(3).default(0), purchase_price: amount(2).default(0), mrp: amount(2).default(0), wholesale_price: amount(2).default(0) });
+ export const catalogueInput = z.object({ businessId: id, rows: z.array(catalogueRow).min(1).max(5000), openingBranchId: id.optional() });
+ export const variantEditInput = z.object({ businessId: id, id, values: catalogueRow.omit({ product_name: true, category: true }).extend({ is_active: z.boolean() }) });
+ export const partyInput = z.object({ businessId: id, id: id.optional(), kind: z.enum(['customer','supplier']), name: z.string().trim().min(1).max(200), phone: z.string().trim().max(50).default(''), email: z.union([z.literal(''),z.string().email().max(254)]).default(''), address: z.string().trim().max(500).default(''), pan_vat_number: z.string().trim().max(50).default(''), is_active: z.boolean().default(true) });
+diff --git a/src/lib/inventory.functions.ts b/src/lib/inventory.functions.ts
+index c6a7145..b09f4f9 100644
+--- a/src/lib/inventory.functions.ts
++++ b/src/lib/inventory.functions.ts
+@@ -44,7 +44,7 @@ export const saveCatalogue = createServerFn({method:'POST'}).middleware([require
+ export const editVariant = createServerFn({method:'POST'}).middleware([requireSupabaseAuth]).inputValidator(variantEditInput).handler(async ({data,context})=>{
+  const {data:allowed,error:accessError}=await context.supabase.rpc('has_business_role',{_business_id:data.businessId,_min_role:'admin'});
+  if(accessError || !allowed) throw new Error('Administrator access is required.');
+- const v=data.values; const {data:saved,error}=await context.supabase.from('product_variants').update({name:v.variant_name,sku:v.sku,model_code:v.model_code || null,barcode:v.barcode || null,unit:v.unit,selling_price:v.selling_price,purchase_price:v.purchase_price,reorder_level:v.reorder_level,is_active:v.is_active}).eq('business_id',data.businessId).eq('id',data.id).select('id').single();
++ const v=data.values; const {data:saved,error}=await context.supabase.from('product_variants').update({name:v.variant_name,sku:v.sku,model_code:v.model_code || null,barcode:v.barcode || null,unit:v.unit,selling_price:v.selling_price,purchase_price:v.purchase_price,mrp:v.mrp,wholesale_price:v.wholesale_price,reorder_level:v.reorder_level,is_active:v.is_active}).eq('business_id',data.businessId).eq('id',data.id).select('id').single();
+  if(error || !saved) throw new Error('Variant could not be updated. Check unique SKU and barcode.'); return {ok:true};
+ });
+ export const saveParty = createServerFn({method:'POST'}).middleware([requireSupabaseAuth]).inputValidator(partyInput).handler(async ({data,context})=>{
+diff --git a/src/lib/price-levels-csv.test.ts b/src/lib/price-levels-csv.test.ts
+new file mode 100644
+index 0000000..d2bdec6
+--- /dev/null
++++ b/src/lib/price-levels-csv.test.ts
+@@ -0,0 +1,36 @@
++import { describe, expect, it } from 'vitest';
++import { readFileSync } from 'node:fs';
++import { catalogueColumns, makeCatalogueCsv, parseCatalogueCsv } from './inventory-csv';
++
++const biz = '10000000-0000-4000-8000-000000000001';
++
++describe('MRP and wholesale price in catalogue sheets', () => {
++  it('exports both prices right after selling_price', () => {
++    const at = catalogueColumns.indexOf('selling_price');
++    expect(catalogueColumns.slice(at, at + 3)).toEqual(['selling_price', 'mrp', 'wholesale_price']);
++  });
++  it('round-trips an exported sheet', () => {
++    const csv = makeCatalogueCsv([{ product_name: 'Kurti', variant_name: 'M', sku: 'K-M', unit: 'pcs', qty: 1, selling_price: 1999, mrp: 2499, wholesale_price: 1750, purchase_price: 1347.5, reorder_level: 1 }], true);
++    expect(parseCatalogueCsv(csv, biz)[0]).toMatchObject({ sku: 'K-M', selling_price: 1999, mrp: 2499, wholesale_price: 1750 });
++  });
++  it('keeps both prices when the purchase price is hidden', () => {
++    const head = makeCatalogueCsv([{ product_name: 'A', sku: 'S', mrp: 10, wholesale_price: 8, purchase_price: 5 }], false).split('\r\n')[0] ?? '';
++    expect(head).toContain('mrp');
++    expect(head).toContain('wholesale_price');
++    expect(head).not.toContain('purchase_price');
++  });
++  it.each([['MRP', 'mrp'], ['Maximum Retail Price', 'mrp'], ['Wholesale Price', 'wholesale_price'], ['Wholesale Rate', 'wholesale_price']])('imports formatted values from %s', (header, field) => {
++    expect(parseCatalogueCsv(`product_name,sku,${header}\nA,S1,"NPR 1,250"`, biz)[0]).toMatchObject({ [field as string]: 1250 });
++  });
++  it('treats missing columns as zero so older sheets still import', () => {
++    expect(parseCatalogueCsv('product_name,sku,selling_price\nA,S1,100', biz)[0]).toMatchObject({ mrp: 0, wholesale_price: 0 });
++  });
++  it('rejects a malformed price instead of importing part of it', () => {
++    expect(() => parseCatalogueCsv('product_name,sku,mrp\nA,S1,12abc', biz)).toThrow();
++    expect(() => parseCatalogueCsv('product_name,sku,wholesale_price\nA,S1,-5', biz)).toThrow();
++  });
++  it('the downloadable template carries both columns', () => {
++    const t = readFileSync('public/downloads/product-import-template.csv', 'utf8');
++    expect(parseCatalogueCsv(t, biz)[0]).toMatchObject({ mrp: 2499, wholesale_price: 1750 });
++  });
++});
+diff --git a/src/lib/price-levels.test.ts b/src/lib/price-levels.test.ts
+new file mode 100644
+index 0000000..f704f2f
+--- /dev/null
++++ b/src/lib/price-levels.test.ts
+@@ -0,0 +1,52 @@
++import { describe, expect, it } from 'vitest';
++import { levelPrice, priceWarnings, repriceLine } from './price-levels';
++
++const shirt = { selling_price: 1999, wholesale_price: 1750 };
++const noWholesale = { selling_price: 500, wholesale_price: 0 };
++
++describe('levelPrice', () => {
++  it('uses the selling price for retail', () => {
++    expect(levelPrice(shirt, 'retail')).toBe(1999);
++  });
++  it('uses the wholesale price for wholesale', () => {
++    expect(levelPrice(shirt, 'wholesale')).toBe(1750);
++  });
++  it('falls back to retail when no wholesale price is set', () => {
++    expect(levelPrice(noWholesale, 'wholesale')).toBe(500);
++    expect(levelPrice({ selling_price: 500 }, 'wholesale')).toBe(500);
++    expect(levelPrice({ selling_price: 500, wholesale_price: null }, 'wholesale')).toBe(500);
++  });
++  it('accepts numeric strings and treats junk as zero', () => {
++    expect(levelPrice({ selling_price: '1999.00', wholesale_price: '1750.50' }, 'wholesale')).toBe(1750.5);
++    expect(levelPrice({ selling_price: 'abc' }, 'retail')).toBe(0);
++  });
++});
++
++describe('repriceLine', () => {
++  it('moves an untouched line to the new level and back', () => {
++    expect(repriceLine(1999, shirt, 'retail', 'wholesale')).toBe(1750);
++    expect(repriceLine(1750, shirt, 'wholesale', 'retail')).toBe(1999);
++  });
++  it('keeps a price the cashier typed by hand', () => {
++    expect(repriceLine(1800, shirt, 'retail', 'wholesale')).toBe(1800);
++  });
++  it('leaves a line alone when the item has no wholesale price', () => {
++    expect(repriceLine(500, noWholesale, 'retail', 'wholesale')).toBe(500);
++  });
++  it('ignores sub-paisa float noise', () => {
++    expect(repriceLine(1999.001, shirt, 'retail', 'wholesale')).toBe(1750);
++  });
++});
++
++describe('priceWarnings', () => {
++  it('is quiet when prices are consistent or unset', () => {
++    expect(priceWarnings({ selling_price: 1999, mrp: 2499, wholesale_price: 1750 })).toEqual([]);
++    expect(priceWarnings({ selling_price: 1999, mrp: 0, wholesale_price: 0 })).toEqual([]);
++  });
++  it('flags a selling price above MRP', () => {
++    expect(priceWarnings({ selling_price: 3000, mrp: 2499, wholesale_price: 0 })).toEqual(['Selling price is above the MRP.']);
++  });
++  it('flags a wholesale price above the retail price', () => {
++    expect(priceWarnings({ selling_price: 1000, mrp: 0, wholesale_price: 1200 })).toEqual(['Wholesale price is above the retail price.']);
++  });
++});
+diff --git a/src/lib/price-levels.ts b/src/lib/price-levels.ts
+new file mode 100644
+index 0000000..d45df36
+--- /dev/null
++++ b/src/lib/price-levels.ts
+@@ -0,0 +1,30 @@
++// Retail / wholesale price levels for sales, plus the MRP reference price.
++// Presentation and cart seeding only: posting RPCs keep reading each document line's price from the request,
++// so choosing a level never creates a second pricing source for accounting.
++
++export type PriceLevel = 'retail' | 'wholesale';
++
++type Priced = { selling_price: number | string; wholesale_price?: number | string | null };
++
++/** Price for a level. A missing or 0 wholesale price means "not set", so wholesale falls back to retail. */
++export function levelPrice(variant: Priced, level: PriceLevel): number {
++  const retail = Number(variant.selling_price) || 0;
++  if (level !== 'wholesale') return retail;
++  const wholesale = Number(variant.wholesale_price) || 0;
++  return wholesale > 0 ? wholesale : retail;
++}
++
++/** Move a cart line to another level, but keep a price the cashier typed by hand. */
++export function repriceLine(current: number, variant: Priced, from: PriceLevel, to: PriceLevel): number {
++  return Math.abs(current - levelPrice(variant, from)) < 0.005 ? levelPrice(variant, to) : current;
++}
++
++/** Non-blocking hints for the product form; nothing here stops a save. */
++export function priceWarnings(p: { selling_price: number; mrp: number; wholesale_price: number }): string[] {
++  const out: string[] = [];
++  if (p.mrp > 0 && p.selling_price > p.mrp) out.push('Selling price is above the MRP.');
++  if (p.wholesale_price > 0 && p.selling_price > 0 && p.wholesale_price > p.selling_price) {
++    out.push('Wholesale price is above the retail price.');
++  }
++  return out;
++}
+-- 
+2.43.0
+
