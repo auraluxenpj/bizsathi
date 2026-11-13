@@ -1,6 +1,6 @@
 import {validateReportSearch} from '@/lib/report-filters';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { RouterProvider, createMemoryHistory, createRootRoute, createRouter,createRoute } from '@tanstack/react-router';
+import { RouterProvider, createMemoryHistory, createRootRoute, createRouter,createRoute,Outlet } from '@tanstack/react-router';
 import { fireEvent, render, screen, within } from '@testing-library/react';
 import type { ReactNode } from 'react';
 import { describe, expect, it, vi } from 'vitest';
@@ -41,9 +41,10 @@ import { AppNavigation } from '@/components/app-navigation';
 import { Dashboard } from '@/components/dashboard';
 
 function mount(ui: ReactNode,path='/') {
-  const root = createRootRoute({ component: () => <>{ui}</> });
-  const child=createRoute({getParentRoute:()=>root,path,validateSearch:validateReportSearch});
-  const router = createRouter({ routeTree: root.addChildren([child]), history: createMemoryHistory({ initialEntries: [path] }) });
+  const root = createRootRoute({ component: Outlet });
+  const layout=createRoute({getParentRoute:()=>root,id:'_authenticated',component:Outlet});
+  const child=createRoute({getParentRoute:()=>layout,path,component:()=> <>{ui}</>,validateSearch:validateReportSearch});
+  const router = createRouter({ routeTree: root.addChildren([layout.addChildren([child])]), history: createMemoryHistory({ initialEntries: [path] }) });
   return render(<QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}><RouterProvider router={router} /></QueryClientProvider>);
 }
 
