@@ -17,13 +17,13 @@ export function presetRange(p:Preset,today:string):{from:string;to:string}{
  return{from:`${start-1}-07-16`,to:`${start}-07-15`};
 }
 /** Same-length window ending the day before `from`. */
-export function previousRange(from:string,to:string){const f=Date.parse(from+'T00:00:00Z'),t=Date.parse(to+'T00:00:00Z');const days=Math.round((t-f)/86400000);const pTo=new Date(f-86400000);const pFrom=new Date(pTo.getTime()-days*86400000);return{from:iso(pFrom),to:iso(pTo)};}
+export function previousRange(from:string,to:string){const f=Date.parse(from+'T00:00:00Z'),t=Date.parse(to+'T00:00:00Z');if(!Number.isFinite(f)||!Number.isFinite(t)||f>t)return{from,to};const days=Math.round((t-f)/86400000);const pTo=new Date(f-86400000);const pFrom=new Date(pTo.getTime()-days*86400000);return{from:iso(pFrom),to:iso(pTo)};}
 const num=(v:string|undefined)=>{if(v==null||v==='')return null;const n=Number(String(v).replace(/,/g,''));return Number.isFinite(n)?n:null;};
 const key=(r:ReportRow)=>r['Item']??r['Staff member']??r['Product']??'';
 const valueCol=(r:ReportRow)=>['Amount','Value','Sales amount','In stock'].find(c=>c in r);
 /** Adds Previous and Change columns for summary reports keyed by Item/Staff/Product. */
 export function compareRows(cur:ReportRow[],prev:ReportRow[]):ReportRow[]|null{
- const col=cur[0]&&valueCol(cur[0]);if(!col||!key(cur[0]!))return null;
+ const first=cur[0];if(!first)return null;const col=valueCol(first);if(!col||!key(first))return null;
  return cur.map(r=>{const p=prev.find(x=>key(x)===key(r)&&(x['Section']??'')===(r['Section']??''));const a=num(r[col]),b=num(p?.[col]);const change=a!=null&&b!=null?new Decimal(a).minus(b):null;const pct=change&&b?change.div(Math.abs(b)).times(100).toFixed(1)+'%':'';return{...r,Previous:p?.[col]??'—',Change:change?change.toFixed(2):'—','Change %':pct};});
 }
 /** Sum of the main money column for list reports. */
