@@ -1193,48 +1193,6 @@ export type Database = {
           },
         ]
       }
-      loyalty_redemptions: {
-        Row: {
-          actor_id: string
-          branch_id: string
-          business_id: string
-          created_at: string
-          discount: number
-          document_id: string
-          id: string
-          kind: string
-          membership_id: string
-          points: number
-          sale_id: string
-        }
-        Insert: {
-          actor_id: string
-          branch_id: string
-          business_id: string
-          created_at?: string
-          discount: number
-          document_id: string
-          id?: string
-          kind: string
-          membership_id: string
-          points: number
-          sale_id: string
-        }
-        Update: {
-          actor_id?: string
-          branch_id?: string
-          business_id?: string
-          created_at?: string
-          discount?: number
-          document_id?: string
-          id?: string
-          kind?: string
-          membership_id?: string
-          points?: number
-          sale_id?: string
-        }
-        Relationships: []
-      }
       loyalty_point_events: {
         Row: {
           actor_id: string
@@ -1310,6 +1268,91 @@ export type Database = {
           },
           {
             foreignKeyName: "loyalty_point_events_business_id_sale_id_fkey"
+            columns: ["business_id", "sale_id"]
+            isOneToOne: false
+            referencedRelation: "commerce_documents"
+            referencedColumns: ["business_id", "id"]
+          },
+        ]
+      }
+      loyalty_redemptions: {
+        Row: {
+          actor_id: string
+          branch_id: string
+          business_id: string
+          created_at: string
+          discount: number
+          document_id: string
+          id: string
+          kind: string
+          membership_id: string
+          points: number
+          sale_id: string
+        }
+        Insert: {
+          actor_id: string
+          branch_id: string
+          business_id: string
+          created_at?: string
+          discount: number
+          document_id: string
+          id?: string
+          kind: string
+          membership_id: string
+          points: number
+          sale_id: string
+        }
+        Update: {
+          actor_id?: string
+          branch_id?: string
+          business_id?: string
+          created_at?: string
+          discount?: number
+          document_id?: string
+          id?: string
+          kind?: string
+          membership_id?: string
+          points?: number
+          sale_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "loyalty_redemptions_actor_id_fkey"
+            columns: ["actor_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "loyalty_redemptions_business_id_branch_id_fkey"
+            columns: ["business_id", "branch_id"]
+            isOneToOne: false
+            referencedRelation: "branches"
+            referencedColumns: ["business_id", "id"]
+          },
+          {
+            foreignKeyName: "loyalty_redemptions_business_id_document_id_fkey"
+            columns: ["business_id", "document_id"]
+            isOneToOne: true
+            referencedRelation: "commerce_documents"
+            referencedColumns: ["business_id", "id"]
+          },
+          {
+            foreignKeyName: "loyalty_redemptions_business_id_fkey"
+            columns: ["business_id"]
+            isOneToOne: false
+            referencedRelation: "businesses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "loyalty_redemptions_business_id_membership_id_fkey"
+            columns: ["business_id", "membership_id"]
+            isOneToOne: false
+            referencedRelation: "customer_memberships"
+            referencedColumns: ["business_id", "id"]
+          },
+          {
+            foreignKeyName: "loyalty_redemptions_business_id_sale_id_fkey"
             columns: ["business_id", "sale_id"]
             isOneToOne: false
             referencedRelation: "commerce_documents"
@@ -2142,6 +2185,14 @@ export type Database = {
       }
       inv_sync_push: { Args: { _items: Json }; Returns: Json }
       is_business_member: { Args: { _business_id: string }; Returns: boolean }
+      loyalty_available_points: {
+        Args: { _business: string; _mobile: string }
+        Returns: number
+      }
+      loyalty_balance: {
+        Args: { _business: string; _membership: string }
+        Returns: number
+      }
       loyalty_earned_points: {
         Args: { _rate?: number; _total: number }
         Returns: number
@@ -2220,6 +2271,7 @@ export type Database = {
         Returns: string
       }
       post_stock_request: { Args: { _request: Json }; Returns: string }
+      product_image_business: { Args: { _name: string }; Returns: string }
       read_accounting_snapshot: {
         Args: { _branch_id?: string; _business_id: string; _through?: string }
         Returns: Json
@@ -2227,10 +2279,6 @@ export type Database = {
       read_business_report_snapshot: {
         Args: { _branch_id?: string; _business_id: string; _through?: string }
         Returns: Json
-      }
-      loyalty_available_points: {
-        Args: { _business: string; _mobile: string }
-        Returns: number
       }
       read_customer_loyalty: {
         Args: { _business_id: string }
