@@ -11,6 +11,10 @@ export function reportContext(f:ReportInput,s:BusinessSnapshot){return{Report:re
 export function paginateRows(rows:ReportRow[],page:number,all:boolean){const actual=Math.min(page,Math.max(1,Math.ceil(rows.length/50)));return{rows:all?rows:rows.slice((actual-1)*50,actual*50),total:rows.length,page:actual};}
 export function reportColumns(rows:ReportRow[]){return [...new Set(rows.flatMap(r=>Object.keys(r)))];}
 export function exportReportRows(rows:ReportRow[],context:Record<string,string>){const columns=reportColumns(rows);return rows.map(row=>({...context,...Object.fromEntries(columns.map(key=>[key,row[key]??'']))}));}
+export function reportSummary(rows:ReportRow[],view:ReportInput['view']):Record<string,string>{
+ const columns:Partial<Record<ReportInput['view'],string[]>>={sales:['Net','Tax','Total','Profit'],purchases:['Net','Tax','Total'],outstanding:['Outstanding / credit'],receivables:['Outstanding / credit'],payables:['Outstanding / credit'],expenses:['Net'],stock:['Quantity'],staff:['Invoices','Sales amount','Payments collected'],daybook:['Money in','Money out'],cash:['In','Out'],bank:['In','Out'],ledger:['Debit','Credit'],statement:['Debit','Credit'],customer:['Debit','Credit'],supplier:['Debit','Credit'],cashbook:['Debit','Credit'],cashflow:['Debit','Credit'],trial:['Debit','Credit'],accounts:['Debit','Credit'],vat:['Debit','Credit']};
+ return Object.fromEntries((columns[view]??[]).map(col=>[`${col} total`,rows.filter(r=>r['Type']!=='TOTAL').reduce((n,r)=>n.plus(r[col]||0),new Decimal(0)).toFixed(col==='Quantity'?3:2)]));
+}
 export type DocLines={id:string;kind:string;document_date:string;lines:unknown}[];
 type L={variantId:string;quantity:number;price:number;discount:number};
 const readL=(v:unknown):L[]=>Array.isArray(v)?v.flatMap(x=>x&&typeof x==='object'&&typeof (x as L).variantId==='string'?[{variantId:(x as L).variantId,quantity:Number((x as L).quantity)||0,price:Number((x as L).price)||0,discount:Number((x as L).discount)||0}]:[]):[];
