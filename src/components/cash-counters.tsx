@@ -270,6 +270,36 @@ export function CashCounters() {
                 onChange={(e) => setAmount(e.target.value)}
               />
             </label>
+            {kind === 'close' && own && amount !== '' && Number.isFinite(Number(amount)) && (
+              <section aria-label="Closing cash summary" className="sm:col-span-2 xl:col-span-3 rounded-lg border bg-card p-4">
+                <h3 className="text-sm font-semibold">Closing reconciliation</h3>
+                <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-3">
+                  {showExpected && expected !== null ? (
+                    <>
+                      <div>
+                        <p className="text-xs text-muted-foreground">Expected cash</p>
+                        <p className="mt-1 font-semibold tabular-nums">{formatNPR(expected.toString())}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-muted-foreground">Actual cash counted</p>
+                        <p className="mt-1 font-semibold tabular-nums">{formatNPR(amount)}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-muted-foreground">Difference</p>
+                        <p className="mt-1 font-semibold tabular-nums">
+                          <Difference value={dec(amount).minus(expected).toString()} />
+                        </p>
+                      </div>
+                    </>
+                  ) : (
+                    <div className="col-span-2 sm:col-span-3">
+                      <p className="text-sm">Your closing count is recorded. Expected cash and any difference will be available after submission.</p>
+                      <p className="mt-1 text-xs text-muted-foreground">Blind count protects the accuracy of the drawer handover.</p>
+                    </div>
+                  )}
+                </div>
+              </section>
+            )}
             <label className="text-sm">
               Reference / reason
               <Input
