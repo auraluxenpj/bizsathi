@@ -19,8 +19,18 @@ describe('filterCommandEntries', () => {
     expect(filterCommandEntries(entries, () => false)).toEqual([]);
   });
 
-  it('preserves command metadata for permitted create actions', () => {
-    const create = [{ label: 'New sale', to: '/sales', search: { new: '1' as const } }];
-    expect(filterCommandEntries(create, () => true)).toEqual(create);
+  it('hides create actions when the matching create permission is denied', () => {
+    const create: CommandEntry[] = [
+      { label: 'New sale', to: '/sales', search: { new: '1' }, permission: 'sales.create' },
+      { label: 'New purchase', to: '/purchases', search: { new: '1' }, permission: 'purchases.create' },
+    ];
+    expect(filterCommandEntries(create, () => true, permission => permission !== 'sales.create')).toEqual([
+      { label: 'New purchase', to: '/purchases', search: { new: '1' }, permission: 'purchases.create' },
+    ]);
+  });
+
+  it('preserves commands when both route and action permissions are allowed', () => {
+    const create: CommandEntry[] = [{ label: 'New sale', to: '/sales', search: { new: '1' }, permission: 'sales.create' }];
+    expect(filterCommandEntries(create, () => true, () => true)).toEqual(create);
   });
 });
