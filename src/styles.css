@@ -159,12 +159,12 @@
   }
 
   body {
-    font-family: 'Roboto', 'DM Sans', sans-serif;
+    font-family: 'DM Sans', 'Roboto', sans-serif;
     background-color: var(--color-background);
     color: var(--color-foreground);
   }
 }
-.brand { font-family: 'Roboto', 'Manrope', sans-serif; }
+.brand { font-family: 'Manrope', 'DM Sans', sans-serif; }
 * { letter-spacing: 0; }
 .sticker-preview { width: 260px; max-width: 100%; }
 .barcode-sticker { display: flex; flex-direction: column; align-items: center; justify-content: center; overflow: hidden; min-width: 0; padding: 1mm 2mm; background: var(--print-paper); color: var(--print-ink); }
@@ -302,3 +302,25 @@
   .pos-billing-checkout .pos-product-card,
   .pos-billing-checkout .pos-product-card img { transition: none; }
 }
+
+/* Typography and workspace polish; receipt and label print rules remain isolated. */
+html { font-family: 'DM Sans', 'Roboto', sans-serif; font-synthesis: none; text-rendering: optimizeLegibility; }
+body { font-family: 'DM Sans', 'Roboto', sans-serif; font-optical-sizing: auto; }
+h1, h2, h3, h4, .brand { font-family: 'Manrope', 'DM Sans', sans-serif; letter-spacing: -0.035em; }
+button, input, select, textarea { font: inherit; }
+::selection { background: oklch(0.86 0.09 158); color: oklch(0.2 0.04 160); }
+.karobar {
+  font-family: 'DM Sans', 'Roboto', sans-serif !important;
+  background: linear-gradient(180deg, oklch(0.975 0.018 165), oklch(0.965 0.012 240) 38rem) !important;
+}
+.karobar header a { font-family: 'Manrope', 'DM Sans', sans-serif; }
+.karobar section[aria-label="Summary"] > * {
+  min-height: 6.2rem; border-radius: 1rem;
+  box-shadow: 0 5px 18px oklch(0.28 0.04 165 / 5%);
+  transition: transform .16s ease, box-shadow .16s ease;
+}
+.karobar section[aria-label="Summary"] > *:active { transform: scale(.985); }
+.karobar section[aria-label="Recent activities"],
+.karobar section[aria-label="Low stock"] { border: 1px solid oklch(0.91 0.02 165); }
+.karobar h2 { font-family: 'Manrope', 'DM Sans', sans-serif; font-weight: 750; letter-spacing: -.04em; }
+@media (prefers-reduced-motion: reduce) { .karobar section[aria-label="Summary"] > * { transition: none; } }
