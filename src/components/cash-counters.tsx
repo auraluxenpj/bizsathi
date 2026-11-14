@@ -17,6 +17,8 @@ import {
 } from '@/lib/cash-denominations';
 import { canSeeExpectedCash } from '@/lib/cash-counter-access';
 import { PeriodNotice } from './period-notice';
+import { downloadCsv } from '@/lib/download-csv';
+import { buildCashClosingCsv } from '@/lib/cash-closing-csv';
 
 type CounterKind = 'open' | 'in' | 'out' | 'close';
 
@@ -404,6 +406,23 @@ export function CashCounters() {
                 {branches.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}
               </select>
             </label>
+            <Button type="button" variant="outline" className="h-10 self-end" onClick={() => downloadCsv(`bizsathi-cash-closing-${date}.csv`, buildCashClosingCsv(visibleDailySessions.map((session) => ({
+              date,
+              branch: session.branch,
+              status: session.closed ? 'Closed' : 'Open',
+              openedBy: session.openedBy,
+              closedBy: session.closedBy ?? '',
+              opening: session.opening.toFixed(2),
+              receipts: session.receipts.toFixed(2),
+              refunds: session.refunds.toFixed(2),
+              cashIn: session.cashIn.toFixed(2),
+              cashOut: session.cashOut.toFixed(2),
+              expected: session.expected.toFixed(2),
+              actual: session.actual?.toFixed(2) ?? '',
+              difference: session.difference?.toFixed(2) ?? '',
+            }))))}>
+              Export CSV
+            </Button>
           </div>
         </div>
         {!visibleDailySessions.length ? (
