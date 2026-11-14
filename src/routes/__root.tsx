@@ -124,7 +124,7 @@ function RootComponent() {
   const { queryClient } = Route.useRouteContext();
   const router = useRouter();
   const pathname = useRouterState({ select: state => state.location.pathname });
-  const workspace = ['/dashboard', '/businesses', '/profile', '/security', '/security-history', '/products', '/contacts', '/inventory', '/sales', '/purchases', '/cash-counters', '/accounting', '/expenses', '/parties', '/notebook', '/bill-gallery', '/categories', '/expense-receipts', '/transactions', '/cash-bank', '/credit-reminder', '/reports', '/calculators', '/more'].includes(pathname);
+  const workspace = ['/pos', '/quotations', '/purchase-orders', '/dashboard', '/businesses', '/profile', '/security', '/security-history', '/products', '/contacts', '/inventory', '/sales', '/purchases', '/cash-counters', '/accounting', '/expenses', '/parties', '/notebook', '/bill-gallery', '/categories', '/expense-receipts', '/transactions', '/cash-bank', '/credit-reminder', '/reports', '/calculators', '/more'].includes(pathname);
   useEffect(() => {
     if (new URLSearchParams(window.location.hash.slice(1)).get('type') === 'recovery') sessionStorage.setItem('bizsathi-recovery', 'true');
     const { data } = supabase.auth.onAuthStateChange(event => {

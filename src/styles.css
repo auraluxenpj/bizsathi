@@ -19,6 +19,10 @@
  */
 
 @theme inline {
+  --color-workspace: var(--workspace);
+  --color-revenue: var(--revenue);
+  --color-expense: var(--expense);
+  --color-purchase: var(--purchase);
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
@@ -65,6 +69,10 @@
 }
 
 :root {
+  --workspace: oklch(0.975 0.004 240);
+  --revenue: oklch(0.58 0.14 160);
+  --expense: oklch(0.62 0.20 22);
+  --purchase: oklch(0.57 0.16 250);
   --print-paper: oklch(1 0 0);
   --print-ink: oklch(0 0 0);
   --radius: 0.5rem;
@@ -93,17 +101,21 @@
   --chart-3: oklch(0.398 0.07 227.392);
   --chart-4: oklch(0.828 0.189 84.429);
   --chart-5: oklch(0.769 0.188 70.08);
-  --sidebar: oklch(0.984 0.003 247.858);
+  --sidebar: oklch(0.982 0.006 240);
   --sidebar-foreground: oklch(0.129 0.042 264.695);
   --sidebar-primary: oklch(0.208 0.042 265.755);
   --sidebar-primary-foreground: oklch(0.984 0.003 247.858);
-  --sidebar-accent: oklch(0.968 0.007 247.896);
-  --sidebar-accent-foreground: oklch(0.208 0.042 265.755);
+  --sidebar-accent: oklch(0.94 0.025 160);
+  --sidebar-accent-foreground: oklch(0.40 0.09 160);
   --sidebar-border: oklch(0.929 0.013 255.508);
   --sidebar-ring: oklch(0.704 0.04 256.788);
 }
 
 .dark {
+  --workspace: oklch(0.16 0.005 240);
+  --revenue: oklch(0.75 0.14 160);
+  --expense: oklch(0.75 0.16 22);
+  --purchase: oklch(0.75 0.13 250);
   --print-paper: oklch(1 0 0);
   --print-ink: oklch(0 0 0);
   --hero-scrim: oklch(0.18 0.02 160 / 60%);
