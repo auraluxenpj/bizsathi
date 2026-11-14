@@ -24,6 +24,17 @@ describe('cash closing CSV', () => {
     expect(csv).toContain('""https://bad.example""');
   });
 
+  it('appends a filtered totals row with actual and difference limited to closed sessions', () => {
+    const csv = buildCashClosingCsv([row], {
+      date: '2026-11-15', sessions: 2, open: 1, closed: 1,
+      opening: '1500.00', receipts: '2500.00', refunds: '100.00', cashIn: '50.00',
+      cashOut: '25.00', expected: '3925.00', actual: '3400.00', difference: '-25.00',
+    });
+    expect(csv).toContain('"FILTERED TOTAL","SUMMARY","Sessions: 2","Open: 1; Closed: 1"');
+    expect(csv).toContain('"3925.00","3400.00","-25.00"');
+    expect(csv.trimEnd().split('\\r\\n')).toHaveLength(3);
+  });
+
   it('returns a header-only export when no rows are supplied', () => {
     const csv = buildCashClosingCsv([]);
     expect(csv).toContain('"Date"');

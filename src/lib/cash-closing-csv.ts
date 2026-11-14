@@ -35,9 +35,42 @@ function csvCell(value: string, text = false) {
   return `"${safe.replaceAll('"', '""')}"`;
 }
 
+export type CashClosingCsvSummary = {
+  date: string;
+  sessions: number;
+  open: number;
+  closed: number;
+  opening: string;
+  receipts: string;
+  refunds: string;
+  cashIn: string;
+  cashOut: string;
+  expected: string;
+  actual: string;
+  difference: string;
+};
+
 /** Build a spreadsheet-safe export from the already-filtered daily cash sessions. */
-export function buildCashClosingCsv(rows: CashClosingCsvRow[]) {
+export function buildCashClosingCsv(rows: CashClosingCsvRow[], summary?: CashClosingCsvSummary) {
   const header = columns.map((column) => csvCell(column.label)).join(',');
   const body = rows.map((row) => columns.map((column) => csvCell(row[column.key], column.text)).join(','));
+  if (summary) {
+    const summaryRow: CashClosingCsvRow = {
+      date: summary.date,
+      branch: 'FILTERED TOTAL',
+      status: 'SUMMARY',
+      openedBy: `Sessions: ${summary.sessions}`,
+      closedBy: `Open: ${summary.open}; Closed: ${summary.closed}`,
+      opening: summary.opening,
+      receipts: summary.receipts,
+      refunds: summary.refunds,
+      cashIn: summary.cashIn,
+      cashOut: summary.cashOut,
+      expected: summary.expected,
+      actual: summary.actual,
+      difference: summary.difference,
+    };
+    body.push(columns.map((column) => csvCell(summaryRow[column.key], column.text)).join(','));
+  }
   return `\uFEFF${[header, ...body].join('\r\n')}\r\n`;
 }

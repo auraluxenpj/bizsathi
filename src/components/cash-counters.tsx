@@ -148,13 +148,18 @@ export function CashCounters() {
   );
   const dailyTotals = visibleDailySessions.reduce(
     (totals, session) => ({
+      opening: totals.opening.plus(session.opening),
+      receipts: totals.receipts.plus(session.receipts),
+      refunds: totals.refunds.plus(session.refunds),
+      cashIn: totals.cashIn.plus(session.cashIn),
+      cashOut: totals.cashOut.plus(session.cashOut),
       expected: totals.expected.plus(session.expected),
       actual: session.actual === null ? totals.actual : totals.actual.plus(session.actual),
       difference: session.difference === null ? totals.difference : totals.difference.plus(session.difference),
       open: totals.open + (session.closed ? 0 : 1),
       closed: totals.closed + (session.closed ? 1 : 0),
     }),
-    { expected: new Decimal(0), actual: new Decimal(0), difference: new Decimal(0), open: 0, closed: 0 },
+    { opening: new Decimal(0), receipts: new Decimal(0), refunds: new Decimal(0), cashIn: new Decimal(0), cashOut: new Decimal(0), expected: new Decimal(0), actual: new Decimal(0), difference: new Decimal(0), open: 0, closed: 0 },
   );
 
   const countable = kind === 'open' || kind === 'close';
@@ -420,7 +425,20 @@ export function CashCounters() {
               expected: session.expected.toFixed(2),
               actual: session.actual?.toFixed(2) ?? '',
               difference: session.difference?.toFixed(2) ?? '',
-            }))))}>
+            })), {
+              date,
+              sessions: visibleDailySessions.length,
+              open: dailyTotals.open,
+              closed: dailyTotals.closed,
+              opening: dailyTotals.opening.toFixed(2),
+              receipts: dailyTotals.receipts.toFixed(2),
+              refunds: dailyTotals.refunds.toFixed(2),
+              cashIn: dailyTotals.cashIn.toFixed(2),
+              cashOut: dailyTotals.cashOut.toFixed(2),
+              expected: dailyTotals.expected.toFixed(2),
+              actual: dailyTotals.actual.toFixed(2),
+              difference: dailyTotals.difference.toFixed(2),
+            }))}>
               Export CSV
             </Button>
           </div>
