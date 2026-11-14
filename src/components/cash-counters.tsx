@@ -111,7 +111,7 @@ export function CashCounters() {
       const closingActor = closing?.actor_id;
       const staffName = (actorId: string | null | undefined) => {
         if (!actorId) return 'Unknown staff';
-        const member = w.access.data?.members.find((item) => item.user_id === actorId);
+        const member = (w.access.data?.members ?? []).find((item) => item.user_id === actorId);
         const profile = Array.isArray(member?.profiles) ? member.profiles[0] : member?.profiles;
         return profile?.full_name || (actorId === data?.userId ? 'You' : 'Staff member');
       };
@@ -424,7 +424,7 @@ export function CashCounters() {
                   <p className="mt-1 text-xs text-muted-foreground">
                     {e.event_date} · {w.access.data?.branches.find((b) => b.id === e.branch_id)?.name}
                     {' · '}{(() => {
-                      const member = w.access.data?.members.find((item) => item.user_id === e.actor_id);
+                      const member = (w.access.data?.members ?? []).find((item) => item.user_id === e.actor_id);
                       const profile = Array.isArray(member?.profiles) ? member.profiles[0] : member?.profiles;
                       return profile?.full_name || (e.actor_id === data?.userId ? 'You' : 'Staff member');
                     })()}
