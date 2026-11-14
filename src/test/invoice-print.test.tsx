@@ -3,7 +3,7 @@ import { useState } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 import { InvoiceActions, InvoiceSheet, type InvoiceData, type InvoiceLayout } from '@/components/invoice-print';
 
-const data: InvoiceData = { business: 'Auraluxe Private Limited', pan: '123456789', reference: 'INV-20261106-AB12', date: '2026-11-06', status: 'confirmed', kind: 'sale', branch: 'Main', party: 'Ram Traders', phone: '9812345678', lines: [{ sku: 'S1', name: 'Silk Saree', quantity: 2, price: 1500, total: 3000 }], subtotal: 3000, tax: 0, total: 3000, paid: 1000, returned: 0, outstanding: 2000, docId: 'doc-1' };
+const data: InvoiceData = { business: 'Auraluxe Private Limited', pan: '123456789', reference: 'INV-20261106-AB12', date: '2026-11-06', status: 'confirmed', kind: 'sale', branch: 'Main', party: 'Ram Traders', phone: '9812345678', lines: [{ sku: 'S1', name: 'Silk Saree', quantity: 2, price: 1500, total: 3000 }], subtotal: 3000, tax: 0, total: 3000, paid: 1000, returned: 0, outstanding: 2000, docId: 'doc-1', invoiceFooter: 'Visit again soon.', invoiceTerms: 'Goods once sold cannot be returned.', invoiceSignatureLabel: 'For Auraluxe · Authorized Signatory' };
 
 function Harness({ initial = 'a4' as InvoiceLayout, d = data }) {
   const [layout, setLayout] = useState<InvoiceLayout>(initial);
@@ -15,7 +15,7 @@ describe('Invoice print and share', () => {
     render(<Harness />);
     const sheet = screen.getByLabelText('Invoice receipt');
     expect(sheet).toHaveAttribute('data-layout', 'a4');
-    for (const t of ['Auraluxe Private Limited', 'PAN/VAT 123456789', 'Ram Traders', 'Silk Saree', 'INV-20261106-AB12', 'Rs. 3,000.00', 'Rs. 2,000.00']) expect(sheet).toHaveTextContent(t);
+    for (const t of ['Auraluxe Private Limited', 'PAN/VAT 123456789', 'Ram Traders', 'Silk Saree', 'INV-20261106-AB12', 'Rs. 3,000.00', 'Rs. 2,000.00', 'Goods once sold cannot be returned.', 'For Auraluxe · Authorized Signatory', 'Visit again soon.']) expect(sheet).toHaveTextContent(t);
     expect(sheet).toHaveTextContent('2083-07-20 BS');
   });
   it('switches to the 80mm thermal layout with the right paper size', () => {
