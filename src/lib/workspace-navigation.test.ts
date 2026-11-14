@@ -1,8 +1,13 @@
 import { describe, expect, it } from 'vitest';
-import { workspaceGroups, workspaceItemActive, workspaceItemSearch } from './workspace-navigation';
+import { isBillingStaff, workspaceGroups, workspaceItemActive, workspaceItemSearch } from './workspace-navigation';
 import { documentInSelectedView } from './workspace-views';
 import { dashboardTrends } from './dashboard-trends';
 describe('workspace navigation preserves existing workflows', () => {
+ it('identifies only sales-person staff as dedicated billing users', () => {
+  expect(isBillingStaff('staff', 'sales_person')).toBe(true);
+  expect(isBillingStaff('staff', 'stock_manager')).toBe(false);
+  expect(isBillingStaff('accountant', 'sales_person')).toBe(false);
+ });
  it('selects each report destination independently and retains branch and dates', () => {
   const sales = workspaceGroups.flatMap(g => g.items).find(i => i.name === 'Sale Detail');
   const cost = workspaceGroups.flatMap(g => g.items).find(i => i.name === 'Cost of Sale');

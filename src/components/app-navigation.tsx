@@ -22,6 +22,7 @@ export function AppNavigation({ children, pathname }: { children: ReactNode; pat
  const [person, setPerson] = useState(''); const [compact, setCompact] = useState(false); const [mobileOpen, setMobileOpen] = useState(false);
  const businesses = useQuery({ queryKey: ['businesses'], queryFn: () => load() });
  const admin = businesses.data?.some(b => b.role === 'owner' || b.role === 'admin');
+ const billingStaff = businesses.data?.[0]?.role === 'staff' && businesses.data?.[0]?.jobTitle === 'sales_person';
  const can = useCan(businesses.data?.[0]?.id ?? '');
  const visible = (to?: string) => { const permission = to ? routePermission[to] : undefined; return !permission || can(permission); };
  const deniedPage = Object.keys(routePermission).some(r => (pathname === r || pathname.startsWith(`${r}/`)) && !visible(r));
@@ -30,11 +31,13 @@ export function AppNavigation({ children, pathname }: { children: ReactNode; pat
  const title = pathname === '/dashboard' ? 'Dashboard' : current?.name ?? pathname.slice(1).replaceAll('-', ' ').replace(/^./, c => c.toUpperCase());
  useEffect(() => { supabase.auth.getUser().then(({ data }) => { const u = data.user; setPerson((u?.user_metadata?.['full_name'] as string | undefined) || u?.email?.split('@')[0] || ''); }); try { setCompact(localStorage.getItem('bizsathi.sidebar.compact') === 'true'); } catch { /* Local storage can be unavailable in restricted browser contexts. */ } }, []);
  useEffect(() => { setMobileOpen(false); }, [pathname, search]);
+ useEffect(() => { if (billingStaff && pathname !== '/pos') void navigate({ to: '/pos', replace: true }); }, [billingStaff, pathname, navigate]);
  function toggleCompact() { setCompact(prev => { const next = !prev; try { localStorage.setItem('bizsathi.sidebar.compact', String(next)); } catch { /* Keep the in-memory preference when local storage is unavailable. */ } return next; }); }
  async function signOut() { await client.cancelQueries(); client.clear(); await supabase.auth.signOut(); await navigate({ to: '/auth', replace: true }); }
  if (businesses.isPending) return <main className="flex min-h-screen items-center justify-center px-6 text-sm text-muted-foreground" role="status">Checking AURALUXE workspace access…</main>;
  if (businesses.error) return <main className="mx-auto flex min-h-screen max-w-lg flex-col items-center justify-center px-6 text-center"><h1 className="brand text-2xl">Workspace access could not be verified</h1><p role="alert" className="mt-3 text-sm text-muted-foreground">{businesses.error.message}</p><Button className="mt-5" onClick={() => client.invalidateQueries({ queryKey: ['businesses'] })}>Try again</Button></main>;
  if (businesses.data?.length !== 1) return <main className="mx-auto flex min-h-screen max-w-lg flex-col items-center justify-center px-6 text-center"><Building2 className="size-10 text-primary" /><h1 className="brand mt-5 text-2xl">{businesses.data?.length ? 'Workspace setup required' : 'AURALUXE access required'}</h1><p className="mt-3 text-sm text-muted-foreground">{businesses.data?.length ? 'This account is linked to more than one business. The AURALUXE workspace must be confirmed before access can continue. Your existing records have not been changed.' : 'Your account is not linked to the AURALUXE workspace yet. Ask an AURALUXE administrator for a staff invitation, then sign in again after accepting it.'}</p><Button variant="outline" className="mt-5" onClick={signOut}>Sign out</Button></main>;
+ if (billingStaff && pathname !== '/pos') return <main className="flex min-h-screen items-center justify-center px-6 text-sm text-muted-foreground" role="status">Opening billing workspace…</main>;
  const extras = [
   { name: 'Quotations / estimates', to: '/quotations' }, { name: 'Transactions', to: '/transactions' }, { name: 'Parties & payments', to: '/parties' },
   { name: 'All reports', to: '/reports' }, { name: 'Stock ledger', to: '/inventory' }, { name: 'Credit reminder', to: '/credit-reminder' },
