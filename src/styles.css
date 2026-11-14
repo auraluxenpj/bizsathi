@@ -534,3 +534,77 @@ button, input, select, textarea { font: inherit; }
 .pos-billing-checkout .pos-product-card:hover {
   box-shadow: 0 9px 22px oklch(0.35 0.03 55 / 12%);
 }
+
+
+/* Sky-blue and black workspace theme requested for BizSathi. */
+:root,
+.dark {
+  color-scheme: light;
+  --background: oklch(0.985 0.012 230);
+  --foreground: oklch(0.12 0.015 250);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.12 0.015 250);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.12 0.015 250);
+  --primary: oklch(0.68 0.13 230);
+  --primary-foreground: oklch(0.1 0.02 250);
+  --secondary: oklch(0.92 0.045 225);
+  --secondary-foreground: oklch(0.12 0.015 250);
+  --muted: oklch(0.94 0.025 230);
+  --muted-foreground: oklch(0.32 0.025 245);
+  --accent: oklch(0.9 0.06 225);
+  --accent-foreground: oklch(0.1 0.02 250);
+  --border: oklch(0.86 0.045 225);
+  --input: oklch(0.86 0.045 225);
+  --ring: oklch(0.66 0.14 230);
+  --sidebar: oklch(0.93 0.055 225);
+  --sidebar-foreground: oklch(0.1 0.02 250);
+  --sidebar-primary: oklch(0.68 0.13 230);
+  --sidebar-primary-foreground: oklch(0.08 0.02 250);
+  --sidebar-accent: oklch(0.87 0.07 225);
+  --sidebar-accent-foreground: oklch(0.1 0.02 250);
+  --sidebar-border: oklch(0.84 0.05 225);
+  --sidebar-ring: oklch(0.66 0.14 230);
+  --chart-1: oklch(0.62 0.14 230);
+  --chart-2: oklch(0.7 0.11 205);
+  --chart-3: oklch(0.52 0.09 250);
+  --chart-4: oklch(0.78 0.1 215);
+  --chart-5: oklch(0.58 0.12 190);
+}
+body, .karobar {
+  color: oklch(0.12 0.015 250);
+}
+.karobar {
+  background: linear-gradient(180deg, oklch(0.97 0.035 225), oklch(0.985 0.012 230) 42rem) !important;
+}
+.karobar section[aria-label="Summary"] > *,
+.karobar section[aria-label="Recent activities"],
+.karobar section[aria-label="Low stock"] {
+  border-color: oklch(0.85 0.055 225);
+}
+.pos-billing-checkout {
+  --pos-accent: oklch(0.72 0.13 225);
+  --pos-accent-strong: oklch(0.52 0.14 235);
+  --pos-tint: oklch(0.94 0.05 225);
+  --pos-line: oklch(0.86 0.045 225);
+  color: oklch(0.1 0.015 250);
+  background: linear-gradient(180deg, oklch(0.96 0.045 225 / 75%), transparent 24rem);
+}
+.pos-billing-checkout .pos-product-card > span:nth-child(2) > span:first-child,
+.pos-billing-checkout [aria-label="Checkout catalogue"] > div:first-child h2,
+.pos-billing-checkout .pos-billing-cart > div:first-child h2 {
+  color: oklch(0.1 0.015 250);
+}
+.pos-billing-checkout .pos-category-filters button[aria-pressed="true"] {
+  background: oklch(0.72 0.13 225);
+  border-color: oklch(0.62 0.14 230);
+  color: oklch(0.08 0.015 250);
+}
+.pos-billing-checkout .pos-product-card {
+  background: linear-gradient(160deg, white 62%, oklch(0.96 0.035 225));
+  border-color: oklch(0.86 0.045 225);
+}
+.pos-billing-checkout .pos-billing-cart [aria-label="Payment collection"] {
+  background: linear-gradient(145deg, oklch(0.94 0.05 225), white);
+}
+::selection { background: oklch(0.82 0.09 225); color: oklch(0.08 0.015 250); }
