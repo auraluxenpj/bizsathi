@@ -6,6 +6,7 @@ import { Building2, ChevronDown, PanelLeftClose, PanelLeftOpen, Menu, LogOut, Mo
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Sheet, SheetContent, SheetTitle, SheetDescription } from '@/components/ui/sheet';
+import { MobileTabBar } from '@/components/mobile-tab-bar';
 import { CommandPalette } from '@/components/command-palette';
 import { WorkspaceSidebar } from '@/components/workspace-sidebar';
 import { listBusinesses } from '@/lib/business.functions';
@@ -43,7 +44,7 @@ export function AppNavigation({ children, pathname }: { children: ReactNode; pat
    <WorkspaceSidebar pathname={pathname} search={search} compact={compact} visible={visible} />
    <div className="flex h-14 shrink-0 items-center justify-center border-t border-sidebar-border"><Button variant="ghost" onClick={toggleCompact} size={compact ? 'icon' : 'default'} className="gap-2 text-muted-foreground" aria-label={compact ? 'Expand sidebar' : 'Collapse sidebar'} title={compact ? 'Expand sidebar' : 'Collapse sidebar'}>{compact ? <PanelLeftOpen className="size-4" /> : <><PanelLeftClose className="size-4" />Collapse</>}</Button></div>
   </aside>
-  <header className="sticky top-0 z-20 flex h-16 min-w-0 items-center gap-2 border-b bg-card px-3 sm:gap-4 sm:px-6">
+  <header className={`${pathname === '/dashboard' ? 'hidden lg:flex' : 'flex'} sticky top-0 z-20 h-16 min-w-0 items-center gap-2 border-b bg-card px-3 sm:gap-4 sm:px-6`}>
    <Button variant="ghost" size="icon" aria-label="Open navigation menu" title="Navigation menu" className="shrink-0 lg:hidden" onClick={() => setMobileOpen(true)}><Menu className="size-5" /></Button>
    <span className="min-w-0 flex-1 truncate text-base font-semibold sm:text-xl">{title}</span>
    <div className="hidden xl:block"><CommandPalette className="w-64" /></div><div className="xl:hidden"><CommandPalette variant="icon" shortcut={false} /></div>
@@ -54,5 +55,6 @@ export function AppNavigation({ children, pathname }: { children: ReactNode; pat
   </header>
   <Sheet open={mobileOpen} onOpenChange={setMobileOpen}><SheetContent side="left" className="flex w-[min(320px,90vw)] flex-col bg-sidebar p-0"><div className="px-5 pb-5 pt-7"><SheetTitle>{businessName}</SheetTitle><SheetDescription>BizSathi Nepal</SheetDescription></div><WorkspaceSidebar pathname={pathname} search={search} visible={visible} onNavigate={() => setMobileOpen(false)} /></SheetContent></Sheet>
   <div className="min-w-0">{deniedPage ? <main className="mx-auto max-w-xl px-5 py-16 text-center"><h1 className="brand text-2xl">No access</h1><p className="mt-3 text-sm text-muted-foreground">Your administrator has turned off access to this page.</p></main> : children}</div>
+  <MobileTabBar pathname={pathname} />
  </div>;
 }

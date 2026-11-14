@@ -159,12 +159,12 @@
   }
 
   body {
-    font-family: 'DM Sans', sans-serif;
+    font-family: 'Roboto', 'DM Sans', sans-serif;
     background-color: var(--color-background);
     color: var(--color-foreground);
   }
 }
-.brand { font-family: 'Manrope', sans-serif; }
+.brand { font-family: 'Roboto', 'Manrope', sans-serif; }
 * { letter-spacing: 0; }
 .sticker-preview { width: 260px; max-width: 100%; }
 .barcode-sticker { display: flex; flex-direction: column; align-items: center; justify-content: center; overflow: hidden; min-width: 0; padding: 1mm 2mm; background: var(--print-paper); color: var(--print-ink); }
