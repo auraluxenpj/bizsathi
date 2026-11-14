@@ -498,6 +498,9 @@ export type Database = {
       business_settings: {
         Row: {
           business_id: string
+          invoice_footer: string
+          invoice_terms: string
+          invoice_signature_label: string
           calendar_system: string
           currency: string
           fiscal_year_start_month: number
@@ -512,6 +515,9 @@ export type Database = {
         }
         Insert: {
           business_id: string
+          invoice_footer?: string
+          invoice_terms?: string
+          invoice_signature_label?: string
           calendar_system?: string
           currency?: string
           fiscal_year_start_month?: number
@@ -526,6 +532,9 @@ export type Database = {
         }
         Update: {
           business_id?: string
+          invoice_footer?: string
+          invoice_terms?: string
+          invoice_signature_label?: string
           calendar_system?: string
           currency?: string
           fiscal_year_start_month?: number
