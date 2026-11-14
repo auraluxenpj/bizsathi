@@ -1,24 +1,28 @@
 import { useState } from 'react';
-import { Link } from '@tanstack/react-router';
-import { ArrowLeft, Building2 } from 'lucide-react';
+import { Link, useNavigate } from '@tanstack/react-router';
+import { ArrowLeft, Building2, LogOut } from 'lucide-react';
 import { Button } from './ui/button';
 import { useCommerce } from './commerce-workspace';
 import { DocumentEditor } from './document-editor';
 import { OfflinePos } from './offline-pos';
+import { supabase } from '@/integrations/supabase/client';
 
 // Standalone point of sale: its own full-screen page (no sidebar), selling through the same
 // stock-checked sale editor and server confirmation as the Sales screen.
 export function Pos() {
   const w = useCommerce();
+  const navigate = useNavigate();
+  const billingStaff = w.commerce.data?.role === 'staff';
+  async function signOut() { await supabase.auth.signOut(); await navigate({ to: '/auth', replace: true }); }
   const [saved, setSaved] = useState('');
   const name = w.commerce.data?.business.name ?? '';
   const ready = !!w.commerce.data && !!w.access.data && !!w.inventory.data;
   const error = w.commerce.error?.message || w.access.error?.message || w.inventory.error?.message;
   return <div className="min-h-screen bg-background">
     <header className="sticky top-0 z-30 flex items-center justify-between gap-3 border-b bg-card px-4 py-3">
-      <Button asChild variant="ghost" size="sm"><Link to="/dashboard"><ArrowLeft />Dashboard</Link></Button>
+      {billingStaff ? <span className="text-xs font-semibold text-muted-foreground">Billing workspace</span> : <Button asChild variant="ghost" size="sm"><Link to="/dashboard"><ArrowLeft />Dashboard</Link></Button>}
       <h1 className="truncate text-base font-semibold">{name ? `${name} · ` : ''}Point of sale</h1>
-      <Button asChild variant="outline" size="sm"><Link to="/sales">Sales</Link></Button>
+      {billingStaff ? <Button variant="outline" size="sm" onClick={signOut}><LogOut className="size-4" />Sign out</Button> : <Button asChild variant="outline" size="sm"><Link to="/sales">Sales</Link></Button>}
     </header>
     <main className="mx-auto max-w-[1600px] px-4 md:px-6">
       {!w.businessId ? <section className="py-16 text-center"><Building2 className="mx-auto mb-4 size-9 text-primary" /><h2 className="text-xl font-semibold">No business linked yet</h2><Button asChild className="mt-5"><Link to="/businesses">Business setup</Link></Button></section>
