@@ -12,7 +12,7 @@ vi.mock('@/lib/business.functions', () => ({
   listBusinesses: async () => [{ id: BIZ, name: 'Auraluxe', role: 'owner' }],
   getBusinessAccess: async () => ({ manager: true, userId: ME, branches: [], members: [], invitations: [], grants: [] }),
   registerBusiness: vi.fn(), createBranch: vi.fn(), updateMember: vi.fn(), setBranchAccess: vi.fn(), revokeInvitation: vi.fn(),
-  reissueInvitation: vi.fn(), changeInvitationRole: vi.fn(),
+  reissueInvitation: vi.fn(), changeInvitationRole: vi.fn(), removeMember: vi.fn(), getRoleTemplates: async () => ({ templates: {} }), resetRoleTemplate: vi.fn(), saveRoleTemplate: vi.fn(),
 }));
 import { BusinessAccess } from '@/components/business-access';
 
