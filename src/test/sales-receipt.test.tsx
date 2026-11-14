@@ -12,10 +12,10 @@ const commerce = {
   documents: [{ id: ID.d1, kind: 'sale', status: 'confirmed', reference: 'INV-1001', document_date: '2026-11-06', created_at: '2026-11-06T05:00:00Z', branch_id: ID.br, period_id: ID.per, party_id: ID.p1, source_id: null, subtotal: 3000, tax: 0, total: 3000, mobile: '9812345678', lines: [{ variantId: ID.v1, name: 'Silk Saree', sku: 'AL-001', quantity: 2, price: 1500, discount: 0, taxRate: 0, total: 3000 }] }],
   payments: [{ id: 'pay1', document_id: ID.d1, amount: 1000, direction: 'in', payment_date: '2026-11-06', created_at: '2026-11-06T05:10:00Z', method: 'cash', reference: 'part' }],
 };
-vi.mock('@tanstack/react-start', () => ({ useServerFn: (f: unknown) => f, createServerFn: () => { throw new Error('not used'); } }));
+vi.mock('@tanstack/react-start', async (importOriginal) => ({ ...(await importOriginal<typeof import('@tanstack/react-start')>()), useServerFn: (f: unknown) => f }));
 vi.mock('@/lib/accounts.functions', () => ({ getAccountBalances: async () => ({ accounts: [], unassigned: { cash: 0, bank: 0, wallet: 0 } }), confirmDocumentTagged: vi.fn(), recordPaymentTagged: vi.fn(), postVoucherTagged: vi.fn(), createAccount: vi.fn(), adjustAccount: vi.fn(), transferBetweenAccounts: vi.fn() }));
 vi.mock('@/lib/commerce.functions', () => ({ getCommerce: async () => commerce, confirmDocument: vi.fn(), findCommerceDocument: vi.fn(), createTradingPeriod: vi.fn(), recordCounter: vi.fn(), recordPayment: vi.fn(), saveTradingSettings: vi.fn() }));
-vi.mock('@/lib/business.functions', () => ({ getBusinessAccess: async () => ({ branches: [{ id: ID.br, name: 'Main', is_active: true }] }), listBusinesses: async () => [{ id: ID.biz, name: 'Auraluxe', role: 'owner' }] }));
+vi.mock('@/lib/business.functions', () => ({ getMemberPermissions: async () => ({ userId: ID.user, denials: [], roleDenials: [] }), getBusinessAccess: async () => ({ branches: [{ id: ID.br, name: 'Main', is_active: true }] }), listBusinesses: async () => [{ id: ID.biz, name: 'Auraluxe', role: 'owner' }] }));
 vi.mock('@/lib/inventory.functions', () => ({ getInventory: async () => ({ movements: [], variants: [], parties: [{ id: ID.p1, name: 'Ram Traders', phone: '9812345678', kind: 'customer', is_active: true }] }) }));
 vi.mock('@/lib/inventory-queries', () => ({ businessQuery: { queryKey: ['businesses'], queryFn: async () => [{ id: ID.biz, name: 'Auraluxe', role: 'owner' }] } }));
 vi.mock('@/components/trading-settings', () => ({ TradingSettings: () => null }));
