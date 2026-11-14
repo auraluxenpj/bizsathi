@@ -19,9 +19,9 @@ export function SignIn() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [signedIn, setSignedIn] = useState(false);
-  const [mode, setMode] = useState<'login'|'signup'|'recovery'>('login');
+  const [mode, setMode] = useState<'login'|'signup'|'recovery'>('login'); const [hasInvite, setHasInvite] = useState(false);
   const [email, setEmail] = useState(''); const [mobile, setMobile] = useState(''); const [identifier, setIdentifier] = useState(''); const [password, setPassword] = useState(''); const [message, setMessage] = useState('');
-  useEffect(() => { supabase.auth.getUser().then(({ data }) => setSignedIn(Boolean(data.user))); }, []);
+  useEffect(() => { supabase.auth.getUser().then(({ data }) => setSignedIn(Boolean(data.user))); setHasInvite(Boolean(sessionStorage.getItem('bizsathi-invite'))); }, []);
   async function login(provider: 'google' | 'lovable') {
     setBusy(true); setError('');
     try {
@@ -42,6 +42,7 @@ export function SignIn() {
         setMessage('If this account exists, a recovery link will be sent to its email.');
       } else {
         if (mode === 'signup') {
+          if (!hasInvite) throw new Error('invitation required');
           const m = mobileOf(mobile);
           if (!emailOk(email) || !m || password.length < 8) throw new Error('invalid');
           const { data, error } = await supabase.auth.signUp({ email, password, options: { data: { mobile: m }, emailRedirectTo: `${window.location.origin}/auth` } });
@@ -85,7 +86,7 @@ export function SignIn() {
             {mode !== 'recovery' && <label className="block text-sm">Password<Input className="mt-1 h-11" type="password" autoComplete={mode === 'signup' ? 'new-password' : 'current-password'} required minLength={8} maxLength={128} value={password} onChange={e => setPassword(e.target.value)} /></label>}
             <Button className="h-11 w-full" disabled={busy}>{busy ? 'Please wait…' : mode === 'recovery' ? 'Send recovery link' : mode === 'signup' ? 'Create account' : 'Sign in'}</Button>
             <div className="flex flex-wrap justify-between gap-2 text-sm">
-              <button type="button" className="text-primary hover:underline" onClick={() => { setMode(mode === 'signup' ? 'login' : 'signup'); setError(''); setMessage(''); }}>{mode === 'signup' ? 'Already have an account?' : 'Create account'}</button>
+              {(hasInvite || mode === 'signup') && <button type="button" className="text-primary hover:underline" onClick={() => { setMode(mode === 'signup' ? 'login' : 'signup'); setError(''); setMessage(''); }}>{mode === 'signup' ? 'Already have an account?' : 'Create account'}</button>}
               <button type="button" className="text-muted-foreground hover:underline" onClick={() => { setMode(mode === 'recovery' ? 'login' : 'recovery'); setError(''); setMessage(''); }}>{mode === 'recovery' ? 'Back to sign-in' : 'Forgot password?'}</button>
             </div>
           </form>

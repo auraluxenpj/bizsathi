@@ -13,10 +13,8 @@ export const listBusinesses = createServerFn({ method: 'GET' }).middleware([requ
   return (data ?? []).filter(m => m.businesses && !m.businesses.archived_at).map(m => ({ id: m.business_id, name: m.businesses?.name ?? '', role: m.role_code }));
 });
 
-export const registerBusiness = createServerFn({ method: 'POST' }).middleware([requireSupabaseAuth]).inputValidator(registrationInput).handler(async ({ data, context }) => {
-  const { data: id, error } = await context.supabase.rpc('create_business', { _name: data.name, _legal_name: data.legalName, _pan_vat: data.panVat });
-  if (error) throw new Error('Business registration failed. Check the details and try again.');
-  return { id };
+export const registerBusiness = createServerFn({ method: 'POST' }).middleware([requireSupabaseAuth]).inputValidator(registrationInput).handler(async () => {
+  throw new Error('Business registration is disabled. Contact the AURALUXE workspace administrator.');
 });
 
 export const getBusinessAccess = createServerFn({ method: 'GET' }).middleware([requireSupabaseAuth]).inputValidator(tenantInput).handler(async ({ data, context }) => {
