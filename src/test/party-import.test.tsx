@@ -1,7 +1,7 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import type React from 'react';
+import type { ReactNode } from 'react';
 
 const save = vi.fn(async (_: unknown) => ({ ok: true }));
 vi.mock('@tanstack/react-start', async (importOriginal) => ({ ...(await importOriginal<typeof import('@tanstack/react-start')>()), useServerFn: (f: unknown) => f }));
@@ -11,7 +11,7 @@ import { PartyImport } from '@/components/party-import';
 
 const biz = '55555555-5555-4555-8555-555555555555';
 const file = (text: string) => new File([text], 'parties.csv', { type: 'text/csv' });
-const mount = (ui: React.ReactNode) => render(<QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>{ui}</QueryClientProvider>);
+const mount = (ui: ReactNode) => render(<QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>{ui}</QueryClientProvider>);
 beforeEach(() => save.mockClear());
 
 describe('PartyImport', () => {
