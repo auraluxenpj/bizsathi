@@ -1,3 +1,4 @@
+import {useSearch,useNavigate} from '@tanstack/react-router';
 import { useEffect, useState } from 'react';
 import { useMutation } from '@tanstack/react-query';
 import { useServerFn } from '@tanstack/react-start';
@@ -12,7 +13,7 @@ import { PartyImport } from './party-import';
 import { downloadCsv } from '@/lib/download-csv';
 import { customerLoyalty } from '@/lib/loyalty';
 const blank={name:'',phone:'',email:'',address:'',pan_vat_number:'',is_active:true};
-export function Contacts(){const w=useInventoryWorkspace();const save=useServerFn(saveParty);const [kind,setKind]=useState<'customer'|'supplier'>('customer');const [search,setSearch]=useState('');const [open,setOpen]=useState(false);const [id,setId]=useState<string>();const [draft,setDraft]=useState(blank);const [status,setStatus]=useState('');
+export function Contacts(){const w=useInventoryWorkspace();const save=useServerFn(saveParty);const view=useSearch({strict:false});const navigate=useNavigate();const kind=view.kind==='supplier'?'supplier':'customer';const setKind=(kind:'customer'|'supplier')=>{void navigate({to:'/contacts',search:{kind},replace:true});};const [search,setSearch]=useState('');const [open,setOpen]=useState(false);const [id,setId]=useState<string>();const [draft,setDraft]=useState(blank);const [status,setStatus]=useState('');
  useEffect(()=>{setOpen(false);setId(undefined);setDraft(blank);setStatus('');},[w.businessId]);
  const mutation=useMutation({mutationFn:()=>save({data:partyInput.parse({...draft,businessId:w.businessId,id,kind})}),onSuccess:()=>{setOpen(false);setStatus('Contact saved.');w.inventory.refetch();},onError:e=>setStatus(e.message)});
  const rows=(w.inventory.data?.parties ?? []).filter(p=>p.kind===kind);const filtered=rows.filter(p=>`${p.name} ${p.phone} ${p.email}`.toLowerCase().includes(search.toLowerCase()));

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Link } from '@tanstack/react-router';
+import { Link, useSearch } from '@tanstack/react-router';
 import { useServerFn } from '@tanstack/react-start';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Building2, Plus, Copy, ShieldCheck, UserRound, Ban } from 'lucide-react';
@@ -18,7 +18,7 @@ const roleCards: Record<string, { name: string; about: string }> = {
 };
 
 export function BusinessAccess() {
- const client = useQueryClient();
+ const view=useSearch({strict:false});const client = useQueryClient();
  const listFn = useServerFn(listBusinesses); const accessFn = useServerFn(getBusinessAccess); const registerFn = useServerFn(registerBusiness); const inviteFn = useServerFn(createInvitation); const branchFn = useServerFn(createBranch); const memberFn = useServerFn(updateMember); const grantFn = useServerFn(setBranchAccess); const revokeFn = useServerFn(revokeInvitation);
  const businesses = useQuery({ queryKey: ['businesses'], queryFn: () => listFn() });
  const [selected, setSelected] = useState(''); const businessId = selected || businesses.data?.[0]?.id || '';
@@ -37,7 +37,7 @@ export function BusinessAccess() {
  const roles = business?.role === 'owner' ? ['admin','accountant','staff','viewer'] as const : ['accountant','staff','viewer'] as const;
  return <main className="mx-auto max-w-6xl px-5 py-8 md:px-10">
   <header className="flex flex-wrap items-center justify-between gap-3 border-b pb-5"><h1 className="brand text-3xl">BizSathi Nepal</h1><div className="flex gap-2"><Button asChild variant="outline"><Link to="/security"><ShieldCheck />Security desk</Link></Button><Button asChild variant="ghost" size="icon" title="Profile"><Link to="/profile"><UserRound /></Link></Button></div></header>
-  <div className="my-8 flex flex-wrap items-center justify-between gap-4"><div><p className="text-xs font-semibold text-primary">BUSINESS ACCESS</p><h2 className="brand mt-2 text-2xl">Businesses & staff</h2></div><Button variant="outline" onClick={() => setShowRegistration(v => !v)}><Plus />Register business</Button></div>
+  <div className="my-8 flex flex-wrap items-center justify-between gap-4"><div><p className="text-xs font-semibold text-primary">BUSINESS ACCESS</p><h2 className="brand mt-2 text-2xl">{view.panel==='roles'?'Roles & permissions':view.panel==='users'?'Users':'Businesses & staff'}</h2></div><Button variant="outline" onClick={() => setShowRegistration(v => !v)}><Plus />Register business</Button></div>
   {(businesses.isPending || (businessId && access.isPending)) && <p role="status">Loading business access…</p>}
   {(businesses.error || access.error) && <p role="alert" className="text-destructive">{businesses.error?.message || access.error?.message}</p>}
   {message && <p role="status" className="mb-6 border-l-2 border-primary pl-3 text-sm">{message}</p>}

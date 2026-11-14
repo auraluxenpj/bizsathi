@@ -1,5 +1,5 @@
 import { useCan } from './permission-checklist';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useMutation } from '@tanstack/react-query';
 import { useServerFn } from '@tanstack/react-start';
 import { SlidersHorizontal, PackageMinus } from 'lucide-react';
@@ -11,7 +11,7 @@ import { correctionRequest } from '@/lib/stock-corrections';
 import { stockBalances, type stockInput } from '@/lib/inventory-schemas';
 import type { z } from 'zod';
 import type { Workspace } from './inventory-workspace';
-export function StockCorrection({w,branch,onStatus}:{w:Workspace;branch:string;onStatus:(s:string)=>void}) {
+export function StockCorrection({w,branch,onStatus,initialMode}:{w:Workspace;branch:string;onStatus:(s:string)=>void;initialMode?:'adjust'|'dispose'}) {
  const can=useCan(w.businessId);
   const post=useServerFn(postStock);
   const [mode,setMode]=useState<'adjust'|'dispose'|null>(null);
@@ -26,6 +26,7 @@ export function StockCorrection({w,branch,onStatus}:{w:Workspace;branch:string;o
   const mutation=useMutation({mutationFn:(r:z.infer<typeof stockInput>)=>post({data:r}),onSuccess:()=>{onStatus(mode==='dispose'?'Disposal confirmed and logged.':'Stock adjustment confirmed and logged.');setMode(null);setRequest(null);w.inventory.refetch();},onError:e=>setError(e.message)});
   function open(m:'adjust'|'dispose') {setMode(m);setBranch(branch||branches[0]?.id||'');setVariant('');setQuantity('');setNotes('');setReference('');setClassification('damaged');setError('');setRequest(null);}
   function submit(){try{if(!mode)return;const r=request??correctionRequest({businessId:w.businessId,id:crypto.randomUUID(),branchId,variantId,reference},{mode,quantity:Number(quantity),classification,notes});if(onHand+r.quantity<0&&!request)throw new Error('The resulting stock cannot be negative.');setRequest(r);mutation.mutate(r);}catch(e){setError(e instanceof Error?e.message:'Check adjustment details.');}}
+  useEffect(()=>{if(initialMode&&branches.length&&variants.length)open(initialMode);},[initialMode,branches.length>0,variants.length>0]);
   const locked=!!request;
   if(!can('stock.create'))return null;
   return <><Button variant="outline" disabled={!branches.length||!variants.length} onClick={()=>open('adjust')}><SlidersHorizontal/>Adjust stock</Button><Button variant="outline" disabled={!branches.length||!variants.length} onClick={()=>open('dispose')}><PackageMinus/>Dispose stock</Button>

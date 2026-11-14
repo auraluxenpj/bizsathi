@@ -16,10 +16,11 @@ function Barcode({value,onReady}:{value:string;onReady?:(ok:boolean)=>void}) {
 function Sticker({product,price}:{product:LabelProduct;price:boolean}) {
   return <div className="barcode-sticker"><p className="sticker-name">{product.name}</p><Barcode value={stickerValue(product)}/><p className="sticker-code">{product.sku}</p>{price&&<p className="sticker-price">{formatNPR(product.price)}</p>}</div>;
 }
-export function BarcodeStickers({products}:{products:LabelProduct[]}) {
+export function BarcodeStickers({products, autoOpen=false}:{products:LabelProduct[];autoOpen?:boolean}) {
   const [open,setOpen]=useState(false),[search,setSearch]=useState(''),[copies,setCopies]=useState<Record<string,number>>({});
   const [format,setFormat]=useState<LabelFormat>('a4-40'),[start,setStart]=useState(1),[price,setPrice]=useState(false);
   const [printing,setPrinting]=useState(false),[error,setError]=useState('');
+  useEffect(()=>{if(autoOpen&&products.length)setOpen(true);},[autoOpen,products.length]);
   const selected=products.filter(p=>(copies[p.id]??0)>0);
   let pages:(LabelProduct|null)[][]=[];let validation='';
   try{pages=labelPages(selected.map(product=>({product,copies:copies[product.id]??0})),format,start);}catch(e){validation=e instanceof Error?e.message:'Check label quantities.';}
