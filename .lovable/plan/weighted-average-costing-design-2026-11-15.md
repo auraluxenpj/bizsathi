@@ -49,9 +49,20 @@ Purchase and receipt dates may differ. The effective costing sequence must follo
 
 Extend the existing protected commerce/stock RPCs; do not add a second client-side posting path. Cost and quantity events must commit or roll back together. Reuse business advisory locking and open-period validation, and lock the affected branch/variant cost position in deterministic order. Verify role and branch access inside the SECURITY DEFINER RPC. Preserve request idempotency and source-document validation. Every new table must have business_id, restrictive foreign keys, RLS, tenant/branch-scoped read policies, immutable event triggers, and audit evidence. Never cascade-delete financial or posted records.
 
+## Repository and posting audit — 2026-11-15
+
+- The app maintains two append-only quantity ledgers: `stock_movements` for manual operations and `commerce_stock_movements` for confirmed commerce documents. The report snapshot combines them for quantity only; neither ledger contains unit cost or carrying value.
+- Manual opening stock, adjustments, and branch transfers post through the protected stock operation RPC. Commerce confirmation posts sale, goods receipt, sale return, and purchase return quantity movements. A purchase bill alone does not receive stock.
+- Goods receipt lines are copied from the linked purchase line with proportional discount allocation. This is usable source evidence for receipt unit cost, but the current movement row does not preserve a cost snapshot.
+- Sales currently reduce quantity without recording COGS. Sales returns restore quantity without a cost snapshot. Purchase returns are source-linked and quantity-limited, but need the original receipt-cost evidence in the new cost ledger.
+- Website stock acknowledgements currently call the manual adjustment operation. A decrease can be costed at the affected branch average; a positive acknowledgement/return has no linked original sale-cost evidence and must remain unvalued or be blocked until supported provenance is supplied.
+- `costOfGoods` in `src/lib/business-reports.ts` is a legacy helper that estimates from the latest purchase price and optional catalogue fallback. It is not used by the current report builder; do not reuse it for financial reporting. The report builder keeps valuation and Profit & Loss unavailable.
+- Migration files `0033`–`0040` are intentionally unregistered, as documented in `supabase/ROLLBACK_AND_SECURITY.md`; the verified Drizzle journal ends at `0032` and registers `0041` separately. Do not replay the unregistered files or infer their live application status from their presence in Git. `drizzle/schema.ts` is intentionally blank, and `supabase/config.toml` alone does not prove the live database identity.
+- No live database connection, applied migration ledger, or production schema read-back is available in this workflow. Migration application remains blocked until the actual BizSathi database identity and its migration ledger are verified.
+
 ## Historical reconciliation before activation
 
-1. Verify the actual BizSathi database project identity and its applied migration ledger; the repository journal currently has a discontinuity from migration 0032 to 0041.
+1. Verify the actual BizSathi database project identity and its applied migration ledger; do not assume repository migration files or the configured project ID establish live state.
 2. Inventory every branch/variant's current quantity from both quantity ledgers.
 3. Reconcile historical confirmed purchases to goods receipts, returns, sales, sale returns, manual openings/adjustments, and transfers.
 4. Collect approved opening costs and missing receipt/return provenance from the business.
