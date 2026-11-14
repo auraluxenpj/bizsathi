@@ -12,6 +12,7 @@ export default tseslint.config(
       ".output",
       ".vinxi",
       "**/*.test.{ts,tsx}",
+      "**/*.spec.{ts,tsx}",
       "test/**/*",
       "src/test/**/*",
     ],
