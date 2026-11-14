@@ -3,7 +3,7 @@ import { Bell, Building2, Calculator, ChevronDown, ChevronRight, ArrowDown, Arro
 import { Switch } from '@/components/ui/switch';
 
 export type KarobarHomeProps = {
-  businessName: string; periodName: string; privacy: boolean; onPrivacy: (v: boolean) => void;
+  businessName: string; periodName: string; period: string; onPeriodChange: (v: string) => void; privacy: boolean; onPrivacy: (v: boolean) => void;
   money: (v: number | null | undefined) => string; visible: (to: string) => boolean;
   receive?: number | null | undefined; give?: number | null | undefined; sales?: number | null | undefined;
   purchases?: number | null | undefined; expenses?: number | null | undefined; cashBank?: number | null | undefined;
@@ -41,6 +41,9 @@ export function KarobarHome(p: KarobarHomeProps) {
       <Link to="/more" aria-label="Notifications" className="p-1"><Bell className="size-6" /></Link>
     </header>
     <label className="mt-4 flex items-center gap-4 rounded-xl bg-white px-5 py-4 text-[20px] text-[#1b1f23]"><EyeOff className="size-6 text-[#6b7280]" /><span className="flex-1">Privacy Mode</span><Switch checked={p.privacy} onCheckedChange={p.onPrivacy} aria-label="Privacy mode" /></label>
+    <section aria-label="Dashboard period" className="mt-3 flex flex-wrap gap-2">
+      {([['today', 'Today'], ['month', 'This month'], ['week', '7 days'], ['30', '30 days']] as const).map(([id, label]) => <button key={id} type="button" aria-pressed={p.period === id} onClick={() => p.onPeriodChange(id)} className={`rounded-full border px-3 py-2 text-sm font-medium transition-colors ${p.period === id ? 'border-[#2bb489] bg-[#e4f6ee] text-[#16835f]' : 'border-[#e5e7eb] bg-white text-[#6b7280]'}`}>{label}</button>)}
+    </section>
     <section aria-label="Summary" className="mt-4 grid grid-cols-2 gap-3">
       <Stat tone="receive" to={ok('/parties') ? '/parties' : undefined} value={p.money(p.receive)} label={<>To Receive <ArrowDown className="size-4" /></>} />
       <Stat tone="give" to={ok('/parties') ? '/parties' : undefined} value={p.money(p.give)} label={<>To Give <ArrowUp className="size-4" /></>} />
