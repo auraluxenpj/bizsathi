@@ -50,7 +50,6 @@ describe('Operational inventory confirmations',()=>{
  it('posts selected sale return quantities against the original invoice, not another sale',async()=>{
   documents.push({...original,id:'prior',source_id:I.invoice,kind:'sale_return',total:200,lines:[{...original.lines[0],quantity:2,total:200}] as typeof original.lines});
   mount(<DocumentEditor w={workspace} kind="sale_return" sourceId={I.invoice} onSaved={()=>{}}/>);
-  fireEvent.click(await screen.findByRole('checkbox',{name:`Return AL-DRESS`}));
   expect(await screen.findByLabelText('quantity line 1')).toHaveValue(8);
   fireEvent.change(screen.getByLabelText('quantity line 1'),{target:{value:'3'}});
   fireEvent.click(screen.getByRole('button',{name:'Confirm sale return'}));
@@ -71,7 +70,6 @@ describe('Operational inventory confirmations',()=>{
  it('purchase returns prefill only received goods and keep their supplier invoice linkage',async()=>{
   documents=[{...original,kind:'purchase'},{...original,id:'receipt',source_id:I.invoice,kind:'goods_receipt',lines:[{...original.lines[0],quantity:4,total:400}] as typeof original.lines}];
   mount(<DocumentEditor w={workspace} kind="purchase_return" sourceId={I.invoice} onSaved={()=>{}}/>);
-  fireEvent.click(await screen.findByRole('checkbox',{name:`Return AL-DRESS`}));
   expect(await screen.findByLabelText('quantity line 1')).toHaveValue(4);
   fireEvent.change(screen.getByLabelText('quantity line 1'),{target:{value:'5'}});
   expect(screen.getByRole('button',{name:'Confirm purchase return'})).toBeDisabled();
