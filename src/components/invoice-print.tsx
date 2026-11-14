@@ -18,7 +18,7 @@ export function useInvoiceLayout(): [InvoiceLayout, (l: InvoiceLayout) => void] 
 
 export type InvoiceData = {
   business: string; pan: string; reference: string; date: string; status: string; kind: string; branch: string;
-  businessId?:string; address?:string; partyPan?:string; party: string; phone: string; lines: InvoiceLine[]; subtotal: number; tax: number; total: number; paid: number; returned: number; outstanding: number; docId: string; loyalty?: { points: number; discount: number } | undefined;
+  businessId?:string; address?:string; partyPan?:string; invoiceFooter?:string; invoiceTerms?:string; invoiceSignatureLabel?:string; party: string; phone: string; lines: InvoiceLine[]; subtotal: number; tax: number; total: number; paid: number; returned: number; outstanding: number; docId: string; loyalty?: { points: number; discount: number } | undefined;
 };
 export const messageFor = (d: InvoiceData) => invoiceMessage({ business: d.business, reference: d.reference, date: d.date, kind: d.kind, party: d.party, lines: d.lines, total: d.total, paid: d.paid, outstanding: d.outstanding });
 
@@ -65,7 +65,7 @@ export function InvoiceSheet({ data: d, layout, extra }: { data: InvoiceData; la
         <div className="my-2 border-t border-dashed pt-2"><Totals d={d} compact /></div>
         {extra}
         {d.kind==='sale'&&d.businessId&&<PaymentQr businessId={d.businessId}/>}
-        <p className="mt-3 text-center">Thank you! Visit again.</p>
+        {d.invoiceTerms&&<p className="mt-3 whitespace-pre-wrap break-words border-t border-dashed pt-2">{d.invoiceTerms}</p>}{d.invoiceSignatureLabel&&<p className="mt-6 border-t border-dashed pt-2 text-center">{d.invoiceSignatureLabel}</p>}<p className="mt-3 text-center">{d.invoiceFooter||'Thank you! Visit again.'}</p>
       </article>
     ) : (
       <article aria-label="Invoice receipt" data-layout="a4" className="mx-auto max-w-3xl border-y bg-white py-7 text-black">
@@ -79,7 +79,7 @@ export function InvoiceSheet({ data: d, layout, extra }: { data: InvoiceData; la
         <div className="overflow-x-auto"><table className="w-full min-w-[420px] text-left text-sm"><thead><tr className="border-b text-xs uppercase text-neutral-500"><th className="py-2">Item</th><th>Qty</th><th>Rate</th><th className="text-right">Amount</th></tr></thead>
           <tbody>{d.lines.map(l => <tr key={l.sku + l.name} className="border-b"><td className="py-3">{l.name}<span className="block text-xs text-neutral-500">{l.sku}</span></td><td>{l.quantity}</td><td className="tabular-nums">{l.price.toFixed(2)}</td><td className="text-right tabular-nums">{l.total.toFixed(2)}</td></tr>)}</tbody></table></div>
         <div className="mt-6"><Totals d={d} /></div>
-        <p className="mt-10 text-center text-sm text-neutral-600">Thank you for your business.</p>
+        {d.invoiceTerms&&<div className="mt-8 border-t pt-4 text-xs text-neutral-600"><p className="mb-1 font-semibold uppercase tracking-wide">Terms & conditions</p><p className="whitespace-pre-wrap">{d.invoiceTerms}</p></div>}{d.invoiceSignatureLabel&&<div className="mt-12 ml-auto max-w-52 border-t border-neutral-500 pt-2 text-center text-xs">{d.invoiceSignatureLabel}</div>}<p className="mt-10 text-center text-sm text-neutral-600">{d.invoiceFooter||'Thank you for your business.'}</p>
         <p className="mt-4 break-all text-[10px] text-neutral-400">Document {d.docId}</p>
       </article>
     )}
