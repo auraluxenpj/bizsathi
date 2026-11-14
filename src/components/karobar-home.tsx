@@ -47,7 +47,7 @@ export function KarobarHome(p: KarobarHomeProps) {
       <Stat to={ok('/sales') ? '/sales' : undefined} value={p.money(p.sales)} label={`Sales (${p.periodName})`} />
       <Stat to={ok('/purchases') ? '/purchases' : undefined} value={p.money(p.purchases)} label={`Purchase (${p.periodName})`} />
       <Stat to={ok('/expenses') ? '/expenses' : undefined} value={p.money(p.expenses)} label={`Expense (${p.periodName})`} />
-      <Stat to={ok('/cash-bank') ? '/cash-bank' : undefined} value="Total Balance" label="Cash & Bank" />
+      <Stat to={ok('/cash-bank') ? '/cash-bank' : undefined} value={p.money(p.cashBank)} label="Cash & Bank" />
     </section>
     <h2 className="mt-7 text-[24px] font-medium text-[#1b1f23]">Explore App</h2>
     <section className="mt-3 grid grid-cols-4 gap-3">{explore.filter(t => ok(t.to)).map(t => <Link key={t.label} to={t.to} className="relative flex flex-col items-center gap-3 rounded-xl bg-white px-1 py-4 text-center shadow-[0_1px_4px_rgba(16,24,40,.06)]">{t.badge && <span className="absolute -top-1 right-0 rounded bg-[#ef4444] px-1.5 py-0.5 text-[11px] font-medium text-white">{t.badge}</span>}<t.icon className="size-7 text-[#2bb489]" /><span className="text-[19px] leading-6 text-[#1b1f23]">{t.label}</span></Link>)}</section>
