@@ -69,13 +69,13 @@
 }
 
 :root {
-  --workspace: oklch(0.975 0.004 240);
+  --workspace: oklch(0.972 0.014 165);
   --revenue: oklch(0.58 0.14 160);
   --expense: oklch(0.62 0.20 22);
   --purchase: oklch(0.57 0.16 250);
   --print-paper: oklch(1 0 0);
   --print-ink: oklch(0 0 0);
-  --radius: 0.5rem;
+  --radius: 0.7rem;
   --hero-scrim: oklch(0.18 0.02 160 / 60%);
   --background: oklch(1 0 0);
   --foreground: oklch(0.25 0.013 160);
@@ -83,9 +83,9 @@
   --card-foreground: oklch(0.129 0.042 264.695);
   --popover: oklch(1 0 0);
   --popover-foreground: oklch(0.129 0.042 264.695);
-  --primary: oklch(0.63 0.15 158);
+  --primary: oklch(0.57 0.19 158);
   --primary-foreground: oklch(1 0 0);
-  --secondary: oklch(0.96 0.02 166);
+  --secondary: oklch(0.94 0.045 160);
   --secondary-foreground: oklch(0.36 0.06 166);
   --muted: oklch(0.968 0.007 247.896);
   --muted-foreground: oklch(0.53 0.01 160);
@@ -101,11 +101,11 @@
   --chart-3: oklch(0.398 0.07 227.392);
   --chart-4: oklch(0.828 0.189 84.429);
   --chart-5: oklch(0.769 0.188 70.08);
-  --sidebar: oklch(0.982 0.006 240);
+  --sidebar: oklch(0.968 0.018 165);
   --sidebar-foreground: oklch(0.129 0.042 264.695);
   --sidebar-primary: oklch(0.208 0.042 265.755);
   --sidebar-primary-foreground: oklch(0.984 0.003 247.858);
-  --sidebar-accent: oklch(0.94 0.025 160);
+  --sidebar-accent: oklch(0.91 0.06 160);
   --sidebar-accent-foreground: oklch(0.40 0.09 160);
   --sidebar-border: oklch(0.929 0.013 255.508);
   --sidebar-ring: oklch(0.704 0.04 256.788);
@@ -238,4 +238,67 @@
 @media (max-width: 767px) {
   .pos-billing-checkout [aria-label="Checkout catalogue"], .pos-billing-checkout .pos-billing-cart { border-radius: .8rem; }
   .pos-product-card { min-height: 10.5rem; }
+}
+
+/* Brighter retail checkout finish: stronger contrast, tactile cards and clearer payment focus. */
+.pos-billing-checkout [aria-label="Checkout catalogue"],
+.pos-billing-checkout .pos-billing-cart {
+  border-color: oklch(0.9 0.025 165);
+  box-shadow: 0 12px 34px oklch(0.32 0.06 165 / 7%);
+}
+.pos-billing-checkout [aria-label="Checkout catalogue"] {
+  background: linear-gradient(145deg, oklch(1 0 0), oklch(0.985 0.018 160));
+}
+.pos-billing-checkout .pos-billing-cart {
+  background: linear-gradient(155deg, oklch(1 0 0), oklch(0.98 0.025 160));
+}
+.pos-billing-checkout .pos-product-card {
+  overflow: hidden;
+  border-color: oklch(0.91 0.02 165);
+  box-shadow: 0 2px 8px oklch(0.28 0.04 165 / 4%);
+}
+.pos-billing-checkout .pos-product-card img {
+  transition: transform .22s ease;
+}
+.pos-billing-checkout .pos-product-card:hover img {
+  transform: scale(1.035);
+}
+.pos-billing-checkout .pos-product-card button {
+  font-weight: 650;
+}
+.pos-billing-checkout .pos-category-filters button[aria-pressed="true"],
+.pos-billing-checkout .pos-category-filters button[data-state="active"] {
+  box-shadow: 0 3px 10px oklch(0.5 0.16 158 / 16%);
+}
+.pos-billing-checkout .pos-billing-cart [aria-label="Payment collection"] {
+  border: 1px solid oklch(0.88 0.045 160);
+  background: linear-gradient(135deg, oklch(0.97 0.035 160), oklch(0.985 0.018 190));
+}
+.pos-billing-checkout .pos-billing-cart [aria-label="Payment collection"] > div:nth-child(2) {
+  border: 1px solid oklch(0.9 0.025 165);
+  background: oklch(1 0 0 / 82%);
+}
+.pos-billing-checkout .pos-billing-cart [aria-label="Payment collection"] > div:nth-child(2) > div:last-child p + p {
+  color: var(--color-primary);
+  font-size: 1rem;
+}
+.pos-billing-checkout > div.fixed {
+  border-color: oklch(0.88 0.035 160);
+  background: oklch(1 0 0 / 96%);
+  box-shadow: 0 -10px 30px oklch(0.28 0.04 165 / 8%);
+  backdrop-filter: blur(14px);
+}
+.pos-billing-checkout > div.fixed .text-2xl {
+  color: oklch(0.48 0.17 158);
+  letter-spacing: -.04em;
+}
+.pos-billing-checkout button:focus-visible,
+.pos-billing-checkout input:focus-visible,
+.pos-billing-checkout select:focus-visible {
+  outline: 3px solid oklch(0.7 0.14 158 / 35%);
+  outline-offset: 2px;
+}
+@media (prefers-reduced-motion: reduce) {
+  .pos-billing-checkout .pos-product-card,
+  .pos-billing-checkout .pos-product-card img { transition: none; }
 }
