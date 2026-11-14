@@ -11,7 +11,7 @@ import { correctionRequest } from '@/lib/stock-corrections';
 import { stockBalances, type stockInput } from '@/lib/inventory-schemas';
 import type { z } from 'zod';
 import type { Workspace } from './inventory-workspace';
-export function StockCorrection({w,branch,onStatus,initialMode}:{w:Workspace;branch:string;onStatus:(s:string)=>void;initialMode?:'adjust'|'dispose'}) {
+export function StockCorrection({w,branch,onStatus,initialMode}:{w:Workspace;branch:string;onStatus:(s:string)=>void;initialMode?:'adjust'|'dispose'|undefined}) {
  const can=useCan(w.businessId);
   const post=useServerFn(postStock);
   const [mode,setMode]=useState<'adjust'|'dispose'|null>(null);
