@@ -28,9 +28,9 @@ export function AppNavigation({ children, pathname }: { children: ReactNode; pat
  const businessName = businesses.data?.[0]?.name ?? 'BizSathi';
  const current = workspaceGroups.flatMap(g => g.items).find(i => workspaceItemActive(i, pathname, search));
  const title = pathname === '/dashboard' ? 'Dashboard' : current?.name ?? pathname.slice(1).replaceAll('-', ' ').replace(/^./, c => c.toUpperCase());
- useEffect(() => { supabase.auth.getUser().then(({ data }) => { const u = data.user; setPerson((u?.user_metadata?.['full_name'] as string | undefined) || u?.email?.split('@')[0] || ''); }); try { setCompact(localStorage.getItem('bizsathi.sidebar.compact') === 'true'); } catch {} }, []);
+ useEffect(() => { supabase.auth.getUser().then(({ data }) => { const u = data.user; setPerson((u?.user_metadata?.['full_name'] as string | undefined) || u?.email?.split('@')[0] || ''); }); try { setCompact(localStorage.getItem('bizsathi.sidebar.compact') === 'true'); } catch { /* Local storage can be unavailable in restricted browser contexts. */ } }, []);
  useEffect(() => { setMobileOpen(false); }, [pathname, search]);
- function toggleCompact() { setCompact(prev => { const next = !prev; try { localStorage.setItem('bizsathi.sidebar.compact', String(next)); } catch {} return next; }); }
+ function toggleCompact() { setCompact(prev => { const next = !prev; try { localStorage.setItem('bizsathi.sidebar.compact', String(next)); } catch { /* Keep the in-memory preference when local storage is unavailable. */ } return next; }); }
  async function signOut() { await client.cancelQueries(); client.clear(); await supabase.auth.signOut(); await navigate({ to: '/auth', replace: true }); }
  const extras = [
   { name: 'Quotations / estimates', to: '/quotations' }, { name: 'Transactions', to: '/transactions' }, { name: 'Parties & payments', to: '/parties' },

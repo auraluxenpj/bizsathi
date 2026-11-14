@@ -1,19 +1,23 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import type { ReactNode } from 'react';
 
 const save = vi.fn(async (_: unknown) => ({ ok: true }));
-vi.mock('@tanstack/react-start', () => ({ useServerFn: (f: unknown) => f, createServerFn: () => { throw new Error('not used'); } }));
+vi.mock('@tanstack/react-start', async (importOriginal) => ({ ...(await importOriginal<typeof import('@tanstack/react-start')>()), useServerFn: (f: unknown) => f }));
 vi.mock('@/lib/inventory.functions', () => ({ saveParty: (a: unknown) => save(a) }));
+vi.mock('@/lib/business.functions', () => ({ getMemberPermissions: async () => ({ userId: '66666666-6666-4666-8666-666666666666', denials: [], roleDenials: [] }) }));
 import { PartyImport } from '@/components/party-import';
 
 const biz = '55555555-5555-4555-8555-555555555555';
 const file = (text: string) => new File([text], 'parties.csv', { type: 'text/csv' });
+const mount = (ui: ReactNode) => render(<QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>{ui}</QueryClientProvider>);
 beforeEach(() => save.mockClear());
 
 describe('PartyImport', () => {
   it('previews, skips existing parties and imports the rest as the chosen type', async () => {
     const done = vi.fn();
-    render(<PartyImport businessId={biz} kind="supplier" existing={[{ name: 'Old Co', phone: '9801' }]} onDone={done} />);
+    mount(<PartyImport businessId={biz} kind="supplier" existing={[{ name: 'Old Co', phone: '9801' }]} onDone={done} />);
     fireEvent.change(screen.getByLabelText('Party CSV file'), { target: { files: [file('Party Name,Mobile\nOld Co,9801\nNew Co,9802\nAnother,9803')] } });
     expect(await screen.findByText(/2 new suppliers ready to import/)).toBeInTheDocument();
     expect(screen.getByText(/1 already exist/)).toBeInTheDocument();
@@ -24,14 +28,14 @@ describe('PartyImport', () => {
     expect(done).toHaveBeenCalled();
   });
   it('shows a clear error for a file without names', async () => {
-    render(<PartyImport businessId={biz} kind="customer" existing={[]} onDone={() => {}} />);
+    mount(<PartyImport businessId={biz} kind="customer" existing={[]} onDone={() => {}} />);
     fireEvent.change(screen.getByLabelText('Party CSV file'), { target: { files: [file('phone\n1')] } });
     expect(await screen.findByText(/needs a "name"/)).toBeInTheDocument();
     expect(save).not.toHaveBeenCalled();
   });
   it('reports partial progress when the server rejects a row', async () => {
     save.mockResolvedValueOnce({ ok: true }).mockRejectedValueOnce(new Error('Administrator access is required.'));
-    render(<PartyImport businessId={biz} kind="customer" existing={[]} onDone={() => {}} />);
+    mount(<PartyImport businessId={biz} kind="customer" existing={[]} onDone={() => {}} />);
     fireEvent.change(screen.getByLabelText('Party CSV file'), { target: { files: [file('name\nA\nB\nC')] } });
     fireEvent.click(await screen.findByRole('button', { name: 'Import 3' }));
     expect(await screen.findByText(/Administrator access is required\. 1 saved before stopping/)).toBeInTheDocument();

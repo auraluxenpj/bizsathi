@@ -17,10 +17,10 @@ const commerce = {
   payments: [{ id: 'pay1', document_id: ID.s1, amount: 400, direction: 'in', payment_date: '2026-10-05', created_at: '2', method: 'bank', reference: 'first part' }],
   journals: [{ account_code: 'cash', debit: 400, credit: 0, entry_date: '2026-10-05', branch_id: ID.br }, { account_code: 'bank', debit: 3000, credit: 0, entry_date: '2026-10-05', branch_id: ID.br }, { account_code: 'wallet', debit: 100, credit: 0, entry_date: '2026-10-05', branch_id: ID.br }],
 };
-vi.mock('@tanstack/react-start', () => ({ useServerFn: (f: unknown) => f, createServerFn: () => { throw new Error('not used'); } }));
+vi.mock('@tanstack/react-start', async (importOriginal) => ({ ...(await importOriginal<typeof import('@tanstack/react-start')>()), useServerFn: (f: unknown) => f }));
 vi.mock('@/lib/accounts.functions', () => ({ getAccountBalances: async () => ({ accounts: [], unassigned: { cash: 0, bank: 0, wallet: 0 } }), confirmDocumentTagged: vi.fn(), recordPaymentTagged: vi.fn(), postVoucherTagged: vi.fn(), createAccount: vi.fn(), adjustAccount: vi.fn(), transferBetweenAccounts: vi.fn() }));
 vi.mock('@/lib/commerce.functions', () => ({ getCommerce: async () => commerce, saveTradingSettings: vi.fn(), createTradingPeriod: vi.fn(), recordPayment: vi.fn(), confirmDocument: vi.fn(), findCommerceDocument: vi.fn(), recordCounter: vi.fn() }));
-vi.mock('@/lib/business.functions', () => ({ getMemberPermissions:async()=>({userId:ID.user,denials:[]}),getBusinessAccess: async () => ({ branches: [{ id: ID.br, name: 'Main', is_active: true }] }), listBusinesses: async () => [{ id: ID.biz, name: 'Auraluxe', role: 'owner' }] }));
+vi.mock('@/lib/business.functions', () => ({ reissueInvitation: vi.fn(), getMemberPermissions:async()=>({userId:ID.user,denials:[]}),getBusinessAccess: async () => ({ branches: [{ id: ID.br, name: 'Main', is_active: true }] }), listBusinesses: async () => [{ id: ID.biz, name: 'Auraluxe', role: 'owner' }] }));
 vi.mock('@/lib/accounting.functions',()=>({getAccountingReport:async()=>({branches:[{id:ID.br,name:'Main'}]})}));
 vi.mock('@/lib/sales-cash-flow.functions',()=>({getPaymentQr:async()=>({url:null}),saveCreditLimit:vi.fn(),savePaymentQr:vi.fn()}));
 vi.mock('@/lib/inventory.functions', () => ({ getInventory: async () => ({ movements: [], variants: [], parties: [
