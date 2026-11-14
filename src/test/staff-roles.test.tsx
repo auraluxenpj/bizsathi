@@ -5,8 +5,10 @@ import { describe, expect, it, vi } from 'vitest';
 
 const BIZ = '55555555-5555-4555-8555-555555555555'; const ME = '66666666-6666-4666-8666-666666666666';
 const invite = vi.hoisted(() => vi.fn(async (_: unknown) => ({ token: 'abc' })));
-vi.mock('@tanstack/react-start', () => ({ useServerFn: (f: unknown) => f, createServerFn: () => { throw new Error('not used'); } }));
+vi.mock('@tanstack/react-start', async (importOriginal) => ({ ...(await importOriginal<typeof import('@tanstack/react-start')>()), useServerFn: (f: unknown) => f }));
 vi.mock('@/lib/business.functions', () => ({
+  getMemberPermissions: async () => ({ userId: ME, denials: [], roleDenials: [] }),
+  createMobileInvitation: vi.fn(async () => ({ token: 'abc' })),
   listBusinesses: async () => [{ id: BIZ, name: 'Auraluxe', role: 'owner' }],
   getBusinessAccess: async () => ({ manager: true, userId: ME, branches: [], members: [], invitations: [], grants: [] }),
   registerBusiness: vi.fn(), createBranch: vi.fn(), updateMember: vi.fn(), setBranchAccess: vi.fn(), revokeInvitation: vi.fn(),
