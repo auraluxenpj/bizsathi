@@ -22,7 +22,7 @@ export const getBusinessAccess = createServerFn({ method: 'GET' }).middleware([r
   if (branchError) throw new Error('Branches could not be loaded.');
   if (!manager) return { manager: false, userId: context.userId, branches: branches ?? [], members: [], invitations: [], grants: [] };
   const [members, invitations, grants] = await Promise.all([
-    context.supabase.from('business_memberships').select('user_id,role_code,status,profiles!business_memberships_user_id_fkey(full_name)').eq('business_id', data.businessId),
+    context.supabase.from('business_memberships').select('user_id,role_code,job_title,status,profiles!business_memberships_user_id_fkey(full_name)').eq('business_id', data.businessId),
     context.supabase.from('business_invitations').select('id,email,role_code,expires_at,accepted_at,revoked_at,created_at').eq('business_id', data.businessId).order('created_at', { ascending: false }),
     context.supabase.from('branch_memberships').select('user_id,branch_id').eq('business_id', data.businessId),
   ]);
@@ -35,8 +35,9 @@ export const createInvitation = createServerFn({ method: 'POST' }).middleware([r
   if (permissionError || !allowed) throw new Error('Administrator access is required.');
   const token = Array.from(crypto.getRandomValues(new Uint8Array(32)), b => b.toString(16).padStart(2, '0')).join('');
   const hash = Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(token))), b => b.toString(16).padStart(2, '0')).join('');
-  const { error } = await context.supabase.rpc('create_business_invitation', { _business_id: data.businessId, _email: data.email, _role: data.role, _token_hash: hash });
+  const { data: invitationId, error } = await context.supabase.rpc('create_business_invitation', { _business_id: data.businessId, _email: data.email, _role: data.role, _token_hash: hash });
   if (error) throw new Error('Invitation could not be created. You can invite only roles below your own.');
+  if (data.jobTitle && invitationId) await context.supabase.rpc('set_invitation_job_title', { _business: data.businessId, _invitation: invitationId as string, _title: data.jobTitle });
   return { token };
 });
 
@@ -54,7 +55,9 @@ export const revokeInvitation = createServerFn({ method: 'POST' }).middleware([r
 });
 
 export const updateMember = createServerFn({ method: 'POST' }).middleware([requireSupabaseAuth]).inputValidator(memberInput).handler(async ({ data, context }) => {
-  const { error } = await context.supabase.rpc('update_business_member', { _business_id: data.businessId, _user_id: data.userId, _role: data.role, _status: data.status });
+  const { error } = data.jobTitle
+    ? await context.supabase.rpc('set_member_job_title', { _business: data.businessId, _user: data.userId, _title: data.jobTitle })
+    : await context.supabase.rpc('update_business_member', { _business_id: data.businessId, _user_id: data.userId, _role: data.role, _status: data.status });
   if (error) throw new Error('Membership could not be changed. Your own role and equal or higher roles are protected.');
   return { ok: true };
 });
