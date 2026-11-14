@@ -144,6 +144,16 @@ export function CashCounters() {
     (!staffFilter || session.openedById === staffFilter || session.closedById === staffFilter) &&
     (!reportBranch || session.branchId === reportBranch),
   );
+  const dailyTotals = visibleDailySessions.reduce(
+    (totals, session) => ({
+      expected: totals.expected.plus(session.expected),
+      actual: session.actual === null ? totals.actual : totals.actual.plus(session.actual),
+      difference: session.difference === null ? totals.difference : totals.difference.plus(session.difference),
+      open: totals.open + (session.closed ? 0 : 1),
+      closed: totals.closed + (session.closed ? 1 : 0),
+    }),
+    { expected: new Decimal(0), actual: new Decimal(0), difference: new Decimal(0), open: 0, closed: 0 },
+  );
 
   const countable = kind === 'open' || kind === 'close';
   const hasCounts = hasAnyCount(counts);
@@ -397,9 +407,17 @@ export function CashCounters() {
           </div>
         </div>
         {!visibleDailySessions.length ? (
-          <p className="py-6 text-sm text-muted-foreground">{dailySessions.length ? 'No sessions for this staff member on this date.' : 'No counter sessions opened on this date.'}</p>
+          <p className="py-6 text-sm text-muted-foreground">{dailySessions.length ? 'No sessions match the selected filters.' : 'No counter sessions opened on this date.'}</p>
         ) : (
-          <div className="mt-4 space-y-4">
+          <>
+            <div aria-label="Daily cash closing totals" className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+              <div className="rounded-lg border bg-card p-3"><p className="text-xs text-muted-foreground">Sessions</p><p className="mt-1 text-xl font-semibold tabular-nums">{visibleDailySessions.length}</p></div>
+              <div className="rounded-lg border bg-card p-3"><p className="text-xs text-muted-foreground">Open / closed</p><p className="mt-1 text-xl font-semibold tabular-nums">{dailyTotals.open} / {dailyTotals.closed}</p></div>
+              <div className="rounded-lg border bg-card p-3"><p className="text-xs text-muted-foreground">Expected closing total</p><p className="mt-1 font-semibold tabular-nums">{formatNPR(dailyTotals.expected.toString())}</p></div>
+              <div className="rounded-lg border bg-card p-3"><p className="text-xs text-muted-foreground">Actual counted (closed)</p><p className="mt-1 font-semibold tabular-nums">{formatNPR(dailyTotals.actual.toString())}</p></div>
+              <div className="rounded-lg border bg-card p-3"><p className="text-xs text-muted-foreground">Difference (closed)</p><p className="mt-1 font-semibold tabular-nums"><Difference value={dailyTotals.difference.toString()} /></p></div>
+            </div>
+            <div className="mt-4 space-y-4">
             {visibleDailySessions.map((session) => (
               <article key={session.id} className="rounded-xl border bg-card p-4">
                 <div className="flex flex-wrap items-center justify-between gap-2">
@@ -433,7 +451,8 @@ export function CashCounters() {
                 </div>
               </article>
             ))}
-          </div>
+            </div>
+          </>
         )}
       </section>
       <section className="py-7">
