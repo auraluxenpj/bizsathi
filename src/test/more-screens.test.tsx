@@ -103,17 +103,18 @@ describe('Karobar-style screens', () => {
     expect(await screen.findByText('Security Findings')).toBeInTheDocument();
   });
 
-  it('mobile tabs are Home, Transactions, Parties, Inventory, More', async () => {
+  it('navigation can collapse and reopen without hiding its control', async () => {
     mount(<AppNavigation pathname="/dashboard"><p>body</p></AppNavigation>);
-    const tabs = await screen.findByRole('navigation', { name: 'Mobile navigation' });
-    const names = within(tabs).getAllByRole('link').map(a => a.textContent);
-    expect(names).toEqual(['Home', 'Transactions', 'Parties', 'Inventory', 'More']);
-    expect(within(tabs).getByRole('link', { name: 'More' })).toHaveAttribute('href', '/more');
+    fireEvent.click(await screen.findByRole('button', { name: 'Collapse sidebar' }));
+    expect(screen.getByRole('button', { name: 'Expand sidebar' })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Expand sidebar' }));
+    expect(screen.getByLabelText('Filter navigation menu')).toBeInTheDocument();
   });
 
-  it('dashboard shows Explore App and Shortcuts', async () => {
+  it('dashboard quick actions keep existing destinations', async () => {
     mount(<Dashboard />);
-    expect(await screen.findByText('Explore App')).toBeInTheDocument();
-    for (const t of ['Quick Entry', 'View Reports', 'Credit Reminder', 'Add Party', 'Sales Invoice', 'Payment In', 'Payment Out']) expect(screen.getAllByText(t).length).toBeGreaterThan(0);
+    expect(await screen.findByRole('link', { name: 'Barcode POS' })).toHaveAttribute('href','/pos');
+    expect(screen.getByRole('link', { name: 'Sale invoice' })).toHaveAttribute('href','/sales?new=1');
+    expect(screen.getByRole('link', { name: 'Reports' })).toHaveAttribute('href','/reports');
   });
 });

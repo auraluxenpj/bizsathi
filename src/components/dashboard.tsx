@@ -18,7 +18,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useCan } from './permission-checklist';
 import { routePermission } from '@/lib/permissions';
 
-function StatCard({ label, value, icon: Icon, tone, to, subtitle }: { label: string; value: string; icon: LucideIcon; tone: string; to?: string; subtitle: string }) {
+function StatCard({ label, value, icon: Icon, tone, to, subtitle }: { label: string; value: string; icon: LucideIcon; tone: string; to?: string | undefined; subtitle: string }) {
  const content = <><div className="flex items-center justify-between gap-2"><span className={`flex size-9 items-center justify-center rounded-md ${tone}`}><Icon className="size-4" /></span><ArrowUpRight className="size-3.5 text-muted-foreground" /></div><p className="mt-4 text-xs font-medium text-muted-foreground">{label}</p><p className="mt-1 break-words text-xl font-semibold tabular-nums">{value}</p><p className="mt-3 text-[11px] text-muted-foreground">{subtitle}</p></>;
  const cls = 'block min-w-0 rounded-lg border bg-card p-4 transition-colors hover:border-primary/40';
  return to ? <Link to={to} className={cls}>{content}</Link> : <article className={cls}>{content}</article>;
