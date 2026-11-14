@@ -14,6 +14,7 @@ import { recordPayment } from '@/lib/commerce.functions';
 import { getAccountBalances, recordPaymentTagged } from '@/lib/accounts.functions';
 import { accountsOfKind, rememberAccount, rememberedAccount } from '@/lib/account-schemas';
 import { paymentInput } from '@/lib/commerce-schemas';
+import { statementItems } from '@/lib/statement-items';
 import { allBalances, allocatePayment, ledgerEntries, outstandingInvoices, totalOutstanding } from '@/lib/party-ledger';
 import { formatBsAd, formatNPR, todayAd } from '@/lib/format';
 import { customerLoyalty } from '@/lib/loyalty';
@@ -98,7 +99,7 @@ function PaymentDialog({ w, mode, party, parties, onClose, onDone }: { w: Commer
 export function Parties() {
   const w = useCommerce(); const navigate = useNavigate();
   const search = useSearch({ strict: false }) as { party?: string; tab?: Tab };
-  const [text, setText] = useState(''); const [tab, setTab] = useState<Tab>(search.tab ?? 'all');
+  const [showItems, setShowItems] = useState(true); const [text, setText] = useState(''); const [tab, setTab] = useState<Tab>(search.tab ?? 'all');
   const [dialog, setDialog] = useState<{ mode: 'in' | 'out'; party?: Party } | null>(null); const [status, setStatus] = useState('');
   const data = w.commerce.data; const parties: Party[] = w.inventory.data?.parties ?? [];
   const balances = useMemo(() => (data ? allBalances(data.documents, data.payments) : new Map<string, number>()), [data]);
@@ -124,6 +125,8 @@ export function Parties() {
 
   if (selected) {
     const entries = ledgerEntries(selected.id, data.documents, data.payments);
+    const docById = new Map((data?.documents ?? []).map(d => [d.id, d]));
+    const variantList = (w.inventory.data?.variants ?? []) as unknown as Parameters<typeof statementItems>[1];
     const owedRows = outstandingInvoices(selected.id, selected.kind === 'supplier' ? 'purchase' : 'sale', data.documents, data.payments);
     return wrap(<>
       <Button variant="ghost" className="mt-2 print:hidden" onClick={() => navigate({ to: '/parties', search: {} })}><ArrowLeft />All parties</Button>
@@ -134,9 +137,9 @@ export function Parties() {
       {selected.kind==='customer'&&(()=>{const l=loyalty(selected.phone);return l?<div className="mt-4 border-b py-3 text-sm"><p className="text-muted-foreground">{l.membership}</p><p className="mt-1 font-semibold">{l.points} loyalty points · {l.purchases} purchases</p></div>:null;})()}
       {selected.kind==='customer'&&<section className="border-b py-4 print:hidden"><CreditAlert balance={bal(selected.id)} limit={selected.credit_limit==null?null:Number(selected.credit_limit)}/>{['owner','admin'].includes(data.role)&&<CreditLimitEditor key={selected.id} businessId={w.businessId} partyId={selected.id} limit={selected.credit_limit==null?null:Number(selected.credit_limit)}/>}</section>}
       {owedRows.length > 0 && <section className="mt-5 print:hidden"><h2 className="text-sm font-semibold">Unpaid {selected.kind === 'supplier' ? 'bills' : 'invoices'} · {formatNPR(totalOutstanding(owedRows))}</h2><ul className="mt-2 divide-y rounded-xl border bg-card text-sm">{owedRows.map(o => <li key={o.doc.id} className="flex items-center justify-between gap-3 px-4 py-3"><span className="min-w-0"><span className="block break-words font-medium">{o.doc.reference}</span><span className="block text-xs text-muted-foreground">{formatBsAd(o.doc.document_date)}</span></span><span className="shrink-0 font-medium tabular-nums">{formatNPR(o.outstanding)}</span></li>)}</ul></section>}
-      <section className="mt-5"><h2 className="text-sm font-semibold">Ledger</h2>
+      <section className="mt-5"><div className="hidden print:block"><p className="text-lg font-bold">{data.business.name}</p><p className="text-sm">Statement: {selected.name}{selected.phone ? ` · ${selected.phone}` : ''}</p><p className="text-xs text-muted-foreground">Printed {formatBsAd(todayAd())}</p></div><div className="flex items-center justify-between gap-3"><h2 className="text-sm font-semibold">Ledger</h2><label className="flex items-center gap-2 text-xs text-muted-foreground print:hidden"><input type="checkbox" checked={showItems} onChange={e => setShowItems(e.target.checked)} />Show items</label></div>
         <div className="mt-2 overflow-x-auto rounded-xl border bg-card"><table className="w-full min-w-[34rem] text-sm"><thead className="border-b bg-secondary/40 text-left text-xs text-muted-foreground"><tr><th className="px-4 py-2 font-medium">Date</th><th className="px-4 py-2 font-medium">Entry</th><th className="px-4 py-2 text-right font-medium">Amount</th><th className="px-4 py-2 text-right font-medium">Balance</th></tr></thead>
-          <tbody>{entries.map((e, i) => <tr key={i} className="border-b last:border-0"><td className="px-4 py-3 align-top text-xs">{formatBsAd(e.date)}</td><td className="px-4 py-3"><span className="block">{e.label}</span><span className="block break-words text-xs text-muted-foreground">{e.reference}</span></td><td className={`px-4 py-3 text-right tabular-nums ${e.amount > 0 ? 'text-emerald-600' : 'text-red-500'}`}>{e.amount > 0 ? '+' : '-'}{formatNPR(Math.abs(e.amount))}</td><td className="px-4 py-3 text-right tabular-nums">{formatNPR(Math.abs(e.balance))}<span className="block text-[11px] text-muted-foreground">{e.balance === 0 ? '' : e.balance > 0 ? 'To receive' : 'To give'}</span></td></tr>)}
+          <tbody>{entries.map((e, i) => <tr key={i} className="border-b last:border-0"><td className="px-4 py-3 align-top text-xs">{formatBsAd(e.date)}</td><td className="px-4 py-3"><span className="block">{e.label}</span><span className="block break-words text-xs text-muted-foreground">{e.reference}</span>{showItems && !e.label.startsWith('Payment') && (() => { const items = statementItems((docById.get(e.documentId) as { lines?: unknown } | undefined)?.lines, variantList); return items.length > 0 ? <ul className="mt-1 space-y-0.5 text-xs text-muted-foreground">{items.map((it, n) => <li key={n}>{it.name} · {it.quantity} × {formatNPR(it.price)}</li>)}</ul> : null; })()}</td><td className={`px-4 py-3 text-right tabular-nums ${e.amount > 0 ? 'text-emerald-600' : 'text-red-500'}`}>{e.amount > 0 ? '+' : '-'}{formatNPR(Math.abs(e.amount))}</td><td className="px-4 py-3 text-right tabular-nums">{formatNPR(Math.abs(e.balance))}<span className="block text-[11px] text-muted-foreground">{e.balance === 0 ? '' : e.balance > 0 ? 'To receive' : 'To give'}</span></td></tr>)}
             {!entries.length && <tr><td colSpan={4} className="px-4 py-10 text-center text-muted-foreground">No transactions with this party yet.</td></tr>}</tbody></table></div>
         <p className="mt-2 text-xs text-muted-foreground print:hidden">Positive amounts increase what they owe you; negative amounts reduce it.</p></section>
     </>);
