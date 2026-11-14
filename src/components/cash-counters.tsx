@@ -108,8 +108,17 @@ export function CashCounters() {
       const closing = sessionEvents.find((event) => event.kind === 'close');
       const calculatedExpected = dec(opening.amount).plus(cashIn).minus(cashOut).plus(receipts).minus(refunds);
       const expectedClosing = closing ? dec(closing.expected) : calculatedExpected;
+      const closingActor = closing?.actor_id;
+      const staffName = (actorId: string | null | undefined) => {
+        if (!actorId) return 'Unknown staff';
+        const member = w.access.data?.members.find((item) => item.user_id === actorId);
+        const profile = Array.isArray(member?.profiles) ? member.profiles[0] : member?.profiles;
+        return profile?.full_name || (actorId === data?.userId ? 'You' : 'Staff member');
+      };
       return {
         id: opening.session_id,
+        openedBy: staffName(opening.actor_id),
+        closedBy: closingActor ? staffName(closingActor) : null,
         branch: w.access.data?.branches.find((item) => item.id === opening.branch_id)?.name ?? 'Branch',
         opening: dec(opening.amount),
         cashIn,
@@ -367,7 +376,10 @@ export function CashCounters() {
             {dailySessions.map((session) => (
               <article key={session.id} className="rounded-xl border bg-card p-4">
                 <div className="flex flex-wrap items-center justify-between gap-2">
-                  <p className="font-semibold">{session.branch}</p>
+                  <div>
+                    <p className="font-semibold">{session.branch}</p>
+                    <p className="mt-1 text-xs text-muted-foreground">Opened by {session.openedBy}{session.closedBy ? ` · Closed by ${session.closedBy}` : ''}</p>
+                  </div>
                   <span className="text-xs text-muted-foreground">{session.closed ? 'Closed' : 'Open'}</span>
                 </div>
                 <div className="mt-4 grid grid-cols-2 gap-x-4 gap-y-3 sm:grid-cols-3 lg:grid-cols-4">
@@ -411,6 +423,11 @@ export function CashCounters() {
                   </p>
                   <p className="mt-1 text-xs text-muted-foreground">
                     {e.event_date} · {w.access.data?.branches.find((b) => b.id === e.branch_id)?.name}
+                    {' · '}{(() => {
+                      const member = w.access.data?.members.find((item) => item.user_id === e.actor_id);
+                      const profile = Array.isArray(member?.profiles) ? member.profiles[0] : member?.profiles;
+                      return profile?.full_name || (e.actor_id === data?.userId ? 'You' : 'Staff member');
+                    })()}
                   </p>
                 </div>
                 <div className="text-right">
