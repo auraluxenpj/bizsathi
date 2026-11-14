@@ -10,7 +10,7 @@ const create: Entry[] = [
   { label: 'New purchase', to: '/purchases', search: { new: '1' }, permission: 'purchases.create' },
   { label: 'Add expense', to: '/expenses', permission: 'expenses.create' },
   { label: 'Add item', to: '/products', permission: 'inventory.create' },
-  { label: 'Add party', to: '/contacts', permission: 'customers.create' },
+  { label: 'Add party', to: '/contacts', anyPermission: ['customers.create', 'suppliers.create'] },
 ];
 const pages: Entry[] = [
   { label: 'Dashboard', to: '/dashboard' }, { label: 'Parties', to: '/parties' }, { label: 'Receive / give payment', to: '/parties' }, { label: 'Inventory', to: '/products' },
