@@ -5,7 +5,7 @@ import {render,screen,fireEvent,waitFor} from '@testing-library/react';
 import {beforeEach,describe,it,expect,vi} from 'vitest';
 import type {ReactNode} from 'react';
 const fns=vi.hoisted(()=>({post:vi.fn(),confirm:vi.fn(),payment:vi.fn()}));
-vi.mock('@tanstack/react-start',()=>({useServerFn:(f:unknown)=>f}));
+vi.mock('@tanstack/react-start',async(importOriginal)=>({... (await importOriginal<typeof import('@tanstack/react-start')>()),useServerFn:(f:unknown)=>f}));
 vi.mock('@/lib/inventory.functions',()=>({postStock:(r:unknown)=>fns.post(r)}));
 vi.mock('@/lib/commerce.functions',()=>({confirmDocument:(r:unknown)=>fns.confirm(r),recordPayment:(r:unknown)=>fns.payment(r),recordCounter:vi.fn(),findCommerceDocument:vi.fn()}));
 vi.mock('@/lib/accounts.functions',()=>({getAccountBalances:async()=>({accounts:[]}),confirmDocumentTagged:vi.fn()}));
