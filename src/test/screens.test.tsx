@@ -264,6 +264,7 @@ describe('Point of sale', () => {
     mount(<Pos />);
     expect(await screen.findByRole('heading', { name: /Point of sale/ })).toBeInTheDocument();
     expect(await screen.findByLabelText('Product search or barcode')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Camera/ })).toBeInTheDocument();
     expect(await screen.findByRole('heading', { name: 'Local POS drafts' })).toBeInTheDocument();
     expect(screen.getByLabelText('Device passphrase')).toHaveAttribute('type', 'password');
     expect(screen.queryByRole('navigation', { name: 'Main navigation' })).not.toBeInTheDocument();
