@@ -232,6 +232,13 @@
       "when": 1794476386908,
       "tag": "0032_loyalty_ten_points_customer_summary",
       "breakpoints": true
+    },
+    {
+      "idx": 33,
+      "version": "7",
+      "when": 1794691356711,
+      "tag": "0041_single_auraluxe_workspace_lockdown",
+      "breakpoints": true
     }
   ]
 }

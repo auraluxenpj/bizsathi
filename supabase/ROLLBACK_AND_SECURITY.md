@@ -31,6 +31,12 @@ Covers: atomic business creation, two-business isolation (all 7 tables), cross-t
 - **Not yet verified:** signed-in end-to-end submission, AI persistence/read-back, profile save, and decision recording. Session minting reported no auth users. No real business or account data was inserted. A signed-up user with an active owner/admin business membership is needed to finish these checks. New-table live two-business mutation tests also remain to be run with a privileged transactional test connection.
 - **Manual review:** AI processing sends administrator-supplied evidence to Lovable AI; do not include credentials or personal financial records. Confirm retention requirements before sensitive use. This update has not received a new deep scan.
 
+## Single-workspace lockdown — migration 0041
+- Migration `0041_single_auraluxe_workspace_lockdown` disables the legacy `create_business` RPC and revokes execution from `PUBLIC`, `anon`, `authenticated`, and `service_role`.
+- The function signature is retained for compatibility; no business, membership, branch, inventory, customer, accounting, or audit rows are deleted or modified.
+- The Drizzle journal intentionally retains its verified history through `0032` and registers only `0041`. SQL files `0033`–`0040` remain unregistered pending reconciliation; they are not silently replayed.
+- Apply only after confirming the connected `LOVABLE_DB_MIGRATION_URL` targets the intended BizSathi Supabase project and checking the database migration ledger. CI does not connect to a live database; migration application and database ACL verification remain separate from deployment.
+
 ## Recovery
 - **Phase 1 recovery:** roll forward to repair invitation/branch RPCs. Do not broaden branch policies to work around missing grants; assign legitimate branch access. Preserve existing memberships and audit history. The legacy empty-database teardown below predates the invitation/branch additions and is not a complete current teardown procedure; do not run it against a live business.
 - **Prefer roll-forward**: write a new migration that fixes the issue. Never edit applied migrations.
