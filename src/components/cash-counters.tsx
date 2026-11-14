@@ -126,6 +126,7 @@ export function CashCounters() {
         closedById: closingActor ?? null,
         openedBy: staffName(opening.actor_id),
         closedBy: closingActor ? staffName(closingActor) : null,
+        branchId: opening.branch_id,
         branch: w.access.data?.branches.find((item) => item.id === opening.branch_id)?.name ?? 'Branch',
         opening: dec(opening.amount),
         cashIn,
@@ -141,7 +142,7 @@ export function CashCounters() {
 
   const visibleDailySessions = dailySessions.filter((session) =>
     (!staffFilter || session.openedById === staffFilter || session.closedById === staffFilter) &&
-    (!reportBranch || w.access.data?.branches.find((item) => item.name === session.branch)?.id === reportBranch),
+    (!reportBranch || session.branchId === reportBranch),
   );
 
   const countable = kind === 'open' || kind === 'close';
