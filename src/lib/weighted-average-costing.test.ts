@@ -27,6 +27,13 @@ describe('perpetual moving weighted-average costing', () => {
     expect(returned.costValue).toBe('180');
   });
 
+  it('does not substitute carrying average when a full-quantity purchase return has a different source cost', () => {
+    const received = applyWeightedAverageCost(empty, { type: 'receipt', quantity: '2', unitCost: '10' });
+    expect(() => applyWeightedAverageCost(received.position, {
+      type: 'purchase_return', quantity: '2', originalReceiptUnitCost: '9',
+    })).toThrow(/leave value without stock/);
+  });
+
   it('restores sales returns at the original sale COGS', () => {
     const received = applyWeightedAverageCost(empty, { type: 'receipt', quantity: '10', unitCost: '100' });
     const sold = applyWeightedAverageCost(received.position, { type: 'sale', quantity: '2' });
