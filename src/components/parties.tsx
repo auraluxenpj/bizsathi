@@ -14,6 +14,7 @@ import { recordPayment } from '@/lib/commerce.functions';
 import { getAccountBalances, recordPaymentTagged } from '@/lib/accounts.functions';
 import { accountsOfKind, rememberAccount, rememberedAccount } from '@/lib/account-schemas';
 import { paymentInput } from '@/lib/commerce-schemas';
+import { useRemembered } from '@/lib/remember';
 import { statementItems } from '@/lib/statement-items';
 import { allBalances, allocatePayment, ledgerEntries, outstandingInvoices, totalOutstanding } from '@/lib/party-ledger';
 import { formatBsAd, formatNPR, todayAd } from '@/lib/format';
@@ -99,7 +100,7 @@ function PaymentDialog({ w, mode, party, parties, onClose, onDone }: { w: Commer
 export function Parties() {
   const w = useCommerce(); const navigate = useNavigate();
   const search = useSearch({ strict: false }) as { party?: string; tab?: Tab };
-  const [showItems, setShowItems] = useState(true); const [text, setText] = useState(''); const [tab, setTab] = useState<Tab>(search.tab ?? 'all');
+  const [sort, setSort] = useRemembered('parties.sort', 'balance', ['balance', 'name'] as const); const [showItems, setShowItems] = useState(true); const [text, setText] = useState(''); const [tab, setTab] = useState<Tab>(search.tab ?? 'all');
   const [dialog, setDialog] = useState<{ mode: 'in' | 'out'; party?: Party } | null>(null); const [status, setStatus] = useState('');
   const data = w.commerce.data; const parties: Party[] = w.inventory.data?.parties ?? [];
   const balances = useMemo(() => (data ? allBalances(data.documents, data.payments) : new Map<string, number>()), [data]);
@@ -146,12 +147,13 @@ export function Parties() {
   }
 
   const q = text.trim().toLowerCase();
-  const list = parties.filter(p => (p.is_active || bal(p.id) !== 0) && `${p.name} ${p.phone}`.toLowerCase().includes(q) && (tab === 'all' || (tab === 'receive' ? bal(p.id) > 0 : bal(p.id) < 0))).sort((a, b) => Math.abs(bal(b.id)) - Math.abs(bal(a.id)) || a.name.localeCompare(b.name));
+  const list = parties.filter(p => (p.is_active || bal(p.id) !== 0) && `${p.name} ${p.phone}`.toLowerCase().includes(q) && (tab === 'all' || (tab === 'receive' ? bal(p.id) > 0 : bal(p.id) < 0))).sort((a, b) => sort === 'name' ? a.name.localeCompare(b.name) : Math.abs(bal(b.id)) - Math.abs(bal(a.id)) || a.name.localeCompare(b.name));
   return wrap(<>
     <section className="mt-5 grid grid-cols-2 gap-3"><article className="rounded-xl bg-emerald-50 p-4"><ArrowDown className="size-4 text-emerald-600" /><p className="mt-3 text-xs text-foreground/70">To Receive</p><p className="mt-1 text-xl font-semibold tabular-nums">{formatNPR(toReceive)}</p></article><article className="rounded-xl bg-rose-50 p-4"><ArrowUp className="size-4 text-rose-600" /><p className="mt-3 text-xs text-foreground/70">To Give</p><p className="mt-1 text-xl font-semibold tabular-nums">{formatNPR(toGive)}</p></article></section>
     <div className="mt-5 flex flex-wrap items-center gap-3">
       <div className="flex rounded-lg border p-0.5 text-sm">{([['all', 'All'], ['receive', 'To Receive'], ['give', 'To Give']] as const).map(([k, l]) => <button key={k} type="button" aria-pressed={tab === k} onClick={() => setTab(k)} className={`rounded-md px-3 py-1.5 ${tab === k ? 'bg-primary text-primary-foreground' : 'text-muted-foreground'}`}>{l}</button>)}</div>
       <div className="flex min-w-48 flex-1 items-center gap-2 rounded-lg border bg-card px-3"><Search className="size-4 text-muted-foreground" /><Input aria-label="Search parties" className="h-10 border-0 px-0 shadow-none focus-visible:ring-0" placeholder="Search by name or phone" value={text} onChange={e => setText(e.target.value)} /></div>
+      <select aria-label="Sort parties" className="h-10 rounded-lg border bg-card px-3 text-sm" value={sort} onChange={e => setSort(e.target.value as 'balance' | 'name')}><option value="balance">Highest balance</option><option value="name">Name A–Z</option></select>
     </div>
     <ul className="mt-4 divide-y rounded-xl border bg-card">{list.map(p => <li key={p.id}><button type="button" className="flex min-h-16 w-full items-center justify-between gap-3 px-4 py-3 text-left hover:bg-secondary/40" onClick={() => navigate({ to: '/parties', search: { party: p.id } })}><span className="min-w-0"><span className="block break-words font-medium">{p.name}</span><span className="block text-xs capitalize text-muted-foreground">{p.kind}{p.phone ? ` · ${p.phone}` : ''}</span>{p.kind==='customer'&&(()=>{const l=loyalty(p.phone);return l?<span className="mt-1 block text-xs text-muted-foreground">{l.points} loyalty points · {l.purchases} purchases</span>:null;})()}{p.kind==='customer'&&p.credit_limit!=null&&bal(p.id)>Number(p.credit_limit)&&<span className="block text-xs text-destructive">Credit limit exceeded · {formatNPR(p.credit_limit)}</span>}</span><span className="shrink-0 text-sm tabular-nums"><BalanceText value={bal(p.id)} /></span></button></li>)}
       {!list.length && <li className="px-4 py-12 text-center text-sm text-muted-foreground">{parties.length ? 'No parties match.' : 'No parties yet. Add your first customer or supplier.'}</li>}</ul>
