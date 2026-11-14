@@ -32,7 +32,7 @@ describe('cash closing CSV', () => {
     });
     expect(csv).toContain('"FILTERED TOTAL","SUMMARY","Sessions: 2","Open: 1; Closed: 1"');
     expect(csv).toContain('"3925.00","3400.00","-25.00"');
-    expect(csv.trimEnd().split('\\r\\n')).toHaveLength(3);
+    expect(csv.trimEnd().split('\r\n')).toHaveLength(3);
   });
 
   it('returns a header-only export when no rows are supplied', () => {
