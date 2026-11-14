@@ -4,6 +4,7 @@ import { ArrowLeft, Building2 } from 'lucide-react';
 import { Button } from './ui/button';
 import { useCommerce } from './commerce-workspace';
 import { DocumentEditor } from './document-editor';
+import { OfflinePos } from './offline-pos';
 
 // Standalone point of sale: its own full-screen page (no sidebar), selling through the same
 // stock-checked sale editor and server confirmation as the Sales screen.
@@ -25,6 +26,7 @@ export function Pos() {
         : !ready ? <p role="status" className="py-8 text-sm">Loading point of sale…</p>
         : saved ? <section className="py-10"><h2 className="text-xl font-semibold">Sale saved</h2><p className="mt-3 break-all text-sm text-muted-foreground">{saved}</p><div className="mt-5 flex flex-wrap gap-2"><Button onClick={() => setSaved('')}>New sale</Button><Button asChild variant="outline"><Link to="/sales">Sales & receipts</Link></Button></div></section>
         : <DocumentEditor key={w.businessId} w={w} kind="sale" standalone onSaved={setSaved} />}
+      {ready && !error && w.businessId && <OfflinePos w={w} />}
     </main>
   </div>;
 }
