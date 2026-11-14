@@ -2,7 +2,7 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const save = vi.fn(async (_: unknown) => ({ ok: true }));
-vi.mock('@tanstack/react-start', () => ({ useServerFn: (f: unknown) => f, createServerFn: () => { throw new Error('not used'); } }));
+vi.mock('@tanstack/react-start', async (importOriginal) => ({ ...(await importOriginal<typeof import('@tanstack/react-start')>()), useServerFn: (f: unknown) => f }));
 vi.mock('@/lib/inventory.functions', () => ({ saveParty: (a: unknown) => save(a) }));
 import { PartyImport } from '@/components/party-import';
 
