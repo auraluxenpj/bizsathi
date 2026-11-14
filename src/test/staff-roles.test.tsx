@@ -11,9 +11,8 @@ vi.mock('@/lib/business.functions', () => ({
   createMobileInvitation: (a: unknown) => invite(a),
   listBusinesses: async () => [{ id: BIZ, name: 'Auraluxe', role: 'owner' }],
   getBusinessAccess: async () => ({ manager: true, userId: ME, branches: [], members: [], invitations: [], grants: [] }),
-  reissueInvitation: vi.fn(),
   registerBusiness: vi.fn(), createBranch: vi.fn(), updateMember: vi.fn(), setBranchAccess: vi.fn(), revokeInvitation: vi.fn(),
-  reissueInvitation: vi.fn(),
+  reissueInvitation: vi.fn(), changeInvitationRole: vi.fn(),
 }));
 import { BusinessAccess } from '@/components/business-access';
 
@@ -23,7 +22,7 @@ describe('Invite staff role cards', () => {
     const router = createRouter({ routeTree: root, history: createMemoryHistory({ initialEntries: ['/'] }) });
     render(<QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}><RouterProvider router={router} /></QueryClientProvider>);
     const group = await screen.findByRole('radiogroup', { name: 'Invitation role' });
-    for (const name of ['Administrator', 'Accountant', 'Staff', 'Viewer']) expect(group).toHaveTextContent(name);
+    for (const name of ['Partner', 'Manager', 'Accountant', 'Sales Person', 'Stock Manager', 'Entry Person']) expect(group).toHaveTextContent(name);
     fireEvent.change(screen.getByLabelText('Staff mobile number'), { target: { value: '9800000000' } });
     fireEvent.click(screen.getByRole('radio', { name: /Accountant/ }));
     fireEvent.click(screen.getByRole('button', { name: /Create invite link/ }));
