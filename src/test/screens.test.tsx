@@ -291,9 +291,8 @@ describe('Other screens have no period dropdown', () => {
     await screen.findByLabelText('Counter amount');
     expect(screen.getByLabelText('Filter closing report by staff')).toBeInTheDocument();
     expect(screen.getByLabelText('Filter closing report by branch')).toBeInTheDocument();
-    expect(screen.getByLabelText('Daily cash closing totals')).toBeInTheDocument();
-    expect(screen.getByText('Expected closing total')).toBeInTheDocument();
-    expect(screen.getByText('Actual counted (closed)')).toBeInTheDocument();
+    expect(screen.getByText('No counter sessions opened on this date.')).toBeInTheDocument();
+    expect(screen.queryByRole('region', { name: 'Daily cash closing totals' })).not.toBeInTheDocument();
     noOpenPeriodLabel();
     expect(screen.queryByLabelText('Counter period')).not.toBeInTheDocument();
   });

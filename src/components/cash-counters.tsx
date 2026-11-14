@@ -410,7 +410,7 @@ export function CashCounters() {
           <p className="py-6 text-sm text-muted-foreground">{dailySessions.length ? 'No sessions match the selected filters.' : 'No counter sessions opened on this date.'}</p>
         ) : (
           <>
-            <div aria-label="Daily cash closing totals" className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+            <div role="region" aria-label="Daily cash closing totals" className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
               <div className="rounded-lg border bg-card p-3"><p className="text-xs text-muted-foreground">Sessions</p><p className="mt-1 text-xl font-semibold tabular-nums">{visibleDailySessions.length}</p></div>
               <div className="rounded-lg border bg-card p-3"><p className="text-xs text-muted-foreground">Open / closed</p><p className="mt-1 text-xl font-semibold tabular-nums">{dailyTotals.open} / {dailyTotals.closed}</p></div>
               <div className="rounded-lg border bg-card p-3"><p className="text-xs text-muted-foreground">Expected closing total</p><p className="mt-1 font-semibold tabular-nums">{formatNPR(dailyTotals.expected.toString())}</p></div>
