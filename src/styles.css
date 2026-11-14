@@ -184,10 +184,25 @@
  .barcode-sticker { break-inside: avoid; }
 }
 @media print {
- body:has([aria-label="Business report print"]) > *:not(:has([aria-label="Business report print"])):not([aria-label="Business report print"]) { display: none; }
- body * { visibility: hidden; }
- [aria-label="Invoice receipt"], [aria-label="Invoice receipt"] * { visibility: visible; }
- [aria-label="Invoice receipt"] { position: absolute; left: 0; top: 0; width: 100%; max-width: none; }
+  body:has([aria-label="Invoice receipt"]) { margin: 0 !important; padding: 0 !important; background: white !important; }
+  body:has([aria-label="Invoice receipt"]) * { visibility: hidden !important; }
+  body:has([aria-label="Invoice receipt"]) [aria-label="Invoice receipt"],
+  body:has([aria-label="Invoice receipt"]) [aria-label="Invoice receipt"] * { visibility: visible !important; }
+  body:has([aria-label="Invoice receipt"]) [aria-label="Invoice receipt"] {
+    position: absolute; inset: 0 auto auto 0; box-sizing: border-box; margin: 0;
+    width: 100%; max-width: none; border: 0; box-shadow: none;
+    -webkit-print-color-adjust: exact; print-color-adjust: exact;
+  }
+  body:has([aria-label="Invoice receipt"] [data-layout="thermal"]) [aria-label="Invoice receipt"] {
+    width: 76mm; max-width: 76mm; padding: 2mm; font-size: 9pt; line-height: 1.25;
+  }
+  body:has([aria-label="Invoice receipt"] [data-layout="thermal"]) [aria-label="Invoice receipt"] img,
+  body:has([aria-label="Invoice receipt"] [data-layout="thermal"]) [aria-label="Invoice receipt"] canvas {
+    max-width: 100%; height: auto;
+  }
+  body:has([aria-label="Invoice receipt"] [data-layout="a4"]) [aria-label="Invoice receipt"] {
+    width: 100%; padding: 0; border: 0;
+  }
 }
 
 @media print {

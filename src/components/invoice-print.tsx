@@ -58,7 +58,7 @@ export function InvoiceSheet({ data: d, layout, extra }: { data: InvoiceData; la
     {/* Sets the paper size only while an invoice is on screen. */}
     <style>{`@media print { @page { size: ${thermal ? '80mm auto' : 'A4'}; margin: ${thermal ? '3mm' : '12mm'}; } }`}</style>
     {thermal ? (
-      <article aria-label="Invoice receipt" data-layout="thermal" className="mx-auto w-[76mm] max-w-full border bg-white p-3 font-mono text-xs text-black">
+      <article aria-label="Invoice receipt" data-layout="thermal" className="mx-auto box-border w-[76mm] max-w-full border bg-white p-2 font-mono text-xs leading-snug text-black print:max-w-none">
         <div className="text-center"><h2 className="text-sm font-bold">{d.business}</h2>{d.pan && <p>PAN/VAT {d.pan}</p>}{d.branch && <p>{d.branch}</p>}</div>
         <div className="my-2 border-y border-dashed py-1"><p className="font-semibold">{invoiceTitle(d.kind)} {d.reference}</p><p>{formatBsAd(d.date)}</p>{d.party && <p>{d.party}</p>}</div>
         <ul className="space-y-1">{d.lines.map(l => <li key={l.sku + l.name}><p className="break-words">{l.name}</p><p className="flex justify-between"><span>{l.quantity} × {l.price.toFixed(2)}</span><span className="tabular-nums">{l.total.toFixed(2)}</span></p></li>)}</ul>
@@ -68,7 +68,7 @@ export function InvoiceSheet({ data: d, layout, extra }: { data: InvoiceData; la
         {d.invoiceTerms&&<p className="mt-3 whitespace-pre-wrap break-words border-t border-dashed pt-2">{d.invoiceTerms}</p>}{d.invoiceSignatureLabel&&<p className="mt-6 border-t border-dashed pt-2 text-center">{d.invoiceSignatureLabel}</p>}<p className="mt-3 text-center">{d.invoiceFooter||'Thank you! Visit again.'}</p>
       </article>
     ) : (
-      <article aria-label="Invoice receipt" data-layout="a4" className="mx-auto max-w-3xl border-y bg-white py-7 text-black">
+      <article aria-label="Invoice receipt" data-layout="a4" className="mx-auto box-border max-w-3xl border-y bg-white px-4 py-7 text-black print:max-w-none">
         <div className="flex flex-wrap justify-between gap-4 border-b pb-6">
           <div><h2 className="brand text-2xl">{d.business}</h2>{d.pan && <p className="mt-2 text-sm text-neutral-600">PAN/VAT {d.pan}</p>}{d.branch && <p className="text-sm text-neutral-600">{d.branch}</p>}</div>
           <div className="text-right text-sm"><p className="text-lg font-semibold uppercase tracking-wide">{invoiceTitle(d.kind)}</p><p className="font-semibold">{d.reference}</p><p>{formatBsAd(d.date)}</p><p className="capitalize">{d.status}</p></div>

@@ -23,6 +23,8 @@ describe('Invoice print and share', () => {
     fireEvent.click(screen.getByRole('button', { name: '80mm' }));
     expect(screen.getByLabelText('Invoice receipt')).toHaveAttribute('data-layout', 'thermal');
     expect(document.querySelector('style')?.textContent).toContain('80mm auto');
+    expect(screen.getByLabelText('Invoice receipt')).toHaveClass('w-[76mm]');
+    expect(screen.getByLabelText('Invoice receipt')).toHaveClass('box-border');
     fireEvent.click(screen.getByRole('button', { name: 'A4' }));
     expect(document.querySelector('style')?.textContent).toContain('size: A4');
   });
