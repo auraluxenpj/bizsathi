@@ -53,6 +53,7 @@ export function CashCounters() {
   const fn = useServerFn(recordCounter);
   const [branch, setBranch] = useState('');
   const [date, setDate] = useState(new Date().toLocaleDateString('en-CA'));
+  const [staffFilter, setStaffFilter] = useState('');
   const [kind, setKind] = useState<CounterKind>('open');
   const [amount, setAmount] = useState('');
   const [counts, setCounts] = useState<DenominationCounts>({});
@@ -94,6 +95,15 @@ export function CashCounters() {
         )
     : null;
 
+  const staffName = (actorId: string | null | undefined) => {
+    if (!actorId) return 'Unknown staff';
+    const member = (w.access.data?.members ?? []).find((item) => item.user_id === actorId);
+    const profile = Array.isArray(member?.profiles) ? member.profiles[0] : member?.profiles;
+    return profile?.full_name || (actorId === data?.userId ? 'You' : 'Staff member');
+  };
+  const staffOptions = [...new Set(events.filter((event) => event.event_date === date).map((event) => event.actor_id).filter((id): id is string => !!id))]
+    .map((id) => ({ id, name: staffName(id) }));
+
   const dailySessions = events
     .filter((event) => event.kind === 'open' && event.event_date === date)
     .map((opening) => {
@@ -109,14 +119,10 @@ export function CashCounters() {
       const calculatedExpected = dec(opening.amount).plus(cashIn).minus(cashOut).plus(receipts).minus(refunds);
       const expectedClosing = closing ? dec(closing.expected) : calculatedExpected;
       const closingActor = closing?.actor_id;
-      const staffName = (actorId: string | null | undefined) => {
-        if (!actorId) return 'Unknown staff';
-        const member = (w.access.data?.members ?? []).find((item) => item.user_id === actorId);
-        const profile = Array.isArray(member?.profiles) ? member.profiles[0] : member?.profiles;
-        return profile?.full_name || (actorId === data?.userId ? 'You' : 'Staff member');
-      };
       return {
         id: opening.session_id,
+        openedById: opening.actor_id,
+        closedById: closingActor ?? null,
         openedBy: staffName(opening.actor_id),
         closedBy: closingActor ? staffName(closingActor) : null,
         branch: w.access.data?.branches.find((item) => item.id === opening.branch_id)?.name ?? 'Branch',
@@ -131,6 +137,8 @@ export function CashCounters() {
         closed: !!closing,
       };
     });
+
+  const visibleDailySessions = dailySessions.filter((session) => !staffFilter || session.openedById === staffFilter || session.closedById === staffFilter);
 
   const countable = kind === 'open' || kind === 'close';
   const hasCounts = hasAnyCount(counts);
@@ -365,15 +373,23 @@ export function CashCounters() {
             <h2 className="brand text-xl">Daily cash closing report</h2>
             <p className="mt-1 text-sm text-muted-foreground">Cash activity by counter session, using confirmed counter events and cash payments only.</p>
           </div>
-          <label className="text-sm">Report date
-            <Input aria-label="Cash closing report date" type="date" value={date} onChange={(e) => setDate(e.target.value)} />
-          </label>
+          <div className="flex flex-wrap gap-3">
+            <label className="text-sm">Report date
+              <Input aria-label="Cash closing report date" type="date" value={date} onChange={(e) => setDate(e.target.value)} />
+            </label>
+            <label className="text-sm">Staff member
+              <select aria-label="Filter closing report by staff" className="mt-2 h-10 min-w-44 rounded-md border bg-card px-3" value={staffFilter} onChange={(e) => setStaffFilter(e.target.value)}>
+                <option value="">All staff</option>
+                {staffOptions.map((staff) => <option key={staff.id} value={staff.id}>{staff.name}</option>)}
+              </select>
+            </label>
+          </div>
         </div>
-        {!dailySessions.length ? (
-          <p className="py-6 text-sm text-muted-foreground">No counter sessions opened on this date.</p>
+        {!visibleDailySessions.length ? (
+          <p className="py-6 text-sm text-muted-foreground">{dailySessions.length ? 'No sessions for this staff member on this date.' : 'No counter sessions opened on this date.'}</p>
         ) : (
           <div className="mt-4 space-y-4">
-            {dailySessions.map((session) => (
+            {visibleDailySessions.map((session) => (
               <article key={session.id} className="rounded-xl border bg-card p-4">
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <div>
