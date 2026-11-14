@@ -54,6 +54,7 @@ export function CashCounters() {
   const [branch, setBranch] = useState('');
   const [date, setDate] = useState(new Date().toLocaleDateString('en-CA'));
   const [staffFilter, setStaffFilter] = useState('');
+  const [reportBranch, setReportBranch] = useState('');
   const [kind, setKind] = useState<CounterKind>('open');
   const [amount, setAmount] = useState('');
   const [counts, setCounts] = useState<DenominationCounts>({});
@@ -138,7 +139,10 @@ export function CashCounters() {
       };
     });
 
-  const visibleDailySessions = dailySessions.filter((session) => !staffFilter || session.openedById === staffFilter || session.closedById === staffFilter);
+  const visibleDailySessions = dailySessions.filter((session) =>
+    (!staffFilter || session.openedById === staffFilter || session.closedById === staffFilter) &&
+    (!reportBranch || w.access.data?.branches.find((item) => item.name === session.branch)?.id === reportBranch),
+  );
 
   const countable = kind === 'open' || kind === 'close';
   const hasCounts = hasAnyCount(counts);
@@ -381,6 +385,12 @@ export function CashCounters() {
               <select aria-label="Filter closing report by staff" className="mt-2 h-10 min-w-44 rounded-md border bg-card px-3" value={staffFilter} onChange={(e) => setStaffFilter(e.target.value)}>
                 <option value="">All staff</option>
                 {staffOptions.map((staff) => <option key={staff.id} value={staff.id}>{staff.name}</option>)}
+              </select>
+            </label>
+            <label className="text-sm">Branch
+              <select aria-label="Filter closing report by branch" className="mt-2 h-10 min-w-44 rounded-md border bg-card px-3" value={reportBranch} onChange={(e) => setReportBranch(e.target.value)}>
+                <option value="">All branches</option>
+                {branches.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}
               </select>
             </label>
           </div>

@@ -290,6 +290,7 @@ describe('Other screens have no period dropdown', () => {
     mount(<CashCounters />);
     await screen.findByLabelText('Counter amount');
     expect(screen.getByLabelText('Filter closing report by staff')).toBeInTheDocument();
+    expect(screen.getByLabelText('Filter closing report by branch')).toBeInTheDocument();
     noOpenPeriodLabel();
     expect(screen.queryByLabelText('Counter period')).not.toBeInTheDocument();
   });
