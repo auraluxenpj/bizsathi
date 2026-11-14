@@ -28,7 +28,7 @@ export const syncSheetStock = createServerFn({ method: 'POST' }).middleware([req
   const credentials = { gatewayKey: process.env['LOVABLE_API_KEY'], connectionKey: process.env['GOOGLE_SHEETS_API_KEY'] };
   let values: string[][];
   try { values = await readSheetValues(data.spreadsheetIdOrUrl, STOCK_IN_SHEET, credentials); }
-  catch (error) { throw new Error(error instanceof Error && error.name !== 'TimeoutError' && error.name !== 'TypeError' ? error.message : 'Google Sheets could not be reached. Check the URL and try again.'); }
+  catch (error) { console.error('Stock In sheet read failed', error); const kind = error instanceof Error ? error.name : ''; throw new Error(kind === 'TimeoutError' ? 'Google Sheets did not answer within 20 seconds. Wait a minute and press the button again; nothing was changed.' : kind === 'TypeError' ? 'Could not connect to Google Sheets just now. Press the button again in a minute; nothing was changed.' : error instanceof Error ? error.message : 'Google Sheets could not be read. Nothing was changed.'); }
   const parsed = parseStockInValues(values);
 
   const variantsBySku = new Map<string, string[]>();

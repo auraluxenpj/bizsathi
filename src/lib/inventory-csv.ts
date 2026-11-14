@@ -32,12 +32,18 @@ function csvNumber(value: string | undefined): number {
  // Reject malformed values rather than silently importing a partial number.
  return /^[+-]?(?:\d+(?:\.\d*)?|\.\d+)$/.test(cleaned) ? Number(cleaned) : NaN;
 }
+/** Auto-made barcodes keep only 12 digits of the SKU, so different SKUs can share one. Those shared auto barcodes are left blank (stickers then use the exact SKU) rather than blocking the whole import. Barcodes typed in the sheet are never touched. */
+export function dropCollidingGeneratedBarcodes(rows: CatalogueRow[], supplied: boolean[]): CatalogueRow[] {
+ const count=new Map<string,number>(); rows.forEach((r,i)=>{ if(!supplied[i] && r.barcode) count.set(r.barcode,(count.get(r.barcode)??0)+1); });
+ return rows.map((r,i)=>!supplied[i] && r.barcode && (count.get(r.barcode)??0)>1 ? {...r,barcode:''} : r);
+}
 export function parseCatalogueCsv(text:string, businessId:string): CatalogueRow[] {
  const parsed = Papa.parse<Record<string,string>>(text, {header:true,skipEmptyLines:'greedy',transformHeader:normalizeHeader});
  const firstError=parsed.errors[0];
  if(firstError) throw new Error(`CSV row ${ (firstError.row ?? 0)+2 }: ${firstError.message}`);
  if(!parsed.meta.fields?.includes('product_name') || !parsed.meta.fields.includes('sku')) throw new Error('CSV requires product_name and sku columns.');
- return catalogueInput.parse({businessId,rows:parsed.data.map(r => ({
+ const supplied=parsed.data.map(r=>!!r['barcode']?.trim());
+ const rows=catalogueInput.parse({businessId,rows:parsed.data.map(r => ({
    ...r,
    // Karobar sheets list one row per size; group them by Description and use the SKU suffix as the size.
    ...(()=>{const group=r['description']?.trim(); const sku=r['sku']?.trim() ?? ''; const explicit=r['variant_name']?.trim();
@@ -54,6 +60,7 @@ export function parseCatalogueCsv(text:string, businessId:string): CatalogueRow[
    opening_stock: csvNumber(r['opening_stock']),
    purchase_price: csvNumber(r['purchase_price'])
  }))}).rows;
+ return dropCollidingGeneratedBarcodes(rows,supplied);
 }
 export function makeCsv(rows: Record<string, unknown>[], fields?:string[]) { return Papa.unparse(rows, {escapeFormulae:true,columns:fields}); }
 export function makeCatalogueCsv(rows: Record<string, unknown>[], canViewPurchasePrice: boolean) {

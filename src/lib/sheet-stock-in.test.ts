@@ -43,3 +43,28 @@ describe('applyStockIn', () => {
     const r = await applyStockIn(receipts.slice(0, 1), d); expect(r).toMatchObject({ alreadyApplied: 1, failed: 0 });
   });
 });
+
+import { parseCatalogueCsv } from './inventory-csv';
+describe('catalogue import barcodes', () => {
+  it('blanks auto barcodes that two SKUs share, keeps unique and typed ones', () => {
+    const csv = 'product_name,sku,barcode\nA,AK1,\nB,AA1,\nC,ZZ9,\nD,QQ1,2000000000011\nE,QQ2,2000000000011\n';
+    const rows = parseCatalogueCsv(csv, B);
+    expect(rows.map(r => r.barcode === '')).toEqual([true, true, false, false, false]);
+    expect(rows[3]!.barcode).toBe('2000000000011');
+  });
+});
+
+import { readSheetValues } from './google-sheet-values.server';
+describe('readSheetValues resilience', () => {
+  const csv = 'Receipt ID,SKU,Qty Received\nRCP-1,A-1,2\n';
+  it('falls back to the public link when the connector cannot be reached', async () => {
+    const calls: string[] = [];
+    const fake = (async (url: URL | string) => { calls.push(String(url)); if (String(url).includes('connector-gateway')) throw new TypeError('fetch failed'); return new Response(csv, { status: 200 }); }) as typeof fetch;
+    const rows = await readSheetValues('1I4kUw4XJaENcx91RsAjRtjWgER2Iu4AUALhcsb56KDg', 'Stock In', { gatewayKey: 'k', connectionKey: 'c' }, fake);
+    expect(rows[1]).toEqual(['RCP-1', 'A-1', '2']); expect(calls.some(c => c.includes('docs.google.com'))).toBe(true);
+  });
+  it('retries a dropped request once', async () => {
+    let n = 0; const fake = (async () => { if (n++ === 0) throw new TypeError('fetch failed'); return new Response(csv, { status: 200 }); }) as typeof fetch;
+    expect((await readSheetValues('1I4kUw4XJaENcx91RsAjRtjWgER2Iu4AUALhcsb56KDg', 'Stock In', {}, fake)).length).toBeGreaterThan(1);
+  });
+});
