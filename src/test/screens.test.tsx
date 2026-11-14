@@ -260,12 +260,12 @@ describe('Point of sale', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Decrease quantity line 1' }));
     expect(screen.getByLabelText('quantity line 1')).toHaveValue(1);
   });
-  it('is a standalone sale screen with no device passphrase', async () => {
+  it('is a standalone sale screen with optional protected local POS drafts', async () => {
     mount(<Pos />);
     expect(await screen.findByRole('heading', { name: /Point of sale/ })).toBeInTheDocument();
     expect(await screen.findByLabelText('Product search or barcode')).toBeInTheDocument();
-    expect(screen.queryByText(/passphrase/i)).not.toBeInTheDocument();
-    expect(screen.queryByText(/unlock/i)).not.toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: 'Local POS drafts' })).toBeInTheDocument();
+    expect(screen.getByLabelText('Device passphrase')).toHaveAttribute('type', 'password');
     expect(screen.queryByRole('navigation', { name: 'Main navigation' })).not.toBeInTheDocument();
     expect(screen.getByRole('link', { name: /Dashboard/ })).toHaveAttribute('href', '/dashboard');
     noOpenPeriodLabel();
