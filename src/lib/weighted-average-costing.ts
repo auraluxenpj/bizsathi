@@ -25,6 +25,8 @@ export type CostResult = {
   costValue: string;
 };
 
+const ZERO = new PreciseDecimal(0);
+
 function amount(value: Decimal.Value, field: string): Decimal {
   let parsed: Decimal;
   try {
@@ -115,15 +117,14 @@ function reverseAtOriginalCost(
   if (quantity.gt(current.quantity)) throw new Error(`insufficient stock for ${label}`);
   const unitCost = amount(unitCostInput, 'original unit cost');
   if (unitCost.isZero()) throw new Error('original unit cost must be greater than zero');
-  const value = quantity.times(unitCost);
+  const value = quantity.eq(current.quantity)
+    ? current.inventoryValue
+    : quantity.times(unitCost);
   if (value.gt(current.inventoryValue)) {
     throw new Error(`${label} would make inventory value negative; reconcile the source cost first`);
   }
   const nextQuantity = current.quantity.minus(quantity);
   const nextValue = current.inventoryValue.minus(value);
-  if (nextQuantity.isZero() && !nextValue.isZero()) {
-    throw new Error(`${label} would leave value without stock; reconcile the source cost first`);
-  }
   return result(nextQuantity, nextValue, quantity.neg(), value.neg(), unitCost, value);
 }
 

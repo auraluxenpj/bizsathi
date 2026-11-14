@@ -81,8 +81,8 @@ describe('perpetual moving weighted-average costing', () => {
 
   it('keeps fractional quantities and costs precise without currency rounding', () => {
     const received = applyWeightedAverageCost(empty, { type: 'receipt', quantity: '0.333', unitCost: '12.3456' });
-    expect(received.position.inventoryValue).toBe('4.1104848');
+    expect(received.position.inventoryValue).toBe('4.1110848');
     const issued = applyWeightedAverageCost(received.position, { type: 'sale', quantity: '0.111' });
-    expect(issued.costValue).toBe('1.3701616');
+    expect(issued.costValue).toBe('1.3703616');
   });
 });
