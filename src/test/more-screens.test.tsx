@@ -114,7 +114,7 @@ describe('Karobar-style screens', () => {
   it('dashboard quick actions keep existing destinations', async () => {
     mount(<Dashboard />);
     expect(await screen.findByRole('link', { name: 'Barcode POS' })).toHaveAttribute('href','/pos');
-    expect(screen.getByRole('link', { name: 'Sale invoice' })).toHaveAttribute('href','/sales?new=1');
+    expect(screen.getByRole('link', { name: 'Sale invoice' })).toHaveAttribute('href','/sales?new=%221%22');
     expect(screen.getByRole('link', { name: 'Reports' })).toHaveAttribute('href','/reports');
   });
 });
