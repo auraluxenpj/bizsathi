@@ -83,10 +83,10 @@
   --card-foreground: oklch(0.129 0.042 264.695);
   --popover: oklch(1 0 0);
   --popover-foreground: oklch(0.129 0.042 264.695);
-  --primary: oklch(0.43 0.075 68);
+  --primary: oklch(0.34 0.025 55);
   --primary-foreground: oklch(1 0 0);
   --secondary: oklch(0.945 0.025 86);
-  --secondary-foreground: oklch(0.38 0.035 70);
+  --secondary-foreground: oklch(0.34 0.025 55);
   --muted: oklch(0.968 0.007 247.896);
   --muted-foreground: oklch(0.53 0.01 160);
   --accent: oklch(0.968 0.007 247.896);
@@ -327,10 +327,10 @@ button, input, select, textarea { font: inherit; }
 
 /* FastCart-inspired POS: cool blue checkout surfaces, strong scan/search affordances. */
 .pos-billing-checkout {
-  --pos-accent: oklch(0.69 0.13 225);
-  --pos-accent-strong: oklch(0.59 0.15 228);
-  --pos-tint: oklch(0.965 0.025 225);
-  --pos-line: oklch(0.9 0.035 225);
+  --pos-accent: oklch(0.68 0.085 78);
+  --pos-accent-strong: oklch(0.48 0.075 68);
+  --pos-tint: oklch(0.965 0.025 86);
+  --pos-line: oklch(0.9 0.025 82);
   background: linear-gradient(180deg, oklch(0.975 0.018 225 / 72%), transparent 24rem);
 }
 .pos-billing-checkout .pos-billing-layout { gap: clamp(1rem, 1.6vw, 1.5rem); }
@@ -454,7 +454,7 @@ button, input, select, textarea { font: inherit; }
   --muted: oklch(0.95 0.016 86);
   --muted-foreground: oklch(0.52 0.022 70);
   --accent: oklch(0.94 0.022 84);
-  --accent-foreground: oklch(0.31 0.035 68);
+  --accent-foreground: oklch(0.3 0.025 55);
   --ring: oklch(0.66 0.07 74);
   --chart-2: oklch(0.68 0.08 78);
   --chart-3: oklch(0.54 0.045 65);
@@ -500,3 +500,37 @@ button, input, select, textarea { font: inherit; }
   border-color: oklch(0.9 0.018 82);
 }
 ::selection { background: oklch(0.88 0.045 82); color: oklch(0.25 0.025 68); }
+
+
+/* AURALUXE-inspired signature palette: ivory, ink and champagne gold. */
+:root {
+  --primary: oklch(0.34 0.025 55);
+  --primary-foreground: oklch(0.985 0.01 85);
+  --sidebar-primary: oklch(0.34 0.025 55);
+  --sidebar-primary-foreground: oklch(0.985 0.01 85);
+  --chart-1: oklch(0.34 0.025 55);
+  --chart-2: oklch(0.69 0.09 78);
+  --chart-3: oklch(0.54 0.035 55);
+  --chart-4: oklch(0.82 0.065 84);
+  --chart-5: oklch(0.45 0.025 35);
+}
+.dark {
+  --primary: oklch(0.78 0.075 78);
+  --primary-foreground: oklch(0.22 0.02 55);
+  --sidebar-primary: oklch(0.78 0.075 78);
+  --sidebar-primary-foreground: oklch(0.22 0.02 55);
+}
+.pos-billing-checkout [aria-label="Checkout catalogue"] > div:first-child h2,
+.pos-billing-checkout .pos-billing-cart > div:first-child h2 {
+  color: oklch(0.29 0.025 55);
+}
+.pos-billing-checkout .pos-category-filters button[aria-pressed="true"] {
+  box-shadow: 0 4px 12px oklch(0.55 0.07 78 / 22%);
+}
+.pos-billing-checkout .pos-product-card {
+  background: linear-gradient(160deg, white 62%, oklch(0.98 0.015 86));
+  border-color: oklch(0.91 0.025 82);
+}
+.pos-billing-checkout .pos-product-card:hover {
+  box-shadow: 0 9px 22px oklch(0.35 0.03 55 / 12%);
+}
