@@ -10,9 +10,9 @@ const fns = vi.hoisted(() => ({ create: vi.fn(async (_: unknown) => ({ id: 'x' }
 const commerce = () => ({ userId: ID.user, role: ctx.role, counters: [], documents: [], payments: [], memberships: [], loyalty: [], settings: { vat_registered: false, vat_rate: 0, currency: 'NPR' }, business: { name: 'Auraluxe', legal_name: 'Auraluxe', pan_vat_number: '' },
   journals: [{ account_code: 'cash', debit: 700, credit: 0, entry_date: '2026-11-01', branch_id: ID.br }, { account_code: 'bank', debit: 1500, credit: 0, entry_date: '2026-11-01', branch_id: ID.br }],
   periods: [{ id: ID.per, name: 'FY', status: 'open', start_date: '2020-01-01', end_date: '2099-12-31' }] });
-vi.mock('@tanstack/react-start', () => ({ useServerFn: (f: unknown) => f, createServerFn: () => { throw new Error('not used'); } }));
+vi.mock('@tanstack/react-start', async (importOriginal) => ({ ...(await importOriginal<typeof import('@tanstack/react-start')>()), useServerFn: (f: unknown) => f }));
 vi.mock('@/lib/commerce.functions', () => ({ getCommerce: async () => commerce(), createTradingPeriod: vi.fn(), confirmDocument: vi.fn(), findCommerceDocument: vi.fn(), recordCounter: vi.fn(), recordPayment: vi.fn(), saveTradingSettings: vi.fn() }));
-vi.mock('@/lib/business.functions', () => ({ getBusinessAccess: async () => ({ branches: [{ id: ID.br, name: 'Main', is_active: true }] }), listBusinesses: async () => [{ id: ID.biz, name: 'Auraluxe', role: ctx.role }] }));
+vi.mock('@/lib/business.functions', () => ({ getMemberPermissions: async () => ({ userId: ID.user, denials: [], roleDenials: [] }), getBusinessAccess: async () => ({ branches: [{ id: ID.br, name: 'Main', is_active: true }] }), listBusinesses: async () => [{ id: ID.biz, name: 'Auraluxe', role: ctx.role }] }));
 vi.mock('@/lib/inventory.functions', () => ({ getInventory: async () => ({ movements: [], variants: [], parties: [] }) }));
 vi.mock('@/lib/inventory-queries', () => ({ businessQuery: { queryKey: ['businesses'], queryFn: async () => [{ id: ID.biz, name: 'Auraluxe', role: ctx.role }] } }));
 vi.mock('@/components/trading-settings', () => ({ TradingSettings: () => null }));
