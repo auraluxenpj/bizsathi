@@ -94,6 +94,35 @@ export function CashCounters() {
         )
     : null;
 
+  const dailySessions = events
+    .filter((event) => event.kind === 'open' && event.event_date === date)
+    .map((opening) => {
+      const sessionEvents = events.filter((event) => event.session_id === opening.session_id);
+      const sessionPayments = (data?.payments ?? []).filter(
+        (payment) => payment.session_id === opening.session_id && payment.method === 'cash',
+      );
+      const cashIn = sessionEvents.filter((event) => event.kind === 'in').reduce((sum, event) => sum.plus(event.amount), new Decimal(0));
+      const cashOut = sessionEvents.filter((event) => event.kind === 'out').reduce((sum, event) => sum.plus(event.amount), new Decimal(0));
+      const receipts = sessionPayments.filter((payment) => payment.direction === 'in').reduce((sum, payment) => sum.plus(payment.amount), new Decimal(0));
+      const refunds = sessionPayments.filter((payment) => payment.direction === 'out').reduce((sum, payment) => sum.plus(payment.amount), new Decimal(0));
+      const closing = sessionEvents.find((event) => event.kind === 'close');
+      const calculatedExpected = dec(opening.amount).plus(cashIn).minus(cashOut).plus(receipts).minus(refunds);
+      const expectedClosing = closing ? dec(closing.expected) : calculatedExpected;
+      return {
+        id: opening.session_id,
+        branch: w.access.data?.branches.find((item) => item.id === opening.branch_id)?.name ?? 'Branch',
+        opening: dec(opening.amount),
+        cashIn,
+        cashOut,
+        receipts,
+        refunds,
+        expected: expectedClosing,
+        actual: closing ? dec(closing.amount) : null,
+        difference: closing ? dec(closing.difference) : null,
+        closed: !!closing,
+      };
+    });
+
   const countable = kind === 'open' || kind === 'close';
   const hasCounts = hasAnyCount(counts);
 
@@ -319,6 +348,53 @@ export function CashCounters() {
               </div>
             )}
           </form>
+        )}
+      </section>
+      <section className="border-b py-7">
+        <div className="flex flex-wrap items-end justify-between gap-3">
+          <div>
+            <h2 className="brand text-xl">Daily cash closing report</h2>
+            <p className="mt-1 text-sm text-muted-foreground">Cash activity by counter session, using confirmed counter events and cash payments only.</p>
+          </div>
+          <label className="text-sm">Report date
+            <Input aria-label="Cash closing report date" type="date" value={date} onChange={(e) => setDate(e.target.value)} />
+          </label>
+        </div>
+        {!dailySessions.length ? (
+          <p className="py-6 text-sm text-muted-foreground">No counter sessions opened on this date.</p>
+        ) : (
+          <div className="mt-4 space-y-4">
+            {dailySessions.map((session) => (
+              <article key={session.id} className="rounded-xl border bg-card p-4">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <p className="font-semibold">{session.branch}</p>
+                  <span className="text-xs text-muted-foreground">{session.closed ? 'Closed' : 'Open'}</span>
+                </div>
+                <div className="mt-4 grid grid-cols-2 gap-x-4 gap-y-3 sm:grid-cols-3 lg:grid-cols-4">
+                  {[
+                    ['Opening cash', session.opening],
+                    ['Cash sales / receipts', session.receipts],
+                    ['Refunds paid', session.refunds],
+                    ['Cash in', session.cashIn],
+                    ['Cash out', session.cashOut],
+                    ['Expected closing', session.expected],
+                    ...(session.actual ? [['Actual counted', session.actual] as [string, Decimal]] : []),
+                  ].map(([label, value]) => (
+                    <div key={label}>
+                      <p className="text-xs text-muted-foreground">{label}</p>
+                      <p className="mt-1 font-semibold tabular-nums">{formatNPR(value.toString())}</p>
+                    </div>
+                  ))}
+                  {session.closed && session.difference !== null && (
+                    <div>
+                      <p className="text-xs text-muted-foreground">Difference</p>
+                      <p className="mt-1 font-semibold tabular-nums"><Difference value={session.difference.toString()} /></p>
+                    </div>
+                  )}
+                </div>
+              </article>
+            ))}
+          </div>
         )}
       </section>
       <section className="py-7">
