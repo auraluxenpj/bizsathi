@@ -7,7 +7,11 @@ import { lovable } from '@/integrations/lovable';
 import { supabase } from '@/integrations/supabase/client';
 import '@lovable.dev/cloud-auth-js/styles.css';
 import { Input } from '@/components/ui/input';
-import { credentialsInput } from '@/lib/business-schemas';
+import { z } from 'zod';
+import { signInWithMobile } from '@/lib/mobile-login.functions';
+
+const emailOk = (v: string) => z.string().email().safeParse(v).success;
+const mobileOf = (v: string) => { const n = v.replace(/[\s()-]/g, '').replace(/^\+?977(?=\d{10}$)/, ''); return /^[0-9]{10}$/.test(n) ? n : null; };
 
 export function SignIn() {
   const navigate = useNavigate();
@@ -16,7 +20,7 @@ export function SignIn() {
   const [error, setError] = useState('');
   const [signedIn, setSignedIn] = useState(false);
   const [mode, setMode] = useState<'login'|'signup'|'recovery'>('login');
-  const [email, setEmail] = useState(''); const [password, setPassword] = useState(''); const [message, setMessage] = useState('');
+  const [email, setEmail] = useState(''); const [mobile, setMobile] = useState(''); const [identifier, setIdentifier] = useState(''); const [password, setPassword] = useState(''); const [message, setMessage] = useState('');
   useEffect(() => { supabase.auth.getUser().then(({ data }) => setSignedIn(Boolean(data.user))); }, []);
   async function login(provider: 'google' | 'lovable') {
     setBusy(true); setError('');
@@ -33,18 +37,29 @@ export function SignIn() {
     setBusy(true); setError(''); setMessage('');
     try {
       if (mode === 'recovery') {
-        const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo: `${window.location.origin}/reset-password` });
+        const { error } = await supabase.auth.resetPasswordForEmail(identifier.trim(), { redirectTo: `${window.location.origin}/reset-password` });
         if (error) throw error;
         setMessage('If this account exists, a recovery link will be sent to its email.');
       } else {
-        const credentials = credentialsInput.parse({ email, password });
         if (mode === 'signup') {
-          const { data, error } = await supabase.auth.signUp({ ...credentials, options: { emailRedirectTo: `${window.location.origin}/auth` } });
+          const m = mobileOf(mobile);
+          if (!emailOk(email) || !m || password.length < 8) throw new Error('invalid');
+          const { data, error } = await supabase.auth.signUp({ email, password, options: { data: { mobile: m }, emailRedirectTo: `${window.location.origin}/auth` } });
           if (error) throw error;
           if (!data.session) { setMessage('Check your email to confirm your account before signing in.'); return; }
         } else {
-          const { error } = await supabase.auth.signInWithPassword(credentials);
-          if (error) throw error;
+          const id = identifier.trim();
+          if (password.length < 8) throw new Error('invalid');
+          if (emailOk(id)) {
+            const { error } = await supabase.auth.signInWithPassword({ email: id, password });
+            if (error) throw error;
+          } else {
+            const m = mobileOf(id);
+            if (!m) throw new Error('invalid');
+            const t = await signInWithMobile({ data: { mobile: m, password } });
+            const { error } = await supabase.auth.setSession(t);
+            if (error) throw error;
+          }
         }
         await navigate({ to: sessionStorage.getItem('bizsathi-invite') ? '/invite' : '/dashboard' });
       }
@@ -63,7 +78,10 @@ export function SignIn() {
         </div> : <>
           <h1 className="brand text-xl font-semibold">{title}</h1>
           <form className="mt-5 space-y-4" onSubmit={e => { e.preventDefault(); emailLogin(); }}>
-            <label className="block text-sm">Email<Input className="mt-1 h-11" type="email" autoComplete="email" required maxLength={254} value={email} onChange={e => setEmail(e.target.value)} /></label>
+            {mode === 'signup' ? <>
+              <label className="block text-sm">Email<Input className="mt-1 h-11" type="email" autoComplete="email" required maxLength={254} value={email} onChange={e => setEmail(e.target.value)} /></label>
+              <label className="block text-sm">Mobile number<Input className="mt-1 h-11" type="tel" inputMode="numeric" autoComplete="tel" required maxLength={20} placeholder="98XXXXXXXX" value={mobile} onChange={e => setMobile(e.target.value)} /></label>
+            </> : <label className="block text-sm">{mode === 'recovery' ? 'Email' : 'Email or mobile number'}<Input className="mt-1 h-11" type={mode === 'recovery' ? 'email' : 'text'} autoComplete="username" required maxLength={254} value={identifier} onChange={e => setIdentifier(e.target.value)} /></label>}
             {mode !== 'recovery' && <label className="block text-sm">Password<Input className="mt-1 h-11" type="password" autoComplete={mode === 'signup' ? 'new-password' : 'current-password'} required minLength={8} maxLength={128} value={password} onChange={e => setPassword(e.target.value)} /></label>}
             <Button className="h-11 w-full" disabled={busy}>{busy ? 'Please wait…' : mode === 'recovery' ? 'Send recovery link' : mode === 'signup' ? 'Create account' : 'Sign in'}</Button>
             <div className="flex flex-wrap justify-between gap-2 text-sm">
