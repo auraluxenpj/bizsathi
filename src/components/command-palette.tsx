@@ -6,11 +6,11 @@ import { CommandDialog, CommandEmpty, CommandGroup, CommandInput, CommandItem, C
 
 type Entry = CommandEntry;
 const create: Entry[] = [
-  { label: 'New sale', to: '/sales', search: { new: '1' } },
-  { label: 'New purchase', to: '/purchases', search: { new: '1' } },
-  { label: 'Add expense', to: '/expenses' },
-  { label: 'Add item', to: '/products' },
-  { label: 'Add party', to: '/contacts' },
+  { label: 'New sale', to: '/sales', search: { new: '1' }, permission: 'sales.create' },
+  { label: 'New purchase', to: '/purchases', search: { new: '1' }, permission: 'purchases.create' },
+  { label: 'Add expense', to: '/expenses', permission: 'expenses.create' },
+  { label: 'Add item', to: '/products', permission: 'inventory.create' },
+  { label: 'Add party', to: '/contacts', permission: 'customers.create' },
 ];
 const pages: Entry[] = [
   { label: 'Dashboard', to: '/dashboard' }, { label: 'Parties', to: '/parties' }, { label: 'Receive / give payment', to: '/parties' }, { label: 'Inventory', to: '/products' },
@@ -21,7 +21,7 @@ const pages: Entry[] = [
 ];
 
 // Only one instance should own the keyboard shortcut; the mobile icon passes shortcut={false}.
-export function CommandPalette({ className = '', variant = 'bar', shortcut = true, visible = () => true }: { className?: string; variant?: 'bar' | 'icon'; shortcut?: boolean; visible?: (to: string) => boolean }) {
+export function CommandPalette({ className = '', variant = 'bar', shortcut = true, visible = () => true, can = () => true }: { className?: string; variant?: 'bar' | 'icon'; shortcut?: boolean; visible?: (to: string) => boolean; can?: (permission: string) => boolean }) {
   const [open, setOpen] = useState(false);
   const navigate = useNavigate();
   useEffect(() => {
@@ -30,7 +30,7 @@ export function CommandPalette({ className = '', variant = 'bar', shortcut = tru
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, [shortcut]);
-  const availableCreate = filterCommandEntries(create, visible);
+  const availableCreate = filterCommandEntries(create, visible, can);
   const availablePages = filterCommandEntries(pages, visible);
   const go = (e: Entry) => { setOpen(false); navigate({ to: e.to, ...(e.search ? { search: e.search } : {}) } as never); };
   return <>
