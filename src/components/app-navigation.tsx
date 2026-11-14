@@ -6,6 +6,7 @@ import { Building2, ChevronDown, PanelLeftClose, PanelLeftOpen, Menu, LogOut, Mo
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Sheet, SheetContent, SheetTitle, SheetDescription } from '@/components/ui/sheet';
+import { useApplyAppearance } from '@/components/appearance-settings';
 import { MobileTabBar } from '@/components/mobile-tab-bar';
 import { CommandPalette } from '@/components/command-palette';
 import { WorkspaceSidebar } from '@/components/workspace-sidebar';
@@ -17,7 +18,7 @@ import { workspaceGroups, workspaceItemActive } from '@/lib/workspace-navigation
 import { validateReportSearch } from '@/lib/report-filters';
 
 export function AppNavigation({ children, pathname }: { children: ReactNode; pathname: string }) {
- const load = useServerFn(listBusinesses); const client = useQueryClient(); const navigate = useNavigate(); const search = useSearch({ strict: false });
+ useApplyAppearance(); const load = useServerFn(listBusinesses); const client = useQueryClient(); const navigate = useNavigate(); const search = useSearch({ strict: false });
  const [person, setPerson] = useState(''); const [compact, setCompact] = useState(false); const [mobileOpen, setMobileOpen] = useState(false);
  const businesses = useQuery({ queryKey: ['businesses'], queryFn: () => load() });
  const admin = businesses.data?.some(b => b.role === 'owner' || b.role === 'admin');
