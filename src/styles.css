@@ -214,3 +214,28 @@
  [aria-label="Business report print"] table { table-layout: fixed; }
  [aria-label="Business report print"] th, [aria-label="Business report print"] td { overflow-wrap: anywhere; }
 }
+
+/* Retail checkout presentation; transaction behaviour stays in the existing editor. */
+.pos-billing-checkout .pos-billing-layout { align-items: start; }
+.pos-billing-checkout [aria-label="Checkout catalogue"],
+.pos-billing-checkout .pos-billing-cart {
+  min-width: 0; border: 1px solid var(--color-border); border-radius: 1rem;
+  background: var(--color-card); padding: clamp(.75rem, 1.6vw, 1.25rem);
+  box-shadow: 0 8px 28px oklch(0.2 0.02 160 / 4%);
+}
+.pos-billing-checkout [aria-label="Checkout catalogue"] > div:first-child h2,
+.pos-billing-checkout .pos-billing-cart h2 { letter-spacing: -.025em; }
+.pos-category-filters { padding-bottom: .25rem; }
+.pos-category-filters button { border-radius: 999px; padding-inline: 1rem; }
+.pos-product-grid { align-content: start; }
+.pos-product-card { min-height: 12.25rem; border-radius: .85rem; background: var(--color-card); transition: border-color .15s ease, box-shadow .15s ease, transform .15s ease; }
+.pos-product-card:hover { border-color: var(--color-primary); box-shadow: 0 8px 22px oklch(0.2 0.02 160 / 8%); transform: translateY(-1px); }
+.pos-billing-cart [aria-label="Payment collection"] { border-radius: .85rem; background: color-mix(in oklch, var(--color-muted) 28%, var(--color-card)); }
+@media (min-width: 1280px) {
+  .pos-billing-checkout .pos-billing-layout { grid-template-columns: minmax(0, 1fr) minmax(390px, 440px); gap: 1.25rem; }
+  .pos-billing-cart { position: sticky; top: 5.25rem; max-height: calc(100dvh - 6rem); overflow-y: auto; }
+}
+@media (max-width: 767px) {
+  .pos-billing-checkout [aria-label="Checkout catalogue"], .pos-billing-checkout .pos-billing-cart { border-radius: .8rem; }
+  .pos-product-card { min-height: 10.5rem; }
+}
