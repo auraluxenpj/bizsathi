@@ -3,11 +3,15 @@ DO $test$
 DECLARE u uuid:=gen_random_uuid(); staff uuid:=gen_random_uuid(); b uuid; other_b uuid; br uuid; hidden_br uuid; per uuid; v uuid; req jsonb; sale uuid:=gen_random_uuid(); sale2 uuid:=gen_random_uuid(); ret uuid:=gen_random_uuid(); mid uuid; rejected boolean; return_req jsonb;
 BEGIN
  INSERT INTO auth.users(id,email,email_confirmed_at,raw_user_meta_data,created_at,updated_at) SELECT i,'loyalty+'||i||'@example.invalid',now(),'{}',now(),now() FROM unnest(ARRAY[u,staff]) i;
- SET LOCAL ROLE authenticated; PERFORM set_config('request.jwt.claims',json_build_object('sub',u,'role','authenticated')::text,true);
- b:=public.create_business('Isolated loyalty'); other_b:=public.create_business('Other isolated loyalty');
+ INSERT INTO public.businesses(name,created_by) VALUES('Isolated loyalty',u) RETURNING id INTO b;
+ INSERT INTO public.businesses(name,created_by) VALUES('Other isolated loyalty',u) RETURNING id INTO other_b;
+ INSERT INTO public.business_memberships(business_id,user_id,role_code) VALUES(b,u,'owner'),(other_b,u,'owner');
+ INSERT INTO public.business_settings(business_id) VALUES(b),(other_b);
  INSERT INTO public.branches(business_id,code,name) VALUES(b,'MAIN','Main') RETURNING id INTO br;
  INSERT INTO public.branches(business_id,code,name) VALUES(b,'HIDDEN','Hidden') RETURNING id INTO hidden_br;
+ INSERT INTO public.branch_memberships(business_id,branch_id,user_id,granted_by) VALUES(b,br,u,u),(b,hidden_br,u,u);
  INSERT INTO public.financial_periods(business_id,name,start_date,end_date) VALUES(b,'Open','2026-01-01','2026-12-31') RETURNING id INTO per;
+ SET LOCAL ROLE authenticated; PERFORM set_config('request.jwt.claims',json_build_object('sub',u,'role','authenticated')::text,true);
  PERFORM public.save_catalogue_variant(b,'[{"product_name":"Test only","sku":"LOY","selling_price":50}]'); SELECT id INTO v FROM public.product_variants WHERE business_id=b;
  PERFORM public.post_stock_operation(b,gen_random_uuid(),v,br,NULL,'opening',20,'OPEN','Test only');
  PERFORM public.post_stock_operation(b,gen_random_uuid(),v,hidden_br,NULL,'opening',20,'OPEN-H','Test only');
