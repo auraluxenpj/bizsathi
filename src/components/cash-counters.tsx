@@ -15,7 +15,7 @@ import {
   sanitizeCount,
   type DenominationCounts,
 } from '@/lib/cash-denominations';
-import { canSeeExpectedCash } from '@/lib/cash-counter-access';
+import { canSeeExpectedCash, scopeCashCounterReport } from '@/lib/cash-counter-access';
 import { PeriodNotice } from './period-notice';
 import { downloadCsv } from '@/lib/download-csv';
 import { buildCashClosingCsv } from '@/lib/cash-closing-csv';
@@ -77,6 +77,7 @@ export function CashCounters() {
       !events.some((c) => c.session_id === e.session_id && c.kind === 'close'),
   );
   const manager = ['owner', 'admin'].includes(data?.role ?? '');
+  const cashier = data?.role === 'staff';
   const canWrite = ['owner', 'admin', 'accountant', 'staff'].includes(data?.role ?? '');
   // Staff count blind: no expected figure while a counter is open. The close result (expected and
   // difference) still appears in the history once they submit.
@@ -142,7 +143,9 @@ export function CashCounters() {
       };
     });
 
-  const visibleDailySessions = dailySessions.filter((session) =>
+  const reportSessions = scopeCashCounterReport(dailySessions, data?.role, data?.userId ?? '');
+  const visibleDailySessions = reportSessions.filter((session) =>
+    (!cashier || session.openedById === data?.userId) &&
     (!staffFilter || session.openedById === staffFilter || session.closedById === staffFilter) &&
     (!reportBranch || session.branchId === reportBranch),
   );
@@ -399,12 +402,12 @@ export function CashCounters() {
             <label className="text-sm">Report date
               <Input aria-label="Cash closing report date" type="date" value={date} onChange={(e) => setDate(e.target.value)} />
             </label>
-            <label className="text-sm">Staff member
+            {!cashier && <label className="text-sm">Staff member
               <select aria-label="Filter closing report by staff" className="mt-2 h-10 min-w-44 rounded-md border bg-card px-3" value={staffFilter} onChange={(e) => setStaffFilter(e.target.value)}>
                 <option value="">All staff</option>
                 {staffOptions.map((staff) => <option key={staff.id} value={staff.id}>{staff.name}</option>)}
               </select>
-            </label>
+            </label>}
             <label className="text-sm">Branch
               <select aria-label="Filter closing report by branch" className="mt-2 h-10 min-w-44 rounded-md border bg-card px-3" value={reportBranch} onChange={(e) => setReportBranch(e.target.value)}>
                 <option value="">All branches</option>
