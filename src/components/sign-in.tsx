@@ -7,11 +7,8 @@ import { lovable } from '@/integrations/lovable';
 import { supabase } from '@/integrations/supabase/client';
 import '@lovable.dev/cloud-auth-js/styles.css';
 import { Input } from '@/components/ui/input';
-import { z } from 'zod';
 import { signInWithMobile } from '@/lib/mobile-login.functions';
-
-const emailOk = (v: string) => z.string().email().safeParse(v).success;
-const mobileOf = (v: string) => { const n = v.replace(/[\s()-]/g, '').replace(/^\+?977(?=\d{10}$)/, ''); return /^[0-9]{10}$/.test(n) ? n : null; };
+import { classifyLoginIdentifier, isEmailLoginIdentifier, normalizeLoginMobile } from '@/lib/login-identifier';
 
 export function SignIn() {
   const navigate = useNavigate();
@@ -37,27 +34,26 @@ export function SignIn() {
     setBusy(true); setError(''); setMessage('');
     try {
       if (mode === 'recovery') {
-        const { error } = await supabase.auth.resetPasswordForEmail(identifier.trim(), { redirectTo: `${window.location.origin}/reset-password` });
+        if (!isEmailLoginIdentifier(identifier)) throw new Error('invalid email');
+        const { error } = await supabase.auth.resetPasswordForEmail(identifier.trim().toLowerCase(), { redirectTo: `${window.location.origin}/reset-password` });
         if (error) throw error;
         setMessage('If this account exists, a recovery link will be sent to its email.');
       } else {
         if (mode === 'signup') {
           if (!hasInvite) throw new Error('invitation required');
-          const m = mobileOf(mobile);
-          if (!emailOk(email) || !m || password.length < 8) throw new Error('invalid');
-          const { data, error } = await supabase.auth.signUp({ email, password, options: { data: { mobile: m }, emailRedirectTo: `${window.location.origin}/auth` } });
+          const normalizedMobile = normalizeLoginMobile(mobile);
+          if (!isEmailLoginIdentifier(email) || !normalizedMobile || password.length < 8) throw new Error('invalid');
+          const { data, error } = await supabase.auth.signUp({ email: email.trim().toLowerCase(), password, options: { data: { mobile: normalizedMobile }, emailRedirectTo: `${window.location.origin}/auth` } });
           if (error) throw error;
           if (!data.session) { setMessage('Check your email to confirm your account before signing in.'); return; }
         } else {
-          const id = identifier.trim();
-          if (password.length < 8) throw new Error('invalid');
-          if (emailOk(id)) {
-            const { error } = await supabase.auth.signInWithPassword({ email: id, password });
+          const parsed = classifyLoginIdentifier(identifier);
+          if (!parsed || password.length < 8) throw new Error('invalid');
+          if (parsed.type === 'email') {
+            const { error } = await supabase.auth.signInWithPassword({ email: parsed.value, password });
             if (error) throw error;
           } else {
-            const m = mobileOf(id);
-            if (!m) throw new Error('invalid');
-            const t = await signInWithMobile({ data: { mobile: m, password } });
+            const t = await signInWithMobile({ data: { mobile: parsed.value, password } });
             const { error } = await supabase.auth.setSession(t);
             if (error) throw error;
           }
