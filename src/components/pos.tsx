@@ -20,10 +20,14 @@ export function Pos() {
   const ready = !!w.commerce.data && !!w.access.data && !!w.inventory.data;
   const error = w.commerce.error?.message || w.access.error?.message || w.inventory.error?.message;
   return <div className="pos-workspace min-h-screen bg-background">
-    <header className="pos-topbar sticky top-0 z-30 flex min-h-[72px] items-center justify-between gap-3 border-b bg-card/95 px-4 py-3 shadow-sm backdrop-blur sm:px-6 lg:px-8">
-      {billingStaff ? <span className="text-xs font-semibold text-muted-foreground">Billing workspace</span> : <Button asChild variant="ghost" size="sm"><Link to="/dashboard"><ArrowLeft />Dashboard</Link></Button>}
-      <h1 className="truncate text-base font-semibold">{name ? `${name} · ` : ''}Point of sale</h1>
-      {billingStaff ? <Button variant="outline" size="sm" onClick={signOut}><LogOut className="size-4" />Sign out</Button> : <Button asChild variant="outline" size="sm"><Link to="/sales">Sales</Link></Button>}
+    <header className="pos-topbar sticky top-0 z-30 grid min-h-[72px] grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-3 border-b bg-card/95 px-3 py-3 shadow-sm backdrop-blur sm:px-6 lg:px-8">
+      <div className="flex min-w-0 justify-start">
+        {billingStaff ? <span className="truncate text-xs font-semibold text-muted-foreground sm:text-sm">Billing workspace</span> : <Button asChild variant="ghost" size="sm"><Link to="/dashboard"><ArrowLeft />Dashboard</Link></Button>}
+      </div>
+      <h1 className="max-w-[48vw] truncate text-center text-sm font-semibold sm:max-w-none sm:text-base">{name ? `${name} · ` : ''}Point of sale</h1>
+      <div className="flex min-w-0 justify-end">
+        {billingStaff ? <Button variant="outline" size="sm" onClick={signOut}><LogOut className="size-4" /><span className="hidden sm:inline">Sign out</span></Button> : <Button asChild variant="outline" size="sm"><Link to="/sales">Sales</Link></Button>}
+      </div>
     </header>
     <main className="pos-main mx-auto w-full max-w-[1800px] px-3 py-4 sm:px-5 md:px-7 lg:px-8">
       {!w.businessId ? <section className="py-16 text-center"><Building2 className="mx-auto mb-4 size-9 text-primary" /><h2 className="text-xl font-semibold">No business linked yet</h2><Button asChild className="mt-5"><Link to="/businesses">Business setup</Link></Button></section>
