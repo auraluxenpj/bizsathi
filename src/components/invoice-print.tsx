@@ -58,15 +58,63 @@ export function InvoiceSheet({ data: d, layout, extra }: { data: InvoiceData; la
     {/* Sets the paper size only while an invoice is on screen. */}
     <style>{`@media print { @page { size: ${thermal ? '80mm auto' : 'A4'}; margin: ${thermal ? '3mm' : '12mm'}; } }`}</style>
     {thermal ? (
-      <article aria-label="Invoice receipt" data-layout="thermal" className="mx-auto box-border w-[76mm] max-w-full border bg-white p-2 font-mono text-xs leading-snug text-black print:max-w-none">
-        <div className="text-center"><h2 className="text-sm font-bold">{d.business}</h2>{d.pan && <p>PAN/VAT {d.pan}</p>}{d.branch && <p>{d.branch}</p>}</div>
-        <div className="my-2 border-y border-dashed py-1"><p className="font-semibold">{invoiceTitle(d.kind)} {d.reference}</p><p>{formatBsAd(d.date)}</p>{d.party && <p>{d.party}</p>}</div>
-        <ul className="space-y-1">{d.lines.map(l => <li key={l.sku + l.name}><p className="break-words">{l.name}</p><p className="flex justify-between"><span>{l.quantity} × {l.price.toFixed(2)}</span><span className="tabular-nums">{l.total.toFixed(2)}</span></p></li>)}</ul>
-        <div className="my-2 border-t border-dashed pt-2"><Totals d={d} compact /></div>
-        {extra}
-        {d.kind==='sale'&&d.businessId&&<PaymentQr businessId={d.businessId}/>}
-        {d.invoiceTerms&&<p className="mt-3 whitespace-pre-wrap break-words border-t border-dashed pt-2">{d.invoiceTerms}</p>}{d.invoiceSignatureLabel&&<p className="mt-6 border-t border-dashed pt-2 text-center">{d.invoiceSignatureLabel}</p>}<p className="mt-3 text-center">{d.invoiceFooter||'Thank you! Visit again.'}</p>
-      </article>
+      <>
+        <style>{`
+          .thermal-receipt { width:76mm; max-width:100%; padding:3mm; border:1px solid #e5e7eb; background:#fff; color:#000; font:9pt/1.3 ui-monospace,SFMono-Regular,Menlo,monospace; }
+          .thermal-receipt__header { text-align:center; padding-bottom:3mm; border-bottom:1px dashed #777; }
+          .thermal-receipt__header h2 { margin:0 0 1mm; font:700 12pt/1.2 Arial,sans-serif; overflow-wrap:anywhere; }
+          .thermal-receipt__header p,.thermal-receipt__meta p,.thermal-receipt__party p { margin:0; overflow-wrap:anywhere; }
+          .thermal-receipt__meta { padding:2.5mm 0; border-bottom:1px dashed #777; }
+          .thermal-receipt__party { padding:2.5mm 0; border-bottom:1px dashed #777; }
+          .thermal-receipt__label { font-size:7pt; text-transform:uppercase; letter-spacing:.04em; color:#444; }
+          .thermal-receipt__items { width:100%; border-collapse:collapse; table-layout:fixed; margin-top:2mm; }
+          .thermal-receipt__items td { padding:1.5mm 0; vertical-align:top; overflow-wrap:anywhere; }
+          .thermal-receipt__items tr+tr td { border-top:1px dotted #bbb; }
+          .thermal-receipt__items .thermal-receipt__amount { width:24mm; text-align:right; white-space:nowrap; }
+          .thermal-receipt__totals { margin-top:2mm; padding-top:2mm; border-top:1px dashed #777; }
+          .thermal-receipt__totals dl { margin:0; }
+          .thermal-receipt__extra { margin-top:2mm; padding-top:2mm; border-top:1px dashed #777; overflow-wrap:anywhere; }
+          .thermal-receipt__qr { display:flex; justify-content:center; max-width:100%; overflow:hidden; }
+          .thermal-receipt__footer { margin-top:3mm; padding-top:2mm; border-top:1px dashed #777; text-align:center; overflow-wrap:anywhere; }
+          @media print {
+            .thermal-receipt { width:76mm; max-width:76mm; padding:1.5mm; border:0; font-size:8.5pt; line-height:1.25; }
+            .thermal-receipt__items tr { break-inside:avoid; }
+          }
+        `}</style>
+        <article aria-label="Invoice receipt" data-layout="thermal" className="thermal-receipt mx-auto box-border font-mono text-xs leading-snug text-black print:max-w-none">
+          <header className="thermal-receipt__header">
+            <h2>{d.business}</h2>
+            {d.address && <p>{d.address}</p>}
+            {d.pan && <p>PAN/VAT {d.pan}</p>}
+            {d.branch && <p>{d.branch}</p>}
+          </header>
+          <section className="thermal-receipt__meta">
+            <p className="font-bold">{invoiceTitle(d.kind)}</p>
+            <p>Bill No: {d.reference}</p>
+            <p>Date: {formatBsAd(d.date)}</p>
+            <p>Status: <span className="capitalize">{d.status}</span></p>
+          </section>
+          <section className="thermal-receipt__party">
+            <p className="thermal-receipt__label">{d.kind.startsWith('purchase') ? 'Supplier' : 'Customer'}</p>
+            <p className="font-bold">{d.party || 'Walk-in customer'}</p>
+            {d.phone && <p>Mobile: {d.phone}</p>}
+            {d.partyPan && <p>PAN/VAT: {d.partyPan}</p>}
+          </section>
+          <table className="thermal-receipt__items">
+            <tbody>{d.lines.map(l => <tr key={l.sku + l.name}>
+              <td><p className="font-semibold">{l.name}</p>{l.sku && <p className="text-[7pt]">SKU: {l.sku}</p>}<p className="text-[8pt]">{l.quantity} × {l.price.toFixed(2)}</p></td>
+              <td className="thermal-receipt__amount tabular-nums">{l.total.toFixed(2)}</td>
+            </tr>)}</tbody>
+          </table>
+          <div className="thermal-receipt__totals"><Totals d={d} compact /></div>
+          {extra && <div className="thermal-receipt__extra">{extra}</div>}
+          {d.kind==='sale'&&d.businessId&&<div className="thermal-receipt__extra thermal-receipt__qr"><PaymentQr businessId={d.businessId}/></div>}
+          {d.invoiceTerms&&<div className="thermal-receipt__extra"><p className="thermal-receipt__label">Terms & conditions</p><p className="whitespace-pre-wrap">{d.invoiceTerms}</p></div>}
+          {d.invoiceSignatureLabel&&<p className="mt-5 border-t border-dashed pt-2 text-center">{d.invoiceSignatureLabel}</p>}
+          <footer className="thermal-receipt__footer">{d.invoiceFooter||'Thank you! Visit again.'}</footer>
+          <p className="mt-2 break-all text-center text-[6pt] text-neutral-600">Document {d.docId}</p>
+        </article>
+      </>
     ) : (
       <article aria-label="Invoice receipt" data-layout="a4" className="mx-auto box-border max-w-3xl border-y bg-white px-4 py-7 text-black print:max-w-none">
         <div className="flex flex-wrap justify-between gap-4 border-b pb-6">
