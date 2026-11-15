@@ -465,7 +465,7 @@ export function CashCounters() {
                   <span className="text-xs text-muted-foreground">{session.closed ? 'Closed' : 'Open'}</span>
                 </div>
                 <div className="mt-4 grid grid-cols-2 gap-x-4 gap-y-3 sm:grid-cols-3 lg:grid-cols-4">
-                  {[
+                  {([
                     ['Opening cash', session.opening],
                     ['Cash sales / receipts', session.receipts],
                     ['Refunds paid', session.refunds],
@@ -473,7 +473,7 @@ export function CashCounters() {
                     ['Cash out', session.cashOut],
                     ['Expected closing', session.expected],
                     ...(session.actual ? [['Actual counted', session.actual] as [string, Decimal]] : []),
-                  ].map(([label, value]) => (
+                  ] satisfies [string, Decimal][]).map(([label, value]) => (
                     <div key={label}>
                       <p className="text-xs text-muted-foreground">{label}</p>
                       <p className="mt-1 font-semibold tabular-nums">{formatNPR(value.toString())}</p>
