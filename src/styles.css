@@ -71,7 +71,7 @@
 :root {
   --workspace: oklch(0.975 0.018 86);
   --revenue: oklch(0.62 0.16 155);
-  --expense: oklch(0.62 0.20 22);
+  --expense: oklch(0.58 0.19 12);
   --purchase: oklch(0.57 0.16 250);
   --print-paper: oklch(1 0 0);
   --print-ink: oklch(0 0 0);
@@ -114,7 +114,7 @@
 .dark {
   --workspace: oklch(0.17 0.012 75);
   --revenue: oklch(0.76 0.14 155);
-  --expense: oklch(0.75 0.16 22);
+  --expense: oklch(0.74 0.16 12);
   --purchase: oklch(0.75 0.13 250);
   --print-paper: oklch(1 0 0);
   --print-ink: oklch(0 0 0);
@@ -310,7 +310,7 @@ h1, h2, h3, h4, .brand { font-family: 'Manrope', 'DM Sans', sans-serif; letter-s
 button, input, select, textarea { font: inherit; }
 ::selection { background: oklch(0.86 0.09 158); color: oklch(0.2 0.04 160); }
 .karobar {
-  font-family: 'DM Sans', 'Roboto', sans-serif !important;
+  font-family: 'Inter', sans-serif !important;
   background: linear-gradient(180deg, oklch(0.975 0.018 165), oklch(0.965 0.012 240) 38rem) !important;
 }
 .karobar header a { font-family: 'Manrope', 'DM Sans', sans-serif; }
