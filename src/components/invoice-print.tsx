@@ -62,6 +62,7 @@ export function InvoiceSheet({ data: d, layout, extra }: { data: InvoiceData; la
         <style>{`
           .thermal-receipt { width:76mm; max-width:100%; padding:3mm; border:1px solid #e5e7eb; background:#fff; color:#000; font:9pt/1.3 ui-monospace,SFMono-Regular,Menlo,monospace; }
           .thermal-receipt__header { text-align:center; padding-bottom:3mm; border-bottom:1px dashed #777; }
+          .thermal-receipt__logo { display:block !important; width:38mm !important; height:auto !important; max-width:100% !important; object-fit:contain; margin:0 auto 1.5mm !important; visibility:visible !important; }
           .thermal-receipt__header h2 { margin:0 0 1mm; font:700 12pt/1.2 Arial,sans-serif; overflow-wrap:anywhere; }
           .thermal-receipt__header p,.thermal-receipt__meta p,.thermal-receipt__party p { margin:0; overflow-wrap:anywhere; }
           .thermal-receipt__meta { padding:2.5mm 0; border-bottom:1px dashed #777; }
@@ -79,11 +80,13 @@ export function InvoiceSheet({ data: d, layout, extra }: { data: InvoiceData; la
           @media print {
             .thermal-receipt { width:76mm; max-width:76mm; padding:1.5mm; border:0; font-size:8.5pt; line-height:1.25; }
             .thermal-receipt__items tr { break-inside:avoid; }
+            .thermal-receipt__logo { display:block !important; visibility:visible !important; width:38mm !important; height:auto !important; -webkit-print-color-adjust:exact; print-color-adjust:exact; }
           }
         `}</style>
         <article aria-label="Invoice receipt" data-layout="thermal" className="thermal-receipt mx-auto box-border w-[76mm] max-w-full font-mono text-xs leading-snug text-black print:max-w-none">
           <header className="thermal-receipt__header">
-            <img src="/brand/auraluxe-invoice-logo.jpg" alt="AURALUXE" className="mx-auto mb-2 h-auto w-[38mm] max-w-full" />
+            <img src="/brand/auraluxe-invoice-logo.jpg" alt="AURALUXE logo" className="thermal-receipt__logo" width="400" height="233" loading="eager" decoding="sync" />
+            <h2>AURALUXE</h2>
             {d.pan && <p>PAN/VAT {d.pan}</p>}
             {d.branch && <p>{d.branch}</p>}
           </header>

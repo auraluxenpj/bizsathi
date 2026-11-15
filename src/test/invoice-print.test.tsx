@@ -24,7 +24,9 @@ describe('Invoice print and share', () => {
     render(<Harness />);
     fireEvent.click(screen.getByRole('button', { name: '80mm' }));
     expect(screen.getByLabelText('Invoice receipt')).toHaveAttribute('data-layout', 'thermal');
-    expect(screen.getByRole('img', { name: 'AURALUXE' })).toHaveAttribute('src', '/brand/auraluxe-invoice-logo.jpg');
+    expect(screen.getByRole('img', { name: 'AURALUXE logo' })).toHaveAttribute('src', '/brand/auraluxe-invoice-logo.jpg');
+    expect(screen.getByRole('heading', { name: 'AURALUXE' })).toBeInTheDocument();
+    expect(document.querySelectorAll('style')[1]?.textContent).toContain('.thermal-receipt__logo');
     expect(document.querySelector('style')?.textContent).toContain('80mm auto');
     expect(screen.getByLabelText('Invoice receipt')).toHaveClass('w-[76mm]');
     expect(screen.getByLabelText('Invoice receipt')).toHaveClass('box-border');
