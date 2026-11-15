@@ -1,5 +1,6 @@
 -- Run only in an isolated test database with the project's migrations (through 0042) applied.
--- A deliberate final exception rolls back every synthetic record.
+-- The explicit transaction guarantees all synthetic auth/business records are rolled back.
+BEGIN;
 DO $tests$
 DECLARE
   master uuid:=gen_random_uuid(); owner_a uuid:=gen_random_uuid(); mgr_a uuid:=gen_random_uuid(); staff_a uuid:=gen_random_uuid();
@@ -102,5 +103,6 @@ BEGIN
   ok:=false; BEGIN PERFORM token_hash FROM public.team_invitations; EXCEPTION WHEN insufficient_privilege THEN ok:=true; END; ASSERT ok,'token_hash never readable';
   RESET ROLE;
 
-  RAISE EXCEPTION 'TEAM_ACCESS_TESTS_PASSED';  -- rolls back every synthetic record
+  RAISE NOTICE 'TEAM_ACCESS_TESTS_PASSED';
 END $tests$;
+ROLLBACK;
