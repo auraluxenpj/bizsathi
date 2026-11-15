@@ -72,3 +72,22 @@ The current additive size-aware DDL parses and creates its objects on the prepar
 3. Create synthetic test tenant/users in staging only.
 4. Add size-master seed and run positive/negative constraint, RLS and trigger tests.
 5. Implement and test posting RPCs and adapters before any production proposal.
+
+
+## Full staging schema bootstrap — follow-up run, 15 November 2026
+
+The previously blocked schema bootstrap has now been completed in the isolated staging project:
+
+- Reconstructed `payment_accounts` from the live catalog's verified columns, constraints, unique index, RLS read policy and grant pattern in a staging-only reconciliation migration. No live schema was changed.
+- Applied `0030_permission_checklist_headers` successfully.
+- Applied the remaining source migrations `0033`–`0041`.
+- Detected that the staging migration ledger lacked `0031` and `0032` even though later migrations had been applied. Applied their source SQL as explicit `reconcile_0031...` and `reconcile_0032...` staging migrations. For 0032, used `CREATE OR REPLACE` for the already-existing one-argument `read_customer_loyalty(uuid)` function; the source otherwise applied successfully.
+- Verified `purchase_price`, `model_code`, `mrp`, and `wholesale_price` columns and the loyalty read/earning functions exist.
+- Verified all business, product, variant, stock, invoice, membership, loyalty and size-ledger tables contain zero rows.
+- Verified the size tables' RLS policies and audit/tenant/immutability triggers remain present.
+
+### Current status
+
+The staging schema is now bootstrapped sufficiently for synthetic test-fixture preparation. The database is intentionally empty: no business, user, product, stock, customer or financial records were copied from production.
+
+Still not tested: authenticated RLS behavior with actual staging users, mutation permissions, posting RPCs, size-level stock arithmetic, transaction rollback, concurrency, offline allocation, and external adapters. Do not treat schema bootstrap as application acceptance.
