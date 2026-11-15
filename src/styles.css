@@ -1,6 +1,6 @@
 @import "tailwindcss" source(none);
-@source "../src";
 @import "tw-animate-css";
+@source "../src";
 
 @custom-variant dark (&:is(.dark *));
 
@@ -899,8 +899,8 @@ img, video, canvas { max-width: 100%; }
 .mobile-tab-bar a[aria-current="page"] { color: oklch(0.43 0.13 240); }
 @media (min-width: 1024px) {
   .app-workspace { padding-left: 250px !important; }
-  .app-workspace:has(.app-sidebar.w-\\[76px\\]) { padding-left: 76px !important; }
-  .app-sidebar:not(.w-\\[76px\\]) { width: 250px; }
+  .app-workspace[data-sidebar-compact="true"] { padding-left: 76px !important; }
+  .app-workspace[data-sidebar-compact="false"] > .app-sidebar { width: 250px; }
   .app-topbar { padding-inline: 1.5rem; }
 }
 @media (max-width: 1023px) {

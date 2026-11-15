@@ -336,10 +336,13 @@ export type Database = {
           accepted_at: string | null
           business_id: string
           created_at: string
-          email: string
+          email: string | null
           expires_at: string
           id: string
           invited_by: string
+          invitee_name: string | null
+          job_title: string | null
+          mobile: string | null
           revoked_at: string | null
           role_code: string
           token_hash: string
@@ -348,10 +351,13 @@ export type Database = {
           accepted_at?: string | null
           business_id: string
           created_at?: string
-          email: string
+          email?: string | null
           expires_at?: string
           id?: string
           invited_by: string
+          invitee_name?: string | null
+          job_title?: string | null
+          mobile?: string | null
           revoked_at?: string | null
           role_code: string
           token_hash: string
@@ -360,10 +366,13 @@ export type Database = {
           accepted_at?: string | null
           business_id?: string
           created_at?: string
-          email?: string
+          email?: string | null
           expires_at?: string
           id?: string
           invited_by?: string
+          invitee_name?: string | null
+          job_title?: string | null
+          mobile?: string | null
           revoked_at?: string | null
           role_code?: string
           token_hash?: string
@@ -398,6 +407,7 @@ export type Database = {
           created_at: string
           id: string
           invited_by: string | null
+          job_title: string | null
           role_code: string
           status: string
           updated_at: string
@@ -408,6 +418,7 @@ export type Database = {
           created_at?: string
           id?: string
           invited_by?: string | null
+          job_title?: string | null
           role_code: string
           status?: string
           updated_at?: string
@@ -418,6 +429,7 @@ export type Database = {
           created_at?: string
           id?: string
           invited_by?: string | null
+          job_title?: string | null
           role_code?: string
           status?: string
           updated_at?: string
@@ -495,15 +507,70 @@ export type Database = {
           },
         ]
       }
+      business_role_template_denials: {
+        Row: {
+          business_id: string
+          job_title: string
+          permission: string
+        }
+        Insert: {
+          business_id: string
+          job_title: string
+          permission: string
+        }
+        Update: {
+          business_id?: string
+          job_title?: string
+          permission?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "business_role_template_denials_business_id_job_title_fkey"
+            columns: ["business_id", "job_title"]
+            isOneToOne: false
+            referencedRelation: "business_role_templates"
+            referencedColumns: ["business_id", "job_title"]
+          },
+        ]
+      }
+      business_role_templates: {
+        Row: {
+          business_id: string
+          job_title: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          business_id: string
+          job_title: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          business_id?: string
+          job_title?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "business_role_templates_business_id_fkey"
+            columns: ["business_id"]
+            isOneToOne: false
+            referencedRelation: "businesses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       business_settings: {
         Row: {
           business_id: string
-          invoice_footer: string
-          invoice_terms: string
-          invoice_signature_label: string
           calendar_system: string
           currency: string
           fiscal_year_start_month: number
+          invoice_footer: string
+          invoice_signature_label: string
+          invoice_terms: string
           payment_instructions: string
           payment_payee: string
           payment_provider: string
@@ -515,12 +582,12 @@ export type Database = {
         }
         Insert: {
           business_id: string
-          invoice_footer?: string
-          invoice_terms?: string
-          invoice_signature_label?: string
           calendar_system?: string
           currency?: string
           fiscal_year_start_month?: number
+          invoice_footer?: string
+          invoice_signature_label?: string
+          invoice_terms?: string
           payment_instructions?: string
           payment_payee?: string
           payment_provider?: string
@@ -532,12 +599,12 @@ export type Database = {
         }
         Update: {
           business_id?: string
-          invoice_footer?: string
-          invoice_terms?: string
-          invoice_signature_label?: string
           calendar_system?: string
           currency?: string
           fiscal_year_start_month?: number
+          invoice_footer?: string
+          invoice_signature_label?: string
+          invoice_terms?: string
           payment_instructions?: string
           payment_payee?: string
           payment_provider?: string
@@ -1202,6 +1269,21 @@ export type Database = {
           },
         ]
       }
+      job_title_denials: {
+        Row: {
+          job_title: string
+          permission: string
+        }
+        Insert: {
+          job_title: string
+          permission: string
+        }
+        Update: {
+          job_title?: string
+          permission?: string
+        }
+        Relationships: []
+      }
       loyalty_point_events: {
         Row: {
           actor_id: string
@@ -1417,9 +1499,9 @@ export type Database = {
       }
       parties: {
         Row: {
-          category: string
           address: string
           business_id: string
+          category: string
           created_at: string
           credit_limit: number | null
           email: string
@@ -1432,9 +1514,9 @@ export type Database = {
           updated_at: string
         }
         Insert: {
-          category?: string
           address?: string
           business_id: string
+          category?: string
           created_at?: string
           credit_limit?: number | null
           email?: string
@@ -1447,9 +1529,9 @@ export type Database = {
           updated_at?: string
         }
         Update: {
-          category?: string
           address?: string
           business_id?: string
+          category?: string
           created_at?: string
           credit_limit?: number | null
           email?: string
@@ -2123,6 +2205,10 @@ export type Database = {
         Args: { _branch_id: string; _business_id: string }
         Returns: boolean
       }
+      change_invitation_role: {
+        Args: { _business: string; _invitation: string; _title: string }
+        Returns: undefined
+      }
       commerce_journal: {
         Args: {
           _account: string
@@ -2170,6 +2256,16 @@ export type Database = {
         }
         Returns: string
       }
+      create_business_invitation_v2: {
+        Args: {
+          _business_id: string
+          _mobile: string
+          _name: string
+          _title: string
+          _token_hash: string
+        }
+        Returns: string
+      }
       create_payment_account: {
         Args: {
           _branch: string
@@ -2187,6 +2283,7 @@ export type Database = {
         Args: { _business_id: string; _lease_id: string }
         Returns: undefined
       }
+      get_role_templates: { Args: { _business: string }; Returns: Json }
       has_business_role: {
         Args: { _business_id: string; _min_role: string }
         Returns: boolean
@@ -2197,6 +2294,8 @@ export type Database = {
       }
       inv_sync_push: { Args: { _items: Json }; Returns: Json }
       is_business_member: { Args: { _business_id: string }; Returns: boolean }
+      job_title_role: { Args: { _title: string }; Returns: string }
+      login_email_for_mobile: { Args: { _mobile: string }; Returns: string }
       loyalty_available_points: {
         Args: { _business: string; _mobile: string }
         Returns: number
@@ -2208,6 +2307,13 @@ export type Database = {
       loyalty_earned_points: {
         Args: { _rate?: number; _total: number }
         Returns: number
+      }
+      member_role_denials: {
+        Args: { _business: string }
+        Returns: {
+          permission: string
+          user_id: string
+        }[]
       }
       normalize_member_mobile: { Args: { _mobile: string }; Returns: string }
       pa_balance: { Args: { _account: string }; Returns: number }
@@ -2316,6 +2422,10 @@ export type Database = {
         }
         Returns: boolean
       }
+      reissue_invitation: {
+        Args: { _business: string; _invitation: string; _token_hash: string }
+        Returns: string
+      }
       reject_expense_receipt: {
         Args: { _note: string; _receipt_id: string }
         Returns: undefined
@@ -2324,9 +2434,17 @@ export type Database = {
         Args: { _business_id: string; _user_id: string }
         Returns: undefined
       }
+      reset_role_template: {
+        Args: { _business: string; _title: string }
+        Returns: undefined
+      }
       revoke_business_invitation: {
         Args: { _business_id: string; _invitation_id: string }
         Returns: undefined
+      }
+      role_template_denials: {
+        Args: { _business: string; _title: string }
+        Returns: string[]
       }
       save_catalogue_variant: {
         Args: { _business_id: string; _rows: Json }
@@ -2346,8 +2464,20 @@ export type Database = {
         Args: { _period_id: string; _status: string }
         Returns: undefined
       }
+      set_invitation_job_title: {
+        Args: { _business: string; _invitation: string; _title: string }
+        Returns: undefined
+      }
+      set_member_job_title: {
+        Args: { _business: string; _title: string; _user: string }
+        Returns: undefined
+      }
       set_member_permissions: {
         Args: { _business: string; _denied: string[]; _user: string }
+        Returns: undefined
+      }
+      set_role_template: {
+        Args: { _business: string; _denied: string[]; _title: string }
         Returns: undefined
       }
       shares_business_with: { Args: { _other: string }; Returns: boolean }

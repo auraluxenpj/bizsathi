@@ -10,6 +10,7 @@
 <!-- LOVABLE:END -->
 
 - Sales bundle invariants are in src/lib/AGENTS.md; reuse posting and tenant checks.
+- Sidebar layout CSS selects the explicit data-sidebar-compact state rather than escaped Tailwind width classes. Why: avoid malformed bracket selectors breaking the entire stylesheet transform.
 
 - Tenant data: every tenant table has `business_id`, RLS via `is_business_member`/`has_business_role` (rank from `roles` table); membership writes only through SECURITY DEFINER RPCs. Why: permissions must come from DB records, never client input.
 - After any new table, REVOKE platform default grants and grant least privilege explicitly. Why: defaults give authenticated full write access.
