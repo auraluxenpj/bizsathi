@@ -15,13 +15,16 @@ describe('Invoice print and share', () => {
     render(<Harness />);
     const sheet = screen.getByLabelText('Invoice receipt');
     expect(sheet).toHaveAttribute('data-layout', 'a4');
-    for (const t of ['Auraluxe Private Limited', 'PAN/VAT 123456789', 'Ram Traders', 'Silk Saree', 'INV-20261106-AB12', 'Rs. 3,000.00', 'Rs. 2,000.00', 'Goods once sold cannot be returned.', 'For Auraluxe · Authorized Signatory', 'Visit again soon.']) expect(sheet).toHaveTextContent(t);
+    expect(screen.getByRole('img', { name: 'AURALUXE' })).toHaveAttribute('src', '/brand/auraluxe-invoice-logo.jpg');
+    expect(sheet).not.toHaveTextContent('FASHION | BEAUTY | LIFESTYLE');
+    for (const t of ['PAN/VAT 123456789', 'Ram Traders', 'Silk Saree', 'INV-20261106-AB12', 'Rs. 3,000.00', 'Rs. 2,000.00', 'Goods once sold cannot be returned.', 'For Auraluxe · Authorized Signatory', 'Visit again soon.']) expect(sheet).toHaveTextContent(t);
     expect(sheet).toHaveTextContent('2083-07-20 BS');
   });
   it('switches to the 80mm thermal layout with the right paper size', () => {
     render(<Harness />);
     fireEvent.click(screen.getByRole('button', { name: '80mm' }));
     expect(screen.getByLabelText('Invoice receipt')).toHaveAttribute('data-layout', 'thermal');
+    expect(screen.getByRole('img', { name: 'AURALUXE' })).toHaveAttribute('src', '/brand/auraluxe-invoice-logo.jpg');
     expect(document.querySelector('style')?.textContent).toContain('80mm auto');
     expect(screen.getByLabelText('Invoice receipt')).toHaveClass('w-[76mm]');
     expect(screen.getByLabelText('Invoice receipt')).toHaveClass('box-border');
