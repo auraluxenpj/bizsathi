@@ -965,3 +965,30 @@ img, video, canvas { max-width: 100%; }
   .report-link-card > svg:first-child { width: 2.1rem; height: 2.1rem; }
 }
 @media (prefers-reduced-motion: reduce) { .report-link-card, .report-link-card > svg { transition: none; } }
+
+
+/* Product, party and billing workspaces — visual refinement only. */
+.products-workspace, .parties-workspace, .pos-main { min-width: 0; }
+.products-toolbar, .products-table-wrap, .parties-heading, .parties-list { border-color: oklch(0.91 0.012 250); }
+.products-table-wrap thead { color: oklch(0.43 0.025 255); }
+.products-table-wrap tbody tr { transition: background-color .12s ease; }
+.products-table-wrap tbody tr:hover { background: oklch(0.975 0.012 235); }
+.products-table-wrap td, .products-table-wrap th { white-space: nowrap; }
+.parties-balance-grid article { border: 1px solid oklch(0.91 0.012 250); background: var(--card); box-shadow: 0 1px 2px rgb(15 23 42 / .04); }
+.parties-list li > button { min-height: 4.5rem; }
+.parties-list li > button:focus-visible { outline: 2px solid var(--color-ring); outline-offset: -2px; }
+.pos-topbar { border-color: oklch(0.9 0.015 250); }
+.pos-billing { min-width: 0; }
+.pos-billing input, .pos-billing select { max-width: 100%; }
+@media (max-width: 640px) {
+ .products-toolbar { align-items: stretch; padding: .75rem; }
+ .products-toolbar > div:last-child { width: 100%; }
+ .products-toolbar > div:last-child > button { min-height: 2.5rem; }
+ .products-table-wrap { margin-inline: -.25rem; border-radius: .7rem; }
+ .parties-balance-grid article { min-width: 0; padding: .85rem; }
+ .parties-balance-grid article p.tabular-nums { font-size: 1rem; overflow-wrap: anywhere; }
+ .parties-list li > button { align-items: flex-start; padding: .85rem .75rem; }
+ .pos-topbar { gap: .5rem; }
+ .pos-topbar > h1 { font-size: .875rem; }
+}
+@media (prefers-reduced-motion: reduce) { .products-table-wrap tbody tr { transition: none; } }

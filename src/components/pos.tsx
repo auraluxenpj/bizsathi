@@ -24,7 +24,7 @@ export function Pos() {
       <h1 className="truncate text-base font-semibold">{name ? `${name} · ` : ''}Point of sale</h1>
       {billingStaff ? <Button variant="outline" size="sm" onClick={signOut}><LogOut className="size-4" />Sign out</Button> : <Button asChild variant="outline" size="sm"><Link to="/sales">Sales</Link></Button>}
     </header>
-    <main className="pos-main mx-auto max-w-[1680px] px-3 py-5 sm:px-5 md:px-7 lg:px-8">
+    <main className="pos-main mx-auto w-full max-w-[1680px] px-3 py-4 sm:px-5 md:px-7 lg:px-8">
       {!w.businessId ? <section className="py-16 text-center"><Building2 className="mx-auto mb-4 size-9 text-primary" /><h2 className="text-xl font-semibold">No business linked yet</h2><Button asChild className="mt-5"><Link to="/businesses">Business setup</Link></Button></section>
         : error ? <div className="py-8"><p role="alert" className="text-sm text-destructive">{error}</p><Button className="mt-4" variant="outline" onClick={() => { w.commerce.refetch(); w.access.refetch(); w.inventory.refetch(); }}>Try again</Button></div>
         : !ready ? <p role="status" className="py-8 text-sm">Loading point of sale…</p>
