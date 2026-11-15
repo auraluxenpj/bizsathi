@@ -61,3 +61,10 @@ The final schema must fit existing `business_memberships`, `branch_memberships`,
 - Existing memberships and branch grants retain their current effective access.
 - Every sensitive action creates an audit record.
 - RLS and server-side tests demonstrate that direct API/RPC calls cannot bypass the hierarchy.
+
+
+## Live production review (2026-11-15)
+
+A read-only production schema review has now been completed. The current database already has business memberships, branch memberships, branches, roles, and invitations with email/mobile contact fields. The app currently gates both email and mobile invitation creation on admin-level access. The existing job-title mapping treats `manager` as the `accountant` security role; a manager title alone does not provide safe branch-scoped delegation. The requested master-owner account exists, but its ordinary owner membership is attached to a different business ID, so it must not be treated as global authority without a separate protected platform-owner mapping.
+
+See [production schema review](./production-schema-review-2026-11-15.md) for the confirmed constraints, application call paths, implementation consequences, and remaining verification gates. The next engineering step is to inspect the complete live SQL definitions and grants for the exact invitation, membership, branch-access, and permission RPCs, then implement the additive design in isolated staging. Production remains unchanged.
