@@ -135,8 +135,11 @@ describe('Sale editor', () => {
     mount(<SaleEditor />);
     await screen.findByLabelText('Customer name');
     fireEvent.change(await screen.findByLabelText('Document contact'), { target: { value: ID.p1 } });
-    // Selecting a customer with a valid mobile auto-advances to Products; return to Details to verify both fields.
-    fireEvent.click(await screen.findByRole('button', { name: /Details/ }));
+    // Selecting a customer auto-advances to Products; adding an item opens Checkout, where the details remain visible.
+    const heading = await screen.findByRole('heading', { name: 'Silk Saree' });
+    const card = heading.closest('article');
+    if (!card) throw new Error('Silk Saree product card was not rendered');
+    fireEvent.click(within(card).getByRole('button', { name: /\\+ Add/ }));
     expect(await screen.findByLabelText('Customer name')).toHaveValue('Ram Traders');
     expect(screen.getByLabelText('Customer mobile')).toHaveValue('9800000000');
   });
