@@ -54,7 +54,7 @@ export function AppNavigation({ children, pathname }: { children: ReactNode; pat
   <header className="app-topbar flex sticky top-0 z-20 h-[68px] min-w-0 items-center gap-2 border-b bg-card/95 px-3 sm:gap-4 sm:px-6">
    <Button variant="ghost" size="icon" aria-label="Open navigation menu" title="Navigation menu" className="shrink-0 lg:hidden" onClick={() => setMobileOpen(true)}><Menu className="size-5" /></Button>
    <span className="min-w-0 flex-1 truncate text-base font-semibold sm:text-xl">{title}</span>
-   <div className="hidden xl:block"><CommandPalette className="w-64" visible={visible} can={can} /></div><div className="xl:hidden"><CommandPalette variant="icon" shortcut={false} visible={visible} can={can} /></div>
+   <div className="hidden xl:block"><CommandPalette className="w-64" visible={visible} can={can} businessId={businesses.data?.[0]?.id} /></div><div className="xl:hidden"><CommandPalette variant="icon" shortcut={false} visible={visible} can={can} /></div>
    <Button asChild variant="outline" className="hidden h-9 sm:inline-flex"><Link to="/purchases" search={{ new: '1' }}><Plus className="size-4" />Purchase</Link></Button>
    <Button asChild className="hidden h-9 sm:inline-flex"><Link to="/sales" search={{ new: '1' }}><Plus className="size-4" />Sale</Link></Button>
    {workspaceMenu}
