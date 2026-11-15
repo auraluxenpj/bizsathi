@@ -26,6 +26,9 @@ describe('scopeCommerceForCashier', () => {
       { id: 'open-other', actor_id: 'cashier-2', session_id: 'session-other' },
     ],
     journals: [{ id: 'journal-private' }],
+    memberships: [{ id: 'membership-private' }],
+    loyalty: [{ id: 'loyalty-private' }],
+    redemptions: [{ id: 'redemption-private' }],
   };
 
   it('returns only the cashier own sales and manager-approved returns linked to those sales', () => {
@@ -42,6 +45,13 @@ describe('scopeCommerceForCashier', () => {
     const scoped = scopeCommerceForCashier(data, cashier);
     expect(scoped.counters.map((row) => row.id)).toEqual(['open-own', 'manager-cash-in-own-session', 'close-own']);
     expect(scoped.journals).toEqual([]);
+  });
+
+  it('does not expose the customer membership directory or loyalty ledger to cashiers', () => {
+    const scoped = scopeCommerceForCashier(data, cashier);
+    expect(scoped.memberships).toEqual([]);
+    expect(scoped.loyalty).toEqual([]);
+    expect(scoped.redemptions).toEqual([]);
   });
 
   it('does not mutate the original commerce payload', () => {

@@ -77,8 +77,8 @@ export function CashCounters() {
       !events.some((c) => c.session_id === e.session_id && c.kind === 'close'),
   );
   const manager = ['owner', 'admin'].includes(data?.role ?? '');
-  const cashier = data?.role === 'staff';
-  const canWrite = ['owner', 'admin', 'accountant', 'staff'].includes(data?.role ?? '');
+  const cashier = data?.role === 'staff' && data?.jobTitle === 'sales_person';
+  const canWrite = ['owner', 'admin', 'accountant'].includes(data?.role ?? '') || cashier;
   // Staff count blind: no expected figure while a counter is open. The close result (expected and
   // difference) still appears in the history once they submit.
   const showExpected = canSeeExpectedCash(data?.role);
@@ -143,7 +143,7 @@ export function CashCounters() {
       };
     });
 
-  const reportSessions = scopeCashCounterReport(dailySessions, data?.role, data?.userId ?? '');
+  const reportSessions = scopeCashCounterReport(dailySessions, data?.role, data?.jobTitle, data?.userId ?? '');
   const visibleDailySessions = reportSessions.filter((session) =>
     (!cashier || session.openedById === data?.userId) &&
     (!staffFilter || session.openedById === staffFilter || session.closedById === staffFilter) &&

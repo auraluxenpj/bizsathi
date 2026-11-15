@@ -26,14 +26,18 @@ describe('scopeCashCounterReport', () => {
     { id: 'other', openedById: 'cashier-2' },
   ];
   it('limits billing staff to sessions they opened', () => {
-    expect(scopeCashCounterReport(sessions, 'staff', 'cashier-1').map((s) => s.id)).toEqual(['own']);
+    expect(scopeCashCounterReport(sessions, 'staff', 'sales_person', 'cashier-1').map((s) => s.id)).toEqual(['own']);
   });
   it('keeps the full authorized report for managers and accountants', () => {
     expect(scopeCashCounterReport(sessions, 'admin', 'manager-1')).toEqual(sessions);
     expect(scopeCashCounterReport(sessions, 'accountant', 'accountant-1')).toEqual(sessions);
   });
+  it('does not treat other staff job titles as cashiers', () => {
+    expect(scopeCashCounterReport(sessions, 'staff', 'stock_manager', 'cashier-1')).toEqual([]);
+    expect(scopeCashCounterReport(sessions, 'staff', null, 'cashier-1')).toEqual([]);
+  });
   it('fails closed for missing or unrecognized roles', () => {
-    expect(scopeCashCounterReport(sessions, undefined, 'user-1')).toEqual([]);
-    expect(scopeCashCounterReport(sessions, 'unknown', 'user-1')).toEqual([]);
+    expect(scopeCashCounterReport(sessions, undefined, undefined, 'user-1')).toEqual([]);
+    expect(scopeCashCounterReport(sessions, 'unknown', undefined, 'user-1')).toEqual([]);
   });
 });

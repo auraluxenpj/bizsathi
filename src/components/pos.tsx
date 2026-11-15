@@ -13,7 +13,7 @@ import { supabase } from '@/integrations/supabase/client';
 export function Pos() {
   const w = useCommerce();
   const navigate = useNavigate();
-  const billingStaff = w.commerce.data?.role === 'staff';
+  const billingStaff = w.commerce.data?.role === 'staff' && w.commerce.data?.jobTitle === 'sales_person';
   async function signOut() { await supabase.auth.signOut(); await navigate({ to: '/auth', replace: true }); }
   const [saved, setSaved] = useState('');
   const name = w.commerce.data?.business.name ?? '';
