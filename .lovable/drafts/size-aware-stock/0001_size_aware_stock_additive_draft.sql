@@ -141,7 +141,7 @@ CREATE POLICY size_stock_migration_map_read ON public.size_stock_migration_map F
 CREATE FUNCTION public.guard_size_stock_migration_map_update()
 RETURNS trigger
 LANGUAGE plpgsql
-AS $
+AS $function$
 BEGIN
   IF NEW.business_id IS DISTINCT FROM OLD.business_id
      OR NEW.branch_id IS DISTINCT FROM OLD.branch_id
@@ -154,7 +154,7 @@ BEGIN
   END IF;
   RETURN NEW;
 END;
-$;
+$function$;
 CREATE TRIGGER size_stock_migration_map_guard_update BEFORE UPDATE
   ON public.size_stock_migration_map
   FOR EACH ROW EXECUTE FUNCTION public.guard_size_stock_migration_map_update();
