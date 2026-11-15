@@ -22,6 +22,7 @@
 .pos-cart-line > div:first-child { min-width: 0; }
 .pos-cart-line-fields { min-width: 0; grid-template-columns: repeat(2, minmax(0, 1fr)); }
 .pos-cart-line-fields label { min-width: 0; }
+.pos-workspace .pos-billing-checkout .pos-cart-line-fields button { min-width: 40px; min-height: 40px; height: 40px; }
 .pos-cart-line-fields input { width: 100%; min-width: 0; height: 40px; }
 .pos-cart-quantity-row { min-width: 0; }
 .pos-cart-quantity-row > span:last-child { flex: 1 1 auto; text-align: right; white-space: nowrap; }
