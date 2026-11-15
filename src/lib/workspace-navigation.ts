@@ -5,6 +5,8 @@ export type WorkspaceItem = { name: string; to?: string; icon: LucideIcon; searc
 export type WorkspaceGroup = { name: string; icon: LucideIcon; items: WorkspaceItem[] };
 const report = (name: string, view: string, icon: LucideIcon, focus?: string): WorkspaceItem => ({ name, to: '/accounting', icon, search: { view, ...(focus ? { focus } : {}) } });
 export function isBillingStaff(role: string | undefined, jobTitle: string | null | undefined) { return role === 'staff' && jobTitle === 'sales_person'; }
+/** Billing staff can move between the sale terminal and their own cash drawer only. */
+export function shouldRedirectBillingStaff(pathname: string) { return pathname !== '/pos' && pathname !== '/cash-counters'; }
 export const dashboardItem: WorkspaceItem = { name: 'Dashboard', to: '/dashboard', icon: LayoutDashboard };
 export const workspaceGroups: WorkspaceGroup[] = [
  { name: 'Items & Masters', icon: Boxes, items: [
