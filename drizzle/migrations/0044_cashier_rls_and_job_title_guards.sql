@@ -158,6 +158,14 @@ CREATE POLICY commerce_journal_read ON public.commerce_journal_entries
 FOR SELECT TO authenticated
 USING (
   public.can_access_branch(business_id, branch_id)
+  AND public.has_business_role(business_id, 'accountant')
+);
+
+DROP POLICY IF EXISTS loyalty_events_read ON public.loyalty_point_events;
+CREATE POLICY loyalty_events_read ON public.loyalty_point_events
+FOR SELECT TO authenticated
+USING (
+  public.can_access_branch(business_id, branch_id)
   AND NOT public.has_business_job_title(business_id, 'sales_person')
   AND (
     public.has_business_role(business_id, 'accountant')
@@ -177,8 +185,8 @@ USING (
   )
 );
 
-DROP POLICY IF EXISTS loyalty_events_read ON public.loyalty_point_events;
-CREATE POLICY loyalty_events_read ON public.loyalty_point_events
+DROP POLICY IF EXISTS loyalty_redemptions_read ON public.loyalty_redemptions;
+CREATE POLICY loyalty_redemptions_read ON public.loyalty_redemptions
 FOR SELECT TO authenticated
 USING (
   public.can_access_branch(business_id, branch_id)
@@ -199,14 +207,6 @@ USING (
       )
     )
   )
-);
-
-DROP POLICY IF EXISTS loyalty_redemptions_read ON public.loyalty_redemptions;
-CREATE POLICY loyalty_redemptions_read ON public.loyalty_redemptions
-FOR SELECT TO authenticated
-USING (
-  public.can_access_branch(business_id, branch_id)
-  AND public.has_business_role(business_id, 'accountant')
 );
 
 DROP POLICY IF EXISTS customer_memberships_read ON public.customer_memberships;
