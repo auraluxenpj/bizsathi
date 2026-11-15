@@ -139,7 +139,7 @@ describe('Sale editor', () => {
     const heading = await screen.findByRole('heading', { name: 'Silk Saree' });
     const card = heading.closest('article');
     if (!card) throw new Error('Silk Saree product card was not rendered');
-    fireEvent.click(within(card).getByRole('button', { name: /\\+ Add/ }));
+    fireEvent.click(within(card).getByRole('button', { name: '+ Add' }));
     expect(await screen.findByLabelText('Customer name')).toHaveValue('Ram Traders');
     expect(screen.getByLabelText('Customer mobile')).toHaveValue('9800000000');
   });
