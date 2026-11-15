@@ -63,6 +63,7 @@ async function addCatalogSaree() {
   const card = heading.closest('article');
   if (!card) throw new Error('Silk Saree product card was not rendered');
   fireEvent.click(within(card).getByRole('button', { name: /\+ Add/ }));
+  fireEvent.click(screen.getByRole('button', { name: 'Continue to checkout' }));
 }
 function SaleEditor() {
   const w = useCommerce();
