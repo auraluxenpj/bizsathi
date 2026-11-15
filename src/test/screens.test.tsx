@@ -133,10 +133,11 @@ describe('Sale editor', () => {
   });
   it('fills customer name and mobile when an existing customer is selected', async () => {
     mount(<SaleEditor />);
-    fireEvent.click(await screen.findByRole('button', { name: /Details/ }));
     await screen.findByLabelText('Customer name');
     fireEvent.change(await screen.findByLabelText('Document contact'), { target: { value: ID.p1 } });
-    expect(screen.getByLabelText('Customer name')).toHaveValue('Ram Traders');
+    // Selecting a customer with a valid mobile auto-advances to Products; return to Details to verify both fields.
+    fireEvent.click(await screen.findByRole('button', { name: /Details/ }));
+    expect(await screen.findByLabelText('Customer name')).toHaveValue('Ram Traders');
     expect(screen.getByLabelText('Customer mobile')).toHaveValue('9800000000');
   });
   it('offers to create the Nepal fiscal year when none is open', async () => {
