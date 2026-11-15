@@ -34,13 +34,15 @@ BEGIN
  ASSERT (SELECT sum(points) FROM public.loyalty_point_events WHERE sale_id=sale)=0,'Full cumulative returns remove only original award';
  ASSERT (SELECT purchase_count FROM public.read_customer_loyalty(b) WHERE mobile='9841234567')='3','Returns do not increase purchase count';
  rejected:=false; BEGIN UPDATE public.loyalty_point_events SET points=999 WHERE sale_id=sale; EXCEPTION WHEN insufficient_privilege OR raise_exception THEN rejected:=true; END; ASSERT rejected,'Points cannot be edited';
- PERFORM public.add_business_member(b,staff,'staff'); PERFORM public.set_branch_access(b,br,staff,true);
+ PERFORM public.add_business_member(b,staff,'staff'); PERFORM public.set_branch_access(b,br,staff,true); UPDATE public.business_memberships SET job_title='sales_person' WHERE business_id=b AND user_id=staff;
  req:=req||jsonb_build_object('id',gen_random_uuid(),'branchId',hidden_br,'mobile','9811111111'); PERFORM public.post_commerce_document(req);
  PERFORM set_config('request.jwt.claims',json_build_object('sub',staff,'role','authenticated')::text,true);
  ASSERT NOT EXISTS(SELECT 1 FROM public.loyalty_point_events WHERE branch_id=hidden_br),'Hidden branch points denied';
  ASSERT NOT EXISTS(SELECT 1 FROM public.customer_memberships WHERE mobile='9811111111'),'Hidden branch membership denied';
  ASSERT NOT EXISTS(SELECT 1 FROM public.customer_memberships WHERE business_id=other_b),'Other tenant memberships denied';
- ASSERT (SELECT sum(points) FROM public.loyalty_point_events WHERE membership_id=mid)=20,'Staff sees authorized branch balance';
+ ASSERT NOT EXISTS(SELECT 1 FROM public.loyalty_point_events WHERE business_id=b),'Cashier cannot read the loyalty event ledger';
+ ASSERT NOT EXISTS(SELECT 1 FROM public.customer_memberships WHERE business_id=b),'Cashier cannot enumerate customer memberships';
+ ASSERT public.loyalty_available_points(b,'9841234567')=20,'Cashier can query one customer balance through the POS RPC';
  rejected:=false; BEGIN INSERT INTO public.customer_memberships(business_id,mobile) VALUES(b,'9822222222'); EXCEPTION WHEN insufficient_privilege THEN rejected:=true; END; ASSERT rejected,'Direct membership creation denied';
  SET LOCAL ROLE anon; rejected:=false; BEGIN PERFORM 1 FROM public.loyalty_point_events; EXCEPTION WHEN insufficient_privilege THEN rejected:=true; END; ASSERT rejected,'Anonymous points denied';
  RESET ROLE; SET CONSTRAINTS ALL IMMEDIATE; RAISE EXCEPTION 'LOYALTY TESTS PASSED';
