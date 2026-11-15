@@ -141,6 +141,7 @@ CREATE POLICY size_stock_migration_map_read ON public.size_stock_migration_map F
 CREATE FUNCTION public.guard_size_stock_migration_map_update()
 RETURNS trigger
 LANGUAGE plpgsql
+SET search_path = public
 AS $function$
 BEGIN
   IF NEW.business_id IS DISTINCT FROM OLD.business_id
