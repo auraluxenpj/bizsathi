@@ -7,8 +7,8 @@ export const labelFormats = {
   'thermal-40': {name:'Thermal · 40 × 30 mm',columns:1,rows:1,width:40,height:30,pageWidth:40,pageHeight:30,gap:0,top:0,left:0},
 } as const;
 export type LabelFormat = keyof typeof labelFormats;
-export type LabelProduct = {id:string;sku:string;barcode?:string|null;name:string;price:number;stock:number};
-export function defaultLabelCopies(stock:number) { return Number.isFinite(stock) ? Math.max(0,Math.floor(stock)) : 0; }
+export type LabelProduct = {id:string;sku:string;barcode?:string|null;name:string;price:number;stock?:number};
+export function defaultLabelCopies(stock?:number) { return typeof stock === 'number' && Number.isFinite(stock) ? Math.max(0,Math.floor(stock)) : 0; }
 export function initialLabelCopies(products:LabelProduct[]) { return Object.fromEntries(products.map(product=>[product.id,defaultLabelCopies(product.stock)])); }
 export function stickerValue(product:LabelProduct) { return product.barcode?.trim()||product.sku.trim(); }
 export function labelPages(items:{product:LabelProduct;copies:number}[], format:LabelFormat, startSlot=1) {
