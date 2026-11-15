@@ -769,3 +769,40 @@ body, .karobar {
   .pos-billing-checkout .pos-product-card,
   .pos-billing-checkout .pos-product-card img { transition: none; }
 }
+
+
+/* Responsive foundation: shared guardrails for phones, tablets and desktop. */
+html { min-width: 320px; scroll-padding-top: 5rem; }
+body { min-width: 320px; overflow-x: clip; }
+img, video, canvas { max-width: 100%; }
+.app-workspace, .app-workspace > div, .app-workspace main,
+.app-workspace section, .app-workspace article, .app-workspace form { min-width: 0; }
+.app-workspace .app-topbar { min-height: 3.75rem; height: auto; }
+.app-workspace [data-slot="table-container"] { max-width: 100%; overflow-x: auto; overscroll-behavior-x: contain; }
+.app-workspace input, .app-workspace select, .app-workspace textarea { min-width: 0; max-width: 100%; }
+.app-workspace button, .app-workspace a { -webkit-tap-highlight-color: transparent; }
+.app-workspace :focus-visible { outline-offset: 2px; }
+.mobile-tab-bar a[aria-current="page"] { color: var(--color-primary); }
+.mobile-tab-bar a:focus-visible { outline: 2px solid var(--color-ring); outline-offset: -3px; border-radius: .65rem; }
+@media (max-width: 1023px) {
+  .app-workspace > .min-w-0 {
+    padding-bottom: calc(4.25rem + env(safe-area-inset-bottom));
+  }
+  .app-workspace .app-topbar {
+    padding-left: max(.65rem, env(safe-area-inset-left));
+    padding-right: max(.65rem, env(safe-area-inset-right));
+  }
+  .app-workspace .app-topbar > span { font-size: clamp(.9rem, 3.6vw, 1.1rem); }
+}
+@media (max-width: 640px) {
+  .app-workspace main { padding-left: .85rem; padding-right: .85rem; }
+  .app-workspace h1 { overflow-wrap: anywhere; }
+  .app-workspace [role="dialog"] { width: calc(100vw - 1rem); max-width: calc(100vw - 1rem); }
+  .app-workspace .mobile-tab-bar { min-height: calc(4rem + env(safe-area-inset-bottom)); }
+}
+@media (min-width: 1024px) {
+  .app-workspace > .min-w-0 { padding-bottom: 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .app-workspace *, .mobile-tab-bar * { scroll-behavior: auto !important; transition-duration: .01ms !important; animation-duration: .01ms !important; animation-iteration-count: 1 !important; }
+}
