@@ -568,6 +568,9 @@ export type Database = {
           calendar_system: string
           currency: string
           fiscal_year_start_month: number
+          invoice_footer: string
+          invoice_signature_label: string
+          invoice_terms: string
           payment_instructions: string
           payment_payee: string
           payment_provider: string
@@ -582,6 +585,9 @@ export type Database = {
           calendar_system?: string
           currency?: string
           fiscal_year_start_month?: number
+          invoice_footer?: string
+          invoice_signature_label?: string
+          invoice_terms?: string
           payment_instructions?: string
           payment_payee?: string
           payment_provider?: string
@@ -596,6 +602,9 @@ export type Database = {
           calendar_system?: string
           currency?: string
           fiscal_year_start_month?: number
+          invoice_footer?: string
+          invoice_signature_label?: string
+          invoice_terms?: string
           payment_instructions?: string
           payment_payee?: string
           payment_provider?: string
