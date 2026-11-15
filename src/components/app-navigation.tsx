@@ -51,14 +51,17 @@ export function AppNavigation({ children, pathname }: { children: ReactNode; pat
    <WorkspaceSidebar pathname={pathname} search={search} compact={compact} visible={visible} />
    <div className="flex h-14 shrink-0 items-center justify-center border-t border-sidebar-border"><Button variant="ghost" onClick={toggleCompact} size={compact ? 'icon' : 'default'} className="gap-2 text-muted-foreground" aria-label={compact ? 'Expand sidebar' : 'Collapse sidebar'} title={compact ? 'Expand sidebar' : 'Collapse sidebar'}>{compact ? <PanelLeftOpen className="size-4" /> : <><PanelLeftClose className="size-4" />Collapse</>}</Button></div>
   </aside>
-  <header className="app-topbar flex sticky top-0 z-20 h-[68px] min-w-0 items-center gap-2 border-b bg-card/95 px-3 sm:gap-4 sm:px-6">
+  <header className="app-topbar sticky top-0 z-20 flex min-h-[68px] min-w-0 flex-wrap items-center gap-2 border-b bg-card/95 px-3 py-2 sm:gap-3 sm:px-6">
    <Button variant="ghost" size="icon" aria-label="Open navigation menu" title="Navigation menu" className="shrink-0 lg:hidden" onClick={() => setMobileOpen(true)}><Menu className="size-5" /></Button>
-   <span className="min-w-0 flex-1 truncate text-base font-semibold sm:text-xl">{title}</span>
-   <div className="hidden xl:block"><CommandPalette className="w-64" visible={visible} can={can} businessId={businesses.data?.[0]?.id ?? ''} /></div><div className="xl:hidden"><CommandPalette variant="icon" shortcut={false} visible={visible} can={can} /></div>
-   <Button asChild variant="outline" className="hidden h-9 sm:inline-flex"><Link to="/purchases" search={{ new: '1' }}><Plus className="size-4" />Purchase</Link></Button>
-   <Button asChild className="hidden h-9 sm:inline-flex"><Link to="/sales" search={{ new: '1' }}><Plus className="size-4" />Sale</Link></Button>
-   {workspaceMenu}
-   <DropdownMenu><DropdownMenuTrigger asChild><Button variant="ghost" className="gap-2 px-1 sm:px-2" aria-label="Account menu"><span className="flex size-8 items-center justify-center rounded-full bg-primary/10 text-xs font-semibold uppercase text-primary">{person.slice(0, 1) || 'A'}</span><span className="hidden max-w-24 truncate text-xs font-medium md:block">{person}</span><ChevronDown className="hidden size-3 md:block" /></Button></DropdownMenuTrigger><DropdownMenuContent align="end"><DropdownMenuItem asChild><Link to="/profile">My account</Link></DropdownMenuItem><DropdownMenuItem onSelect={signOut}><LogOut className="size-4" />Sign out</DropdownMenuItem></DropdownMenuContent></DropdownMenu>
+   <span className="min-w-0 flex-[1_1_9rem] truncate text-base font-semibold sm:text-xl">{title}</span>
+   <div className="ml-auto flex min-w-0 flex-wrap items-center justify-end gap-2">
+    <div className="hidden min-w-0 xl:block"><CommandPalette className="w-64 max-w-full" visible={visible} can={can} businessId={businesses.data?.[0]?.id ?? ''} /></div>
+    <div className="xl:hidden"><CommandPalette variant="icon" shortcut={false} visible={visible} can={can} /></div>
+    <Button asChild variant="outline" className="hidden h-10 shrink-0 sm:inline-flex"><Link to="/purchases" search={{ new: '1' }}><Plus className="size-4" />Purchase</Link></Button>
+    <Button asChild className="hidden h-10 shrink-0 sm:inline-flex"><Link to="/sales" search={{ new: '1' }}><Plus className="size-4" />Sale</Link></Button>
+    {workspaceMenu}
+    <DropdownMenu><DropdownMenuTrigger asChild><Button variant="ghost" className="shrink-0 gap-2 px-1 sm:px-2" aria-label="Account menu"><span className="flex size-8 items-center justify-center rounded-full bg-primary/10 text-xs font-semibold uppercase text-primary">{person.slice(0, 1) || 'A'}</span><span className="hidden max-w-24 truncate text-xs font-medium md:block">{person}</span><ChevronDown className="hidden size-3 md:block" /></Button></DropdownMenuTrigger><DropdownMenuContent align="end"><DropdownMenuItem asChild><Link to="/profile">My account</Link></DropdownMenuItem><DropdownMenuItem onSelect={signOut}><LogOut className="size-4" />Sign out</DropdownMenuItem></DropdownMenuContent></DropdownMenu>
+   </div>
   </header>
   <Sheet open={mobileOpen} onOpenChange={setMobileOpen}><SheetContent side="left" className="flex w-[min(320px,90vw)] flex-col bg-sidebar p-0"><div className="px-5 pb-5 pt-7"><SheetTitle>{businessName}</SheetTitle><SheetDescription>BizSathi Nepal</SheetDescription></div><WorkspaceSidebar pathname={pathname} search={search} visible={visible} onNavigate={() => setMobileOpen(false)} /></SheetContent></Sheet>
   <div className="min-w-0">{deniedPage ? <main className="mx-auto max-w-xl px-5 py-16 text-center"><h1 className="brand text-2xl">No access</h1><p className="mt-3 text-sm text-muted-foreground">Your administrator has turned off access to this page.</p></main> : children}</div>
