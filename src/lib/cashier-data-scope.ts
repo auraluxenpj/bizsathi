@@ -7,6 +7,9 @@ type CashierScopeInput<D extends CashierDocument, P extends CashierPayment, C ex
   payments: P[];
   counters: C[];
   journals: J[];
+  memberships?: unknown[];
+  loyalty?: unknown[];
+  redemptions?: unknown[];
 };
 
 /**
@@ -35,5 +38,8 @@ export function scopeCommerceForCashier<D extends CashierDocument, P extends Cas
       (payment) => (!!payment.document_id && documentIds.has(payment.document_id)) || (!!payment.session_id && ownSessionIds.has(payment.session_id)),
     ),
     journals: [],
+    memberships: [],
+    loyalty: [],
+    redemptions: [],
   };
 }
