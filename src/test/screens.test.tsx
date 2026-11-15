@@ -127,8 +127,15 @@ describe('Sale editor', () => {
     await waitFor(() => expect(confirm).toHaveBeenCalledTimes(1));
     const sent = (confirm.mock.calls[0]![0] as { data: Record<string, unknown> }).data;
     expect(sent).toMatchObject({ businessId: ID.biz, branchId: ID.br, periodId: ID.per, kind: 'sale', status: 'confirmed' });
+    expect(sent['customerName']).toBe('Walk-in Customer');
     expect(sent['payments']).toMatchObject([{ method: 'cash', amount: 1500, sessionId: SESSION }]);
     expect(sent['lines']).toMatchObject([{ variantId: ID.v1, quantity: 1, price: 1500 }]);
+  });
+  it('fills customer name and mobile when an existing customer is selected', async () => {
+    mount(<SaleEditor />);
+    fireEvent.change(await screen.findByLabelText('Document contact'), { target: { value: ID.p1 } });
+    expect(screen.getByLabelText('Customer name')).toHaveValue('Ram Traders');
+    expect(screen.getByLabelText('Customer mobile')).toHaveValue('9800000000');
   });
   it('offers to create the Nepal fiscal year when none is open', async () => {
     state.periods = [];
