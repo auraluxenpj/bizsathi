@@ -36,10 +36,10 @@
 .pos-billing-checkout .pos-billing-cart { container-type: inline-size; }
 .pos-checkout-footer { box-shadow: 0 -12px 30px -26px hsl(var(--foreground) / .55); backdrop-filter: blur(16px); }
 .pos-checkout-footer-inner { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: .65rem 1rem; min-width: 0; }
-.pos-checkout-footer-inner > div:first-child { grid-column: 1; grid-row: 1; min-width: 0; overflow-wrap: anywhere; }
-.pos-checkout-footer-inner > div:last-child { grid-column: 2; grid-row: 1; display: flex; flex-wrap: wrap; justify-content: flex-end; gap: .5rem; min-width: 0; }
+.pos-checkout-footer-inner > div:first-child { grid-column: 1; grid-row: 1; min-width: 0; overflow-wrap: anywhere; text-align: left; }
+.pos-checkout-footer-inner > div:last-child { grid-column: 2; grid-row: 1; display: flex; flex-wrap: wrap; justify-content: flex-end; align-items: center; gap: .5rem; min-width: 0; }
 .pos-checkout-footer-inner > p[role="status"] { grid-column: 1 / -1; grid-row: 2; min-width: 0; margin: 0; overflow-wrap: anywhere; }
-.pos-checkout-footer-inner button { min-height: 38px; white-space: nowrap; }
+.pos-checkout-footer-inner > div:first-child > p:nth-child(2) { display: block; width: fit-content; max-width: 100%; white-space: nowrap; line-height: 1.25; font-size: clamp(1.125rem, 2vw, 1.25rem); font-variant-numeric: tabular-nums; }\n.pos-checkout-footer-inner button { min-height: 38px; white-space: nowrap; }
 .pos-checkout-fields { min-width: 0; align-items: start; }
 .pos-checkout-fields > * { min-width: 0; }
 .pos-checkout-fields label, .pos-checkout-fields > div { min-width: 0; }
@@ -90,7 +90,7 @@
   .pos-checkout-footer-inner { grid-template-columns: minmax(0, 1fr); gap: .5rem; }
   .pos-checkout-footer { padding: .45rem .65rem; }
   .pos-checkout-footer-inner > div:first-child { min-width: 0; }
-  .pos-checkout-footer-inner > div:first-child > p:nth-child(2) { font-size: 1.25rem; line-height: 1.5rem; }
+  .pos-checkout-footer-inner > div:first-child > p:nth-child(2) { font-size: 1.2rem; line-height: 1.35rem; }
   .pos-checkout-footer-inner > div:last-child { justify-content: flex-start; gap: .4rem; }
   .pos-checkout-footer-inner > div:last-child button { flex: 1 1 auto; padding-inline: .65rem; }
   .pos-payment-row { gap: .65rem; }
