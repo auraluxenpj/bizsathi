@@ -1492,6 +1492,7 @@ export type Database = {
         Row: {
           address: string
           business_id: string
+          category: string
           created_at: string
           credit_limit: number | null
           email: string
@@ -1506,6 +1507,7 @@ export type Database = {
         Insert: {
           address?: string
           business_id: string
+          category?: string
           created_at?: string
           credit_limit?: number | null
           email?: string
@@ -1520,6 +1522,7 @@ export type Database = {
         Update: {
           address?: string
           business_id?: string
+          category?: string
           created_at?: string
           credit_limit?: number | null
           email?: string
