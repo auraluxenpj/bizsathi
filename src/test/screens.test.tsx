@@ -140,6 +140,8 @@ describe('Sale editor', () => {
     const card = heading.closest('article');
     if (!card) throw new Error('Silk Saree product card was not rendered');
     fireEvent.click(within(card).getByRole('button', { name: '+ Add' }));
+    // The catalogue quantity control does not auto-advance; explicitly open the Checkout step.
+    fireEvent.click(screen.getByRole('button', { name: /Checkout/ }));
     expect(await screen.findByLabelText('Customer name')).toHaveValue('Ram Traders');
     expect(screen.getByLabelText('Customer mobile')).toHaveValue('9800000000');
   });
