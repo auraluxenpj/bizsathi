@@ -21,7 +21,7 @@ export function BarcodeStickers({products, autoOpen=false}:{products:LabelProduc
   const [format,setFormat]=useState<LabelFormat>('a4-40'),[start,setStart]=useState(1),[price,setPrice]=useState(false);
   const [printing,setPrinting]=useState(false),[error,setError]=useState('');
   const showDialog=()=>{setCopies(initialLabelCopies(products));setOpen(true);setError('');};
-  useEffect(()=>{if(autoOpen&&products.length)showDialog();},[autoOpen,products]);
+  useEffect(()=>{if(autoOpen&&products.length){setCopies(initialLabelCopies(products));setOpen(true);}},[autoOpen,products.length]);
   const selected=products.filter(p=>(copies[p.id]??0)>0);
   let pages:(LabelProduct|null)[][]=[];let validation='';
   try{pages=labelPages(selected.map(product=>({product,copies:copies[product.id]??0})),format,start);}catch(e){validation=e instanceof Error?e.message:'Check label quantities.';}
