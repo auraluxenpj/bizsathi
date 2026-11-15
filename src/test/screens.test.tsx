@@ -82,7 +82,7 @@ describe('Dashboard', () => {
     expect(screen.getByText('Purchases')).toBeInTheDocument();
     expect(screen.getAllByText('Operating expenses')[0]).toBeInTheDocument();
     expect(screen.getAllByRole('link', { name: /Barcode POS/ }).length).toBeGreaterThan(0);
-    expect(await screen.findByText('Low stock (1)')).toBeInTheDocument();
+    expect(screen.queryByText(/Low stock/)).not.toBeInTheDocument();
     expect(await screen.findAllByText(/Rs\. 1,200\.00/)).not.toHaveLength(0);
   });
   it('hides amounts in privacy mode', async () => {
