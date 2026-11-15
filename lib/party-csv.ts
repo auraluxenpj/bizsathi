@@ -11,7 +11,7 @@ const aliases: Record<'name' | 'phone' | 'email' | 'address' | 'pan_vat_number',
 };
 export type ImportedParty = { name: string; phone: string; email: string; address: string; pan_vat_number: string };
 
-export const partyKey = (p: { name: string; phone: string }) => `${p.name.trim().toLowerCase()}|${p.phone.replace(/\\D/g, '')}`;
+export const partyKey = (p: { name: string; phone: string }) => `${p.name.trim().toLowerCase()}|${p.phone.replace(/\D/g, '')}`;
 
 export function parsePartyCsv(text: string, businessId: string, kind: 'customer' | 'supplier'): { rows: ImportedParty[]; blank: number; repeated: number } {
   const parsed = Papa.parse<Record<string, string>>(text, { header: true, skipEmptyLines: 'greedy', transformHeader: h => h.trim().toLowerCase() });
