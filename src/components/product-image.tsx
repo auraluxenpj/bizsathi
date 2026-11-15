@@ -31,11 +31,11 @@ async function shrink(file: File): Promise<Blob> {
 /** Upload, replace or remove the one photo a product has. Photos are shrunk on the device first. */
 export function ProductImageField({ businessId, productId, productName, url }: { businessId: string; productId: string; productName: string; url?: string | undefined }) {
   const client = useQueryClient(); const save = useServerFn(setProductImage);
-  const input = useRef<HTMLInputElement>(null); const [busy, setBusy] = useState(false); const [message, setMessage] = useState('');
+  const cameraInput = useRef<HTMLInputElement>(null); const fileInput = useRef<HTMLInputElement>(null); const [busy, setBusy] = useState(false); const [message, setMessage] = useState('');
   const refresh = () => client.invalidateQueries({ queryKey: ['product-images', businessId] });
 
   async function upload(files: FileList | null) {
-    const file = files?.[0]; if (input.current) input.current.value = ''; if (!file) return;
+    const file = files?.[0]; if (cameraInput.current) cameraInput.current.value = ''; if (fileInput.current) fileInput.current.value = ''; if (!file) return;
     const problem = sourceProblem(file); if (problem) { setMessage(problem); return; }
     setBusy(true); setMessage('');
     let path: string | null = null;
@@ -63,11 +63,14 @@ export function ProductImageField({ businessId, productId, productName, url }: {
     <ProductThumb url={url} name={productName} size="size-24" />
     <div className="space-y-2">
       <p className="text-sm font-medium">Product photo <span className="font-normal text-muted-foreground">· one per product, shared by all its variants</span></p>
-      <input ref={input} type="file" accept="image/jpeg,image/png,image/webp" className="sr-only" aria-label="Product photo file" onChange={(e) => upload(e.target.files)} />
+      <input ref={cameraInput} type="file" accept="image/*" capture="environment" className="sr-only" aria-label="Take product photo with camera" onChange={(e) => upload(e.target.files)} />
+      <input ref={fileInput} type="file" accept="image/jpeg,image/png,image/webp" className="sr-only" aria-label="Choose product photo from device" onChange={(e) => upload(e.target.files)} />
       <div className="flex flex-wrap gap-2">
-        <Button type="button" variant="outline" className="h-11" disabled={busy} onClick={() => input.current?.click()}><Camera />{busy ? 'Working…' : url ? 'Replace photo' : 'Upload photo'}</Button>
+        <Button type="button" variant="outline" className="h-11" disabled={busy} onClick={() => cameraInput.current?.click()}><Camera />Take photo</Button>
+        <Button type="button" variant="outline" className="h-11" disabled={busy} onClick={() => fileInput.current?.click()}><ImageOff />{url ? 'Replace from device' : 'Choose from device'}</Button>
         {url && <Button type="button" variant="outline" className="h-11 text-destructive" disabled={busy} onClick={remove}><Trash2 />Remove</Button>}
       </div>
+      {busy && <p role="status" className="text-sm text-muted-foreground">Preparing and saving photo…</p>}
       {message && <p role="status" className="text-sm text-muted-foreground">{message}</p>}
     </div>
   </div>;
