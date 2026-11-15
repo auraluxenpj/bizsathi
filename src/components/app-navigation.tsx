@@ -51,7 +51,7 @@ export function AppNavigation({ children, pathname }: { children: ReactNode; pat
    <WorkspaceSidebar pathname={pathname} search={search} compact={compact} visible={visible} />
    <div className="flex h-14 shrink-0 items-center justify-center border-t border-sidebar-border"><Button variant="ghost" onClick={toggleCompact} size={compact ? 'icon' : 'default'} className="gap-2 text-muted-foreground" aria-label={compact ? 'Expand sidebar' : 'Collapse sidebar'} title={compact ? 'Expand sidebar' : 'Collapse sidebar'}>{compact ? <PanelLeftOpen className="size-4" /> : <><PanelLeftClose className="size-4" />Collapse</>}</Button></div>
   </aside>
-  <header className="app-topbar sticky top-0 z-20 h-[68px] min-w-0 items-center gap-2 border-b bg-card/95 px-3 sm:gap-4 sm:px-6`}>
+  <header className="app-topbar flex sticky top-0 z-20 h-[68px] min-w-0 items-center gap-2 border-b bg-card/95 px-3 sm:gap-4 sm:px-6">
    <Button variant="ghost" size="icon" aria-label="Open navigation menu" title="Navigation menu" className="shrink-0 lg:hidden" onClick={() => setMobileOpen(true)}><Menu className="size-5" /></Button>
    <span className="min-w-0 flex-1 truncate text-base font-semibold sm:text-xl">{title}</span>
    <div className="hidden xl:block"><CommandPalette className="w-64" visible={visible} can={can} /></div><div className="xl:hidden"><CommandPalette variant="icon" shortcut={false} visible={visible} can={can} /></div>
