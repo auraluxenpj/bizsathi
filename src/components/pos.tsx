@@ -22,7 +22,7 @@ export function Pos() {
   return <div className="pos-workspace min-h-screen bg-background">
     <header className="pos-topbar sticky top-0 z-30 grid min-h-[48px] grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-1 border-b bg-card/95 px-3 py-1 shadow-sm backdrop-blur sm:px-6 lg:px-8">
       <div className="flex min-w-0 justify-start">
-        {billingStaff ? <span className="truncate text-xs font-semibold text-muted-foreground sm:text-sm">Billing workspace</span> : <Button asChild variant="ghost" size="sm"><Link to="/dashboard"><ArrowLeft />Dashboard</Link></Button>}
+        {billingStaff ? <div className="flex min-w-0 items-center gap-2"><span className="truncate text-xs font-semibold text-muted-foreground sm:text-sm">Billing workspace</span><Button asChild variant="outline" size="sm"><Link to="/cash-counters">Cash drawer</Link></Button></div> : <Button asChild variant="ghost" size="sm"><Link to="/dashboard"><ArrowLeft />Dashboard</Link></Button>}
       </div>
       <h1 className="max-w-[48vw] truncate text-center text-sm font-semibold sm:max-w-none sm:text-base">{name ? `${name} · ` : ''}Point of sale</h1>
       <div className="flex min-w-0 justify-end">
