@@ -284,7 +284,7 @@ BEGIN
     WHERE d.id = NEW.document_id AND d.business_id = NEW.business_id;
     IF document_kind = 'sale'
        AND NOT public.has_business_role(NEW.business_id, 'accountant')
-       AND NOT public.has_business_job_title(NEW.business_id, 'sales_person') THEN
+       AND NOT (public.has_business_job_title(NEW.business_id, 'sales_person') AND public.has_permission(NEW.business_id, 'sales.view')) THEN
       RAISE EXCEPTION 'Sales payment access requires the Sales Person job title';
     END IF;
   ELSIF TG_TABLE_NAME = 'cash_counter_events' THEN
