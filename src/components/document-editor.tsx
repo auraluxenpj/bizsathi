@@ -66,7 +66,7 @@ export function DocumentEditor({w,kind,sourceId,onSaved,standalone=false}:{w:Com
  const paidTotal=payments.reduce((n,p)=>n+(Number(p.amount)||0),0);const balanceDue=isReturn?Math.max(0,Math.min(total,settlement.refundable)-paidTotal):Math.max(0,total-paidTotal);const vatTotal=lines.reduce((n,l)=>n+lineTotals(l).tax,0);const showPayments=!['purchase_order','goods_receipt'].includes(kind);
  const catalogue=posVariants.filter(v=>(!category||v.products?.category===category)&&matchesProductSearch(v,search));
  const categories=[...new Set(posVariants.map(v=>v.products?.category).filter((c):c is string=>!!c))];
- const catalogueGroups=[...new Map(catalogue.map(v=>[v.product_id,catalogue.filter(item=>item.product_id===v.product_id)])).values()];
+ const catalogueGroups=catalogue.reduce<(typeof catalogue[number])[][]>((groups,variant)=>{const group=groups.find(items=>items[0]?.product_id===variant.product_id);if(group)group.push(variant);else groups.push([variant]);return groups;},[]);
 
  function scan(raw=barcode){const value=raw.trim();const matches=variants.filter(v=>v.barcode===value||v.sku.toLowerCase()===value.toLowerCase());const v=matches[0];if(!value)return;if(matches.length!==1||!v){setScanStatus(matches.length>1?'More than one item has this code. Select the item from the catalogue.':'No item matches this barcode or SKU.');return;}if(checkout&&category&&v.products?.category!==category){setScanStatus('This item is outside the selected category.');return;}add(v.id);setBarcode('');setScanStatus(`Added ${v.products?.name} · ${v.name}`);barcodeRef.current?.focus();}
  const fieldClass='mt-1 h-11 w-full rounded-md border bg-card px-3 text-sm';
