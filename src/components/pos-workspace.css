@@ -39,7 +39,7 @@
 .pos-checkout-footer-inner > div:first-child { grid-column: 1; grid-row: 1; min-width: 0; overflow-wrap: anywhere; }
 .pos-checkout-footer-inner > div:last-child { grid-column: 2; grid-row: 1; display: flex; flex-wrap: wrap; justify-content: flex-end; gap: .5rem; min-width: 0; }
 .pos-checkout-footer-inner > p[role="status"] { grid-column: 1 / -1; grid-row: 2; min-width: 0; margin: 0; overflow-wrap: anywhere; }
-.pos-checkout-footer-inner button { min-height: 40px; white-space: nowrap; }
+.pos-checkout-footer-inner button { min-height: 38px; white-space: nowrap; }
 .pos-checkout-fields { min-width: 0; align-items: start; }
 .pos-checkout-fields > * { min-width: 0; }
 .pos-checkout-fields label, .pos-checkout-fields > div { min-width: 0; }
@@ -88,7 +88,7 @@
   .pos-cart-heading h2 { font-size: 1.05rem; }
   .pos-product-card > div:last-child { padding: .7rem; }
   .pos-checkout-footer-inner { grid-template-columns: minmax(0, 1fr); gap: .5rem; }
-  .pos-checkout-footer { padding: .65rem .75rem; }
+  .pos-checkout-footer { padding: .45rem .65rem; }
   .pos-checkout-footer-inner > div:first-child { min-width: 0; }
   .pos-checkout-footer-inner > div:first-child > p:nth-child(2) { font-size: 1.25rem; line-height: 1.5rem; }
   .pos-checkout-footer-inner > div:last-child { justify-content: flex-start; gap: .4rem; }
