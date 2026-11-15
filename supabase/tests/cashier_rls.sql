@@ -49,7 +49,7 @@ BEGIN
   ));
   req := jsonb_build_object(
     'businessId',business_id,'id',cashier_sale,'branchId',branch_id,'periodId',period_id,
-    'date','2026-11-15','kind','sale','status','confirmed','partyId',customer_id,'mobile','9841234567',
+    'date','2026-11-15','kind','sale','status','confirmed','partyId',customer_id,'mobile','9841234568','mobile','9841234567',
     'reference','CASHIER-SALE','lines',jsonb_build_array(jsonb_build_object(
       'variantId',variant_id,'quantity',1,'price',100,'discount',0,'taxRate',0
     )),
