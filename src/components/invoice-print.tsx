@@ -81,7 +81,7 @@ export function InvoiceSheet({ data: d, layout, extra }: { data: InvoiceData; la
             .thermal-receipt__items tr { break-inside:avoid; }
           }
         `}</style>
-        <article aria-label="Invoice receipt" data-layout="thermal" className="thermal-receipt mx-auto box-border font-mono text-xs leading-snug text-black print:max-w-none">
+        <article aria-label="Invoice receipt" data-layout="thermal" className="thermal-receipt mx-auto box-border w-[76mm] max-w-full font-mono text-xs leading-snug text-black print:max-w-none">
           <header className="thermal-receipt__header">
             <h2>{d.business}</h2>
             {d.pan && <p>PAN/VAT {d.pan}</p>}
