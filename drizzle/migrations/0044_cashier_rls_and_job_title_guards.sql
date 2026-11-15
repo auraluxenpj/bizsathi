@@ -30,6 +30,7 @@ SECURITY DEFINER
 SET search_path = public
 AS $$
   SELECT public.has_business_job_title(_business_id, 'sales_person')
+    AND public.has_permission(_business_id, 'sales.view')
     AND EXISTS (
       SELECT 1
       FROM public.commerce_documents d
@@ -70,6 +71,7 @@ AS $$
       public.has_business_role(_business_id, 'accountant')
       OR (
         public.has_business_job_title(_business_id, 'sales_person')
+        AND public.has_permission(_business_id, 'sales.view')
         AND EXISTS (
           SELECT 1
           FROM public.cash_counter_events opening
@@ -246,7 +248,7 @@ DECLARE
   m uuid;
 BEGIN
   IF NOT public.has_business_role(_business, 'accountant')
-     AND NOT public.has_business_job_title(_business, 'sales_person') THEN
+     AND NOT (public.has_business_job_title(_business, 'sales_person') AND public.has_permission(_business, 'customers.view')) THEN
     RAISE EXCEPTION 'Loyalty access denied';
   END IF;
   IF n IS NULL THEN RETURN 0; END IF;
@@ -273,7 +275,7 @@ BEGIN
   IF TG_TABLE_NAME = 'commerce_documents' THEN
     IF NEW.kind = 'sale'
        AND NOT public.has_business_role(NEW.business_id, 'accountant')
-       AND NOT public.has_business_job_title(NEW.business_id, 'sales_person') THEN
+       AND NOT (public.has_business_job_title(NEW.business_id, 'sales_person') AND public.has_permission(NEW.business_id, 'sales.view')) THEN
       RAISE EXCEPTION 'Sales access requires the Sales Person job title';
     END IF;
   ELSIF TG_TABLE_NAME = 'commerce_payments' THEN
