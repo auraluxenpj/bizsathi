@@ -938,3 +938,30 @@ img, video, canvas { max-width: 100%; }
   .inventory-tabs > * { min-width: 0; }
   .inventory-tabs a, .inventory-tabs button { justify-content: center; padding-inline: .45rem; font-size: .72rem; }
 }
+
+
+/* Dashboard and reporting polish — presentation only. */
+.reports-hub, .accounting-reports { min-width: 0; }
+.reports-heading, .reports-filters, .accounting-reports > header { border-color: oklch(0.91 0.012 250); }
+.report-card-grid > li { min-width: 0; }
+.report-link-card { min-width: 0; color: oklch(0.2 0.025 255); }
+.report-link-card > svg:first-child {
+  flex: 0 0 auto; width: 2.4rem; height: 2.4rem; padding: .55rem;
+  border-radius: .7rem; background: oklch(0.95 0.035 230); color: oklch(0.42 0.12 240);
+}
+.report-link-card > span { min-width: 0; font-weight: 600; }
+.report-link-card > svg:last-child { flex: 0 0 auto; transition: transform .15s ease; }
+.report-link-card:hover > svg:last-child { transform: translateX(2px); }
+.accounting-reports > .grid { border-color: oklch(0.91 0.012 250); }
+.accounting-reports section[aria-label="Previous period comparison"] { border-color: oklch(0.91 0.012 250); }
+.dashboard-toolbar, .dashboard-quick-actions { border-color: oklch(0.91 0.012 250); }
+.dashboard-stat-card:focus-visible, .dashboard-panel a:focus-visible {
+  outline: 2px solid var(--color-ring); outline-offset: 3px;
+}
+@media (max-width: 640px) {
+  .reports-hub, .accounting-reports { padding-top: .9rem; }
+  .reports-heading { border-radius: .8rem; }
+  .report-link-card { min-height: 4.5rem; padding: .75rem; }
+  .report-link-card > svg:first-child { width: 2.1rem; height: 2.1rem; }
+}
+@media (prefers-reduced-motion: reduce) { .report-link-card, .report-link-card > svg { transition: none; } }

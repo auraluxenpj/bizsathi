@@ -37,7 +37,7 @@ const all: Item[] = [
 
 function Row({ item }: { item: Item }) {
   const search=route.useSearch();
-  const cls = 'flex min-h-14 items-center gap-4 px-4 py-3 text-base hover:bg-secondary/50';
+  const cls = 'report-link-card group flex min-h-[5.25rem] items-center gap-3 rounded-xl border bg-card px-4 py-4 text-sm shadow-sm transition-colors hover:border-primary/40 hover:bg-secondary/30 focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring';
   const inner = <><item.icon className="size-5 text-muted-foreground" /><span className="flex-1">{item.label}</span><ChevronRight className="size-5 text-muted-foreground" /></>;
   return item.to ? <Link to={item.to} search={search} className={cls}>{inner}</Link> : <Link to="/accounting" search={{...search,view:item.view}} className={cls}>{inner}</Link>;
 }
@@ -45,10 +45,10 @@ function Row({ item }: { item: Item }) {
 export function ReportsHub() {
   const search=route.useSearch();const navigate=route.useNavigate();const {data:businesses}=useSuspenseQuery(businessQuery);const business=businesses.find(b=>b.id===search.business)?.id??businesses[0]?.id;const load=useServerFn(getAccountingReport);
   const branches=useQuery({queryKey:['report-branches',business],queryFn:()=>load({data:{businessId:business??'',view:'accounts',from:'2000-01-01',to:reportToday(),account:'all',page:1,export:false}}),enabled:!!business});
-  const group = (title: string, items: Item[]) => <section className="mt-6"><h2 className="mb-2 text-sm font-medium text-muted-foreground">{title}</h2><ul className="divide-y rounded-2xl border bg-card">{items.map(i => <li key={i.label}><Row item={i} /></li>)}</ul></section>;
-  return <main className="mx-auto max-w-3xl px-4 py-5 md:px-8 md:py-7">
-    <h1 className="text-2xl font-bold">View Reports</h1>
-    <div className="mt-5 grid grid-cols-1 gap-4 border-y py-4 sm:grid-cols-2"><ReportRangeFilters branch={search.branch??'all'} from={search.from??'2000-01-01'} to={search.to??reportToday()} branches={branches.data?.branches??[]} onChange={next=>{void navigate({search:prev=>({...prev,...next,business}),replace:true});}}/></div>
+  const group = (title: string, items: Item[]) => <section className="report-group mt-7"><div className="mb-3 flex items-center justify-between"><h2 className="text-sm font-semibold tracking-wide text-foreground">{title}</h2><span className="text-xs text-muted-foreground">{items.length} reports</span></div><ul className="report-card-grid grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">{items.map(i => <li key={i.label}><Row item={i} /></li>)}</ul></section>;
+  return <main className="reports-hub mx-auto w-full max-w-[1440px] px-4 py-5 sm:px-6 md:py-7 lg:px-8">
+    <header className="reports-heading flex flex-wrap items-center justify-between gap-3 rounded-xl border bg-card px-4 py-4 shadow-sm sm:px-5"><div><p className="text-[11px] font-semibold tracking-[.12em] text-primary">BIZSATHI NEPAL</p><h1 className="mt-1 text-2xl font-bold tracking-tight">View Reports</h1><p className="mt-1 text-sm text-muted-foreground">Explore business activity, balances and financial records</p></div><span className="rounded-full bg-primary/10 px-3 py-1.5 text-xs font-semibold text-primary">Reports centre</span></header>
+    <div className="reports-filters mt-4 grid grid-cols-1 gap-4 rounded-xl border bg-card p-4 shadow-sm sm:grid-cols-2 lg:grid-cols-4"><ReportRangeFilters branch={search.branch??'all'} from={search.from??'2000-01-01'} to={search.to??reportToday()} branches={branches.data?.branches??[]} onChange={next=>{void navigate({search:prev=>({...prev,...next,business}),replace:true});}}/></div>
     {group('Popular Reports', popular)}
     {group('Browse All Reports', all)}
   </main>;
