@@ -70,7 +70,7 @@
 
 :root {
   --workspace: oklch(0.975 0.018 86);
-  --revenue: oklch(0.62 0.09 78);
+  --revenue: oklch(0.62 0.16 155);
   --expense: oklch(0.62 0.20 22);
   --purchase: oklch(0.57 0.16 250);
   --print-paper: oklch(1 0 0);
@@ -985,3 +985,17 @@ img, video, canvas { max-width: 100%; }
  .pos-topbar > h1 { font-size: .875rem; }
 }
 @media (prefers-reduced-motion: reduce) { .products-table-wrap tbody tr { transition: none; } }
+
+
+/* Staff-first typography, aligned financial figures and semantic status colors. */
+:root { --warning: oklch(0.74 0.16 78); }
+@theme inline { --color-warning: var(--warning); }
+html, body, button, input, select, textarea, table { font-family: 'Inter', sans-serif; }
+h1, h2, h3, h4, h5, h6, .brand, .stat-label { font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 700; }
+.tabular-nums, input[type='number'], input[inputmode='numeric'], time, table td, table th, [data-numeric='true'] { font-variant-numeric: tabular-nums lining-nums; }
+button, [role='button'], a, input, select { touch-action: manipulation; }
+.pos-billing-checkout .pos-product-card { min-height: 12rem; }
+.pos-billing-checkout .pos-product-card, .pos-billing-checkout .pos-cart-line button, .pos-billing-checkout [aria-label='Payment collection'] button { min-height: 48px; }
+.pos-billing-checkout [aria-label='Barcode input'] { min-height: 56px; font-size: 1.05rem; border: 1px solid var(--color-primary); }
+.pos-billing-checkout .pos-checkout-steps button { min-height: 48px; }
+@media (max-width: 767px) { .mobile-tab-bar a { min-height: 64px; } .pos-billing-checkout .pos-product-card { min-height: 11rem; } }
