@@ -52,6 +52,10 @@ CREATE POLICY product_size_options_read ON public.product_size_options FOR SELEC
   USING (public.is_business_member(business_id));
 CREATE INDEX product_size_options_product_idx
   ON public.product_size_options(business_id,product_id,is_active);
+CREATE TRIGGER product_size_options_tenant BEFORE UPDATE ON public.product_size_options
+  FOR EACH ROW EXECUTE FUNCTION public.prevent_tenant_change();
+CREATE TRIGGER product_size_options_audit AFTER INSERT OR UPDATE ON public.product_size_options
+  FOR EACH ROW EXECUTE FUNCTION public.audit_row();
 
 -- New size ledger is separate from both legacy quantity ledgers.
 -- No client INSERT/UPDATE/DELETE grants; posting must be through future checked RPCs.
@@ -64,7 +68,7 @@ CREATE TABLE public.variant_size_stock_movements (
   quantity numeric(18,3) NOT NULL
     CHECK (quantity <> 0 AND quantity::text NOT IN ('NaN','Infinity','-Infinity')),
   movement_kind text NOT NULL CHECK (movement_kind IN
-    ('opening','receive','sale','sale_return','adjustment','transfer_in','transfer_out','reservation_release')),
+    ('opening','receive','sale','sale_return','purchase_return','adjustment','transfer_in','transfer_out','damage','write_off')),
   source_type text NOT NULL CHECK (length(btrim(source_type)) BETWEEN 1 AND 40),
   source_id uuid NOT NULL,
   idempotency_key text NOT NULL CHECK (length(btrim(idempotency_key)) BETWEEN 1 AND 200),
@@ -73,6 +77,11 @@ CREATE TABLE public.variant_size_stock_movements (
   created_at timestamptz NOT NULL DEFAULT now(),
   UNIQUE (business_id,id),
   UNIQUE (business_id,idempotency_key),
+  CHECK (
+    (movement_kind IN ('opening','receive','sale_return','transfer_in') AND quantity > 0)
+    OR (movement_kind IN ('sale','purchase_return','transfer_out','damage','write_off') AND quantity < 0)
+    OR movement_kind = 'adjustment'
+  ),
   FOREIGN KEY (business_id,branch_id)
     REFERENCES public.branches(business_id,id) ON DELETE RESTRICT,
   FOREIGN KEY (business_id,variant_id)
@@ -127,10 +136,37 @@ GRANT ALL ON public.size_stock_migration_map TO service_role;
 ALTER TABLE public.size_stock_migration_map ENABLE ROW LEVEL SECURITY;
 CREATE POLICY size_stock_migration_map_read ON public.size_stock_migration_map FOR SELECT TO authenticated
   USING (public.has_business_role(business_id,'admin') AND public.can_access_branch(business_id,branch_id));
-CREATE TRIGGER size_stock_migration_map_immutable BEFORE UPDATE OR DELETE
+-- Baseline identity and quantity are immutable, while review status/note may
+-- advance through a controlled service-side workflow and remain audited.
+CREATE FUNCTION public.guard_size_stock_migration_map_update()
+RETURNS trigger
+LANGUAGE plpgsql
+AS $
+BEGIN
+  IF NEW.business_id IS DISTINCT FROM OLD.business_id
+     OR NEW.branch_id IS DISTINCT FROM OLD.branch_id
+     OR NEW.variant_id IS DISTINCT FROM OLD.variant_id
+     OR NEW.opening_size_id IS DISTINCT FROM OLD.opening_size_id
+     OR NEW.baseline_qty IS DISTINCT FROM OLD.baseline_qty
+     OR NEW.baseline_run_id IS DISTINCT FROM OLD.baseline_run_id
+     OR NEW.created_at IS DISTINCT FROM OLD.created_at THEN
+    RAISE EXCEPTION 'size stock migration baseline fields are immutable';
+  END IF;
+  RETURN NEW;
+END;
+$;
+CREATE TRIGGER size_stock_migration_map_guard_update BEFORE UPDATE
+  ON public.size_stock_migration_map
+  FOR EACH ROW EXECUTE FUNCTION public.guard_size_stock_migration_map_update();
+CREATE TRIGGER size_stock_migration_map_immutable_delete BEFORE DELETE
   ON public.size_stock_migration_map
   FOR EACH ROW EXECUTE FUNCTION public.block_mutation();
+CREATE TRIGGER size_stock_migration_map_audit AFTER INSERT OR UPDATE
+  ON public.size_stock_migration_map
+  FOR EACH ROW EXECUTE FUNCTION public.audit_row();
 
 -- Deliberately no seed, backfill, view/function replacement, write RPC, trigger
 -- on legacy tables, commerce line rewrite, website switch, or stock cutover here.
+-- Reservation holds and offline counter allocations are separate state tables;
+-- they must never be represented as physical stock movements.
 -- UNSORTED must be added as a size_master row in a separately reviewed seed step.
