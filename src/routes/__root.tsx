@@ -97,6 +97,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
         href: appCss,
       },
       { rel: "icon", href: "/favicon.ico", type: "image/x-icon" },
+      { rel: "manifest", href: "/manifest.webmanifest" },
       { rel: 'stylesheet', href: 'https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@600;700;800&display=swap' },
     ],
   }),
@@ -125,6 +126,13 @@ function RootComponent() {
   const router = useRouter();
   const pathname = useRouterState({ select: state => state.location.pathname });
   const workspace = ['/pos', '/quotations', '/purchase-orders', '/dashboard', '/businesses', '/profile', '/security', '/security-history', '/products', '/contacts', '/inventory', '/sales', '/purchases', '/cash-counters', '/accounting', '/expenses', '/parties', '/notebook', '/bill-gallery', '/categories', '/expense-receipts', '/transactions', '/cash-bank', '/credit-reminder', '/reports', '/calculators', '/more'].includes(pathname);
+  useEffect(() => {
+    if (!("serviceWorker" in navigator) || import.meta.env.DEV) return;
+    navigator.serviceWorker.register("/sw.js", { scope: "/" }).catch((error) => {
+      console.error("BizSathi service worker registration failed", error);
+    });
+  }, []);
+
   useEffect(() => {
     if (new URLSearchParams(window.location.hash.slice(1)).get('type') === 'recovery') sessionStorage.setItem('bizsathi-recovery', 'true');
     const { data } = supabase.auth.onAuthStateChange(event => {
