@@ -81,23 +81,25 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
   head: () => ({
     meta: [
       { charSet: "utf-8" },
-      { name: "viewport", content: "width=device-width, initial-scale=1" },
+      { name: "viewport", content: "width=device-width, initial-scale=1, viewport-fit=cover" },
       { title: "BizSathi Nepal" },
-      { name: "description", content: "BizSathi Nepal security review workspace" },
-      { name: "author", content: "Lovable" },
+      { name: "description", content: "Manage, sell and grow your business with BizSathi." },
+      { name: "theme-color", content: "#075b46" },
+      { name: "application-name", content: "BizSathi" },
+      { name: "apple-mobile-web-app-capable", content: "yes" },
+      { name: "apple-mobile-web-app-status-bar-style", content: "default" },
+      { name: "apple-mobile-web-app-title", content: "BizSathi" },
       { property: "og:title", content: "BizSathi Nepal" },
-      { property: "og:description", content: "BizSathi Nepal security review workspace" },
+      { property: "og:description", content: "Manage, sell and grow your business with BizSathi." },
       { property: "og:type", content: "website" },
-      { name: "twitter:card", content: "summary_large_image" },
-      { name: "twitter:site", content: "@Lovable" },
+      { name: "twitter:card", content: "summary" },
     ],
     links: [
-      {
-        rel: "stylesheet",
-        href: appCss,
-      },
-      { rel: "icon", href: "/favicon.ico", type: "image/x-icon" },
-      { rel: 'stylesheet', href: 'https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@400;500;600;700&display=swap' },
+      { rel: "stylesheet", href: appCss },
+      { rel: "manifest", href: "/manifest.webmanifest" },
+      { rel: "icon", href: "/icons/bizsathi-icon.svg", type: "image/svg+xml" },
+      { rel: "apple-touch-icon", href: "/icons/bizsathi-icon.svg" },
+      { rel: "stylesheet", href: "https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@400;500;600;700&display=swap" },
     ],
   }),
   shellComponent: RootShell,
@@ -126,6 +128,13 @@ function RootComponent() {
   const pathname = useRouterState({ select: state => state.location.pathname });
   const workspace = ['/dashboard', '/businesses', '/profile', '/security', '/security-history', '/products', '/contacts', '/inventory', '/pos', '/sales', '/purchases', '/cash-counters', '/accounting', '/expenses', '/parties'].includes(pathname);
   useEffect(() => {
+    // Register only the static-shell worker. It deliberately does not cache business data.
+    if ('serviceWorker' in navigator && window.isSecureContext) {
+      navigator.serviceWorker.register('/sw.js', { scope: '/' }).catch((error) => {
+        console.warn('[BizSathi PWA] Service worker registration failed:', error);
+      });
+    }
+
     if (new URLSearchParams(window.location.hash.slice(1)).get('type') === 'recovery') sessionStorage.setItem('bizsathi-recovery', 'true');
     const { data } = supabase.auth.onAuthStateChange(event => {
       if (event === 'PASSWORD_RECOVERY') { sessionStorage.setItem('bizsathi-recovery', 'true'); router.navigate({ to: '/reset-password' }); return; }
