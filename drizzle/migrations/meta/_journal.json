@@ -239,6 +239,20 @@
       "when": 1794691356711,
       "tag": "0041_single_auraluxe_workspace_lockdown",
       "breakpoints": true
+    },
+    {
+      "idx": 34,
+      "version": "7",
+      "when": 1794718149257,
+      "tag": "0034_restore_existing_party_category",
+      "breakpoints": true
+    },
+    {
+      "idx": 35,
+      "version": "7",
+      "when": 1794718168464,
+      "tag": "0035_restore_existing_invoice_branding",
+      "breakpoints": true
     }
   ]
 }

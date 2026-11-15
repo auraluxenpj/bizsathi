@@ -10,6 +10,7 @@
 <!-- LOVABLE:END -->
 
 - Sales bundle invariants are in src/lib/AGENTS.md; reuse posting and tenant checks.
+- Browser Cloud configuration is allowlisted and validated at build time in the Vite configuration; generated clients remain untouched. Why: reject missing public bindings before publishing without exposing server secrets or private runtime URLs.
 
 - Tenant data: every tenant table has `business_id`, RLS via `is_business_member`/`has_business_role` (rank from `roles` table); membership writes only through SECURITY DEFINER RPCs. Why: permissions must come from DB records, never client input.
 - After any new table, REVOKE platform default grants and grant least privilege explicitly. Why: defaults give authenticated full write access.
