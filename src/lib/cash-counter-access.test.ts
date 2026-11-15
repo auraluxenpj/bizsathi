@@ -32,7 +32,8 @@ describe('scopeCashCounterReport', () => {
     expect(scopeCashCounterReport(sessions, 'admin', 'manager-1')).toEqual(sessions);
     expect(scopeCashCounterReport(sessions, 'accountant', 'accountant-1')).toEqual(sessions);
   });
-  it('fails closed for missing roles', () => {
-    expect(scopeCashCounterReport(sessions, undefined, 'user-1')).toEqual(sessions);
+  it('fails closed for missing or unrecognized roles', () => {
+    expect(scopeCashCounterReport(sessions, undefined, 'user-1')).toEqual([]);
+    expect(scopeCashCounterReport(sessions, 'unknown', 'user-1')).toEqual([]);
   });
 });
