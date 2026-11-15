@@ -1,7 +1,7 @@
 import { useRef, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useServerFn } from '@tanstack/react-start';
-import { Camera, ImageOff, Trash2 } from 'lucide-react';
+import { Camera, ImageOff, Search, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
 import { setProductImage } from '@/lib/product-images.functions';
@@ -29,7 +29,7 @@ async function shrink(file: File): Promise<Blob> {
 }
 
 /** Upload, replace or remove the one photo a product has. Photos are shrunk on the device first. */
-export function ProductImageField({ businessId, productId, productName, url }: { businessId: string; productId: string; productName: string; url?: string | undefined }) {
+export function ProductImageField({ businessId, productId, productName, searchQuery, url }: { businessId: string; productId: string; productName: string; searchQuery?: string; url?: string | undefined }) {
   const client = useQueryClient(); const save = useServerFn(setProductImage);
   const cameraInput = useRef<HTMLInputElement>(null); const fileInput = useRef<HTMLInputElement>(null); const [busy, setBusy] = useState(false); const [message, setMessage] = useState('');
   const refresh = () => client.invalidateQueries({ queryKey: ['product-images', businessId] });
@@ -66,6 +66,7 @@ export function ProductImageField({ businessId, productId, productName, url }: {
       <input ref={cameraInput} type="file" accept="image/*" capture="environment" className="sr-only" aria-label="Take product photo with camera" onChange={(e) => upload(e.target.files)} />
       <input ref={fileInput} type="file" accept="image/jpeg,image/png,image/webp" className="sr-only" aria-label="Choose product photo from device" onChange={(e) => upload(e.target.files)} />
       <div className="flex flex-wrap gap-2">
+        <Button type="button" variant="outline" className="h-11" asChild><a href={`https://www.google.com/search?tbm=isch&q=${encodeURIComponent(searchQuery?.trim() || productName)}`} target="_blank" rel="noopener noreferrer"><Search />Search web images</a></Button>
         <Button type="button" variant="outline" className="h-11" disabled={busy} onClick={() => cameraInput.current?.click()}><Camera />Take photo</Button>
         <Button type="button" variant="outline" className="h-11" disabled={busy} onClick={() => fileInput.current?.click()}><ImageOff />{url ? 'Replace from device' : 'Choose from device'}</Button>
         {url && <Button type="button" variant="outline" className="h-11 text-destructive" disabled={busy} onClick={remove}><Trash2 />Remove</Button>}
