@@ -608,3 +608,51 @@ body, .karobar {
   background: linear-gradient(145deg, oklch(0.94 0.05 225), white);
 }
 ::selection { background: oklch(0.82 0.09 225); color: oklch(0.08 0.015 250); }
+
+
+/* DreamsPOS-inspired workspace refinement. Existing theme tokens and colours are intentionally preserved. */
+.app-workspace { background: var(--color-background); }
+.app-sidebar { box-shadow: 8px 0 28px oklch(0.18 0.035 255 / 5%); }
+.app-sidebar-brand { position: relative; }
+.app-topbar { backdrop-filter: blur(14px); box-shadow: 0 2px 12px oklch(0.18 0.035 255 / 4%); }
+.workspace-navigation { scrollbar-width: thin; scrollbar-color: var(--color-border) transparent; }
+.workspace-nav-item { line-height: 1.35; }
+.workspace-nav-group { letter-spacing: .055em; }
+.dashboard-shell { padding-bottom: 3rem; }
+.dashboard-header { min-height: 112px; }
+.dashboard-toolbar label { display: block; min-width: 150px; }
+.dashboard-toolbar select { min-width: 150px; border-radius: .7rem; }
+.dashboard-stat-card { min-height: 154px; position: relative; overflow: hidden; }
+.dashboard-stat-card > div:first-child > span { width: 2.75rem; height: 2.75rem; border-radius: .85rem; }
+.dashboard-stat-card > p:nth-of-type(1) { margin-top: 1.15rem; font-size: .75rem; letter-spacing: .015em; }
+.dashboard-stat-card > p:nth-of-type(2) { font-size: clamp(1.1rem, 1.6vw, 1.45rem); letter-spacing: -.035em; }
+.dashboard-stat-card > p:nth-of-type(3) { margin-top: .6rem; }
+.dashboard-quick-actions { min-height: 66px; }
+.dashboard-quick-actions > a { border-radius: .7rem; }
+.dashboard-panel { min-width: 0; }
+.dashboard-panel h2 { letter-spacing: -.025em; }
+.dashboard-primary-grid .dashboard-panel:first-child,
+.dashboard-secondary-grid .dashboard-panel:first-child { min-height: 330px; }
+.dashboard-panel [aria-label="Daily recorded net sales and operating expense trend"] { min-height: 250px; }
+.dashboard-secondary-grid [aria-label="Recent activities"] > div:last-child > div { border-radius: .65rem; padding-inline: .5rem; transition: background-color .15s ease; }
+.dashboard-secondary-grid [aria-label="Recent activities"] > div:last-child > div:hover { background: var(--color-muted); }
+.pos-workspace { min-height: 100dvh; }
+.pos-topbar { backdrop-filter: blur(14px); }
+.pos-main { padding-bottom: max(2rem, env(safe-area-inset-bottom)); }
+@media (min-width: 1024px) {
+  .dashboard-shell { padding-top: 2rem; }
+  .dashboard-summary { gap: 1rem; }
+  .dashboard-primary-grid, .dashboard-secondary-grid { gap: 1.25rem; }
+}
+@media (max-width: 767px) {
+  .dashboard-header { border-radius: 1rem; padding: 1rem; }
+  .dashboard-toolbar { align-items: stretch; }
+  .dashboard-toolbar > div:first-child { width: 100%; }
+  .dashboard-toolbar label { flex: 1 1 135px; }
+  .dashboard-stat-card { min-height: 138px; padding: .9rem; border-radius: 1rem; }
+  .dashboard-quick-actions { border-radius: 1rem; }
+  .dashboard-panel { border-radius: 1rem; padding: 1rem; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .dashboard-stat-card, .dashboard-secondary-grid [aria-label="Recent activities"] > div:last-child > div { transition: none; }
+}
