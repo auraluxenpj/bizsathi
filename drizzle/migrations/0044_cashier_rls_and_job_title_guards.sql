@@ -94,6 +94,24 @@ USING (
   AND (
     public.has_business_role(business_id, 'accountant')
     OR public.is_cashier_sale_or_return(business_id, branch_id, id)
+    OR (
+      (
+        public.has_business_job_title(business_id, 'entry_person')
+        OR public.has_business_job_title(business_id, 'stock_manager')
+        OR EXISTS (
+          SELECT 1 FROM public.business_memberships viewer
+          WHERE viewer.business_id = commerce_documents.business_id
+            AND viewer.user_id = auth.uid()
+            AND viewer.status = 'active'
+            AND viewer.role_code = 'viewer'
+        )
+      )
+      AND (
+        (kind IN ('sale', 'sale_return') AND public.has_permission(business_id, 'sales.view'))
+        OR (kind IN ('purchase', 'purchase_return', 'purchase_order', 'goods_receipt')
+            AND public.has_permission(business_id, 'purchases.view'))
+      )
+    )
   )
 );
 
@@ -105,6 +123,28 @@ USING (
   AND (
     public.has_business_role(business_id, 'accountant')
     OR public.is_cashier_sale_or_return(business_id, branch_id, document_id)
+    OR EXISTS (
+      SELECT 1
+      FROM public.commerce_documents d
+      WHERE d.id = commerce_payments.document_id
+        AND d.business_id = commerce_payments.business_id
+        AND d.branch_id = commerce_payments.branch_id
+        AND (
+          (d.kind IN ('sale', 'sale_return') AND public.has_permission(business_id, 'sales.view'))
+          OR (d.kind IN ('purchase', 'purchase_return') AND public.has_permission(business_id, 'purchases.view'))
+        )
+        AND (
+          public.has_business_job_title(business_id, 'entry_person')
+          OR public.has_business_job_title(business_id, 'stock_manager')
+          OR EXISTS (
+            SELECT 1 FROM public.business_memberships viewer
+            WHERE viewer.business_id = commerce_payments.business_id
+              AND viewer.user_id = auth.uid()
+              AND viewer.status = 'active'
+              AND viewer.role_code = 'viewer'
+          )
+        )
+    )
   )
 );
 
@@ -118,7 +158,23 @@ CREATE POLICY commerce_journal_read ON public.commerce_journal_entries
 FOR SELECT TO authenticated
 USING (
   public.can_access_branch(business_id, branch_id)
-  AND public.has_business_role(business_id, 'accountant')
+  AND NOT public.has_business_job_title(business_id, 'sales_person')
+  AND (
+    public.has_business_role(business_id, 'accountant')
+    OR (
+      public.has_permission(business_id, 'customers.view')
+      AND (
+        public.has_business_job_title(business_id, 'entry_person')
+        OR EXISTS (
+          SELECT 1 FROM public.business_memberships viewer
+          WHERE viewer.business_id = loyalty_point_events.business_id
+            AND viewer.user_id = auth.uid()
+            AND viewer.status = 'active'
+            AND viewer.role_code = 'viewer'
+        )
+      )
+    )
+  )
 );
 
 DROP POLICY IF EXISTS loyalty_events_read ON public.loyalty_point_events;
@@ -126,7 +182,23 @@ CREATE POLICY loyalty_events_read ON public.loyalty_point_events
 FOR SELECT TO authenticated
 USING (
   public.can_access_branch(business_id, branch_id)
-  AND public.has_business_role(business_id, 'accountant')
+  AND NOT public.has_business_job_title(business_id, 'sales_person')
+  AND (
+    public.has_business_role(business_id, 'accountant')
+    OR (
+      public.has_permission(business_id, 'customers.view')
+      AND (
+        public.has_business_job_title(business_id, 'entry_person')
+        OR EXISTS (
+          SELECT 1 FROM public.business_memberships viewer
+          WHERE viewer.business_id = loyalty_redemptions.business_id
+            AND viewer.user_id = auth.uid()
+            AND viewer.status = 'active'
+            AND viewer.role_code = 'viewer'
+        )
+      )
+    )
+  )
 );
 
 DROP POLICY IF EXISTS loyalty_redemptions_read ON public.loyalty_redemptions;
@@ -142,7 +214,23 @@ CREATE POLICY customer_memberships_read ON public.customer_memberships
 FOR SELECT TO authenticated
 USING (
   public.is_business_member(business_id)
-  AND public.has_business_role(business_id, 'accountant')
+  AND NOT public.has_business_job_title(business_id, 'sales_person')
+  AND (
+    public.has_business_role(business_id, 'accountant')
+    OR (
+      public.has_permission(business_id, 'customers.view')
+      AND (
+        public.has_business_job_title(business_id, 'entry_person')
+        OR EXISTS (
+          SELECT 1 FROM public.business_memberships viewer
+          WHERE viewer.business_id = customer_memberships.business_id
+            AND viewer.user_id = auth.uid()
+            AND viewer.status = 'active'
+            AND viewer.role_code = 'viewer'
+        )
+      )
+    )
+  )
 );
 
 -- The POS uses this one-customer balance RPC instead of reading the full loyalty ledger.
