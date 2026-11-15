@@ -806,3 +806,110 @@ img, video, canvas { max-width: 100%; }
 @media (prefers-reduced-motion: reduce) {
   .app-workspace *, .mobile-tab-bar * { scroll-behavior: auto !important; transition-duration: .01ms !important; animation-duration: .01ms !important; animation-iteration-count: 1 !important; }
 }
+
+
+/* Karobar-inspired unified workspace system — retain BizSathi sky-blue identity.
+   Shared presentation only: no route, permission, data, or transaction behavior changes. */
+:root {
+  --workspace: oklch(0.978 0.006 245);
+  --radius: .65rem;
+}
+.app-workspace { background: oklch(0.975 0.008 245); color: oklch(0.19 0.025 255); }
+.app-sidebar {
+  background: oklch(1 0 0);
+  border-color: oklch(0.91 0.012 250);
+  box-shadow: 4px 0 18px oklch(0.2 0.025 255 / 3%);
+}
+.app-sidebar-brand { border-color: oklch(0.92 0.012 250); }
+.app-sidebar-brand > span:first-child { border-radius: .7rem; }
+.app-topbar {
+  min-height: 64px;
+  border-color: oklch(0.91 0.012 250);
+  background: oklch(1 0 0 / 96%);
+  box-shadow: 0 1px 5px oklch(0.2 0.025 255 / 3%);
+}
+.workspace-navigation { padding-top: .8rem; }
+.workspace-nav-group { min-height: 2.5rem; border-radius: .55rem; font-size: .68rem; }
+.workspace-nav-item {
+  min-height: 2.35rem;
+  border-radius: .55rem !important;
+  font-size: .8rem;
+  font-weight: 500;
+}
+.workspace-nav-item[aria-current="page"] {
+  background: oklch(0.95 0.035 230);
+  color: oklch(0.34 0.11 245);
+  box-shadow: inset 2px 0 0 oklch(0.58 0.14 240);
+}
+.app-workspace main { color: oklch(0.19 0.025 255); }
+.app-workspace main h1 { letter-spacing: -.035em; font-weight: 700; }
+.app-workspace main h2 { letter-spacing: -.025em; font-weight: 650; }
+.app-workspace main [class*="rounded-2xl"][class*="border"],
+.app-workspace main [class*="rounded-xl"][class*="border"] {
+  border-color: oklch(0.91 0.012 250);
+}
+.app-workspace main input:not([type="checkbox"]):not([type="radio"]),
+.app-workspace main select,
+.app-workspace main textarea {
+  border-radius: .55rem;
+  border-color: oklch(0.87 0.015 250);
+  background-color: white;
+}
+.app-workspace main input:focus,
+.app-workspace main select:focus,
+.app-workspace main textarea:focus {
+  border-color: var(--color-ring);
+  box-shadow: 0 0 0 3px oklch(0.72 0.10 235 / 16%);
+}
+.app-workspace main [data-slot="table-container"] {
+  border: 1px solid oklch(0.91 0.012 250);
+  border-radius: .7rem;
+  background: white;
+}
+.app-workspace main table thead { background: oklch(0.975 0.006 245); }
+.app-workspace main table th {
+  color: oklch(0.43 0.025 255);
+  font-size: .72rem;
+  font-weight: 650;
+  letter-spacing: .015em;
+}
+.app-workspace main table td { font-size: .82rem; }
+.app-workspace main button,
+.app-workspace main a { -webkit-tap-highlight-color: transparent; }
+.app-workspace main button:not([data-variant="ghost"]) { font-weight: 600; }
+.dashboard-shell { max-width: 1440px; }
+.dashboard-stat-card {
+  border-color: oklch(0.91 0.012 250);
+  border-radius: .8rem;
+  box-shadow: 0 1px 3px oklch(0.2 0.025 255 / 4%);
+}
+.dashboard-stat-card:hover {
+  box-shadow: 0 5px 18px oklch(0.2 0.025 255 / 7%);
+}
+.dashboard-panel {
+  border-color: oklch(0.91 0.012 250);
+  border-radius: .8rem;
+  box-shadow: 0 1px 3px oklch(0.2 0.025 255 / 3%);
+}
+.mobile-tab-bar {
+  border-color: oklch(0.9 0.012 250);
+  background: oklch(1 0 0 / 97%);
+  box-shadow: 0 -3px 16px oklch(0.2 0.025 255 / 5%);
+}
+.mobile-tab-bar a[aria-current="page"] { color: oklch(0.43 0.13 240); }
+@media (min-width: 1024px) {
+  .app-workspace { padding-left: 250px !important; }
+  .app-workspace:has(.app-sidebar.w-\\[76px\\]) { padding-left: 76px !important; }
+  .app-sidebar:not(.w-\\[76px\\]) { width: 250px; }
+  .app-topbar { padding-inline: 1.5rem; }
+}
+@media (max-width: 1023px) {
+  .app-topbar { min-height: 60px; }
+  .workspace-navigation { padding-inline: 1rem; }
+}
+@media (max-width: 640px) {
+  .app-workspace main { padding-top: 1rem; }
+  .app-workspace main h1 { font-size: 1.3rem; line-height: 1.35; }
+  .app-workspace main [data-slot="table-container"] { border-radius: .55rem; }
+  .app-workspace main table th, .app-workspace main table td { padding: .65rem .7rem; }
+}
