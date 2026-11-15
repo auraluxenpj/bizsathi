@@ -31,6 +31,7 @@
 .pos-barcode-row { min-width: 0; }
 .pos-barcode-row > div { min-width: 0; }
 .pos-barcode-row button { min-height: 48px; }
+.pos-workspace .pos-billing-checkout [aria-label="Barcode input"] { height: 48px !important; min-height: 48px !important; }
 .pos-billing-checkout .pos-billing-cart { container-type: inline-size; }
 .pos-checkout-footer { box-shadow: 0 -12px 30px -26px hsl(var(--foreground) / .55); backdrop-filter: blur(16px); }
 .pos-checkout-footer-inner { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: .65rem 1rem; min-width: 0; }
@@ -80,7 +81,6 @@
   .pos-checkout-footer-inner > p[role="status"] { grid-column: 1; grid-row: 3; }
 }
 @media (max-width: 1023px) {
-  .pos-workspace .pos-billing-checkout [aria-label="Barcode input"] { height: 48px !important; min-height: 48px !important; }
   .pos-workspace .pos-billing-checkout .pos-barcode-row { align-items: center; }
 }
 @media (prefers-reduced-motion: reduce) {
