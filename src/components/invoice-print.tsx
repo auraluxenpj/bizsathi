@@ -84,7 +84,6 @@ export function InvoiceSheet({ data: d, layout, extra }: { data: InvoiceData; la
         <article aria-label="Invoice receipt" data-layout="thermal" className="thermal-receipt mx-auto box-border font-mono text-xs leading-snug text-black print:max-w-none">
           <header className="thermal-receipt__header">
             <h2>{d.business}</h2>
-            {d.address && <p>{d.address}</p>}
             {d.pan && <p>PAN/VAT {d.pan}</p>}
             {d.branch && <p>{d.branch}</p>}
           </header>
@@ -98,6 +97,7 @@ export function InvoiceSheet({ data: d, layout, extra }: { data: InvoiceData; la
             <p className="thermal-receipt__label">{d.kind.startsWith('purchase') ? 'Supplier' : 'Customer'}</p>
             <p className="font-bold">{d.party || 'Walk-in customer'}</p>
             {d.phone && <p>Mobile: {d.phone}</p>}
+            {d.address && <p>{d.address}</p>}
             {d.partyPan && <p>PAN/VAT: {d.partyPan}</p>}
           </section>
           <table className="thermal-receipt__items">
