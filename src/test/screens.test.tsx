@@ -129,7 +129,7 @@ describe('Sale editor', () => {
     await screen.findByLabelText('Customer mobile');
     expect(screen.getByRole('alert')).toHaveTextContent(/No open financial year/);
     noOpenPeriodLabel();
-    expect(screen.getByRole('button', { name: /Confirm sale/ })).toBeDisabled();
+    expect(screen.getByRole('button', { name: /Continue to products/ })).toBeDisabled();
     fireEvent.click(screen.getByRole('button', { name: /Create FY/ }));
     await waitFor(() => expect(createPeriod).toHaveBeenCalledTimes(1));
     const sent = (createPeriod.mock.calls[0]![0] as { data: { name: string; start: string; end: string; businessId: string } }).data;
@@ -175,7 +175,7 @@ describe('Choosing which account a payment goes to', () => {
   const addSaree = async () => { fireEvent.change(await screen.findByLabelText('Customer mobile'), { target: { value: '9812345678' } }); fireEvent.change(await screen.findByLabelText('Product search or barcode'), { target: { value: 'saree' } }); fireEvent.click(await screen.findByRole('button', { name: /Silk Saree/ })); };
   it('tags a bank payment to the chosen account and remembers it for next time', async () => {
     named(); mount(<SaleEditor />); await addSaree();
-    fireEvent.click(screen.getByRole('button', { name: /^Bank \/ QR$/ }));
+    fireEvent.click(screen.getByRole('button', { name: /^Bank Transfer$/ }));
     const pick = await screen.findByLabelText('Payment account 1');
     expect(within(pick).getAllByRole('option').map(o => o.textContent)).toEqual(['Not assigned', 'Himalayan Bank', 'NIC Asia']);
     fireEvent.change(pick, { target: { value: ACC.bank2 } });
@@ -190,7 +190,7 @@ describe('Choosing which account a payment goes to', () => {
   it('preselects the last account used, and wallet payments only offer wallet accounts', async () => {
     named(); localStorage.setItem(`bizsathi.account:${ID.biz}:wallet`, ACC.wallet);
     mount(<SaleEditor />); await addSaree();
-    fireEvent.click(screen.getByRole('button', { name: /^Wallet \/ QR$/ }));
+    fireEvent.click(screen.getByRole('button', { name: /^Fonepay \/ QR$/ }));
     const pick = await screen.findByLabelText('Payment account 1') as HTMLSelectElement;
     expect(pick.value).toBe(ACC.wallet); expect(within(pick).getAllByRole('option').map(o => o.textContent)).toEqual(['Not assigned', 'eSewa']);
   });
@@ -205,7 +205,7 @@ describe('Choosing which account a payment goes to', () => {
   });
   it('shows no account pickers when no accounts exist yet', async () => {
     mount(<SaleEditor />); await addSaree();
-    fireEvent.click(screen.getByRole('button', { name: /^Bank \/ QR$/ }));
+    fireEvent.click(screen.getByRole('button', { name: /^Bank Transfer$/ }));
     await waitFor(() => expect(screen.getByLabelText('Payment amount 1')).toBeInTheDocument());
     expect(screen.queryByLabelText('Payment account 1')).not.toBeInTheDocument();
   });
@@ -255,6 +255,7 @@ describe('Point of sale', () => {
   });
   it('leaves the cart unchanged for an unknown barcode and adjusts quantity with touch controls', async () => {
     mount(<Pos />);
+    fireEvent.change(await screen.findByLabelText('Customer mobile'), { target: { value: '9812345678' } });
     const barcode = await screen.findByLabelText('Barcode input');
     fireEvent.change(barcode, { target: { value: 'UNKNOWN' } });
     fireEvent.click(screen.getByRole('button', { name: 'Add scanned item' }));
