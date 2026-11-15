@@ -241,7 +241,9 @@ describe('Point of sale', () => {
     fireEvent.change(await screen.findByLabelText('Customer mobile'), { target: { value: '9812345678' } });
     const barcode = await screen.findByLabelText('Barcode input');
     for (let i=0;i<2;i++) {
-      fireEvent.change(barcode, { target: { value: 'AL-001' } });
+      const currentBarcode = i === 0 ? barcode : await screen.findByLabelText('Barcode input');
+      if (i === 1) fireEvent.click(screen.getByRole('button', { name: /Products/ }));
+      fireEvent.change(currentBarcode, { target: { value: 'AL-001' } });
       fireEvent.click(screen.getByRole('button', { name: 'Add scanned item' }));
     }
     expect(screen.getByLabelText('quantity line 1')).toHaveValue(2);
