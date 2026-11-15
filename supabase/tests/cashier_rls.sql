@@ -70,7 +70,7 @@ BEGIN
   PERFORM public.post_commerce_document(jsonb_build_object(
     'businessId',business_id,'id',owner_sale,'branchId',branch_id,'periodId',period_id,
     'date','2026-11-15','kind','sale','status','confirmed','partyId',customer_id,
-    'reference','OWNER-SALE','lines',jsonb_build_array(jsonb_build_object(
+    'reference','OWNER-SALE','mobile','9841234569','lines',jsonb_build_array(jsonb_build_object(
       'variantId',variant_id,'quantity',1,'price',100,'discount',0,'taxRate',0
     )),
     'payments',jsonb_build_array(jsonb_build_object(
