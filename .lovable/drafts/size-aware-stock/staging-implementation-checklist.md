@@ -91,3 +91,13 @@ The previously blocked schema bootstrap has now been completed in the isolated s
 The staging schema is now bootstrapped sufficiently for synthetic test-fixture preparation. The database is intentionally empty: no business, user, product, stock, customer or financial records were copied from production.
 
 Still not tested: authenticated RLS behavior with actual staging users, mutation permissions, posting RPCs, size-level stock arithmetic, transaction rollback, concurrency, offline allocation, and external adapters. Do not treat schema bootstrap as application acceptance.
+
+
+## Staging security lint and Size Master seed preparation — 15 November 2026
+
+- Supabase security advisor identified a mutable `search_path` warning on `guard_size_stock_migration_map_update()`.
+- Corrected the draft SQL to pin `search_path = public`, applied the matching staging-only ALTER FUNCTION, and verified `proconfig = {search_path=public}`. The advisor no longer reports this function.
+- Other security advisor findings include the existing authenticated-executable SECURITY DEFINER RPC set. These require per-function authorization review; they were not bulk-revoked because that could break established application workflows. No production functions were changed.
+- Added `0002_size_master_seed_staging.sql`, an idempotent seed for the agreed 11 size codes, scoped to businesses that exist in staging.
+- Executed the seed in staging; it inserted zero rows because staging has no synthetic business yet. This is expected and confirms no tenant or user was fabricated.
+- Remaining prerequisite for realistic RLS tests: create a legitimate test auth user through the staging Auth flow, then create a synthetic staging business using the normal onboarding path. After that, rerun the seed and create synthetic product/branch fixtures.
