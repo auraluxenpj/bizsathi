@@ -61,6 +61,8 @@
   .pos-billing-checkout { padding-bottom: 11rem; }
   .pos-checkout-footer-app { left: 280px; bottom: 0; }
   .app-workspace[data-sidebar-compact="true"] .pos-checkout-footer-app { left: 76px; }
+  .app-workspace .pos-checkout-footer-standalone { left: 280px; }
+  .app-workspace[data-sidebar-compact="true"] .pos-checkout-footer-standalone { left: 76px; }
 }
 @media (min-width: 1280px) {
   .pos-workspace .pos-billing-checkout .pos-billing-layout:has(.pos-billing-catalogue) { grid-template-columns: minmax(0, 1fr) minmax(420px, 480px); column-gap: 1.25rem; row-gap: 1rem; }
