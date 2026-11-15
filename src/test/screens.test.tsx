@@ -58,6 +58,12 @@ function mount(ui: ReactNode, url = '/') {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(<QueryClientProvider client={client}><RouterProvider router={router} /></QueryClientProvider>);
 }
+async function addCatalogSaree() {
+  const heading = await screen.findByRole('heading', { name: 'Silk Saree' });
+  const card = heading.closest('article');
+  if (!card) throw new Error('Silk Saree product card was not rendered');
+  fireEvent.click(within(card).getByRole('button', { name: /\+ Add/ }));
+}
 function SaleEditor() {
   const w = useCommerce();
   return w.commerce.data && w.inventory.data && w.access.data ? <DocumentEditor w={w} kind="sale" onSaved={() => {}} /> : <p>loading</p>;
@@ -112,7 +118,7 @@ describe('Sale editor', () => {
     const search = await screen.findByLabelText('Product search or barcode');
     noOpenPeriodLabel();
     fireEvent.change(search, { target: { value: 'saree' } });
-    fireEvent.click(await screen.findByRole('button', { name: /Silk Saree/ }));
+    await addCatalogSaree();
     fireEvent.change(screen.getByLabelText('Customer mobile'), { target: { value: '9812345678' } });
     fireEvent.click(screen.getByRole('button', { name: cashButton }));
     vi.spyOn(window, 'confirm').mockReturnValue(true);
@@ -140,7 +146,7 @@ describe('Sale editor', () => {
 });
 
 describe('Why a sale cannot be confirmed', () => {
-  const addSaree = async () => { fireEvent.change(await screen.findByLabelText('Customer mobile'), { target: { value: '9812345678' } }); fireEvent.change(await screen.findByLabelText('Product search or barcode'), { target: { value: 'saree' } }); fireEvent.click(await screen.findByRole('button', { name: /Silk Saree/ })); };
+  const addSaree = async () => { fireEvent.change(await screen.findByLabelText('Customer mobile'), { target: { value: '9812345678' } }); fireEvent.change(await screen.findByLabelText('Product search or barcode'), { target: { value: 'saree' } }); await addCatalogSaree(); };
   const why = () => screen.getByLabelText('Why this cannot be confirmed yet');
   it('a walk-in sale that is not paid says it must be paid in full, and a chosen customer allows credit', async () => {
     mount(<SaleEditor />); await addSaree();
@@ -172,7 +178,7 @@ describe('Why a sale cannot be confirmed', () => {
 
 describe('Choosing which account a payment goes to', () => {
   const named = () => { acct.list = [{ id: ACC.bank, name: 'Himalayan Bank', kind: 'bank', isActive: true, balance: 5000 }, { id: ACC.bank2, name: 'NIC Asia', kind: 'bank', isActive: true, balance: 100 }, { id: ACC.wallet, name: 'eSewa', kind: 'wallet', isActive: true, balance: 0 }]; };
-  const addSaree = async () => { fireEvent.change(await screen.findByLabelText('Customer mobile'), { target: { value: '9812345678' } }); fireEvent.change(await screen.findByLabelText('Product search or barcode'), { target: { value: 'saree' } }); fireEvent.click(await screen.findByRole('button', { name: /Silk Saree/ })); };
+  const addSaree = async () => { fireEvent.change(await screen.findByLabelText('Customer mobile'), { target: { value: '9812345678' } }); fireEvent.change(await screen.findByLabelText('Product search or barcode'), { target: { value: 'saree' } }); await addCatalogSaree(); };
   it('tags a bank payment to the chosen account and remembers it for next time', async () => {
     named(); mount(<SaleEditor />); await addSaree();
     fireEvent.click(screen.getByRole('button', { name: /^Bank Transfer$/ }));
@@ -260,7 +266,7 @@ describe('Point of sale', () => {
     fireEvent.change(barcode, { target: { value: 'UNKNOWN' } });
     fireEvent.click(screen.getByRole('button', { name: 'Add scanned item' }));
     expect(screen.queryByLabelText('quantity line 1')).not.toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button', { name: /Silk Saree/ }));
+    await addCatalogSaree();
     fireEvent.click(screen.getByRole('button', { name: 'Increase quantity line 1' }));
     expect(screen.getByLabelText('quantity line 1')).toHaveValue(2);
     fireEvent.click(screen.getByRole('button', { name: 'Decrease quantity line 1' }));
