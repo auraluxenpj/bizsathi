@@ -133,8 +133,7 @@ describe('Sale editor', () => {
   });
   it('fills customer name and mobile when an existing customer is selected', async () => {
     mount(<SaleEditor />);
-    const detailsStep = screen.queryByRole('button', { name: /Details/ });
-    if (detailsStep) fireEvent.click(detailsStep);
+    fireEvent.click(screen.getByText('Details').closest('button')!);
     fireEvent.change(await screen.findByLabelText('Document contact'), { target: { value: ID.p1 } });
     expect(screen.getByLabelText('Customer name')).toHaveValue('Ram Traders');
     expect(screen.getByLabelText('Customer mobile')).toHaveValue('9800000000');
