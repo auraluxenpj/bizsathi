@@ -20,7 +20,7 @@ export function Pos() {
   const ready = !!w.commerce.data && !!w.access.data && !!w.inventory.data;
   const error = w.commerce.error?.message || w.access.error?.message || w.inventory.error?.message;
   return <div className="pos-workspace min-h-screen bg-background">
-    <header className="pos-topbar sticky top-0 z-30 grid min-h-[72px] grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-3 border-b bg-card/95 px-3 py-3 shadow-sm backdrop-blur sm:px-6 lg:px-8">
+    <header className="pos-topbar sticky top-0 z-30 grid min-h-[56px] grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-2 border-b bg-card/95 px-3 py-2 shadow-sm backdrop-blur sm:px-6 lg:px-8">
       <div className="flex min-w-0 justify-start">
         {billingStaff ? <span className="truncate text-xs font-semibold text-muted-foreground sm:text-sm">Billing workspace</span> : <Button asChild variant="ghost" size="sm"><Link to="/dashboard"><ArrowLeft />Dashboard</Link></Button>}
       </div>
