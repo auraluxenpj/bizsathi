@@ -40,8 +40,6 @@ BEGIN
   RESET ROLE;
   UPDATE public.business_memberships m SET job_title='sales_person'
   WHERE m.business_id=business_id AND m.user_id=cashier_id;
-  UPDATE public.business_memberships m SET job_title='entry_person'
-  WHERE m.business_id=business_id AND m.user_id=entry_id;
 
   SET LOCAL ROLE authenticated;
   PERFORM set_config('request.jwt.claims',json_build_object('sub',cashier_id,'role','authenticated')::text,true);
