@@ -21,6 +21,7 @@ describe('scopeCommerceForCashier', () => {
     ],
     counters: [
       { id: 'open-own', actor_id: cashier, session_id: 'session-own' },
+      { id: 'manager-cash-in-own-session', actor_id: manager, session_id: 'session-own' },
       { id: 'close-own', actor_id: cashier, session_id: 'session-own' },
       { id: 'open-other', actor_id: 'cashier-2', session_id: 'session-other' },
     ],
@@ -37,9 +38,9 @@ describe('scopeCommerceForCashier', () => {
     ]);
   });
 
-  it('returns only the cashier own counter events and no accounting journal rows', () => {
+  it('includes manager events inside the cashier session but excludes other sessions and accounting journals', () => {
     const scoped = scopeCommerceForCashier(data, cashier);
-    expect(scoped.counters.map((row) => row.id)).toEqual(['open-own', 'close-own']);
+    expect(scoped.counters.map((row) => row.id)).toEqual(['open-own', 'manager-cash-in-own-session', 'close-own']);
     expect(scoped.journals).toEqual([]);
   });
 
