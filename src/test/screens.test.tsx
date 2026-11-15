@@ -93,7 +93,7 @@ describe('Navigation and sign-in', () => {
     for (const n of ['Dashboard', 'Items & Masters', 'Invoices', 'Returns', 'Stock & Inventory', 'Finance & Ledgers', 'Reports', 'System & Settings']) expect(within(nav).getByText(n)).toBeInTheDocument();
     expect((await screen.findAllByText('Auraluxe', { selector: 'span' })).length).toBeGreaterThan(0);
     fireEvent.keyDown(window, { key: 'k', metaKey: true });
-    expect(await screen.findAllByPlaceholderText(/Search pages or create/)).toHaveLength(1);
+    expect(await screen.findAllByPlaceholderText(/Search products, parties, vouchers or pages/)).toHaveLength(1);
   });
   it('renders a simple sign-in card', async () => {
     auth.user = null;
