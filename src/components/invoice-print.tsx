@@ -83,7 +83,7 @@ export function InvoiceSheet({ data: d, layout, extra }: { data: InvoiceData; la
         `}</style>
         <article aria-label="Invoice receipt" data-layout="thermal" className="thermal-receipt mx-auto box-border w-[76mm] max-w-full font-mono text-xs leading-snug text-black print:max-w-none">
           <header className="thermal-receipt__header">
-            <h2>{d.business}</h2>
+            <img src="/brand/auraluxe-invoice-logo.jpg" alt="AURALUXE" className="mx-auto mb-2 h-auto w-[38mm] max-w-full" />
             {d.pan && <p>PAN/VAT {d.pan}</p>}
             {d.branch && <p>{d.branch}</p>}
           </header>
@@ -118,7 +118,7 @@ export function InvoiceSheet({ data: d, layout, extra }: { data: InvoiceData; la
     ) : (
       <article aria-label="Invoice receipt" data-layout="a4" className="mx-auto box-border max-w-3xl border-y bg-white px-4 py-7 text-black print:max-w-none">
         <div className="flex flex-wrap justify-between gap-4 border-b pb-6">
-          <div><h2 className="brand text-2xl">{d.business}</h2>{d.pan && <p className="mt-2 text-sm text-neutral-600">PAN/VAT {d.pan}</p>}{d.branch && <p className="text-sm text-neutral-600">{d.branch}</p>}</div>
+          <div><img src="/brand/auraluxe-invoice-logo.jpg" alt="AURALUXE" className="mb-3 h-auto w-36 max-w-full object-contain" />{d.pan && <p className="mt-2 text-sm text-neutral-600">PAN/VAT {d.pan}</p>}{d.branch && <p className="text-sm text-neutral-600">{d.branch}</p>}</div>
           <div className="text-right text-sm"><p className="text-lg font-semibold uppercase tracking-wide">{invoiceTitle(d.kind)}</p><p className="font-semibold">{d.reference}</p><p>{formatBsAd(d.date)}</p><p className="capitalize">{d.status}</p></div>
         </div>
         <div className="my-5 text-sm"><p className="text-xs uppercase text-neutral-500">{d.kind.startsWith('purchase') ? 'Supplier' : 'Bill to'}</p><p className="font-medium">{d.party || 'Walk-in customer'}</p>{d.phone && <p>{d.phone}</p>}{d.address&&<p>{d.address}</p>}{d.partyPan&&<p>PAN/VAT {d.partyPan}</p>}</div>

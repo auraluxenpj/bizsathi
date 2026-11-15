@@ -29,7 +29,8 @@ describe('Sales receipt view', () => {
     render(<QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}><RouterProvider router={router} /></QueryClientProvider>);
     fireEvent.click(await screen.findByText(/INV-1001/));
     const sheet = await screen.findByLabelText('Invoice receipt');
-    for (const t of ['Auraluxe Private Limited', 'Ram Traders', 'Silk Saree', 'Rs. 3,000.00', 'Rs. 2,000.00']) expect(sheet).toHaveTextContent(t);
+    expect(within(sheet).getByRole('img', { name: 'AURALUXE' })).toHaveAttribute('src', '/brand/auraluxe-invoice-logo.jpg');
+    for (const t of ['Ram Traders', 'Silk Saree', 'Rs. 3,000.00', 'Rs. 2,000.00']) expect(sheet).toHaveTextContent(t);
     expect(screen.getByRole('link', { name: /WhatsApp/ }).getAttribute('href')).toMatch(/^https:\/\/wa\.me\/9779812345678/);
     fireEvent.click(screen.getByRole('button', { name: '80mm' }));
     expect(within(screen.getByLabelText('Invoice receipt')).getByText(/Thank you! Visit again/)).toBeInTheDocument();
