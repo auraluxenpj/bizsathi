@@ -22,24 +22,27 @@ BEGIN
   SELECT u,'cashier-rls+'||u||'@example.invalid',now(),'{}',now(),now()
   FROM unnest(ARRAY[owner_id,cashier_id,entry_id]) u;
 
-  SET LOCAL ROLE authenticated;
-  PERFORM set_config('request.jwt.claims',json_build_object('sub',owner_id,'role','authenticated')::text,true);
-  business_id := public.create_business('Cashier RLS test');
+  -- Build isolated fixtures as the database owner; no live business or users are touched.
+  INSERT INTO public.businesses(name,created_by)
+  VALUES('Cashier RLS test',owner_id) RETURNING id INTO business_id;
+  INSERT INTO public.business_memberships(business_id,user_id,role_code,job_title)
+  VALUES
+    (business_id,owner_id,'owner',NULL),
+    (business_id,cashier_id,'staff','sales_person'),
+    (business_id,entry_id,'staff',NULL);
   INSERT INTO public.branches(business_id,code,name) VALUES(business_id,'MAIN','Main') RETURNING id INTO branch_id;
+  INSERT INTO public.branch_memberships(business_id,branch_id,user_id,granted_by)
+  VALUES (business_id,branch_id,cashier_id,owner_id),(business_id,branch_id,entry_id,owner_id);
   INSERT INTO public.financial_periods(business_id,name,start_date,end_date)
   VALUES(business_id,'Open','2026-01-01','2026-12-31') RETURNING id INTO period_id;
-  PERFORM public.add_business_member(business_id,cashier_id,'staff');
-  PERFORM public.add_business_member(business_id,entry_id,'staff');
-  PERFORM public.set_branch_access(business_id,branch_id,cashier_id,true);
-  PERFORM public.set_branch_access(business_id,branch_id,entry_id,true);
+  INSERT INTO public.business_settings(business_id) VALUES(business_id);
+
+  SET LOCAL ROLE authenticated;
+  PERFORM set_config('request.jwt.claims',json_build_object('sub',owner_id,'role','authenticated')::text,true);
   PERFORM public.save_catalogue_variant(business_id,'[{"product_name":"RLS Test Item","sku":"RLS-1","selling_price":100}]');
   SELECT id INTO variant_id FROM public.product_variants pv WHERE pv.business_id=business_id AND pv.sku='RLS-1';
   INSERT INTO public.parties(business_id,kind,name) VALUES(business_id,'customer','RLS Test Customer') RETURNING id INTO customer_id;
   PERFORM public.post_stock_operation(business_id,gen_random_uuid(),variant_id,branch_id,NULL,'opening',20,'RLS-OPEN','Fixture stock');
-
-  RESET ROLE;
-  UPDATE public.business_memberships m SET job_title='sales_person'
-  WHERE m.business_id=business_id AND m.user_id=cashier_id;
 
   SET LOCAL ROLE authenticated;
   PERFORM set_config('request.jwt.claims',json_build_object('sub',cashier_id,'role','authenticated')::text,true);
