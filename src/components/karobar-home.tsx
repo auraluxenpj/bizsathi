@@ -8,8 +8,6 @@ export type KarobarHomeProps = {
   receive?: number | null | undefined; give?: number | null | undefined; sales?: number | null | undefined;
   purchases?: number | null | undefined; expenses?: number | null | undefined; cashBank?: number | null | undefined;
   recent?: { id: string; reference: string; kind: string; document_date: string; total: number }[];
-  lowStockRows?: { branch: { id: string; name: string }; variant: { id: string; sku: string; unit: string; products?: { name: string } | null }; quantity: number }[];
-  lowStockCount?: number; lowStockLoading?: boolean;
 };
 type Tile = { to: string; label: string; icon: LucideIcon; search?: Record<string, string>; badge?: string };
 
@@ -58,10 +56,6 @@ export function KarobarHome(p: KarobarHomeProps) {
     <section aria-label="Recent activities" className="mt-6 rounded-xl bg-white p-4 shadow-[0_1px_4px_rgba(16,24,40,.06)]">
       <div className="flex items-center justify-between gap-2"><h2 className="text-lg font-semibold text-[#1b1f23]">Recent activities</h2><Link to="/transactions" className="text-sm font-medium text-[#2478a8]">View all</Link></div>
       {p.recent?.length ? <ul className="mt-2 divide-y">{p.recent.slice(0, 4).map(item => <li key={item.id} className="flex min-w-0 items-center gap-3 py-3"><span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-[#e7f4fc] text-[#2478a8]"><ReceiptText className="size-4" /></span><span className="min-w-0 flex-1"><span className="block truncate text-sm font-medium text-[#1b1f23]">{item.reference}</span><span className="block text-xs capitalize text-[#6b7280]">{item.kind.replaceAll("_", " ")} · {item.document_date}</span></span><span className="shrink-0 text-sm font-semibold tabular-nums text-[#1b1f23]">{p.money(item.total)}</span></li>)}</ul> : <p className="py-5 text-center text-sm text-[#6b7280]">No confirmed activity recorded.</p>}
-    </section>
-    <section aria-label="Low stock" className="mt-4 rounded-xl bg-white p-4 shadow-[0_1px_4px_rgba(16,24,40,.06)]">
-      <div className="flex items-center justify-between gap-2"><h2 className="text-lg font-semibold text-[#1b1f23]">Low stock items {p.lowStockLoading ? "(...)" : "(" + (p.lowStockCount ?? 0) + ")"}</h2><Link to="/inventory" className="text-sm font-medium text-[#2478a8]">View stock</Link></div>
-      {p.lowStockLoading ? <p className="py-5 text-sm text-[#6b7280]">Loading inventory…</p> : p.lowStockRows?.length ? <ul className="mt-2 divide-y">{p.lowStockRows.map(row => <li key={row.variant.id + row.branch.id} className="flex items-center justify-between gap-3 py-3 text-sm"><span className="min-w-0"><span className="block break-words font-medium text-[#1b1f23]">{row.variant.products?.name ?? row.variant.sku}</span><span className="block text-xs text-[#6b7280]">{row.branch.name} · {row.variant.sku}</span></span><span className="shrink-0 font-semibold text-[#d14343]">{row.quantity} {row.variant.unit}</span></li>)}</ul> : <p className="py-5 text-center text-sm text-[#6b7280]">No low-stock products.</p>}
     </section>
     <h2 className="mt-7 text-xl font-semibold text-[#1b1f23]">Explore App</h2>
     <section className="mt-3 grid grid-cols-4 gap-3">{explore.filter(t => ok(t.to)).map(t => <Link key={t.label} to={t.to} className="relative flex flex-col items-center gap-3 rounded-xl bg-white px-1 py-4 text-center shadow-[0_1px_4px_rgba(16,24,40,.06)]">{t.badge && <span className="absolute -top-1 right-0 rounded bg-[#ef4444] px-1.5 py-0.5 text-[11px] font-medium text-white">{t.badge}</span>}<t.icon className="size-7 text-[#55aee8]" /><span className="text-[13px] leading-5 text-[#1b1f23]">{t.label}</span></Link>)}</section>
