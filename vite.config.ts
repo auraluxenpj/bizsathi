@@ -8,7 +8,7 @@ import { defineConfig } from "@lovable.dev/vite-tanstack-config";
 import { loadEnv } from "vite";
 import { publicCloudDefines } from "./lib/public-cloud-env";
 
-export default defineConfig(({ mode }) => ({
+export default ({ mode }: { mode: string }) => defineConfig({
   vite: {
     define: publicCloudDefines(loadEnv(mode, process.cwd(), 'VITE_')),
   },
@@ -17,4 +17,4 @@ export default defineConfig(({ mode }) => ({
     // nitro/vite builds from this
     server: { entry: "server" },
   },
-}));
+})({ mode, command: 'build' });
