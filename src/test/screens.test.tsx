@@ -115,7 +115,7 @@ describe('Navigation and sign-in', () => {
 describe('Sale editor', () => {
   it('has no period dropdown and posts with the period found from the date', async () => {
     mount(<SaleEditor />);
-    fireEvent.change(await screen.findByLabelText('Customer mobile'), { target: { value: '9812345678' } });
+    fireEvent.change(await screen.findByLabelText('Customer name'), { target: { value: 'Walk-in Customer' } }); fireEvent.change(await screen.findByLabelText('Customer mobile'), { target: { value: '9812345678' } });
     const search = await screen.findByLabelText('Product search or barcode');
     noOpenPeriodLabel();
     fireEvent.change(search, { target: { value: 'saree' } });
@@ -127,8 +127,23 @@ describe('Sale editor', () => {
     await waitFor(() => expect(confirm).toHaveBeenCalledTimes(1));
     const sent = (confirm.mock.calls[0]![0] as { data: Record<string, unknown> }).data;
     expect(sent).toMatchObject({ businessId: ID.biz, branchId: ID.br, periodId: ID.per, kind: 'sale', status: 'confirmed' });
+    expect(sent['customerName']).toBe('Walk-in Customer');
     expect(sent['payments']).toMatchObject([{ method: 'cash', amount: 1500, sessionId: SESSION }]);
     expect(sent['lines']).toMatchObject([{ variantId: ID.v1, quantity: 1, price: 1500 }]);
+  });
+  it('fills customer name and mobile when an existing customer is selected', async () => {
+    mount(<SaleEditor />);
+    await screen.findByLabelText('Customer name');
+    fireEvent.change(await screen.findByLabelText('Document contact'), { target: { value: ID.p1 } });
+    // Selecting a customer auto-advances to Products; adding an item opens Checkout, where the details remain visible.
+    const heading = await screen.findByRole('heading', { name: 'Silk Saree' });
+    const card = heading.closest('article');
+    if (!card) throw new Error('Silk Saree product card was not rendered');
+    fireEvent.click(within(card).getByRole('button', { name: '+ Add' }));
+    // The catalogue quantity control does not auto-advance; explicitly open the Checkout step.
+    fireEvent.click(await screen.findByRole('button', { name: 'Continue to checkout' }));
+    expect(await screen.findByLabelText('Customer name')).toHaveValue('Ram Traders');
+    expect(screen.getByLabelText('Customer mobile')).toHaveValue('9800000000');
   });
   it('offers to create the Nepal fiscal year when none is open', async () => {
     state.periods = [];
@@ -147,7 +162,7 @@ describe('Sale editor', () => {
 });
 
 describe('Why a sale cannot be confirmed', () => {
-  const addSaree = async () => { fireEvent.change(await screen.findByLabelText('Customer mobile'), { target: { value: '9812345678' } }); fireEvent.change(await screen.findByLabelText('Product search or barcode'), { target: { value: 'saree' } }); await addCatalogSaree(); };
+  const addSaree = async () => { fireEvent.change(await screen.findByLabelText('Customer name'), { target: { value: 'Walk-in Customer' } }); fireEvent.change(await screen.findByLabelText('Customer mobile'), { target: { value: '9812345678' } }); fireEvent.change(await screen.findByLabelText('Product search or barcode'), { target: { value: 'saree' } }); await addCatalogSaree(); };
   const why = () => screen.getByLabelText('Why this cannot be confirmed yet');
   it('a walk-in sale that is not paid says it must be paid in full, and a chosen customer allows credit', async () => {
     mount(<SaleEditor />); await addSaree();
@@ -179,7 +194,7 @@ describe('Why a sale cannot be confirmed', () => {
 
 describe('Choosing which account a payment goes to', () => {
   const named = () => { acct.list = [{ id: ACC.bank, name: 'Himalayan Bank', kind: 'bank', isActive: true, balance: 5000 }, { id: ACC.bank2, name: 'NIC Asia', kind: 'bank', isActive: true, balance: 100 }, { id: ACC.wallet, name: 'eSewa', kind: 'wallet', isActive: true, balance: 0 }]; };
-  const addSaree = async () => { fireEvent.change(await screen.findByLabelText('Customer mobile'), { target: { value: '9812345678' } }); fireEvent.change(await screen.findByLabelText('Product search or barcode'), { target: { value: 'saree' } }); await addCatalogSaree(); };
+  const addSaree = async () => { fireEvent.change(await screen.findByLabelText('Customer name'), { target: { value: 'Walk-in Customer' } }); fireEvent.change(await screen.findByLabelText('Customer mobile'), { target: { value: '9812345678' } }); fireEvent.change(await screen.findByLabelText('Product search or barcode'), { target: { value: 'saree' } }); await addCatalogSaree(); };
   it('tags a bank payment to the chosen account and remembers it for next time', async () => {
     named(); mount(<SaleEditor />); await addSaree();
     fireEvent.click(screen.getByRole('button', { name: /^Bank Transfer$/ }));
@@ -245,7 +260,7 @@ describe('Paying an expense from a named account', () => {
 describe('Point of sale', () => {
   it('adds repeated barcode entries to one cart line and retains its exact checkout total', async () => {
     mount(<Pos />);
-    fireEvent.change(await screen.findByLabelText('Customer mobile'), { target: { value: '9812345678' } });
+    fireEvent.change(await screen.findByLabelText('Customer name'), { target: { value: 'Walk-in Customer' } }); fireEvent.change(await screen.findByLabelText('Customer mobile'), { target: { value: '9812345678' } });
     const barcode = await screen.findByLabelText('Barcode input');
     for (let i=0;i<2;i++) {
       if (i === 1) fireEvent.click(screen.getByRole('button', { name: /Products/ }));
@@ -262,7 +277,7 @@ describe('Point of sale', () => {
   });
   it('leaves the cart unchanged for an unknown barcode and adjusts quantity with touch controls', async () => {
     mount(<Pos />);
-    fireEvent.change(await screen.findByLabelText('Customer mobile'), { target: { value: '9812345678' } });
+    fireEvent.change(await screen.findByLabelText('Customer name'), { target: { value: 'Walk-in Customer' } }); fireEvent.change(await screen.findByLabelText('Customer mobile'), { target: { value: '9812345678' } });
     const barcode = await screen.findByLabelText('Barcode input');
     fireEvent.change(barcode, { target: { value: 'UNKNOWN' } });
     fireEvent.click(screen.getByRole('button', { name: 'Add scanned item' }));
@@ -276,7 +291,7 @@ describe('Point of sale', () => {
   it('is a standalone sale screen with optional protected local POS drafts', async () => {
     mount(<Pos />);
     expect(await screen.findByRole('heading', { name: /Point of sale/ })).toBeInTheDocument();
-    fireEvent.change(await screen.findByLabelText('Customer mobile'), { target: { value: '9812345678' } });
+    fireEvent.change(await screen.findByLabelText('Customer name'), { target: { value: 'Walk-in Customer' } }); fireEvent.change(await screen.findByLabelText('Customer mobile'), { target: { value: '9812345678' } });
     expect(await screen.findByLabelText('Product search or barcode')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /Camera/ })).toBeInTheDocument();
     expect(await screen.findByRole('heading', { name: 'Local POS drafts' })).toBeInTheDocument();
@@ -287,7 +302,7 @@ describe('Point of sale', () => {
   });
   it('sells through the same confirmation as Sales', async () => {
     mount(<Pos />);
-    fireEvent.change(await screen.findByLabelText('Customer mobile'), { target: { value: '9812345678' } });
+    fireEvent.change(await screen.findByLabelText('Customer name'), { target: { value: 'Walk-in Customer' } }); fireEvent.change(await screen.findByLabelText('Customer mobile'), { target: { value: '9812345678' } });
     fireEvent.change(await screen.findByLabelText('Product search or barcode'), { target: { value: 'AL-001' } });
     fireEvent.keyDown(screen.getByLabelText('Product search or barcode'), { key: 'Enter' });
     fireEvent.click(screen.getByRole('button', { name: /^Cash$/ }));
