@@ -656,3 +656,116 @@ body, .karobar {
 @media (prefers-reduced-motion: reduce) {
   .dashboard-stat-card, .dashboard-secondary-grid [aria-label="Recent activities"] > div:last-child > div { transition: none; }
 }
+
+
+/* DreamsPOS-inspired retail terminal refinement — presentation only.
+   Product selection, pricing, stock checks and confirmation remain in DocumentEditor. */
+.pos-workspace { background: linear-gradient(180deg, oklch(0.96 0.035 225), var(--color-background) 22rem); }
+.pos-topbar { border-color: oklch(0.86 0.045 225); background: oklch(1 0 0 / 94%); }
+.pos-topbar h1 { font-size: clamp(.9rem, 1.4vw, 1.05rem); font-weight: 800; letter-spacing: -.025em; }
+.pos-billing-checkout .pos-billing-layout { grid-template-columns: minmax(0, 1fr); align-items: start; }
+.pos-billing-checkout [aria-label="Checkout catalogue"],
+.pos-billing-checkout .pos-billing-cart {
+  border: 1px solid oklch(0.85 0.055 225);
+  border-radius: 1.1rem;
+  background: oklch(1 0 0 / 96%);
+  box-shadow: 0 12px 34px oklch(0.24 0.05 245 / 7%);
+  padding: clamp(.9rem, 1.6vw, 1.35rem);
+}
+.pos-catalogue-heading { min-height: 4.1rem; }
+.pos-catalogue-heading h2, .pos-cart-heading h2 { color: oklch(0.12 0.015 250); letter-spacing: -.045em; }
+.pos-branch-chip {
+  display: inline-flex; align-items: center; gap: .5rem; max-width: 48%;
+  border: 1px solid oklch(0.84 0.06 225); border-radius: 999px;
+  background: oklch(0.94 0.05 225); color: oklch(0.2 0.045 245);
+  padding: .55rem .85rem; font-size: .78rem; font-weight: 700;
+}
+.pos-branch-chip svg { flex: 0 0 auto; color: oklch(0.48 0.14 235); }
+.pos-cart-count {
+  display: inline-flex; vertical-align: middle; margin-left: .35rem;
+  border-radius: 999px; background: oklch(0.92 0.045 225);
+  padding: .25rem .55rem; color: oklch(0.26 0.05 245);
+  font-family: 'DM Sans', sans-serif; font-size: .68rem; font-weight: 700;
+  letter-spacing: 0;
+}
+.pos-billing-checkout [aria-label="Product search or barcode"] {
+  min-height: 3.15rem; border: 1px solid oklch(0.82 0.065 225);
+  border-radius: .8rem; background: white;
+}
+.pos-billing-checkout [aria-label="Product search or barcode"]:focus-within {
+  border-color: oklch(0.62 0.14 230); box-shadow: 0 0 0 3px oklch(0.72 0.13 225 / 18%);
+}
+.pos-billing-checkout form:has([aria-label="Barcode input"]) {
+  border: 1px dashed oklch(0.82 0.065 225); border-radius: .8rem;
+  background: oklch(0.97 0.025 225); padding: .55rem;
+}
+.pos-billing-checkout .pos-category-filters { margin-block: 1.15rem; }
+.pos-billing-checkout .pos-product-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: .85rem;
+}
+.pos-billing-checkout .pos-product-card {
+  min-height: 13.25rem; border-radius: 1rem; padding: .9rem;
+  border-color: oklch(0.87 0.045 225);
+  box-shadow: 0 3px 12px oklch(0.24 0.05 245 / 5%);
+}
+.pos-billing-checkout .pos-product-card:focus-visible {
+  outline: 3px solid oklch(0.68 0.13 230 / 40%); outline-offset: 2px;
+}
+.pos-billing-checkout .pos-product-card > span:first-child > span:first-child {
+  display: grid; place-items: center; min-width: 4.5rem; min-height: 4.5rem;
+  border: 1px solid oklch(0.9 0.04 225); background: oklch(0.96 0.035 225);
+}
+.pos-billing-checkout .pos-cart-line {
+  border-color: oklch(0.88 0.04 225); border-radius: .85rem;
+  box-shadow: 0 2px 8px oklch(0.24 0.05 245 / 3%);
+}
+.pos-billing-checkout .pos-billing-cart > div.grid { gap: .85rem; }
+.pos-billing-checkout .pos-billing-cart label { font-weight: 650; color: oklch(0.27 0.025 245); }
+.pos-billing-checkout .pos-billing-cart input,
+.pos-billing-checkout .pos-billing-cart select { border-radius: .65rem; }
+.pos-billing-checkout .pos-billing-cart [aria-label="Payment collection"] {
+  border: 1px solid oklch(0.83 0.06 225);
+  border-radius: 1rem; padding: 1rem;
+  background: linear-gradient(145deg, oklch(0.94 0.05 225), white 70%);
+}
+.pos-billing-checkout .pos-billing-cart [aria-label="Payment collection"] .bg-muted\/60 {
+  border: 1px solid oklch(0.87 0.045 225); border-radius: .75rem;
+}
+.pos-billing-checkout > div.fixed {
+  border-color: oklch(0.82 0.065 225);
+  background: oklch(1 0 0 / 96%);
+  box-shadow: 0 -8px 30px oklch(0.24 0.05 245 / 10%);
+  backdrop-filter: blur(16px);
+}
+.pos-billing-checkout > div.fixed .text-2xl {
+  color: oklch(0.22 0.07 245); font-size: clamp(1.35rem, 2vw, 1.8rem);
+}
+@media (min-width: 768px) {
+  .pos-billing-checkout .pos-product-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+@media (min-width: 1280px) {
+  .pos-billing-checkout .pos-billing-layout {
+    grid-template-columns: minmax(0, 1fr) minmax(410px, 460px);
+    gap: 1.25rem;
+  }
+  .pos-billing-checkout .pos-billing-cart {
+    position: sticky; top: 5.5rem;
+    max-height: calc(100dvh - 6.25rem); overflow-y: auto;
+    scrollbar-width: thin; scrollbar-color: oklch(0.82 0.065 225) transparent;
+  }
+  .pos-billing-checkout .pos-product-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+@media (min-width: 1600px) {
+  .pos-billing-checkout .pos-product-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+}
+@media (max-width: 767px) {
+  .pos-main { padding-inline: .65rem; }
+  .pos-billing-checkout .pos-product-card { min-height: 11.5rem; padding: .7rem; }
+  .pos-branch-chip { font-size: .7rem; padding: .45rem .6rem; }
+  .pos-billing-checkout .pos-billing-cart { margin-bottom: 1rem; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .pos-billing-checkout .pos-product-card,
+  .pos-billing-checkout .pos-product-card img { transition: none; }
+}
