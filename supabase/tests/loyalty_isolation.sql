@@ -34,7 +34,8 @@ BEGIN
  ASSERT (SELECT sum(points) FROM public.loyalty_point_events WHERE sale_id=sale)=0,'Full cumulative returns remove only original award';
  ASSERT (SELECT purchase_count FROM public.read_customer_loyalty(b) WHERE mobile='9841234567')='3','Returns do not increase purchase count';
  rejected:=false; BEGIN UPDATE public.loyalty_point_events SET points=999 WHERE sale_id=sale; EXCEPTION WHEN insufficient_privilege OR raise_exception THEN rejected:=true; END; ASSERT rejected,'Points cannot be edited';
- PERFORM public.add_business_member(b,staff,'staff'); PERFORM public.set_branch_access(b,br,staff,true); UPDATE public.business_memberships SET job_title='sales_person' WHERE business_id=b AND user_id=staff;
+ PERFORM public.add_business_member(b,staff,'staff'); PERFORM public.set_branch_access(b,br,staff,true);
+ RESET ROLE; UPDATE public.business_memberships SET job_title='sales_person' WHERE business_id=b AND user_id=staff; SET LOCAL ROLE authenticated;
  req:=req||jsonb_build_object('id',gen_random_uuid(),'branchId',hidden_br,'mobile','9811111111'); PERFORM public.post_commerce_document(req);
  PERFORM set_config('request.jwt.claims',json_build_object('sub',staff,'role','authenticated')::text,true);
  ASSERT NOT EXISTS(SELECT 1 FROM public.loyalty_point_events WHERE branch_id=hidden_br),'Hidden branch points denied';
