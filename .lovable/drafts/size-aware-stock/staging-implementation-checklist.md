@@ -48,3 +48,27 @@ The additive SQL in `0001_size_aware_stock_additive_draft.sql` is a proposal, no
 - After test movements are posted: do not delete immutable movement history. Restore the isolated staging backup or create compensating test-only entries under an approved recovery plan.
 - Never roll back by editing or deleting historical production stock movements, invoices, payments, journals, membership records or loyalty events.
 - Production cutover is not part of this checklist.
+
+
+## Live staging run — 15 November 2026
+
+- Staging project `bizsathi-staging-auraluxe` (Supabase ref `vtqrygqprjvlytwjdpov`), region `ap-south-1`, PostgreSQL `17.11.0.019`.
+- Confirmed initially empty: no public tables or recorded migrations, and no business/customer/stock data.
+- Applied base schema migrations through `0029_member_permission_denials` plus a staging-only payment-QR prerequisite patch.
+- Base bootstrap then stopped at migration `0030_permission_checklist_headers`: it expects `public.payment_accounts`, but source migration `0024_payment_accounts.sql` is intentionally comment-only in the current repository. Do not bypass this gap by guessing the account schema.
+- Applied `size_aware_stock_additive_staging_draft` successfully to staging.
+- Verified all four proposed tables exist with RLS enabled, four SELECT policies, expected triggers, composite foreign keys, unique/idempotency constraints and quantity-direction checks.
+- Verified all four new tables contain zero rows. No size seed, product-size assignments, opening movements, or legacy stock mapping was inserted.
+- No production database or AURALUXE website was changed.
+
+### What this proves
+
+The current additive size-aware DDL parses and creates its objects on the prepared staging base schema. It does **not** prove full-app migration parity, runtime RPC behavior, RLS behavior for real users, POS/website/Sheets integration, or stock reconciliation.
+
+### Next staging gates
+
+1. Reconcile the intentionally disabled/missing migration artifacts (beginning with payment accounts and the notebook/bill-gallery helper) from the actual live schema or a verified canonical migration source.
+2. Complete the app's staging schema without copying live business/customer/stock data.
+3. Create synthetic test tenant/users in staging only.
+4. Add size-master seed and run positive/negative constraint, RLS and trigger tests.
+5. Implement and test posting RPCs and adapters before any production proposal.
