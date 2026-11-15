@@ -41,6 +41,7 @@ AS $$
           (d.kind = 'sale' AND d.actor_id = auth.uid())
           OR (
             d.kind = 'sale_return'
+            AND d.status = 'confirmed'
             AND EXISTS (
               SELECT 1
               FROM public.commerce_documents original
@@ -48,6 +49,7 @@ AS $$
                 AND original.business_id = _business_id
                 AND original.branch_id = _branch_id
                 AND original.kind = 'sale'
+                AND original.status = 'confirmed'
                 AND original.actor_id = auth.uid()
             )
           )
