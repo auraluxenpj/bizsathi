@@ -12,7 +12,7 @@ type CashierScopeInput<D extends CashierDocument, P extends CashierPayment, C ex
 /**
  * Restrict the commerce payload returned to a staff cashier.
  * Keep manager-approved sale returns linked to the cashier's original sale visible,
- * but never expose another cashier's unrelated documents, payments or drawer sessions.
+ * and include all events belonging to the cashier's own drawer session.
  */
 export function scopeCommerceForCashier<D extends CashierDocument, P extends CashierPayment, C extends CashierCounter, J>(
   data: CashierScopeInput<D, P, C, J>,
@@ -24,15 +24,15 @@ export function scopeCommerceForCashier<D extends CashierDocument, P extends Cas
     (document) => document.actor_id === userId || (document.kind === 'sale_return' && !!document.source_id && ownSaleIds.has(document.source_id)),
   );
   const documentIds = new Set(documents.map((document) => document.id));
-  const counters = data.counters.filter((event) => event.actor_id === userId);
-  const sessionIds = new Set(counters.map((event) => event.session_id));
+  const ownSessionIds = new Set(data.counters.filter((event) => event.actor_id === userId).map((event) => event.session_id));
+  const counters = data.counters.filter((event) => ownSessionIds.has(event.session_id));
 
   return {
     ...data,
     documents,
     counters,
     payments: data.payments.filter(
-      (payment) => (!!payment.document_id && documentIds.has(payment.document_id)) || (!!payment.session_id && sessionIds.has(payment.session_id)),
+      (payment) => (!!payment.document_id && documentIds.has(payment.document_id)) || (!!payment.session_id && ownSessionIds.has(payment.session_id)),
     ),
     journals: [],
   };
