@@ -913,3 +913,28 @@ img, video, canvas { max-width: 100%; }
   .app-workspace main [data-slot="table-container"] { border-radius: .55rem; }
   .app-workspace main table th, .app-workspace main table td { padding: .65rem .7rem; }
 }
+
+
+/* Screen-level polish: widen information views and align inventory pages with the shared workspace. */
+.screen-shell, .inventory-shell { min-width: 0; }
+.screen-heading, .inventory-heading { border-color: oklch(0.91 0.012 250); }
+.screen-heading h1, .inventory-heading h1 { letter-spacing: -.035em; }
+.inventory-tabs { border-color: oklch(0.91 0.012 250); }
+.inventory-tabs a, .inventory-tabs button { min-height: 2.55rem; border-radius: .55rem; }
+.screen-shell [role="alert"], .inventory-shell [role="alert"] { overflow-wrap: anywhere; }
+.screen-shell ul.divide-y, .screen-shell [class*="divide-y rounded"] {
+  border-color: oklch(0.91 0.012 250);
+  border-radius: .8rem;
+  background: white;
+}
+.screen-shell ul.divide-y > li { min-width: 0; }
+.screen-shell input, .screen-shell select, .inventory-shell input, .inventory-shell select {
+  min-height: 2.65rem;
+}
+@media (max-width: 640px) {
+  .screen-shell, .inventory-shell { padding-top: .9rem; padding-bottom: 1.25rem; }
+  .screen-heading, .inventory-heading { border-radius: .8rem; }
+  .inventory-tabs { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .35rem; }
+  .inventory-tabs > * { min-width: 0; }
+  .inventory-tabs a, .inventory-tabs button { justify-content: center; padding-inline: .45rem; font-size: .72rem; }
+}
