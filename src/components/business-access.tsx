@@ -23,7 +23,7 @@ export function BusinessAccess() {
  const view=useSearch({strict:false});const client = useQueryClient();
  const listFn = useServerFn(listBusinesses); const accessFn = useServerFn(getBusinessAccess); const inviteFn = useServerFn(createMobileInvitation); const reissueFn = useServerFn(reissueInvitation); const roleChangeFn = useServerFn(changeInvitationRole); const removeFn = useServerFn(removeMember); const branchFn = useServerFn(createBranch); const memberFn = useServerFn(updateMember); const grantFn = useServerFn(setBranchAccess); const revokeFn = useServerFn(revokeInvitation);
  const businesses = useQuery({ queryKey: ['businesses'], queryFn: () => listFn() });
- const businessId = businesses.data?.length === 1 ? businesses.data[0].id : '';
+ const businessId = businesses.data?.length === 1 ? businesses.data[0]?.id ?? '' : '';
  const business = businesses.data?.[0];
  const access = useQuery({ queryKey: ['business-access', businessId], queryFn: () => accessFn({ data: { businessId } }), enabled: Boolean(businessId) });
  const [inviteName, setInviteName] = useState(''); const [inviteMobile, setInviteMobile] = useState(''); const [sharedWith, setSharedWith] = useState(''); const [role, setRole] = useState<'admin'|'accountant'|'staff'|'viewer'>('staff'); const [title, setTitle] = useState<JobTitle>('sales_person'); const [inviteLink, setInviteLink] = useState('');

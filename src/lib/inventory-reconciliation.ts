@@ -142,7 +142,7 @@ export function auditInventoryReconciliation(input: {
     if (next.isNegative()) {
       findings.push({
         code: 'negative_intermediate_stock',
-        scope: scopes.get(entry.key),
+        scope: { businessId: entry.movement.businessId, branchId: entry.movement.branchId, variantId: entry.movement.variantId },
         movementId: entry.movement.movementId,
         actual: next.toString(),
         message: 'Historical movement sequence produces negative stock at this point.',
