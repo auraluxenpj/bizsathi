@@ -990,7 +990,7 @@ img, video, canvas { max-width: 100%; }
 /* Staff-first typography, aligned financial figures and semantic status colors. */
 :root { --warning: oklch(0.74 0.16 78); }
 @theme inline { --color-warning: var(--warning); }
-html, body, button, input, select, textarea, table { font-family: 'Inter', sans-serif; }
+html, body, button, input, select, textarea, table { font-family: 'Inter', sans-serif; font-variant-numeric: tabular-nums lining-nums; }
 h1, h2, h3, h4, h5, h6, .brand, .stat-label { font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 700; }
 .tabular-nums, input[type='number'], input[inputmode='numeric'], time, table td, table th, [data-numeric='true'] { font-variant-numeric: tabular-nums lining-nums; }
 button, [role='button'], a, input, select { touch-action: manipulation; }
