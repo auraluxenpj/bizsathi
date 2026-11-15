@@ -12,5 +12,6 @@ export function canSeeExpectedCash(role: string | null | undefined): boolean {
 
 /** Cashiers may report only on sessions they opened; managers/accountants retain the full report. */
 export function scopeCashCounterReport<T extends { openedById: string }>(sessions: T[], role: string | null | undefined, userId: string): T[] {
-  return role === 'staff' ? sessions.filter((session) => session.openedById === userId) : sessions;
+  if (role === 'staff') return sessions.filter((session) => session.openedById === userId);
+  return role && EXPECTED_CASH_ROLES.includes(role) ? sessions : [];
 }
