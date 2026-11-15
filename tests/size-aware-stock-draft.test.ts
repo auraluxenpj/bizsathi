@@ -29,8 +29,13 @@ describe("size-aware stock draft migration safety", () => {
     expect(migration.match(/ENABLE ROW LEVEL SECURITY/g)?.length).toBe(4);
     expect(migration).toMatch(/public\.can_access_branch\(business_id,branch_id\)/);
     expect(migration).toMatch(/variant_size_stock_immutable/);
-    expect(migration).toMatch(/size_stock_migration_map_immutable/);
+    expect(migration).toMatch(/size_stock_migration_map_immutable_delete/);
+    expect(migration).toMatch(/guard_size_stock_migration_map_update/);
     expect(migration).toMatch(/UNIQUE \(business_id,idempotency_key\)/);
+  });
+  it("keeps reservations outside the physical movement ledger", () => {
+    expect(migration).not.toMatch(/reservation_release/);
+    expect(migration).toMatch(/Reservation holds and offline counter allocations are separate state tables/);
   });
   it("does not seed or backfill unverified size assignments", () => {
     expect(migration).not.toMatch(/INSERT\s+INTO\s+public\.(size_master|product_size_options|size_stock_migration_map)/i);
