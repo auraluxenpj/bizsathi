@@ -741,9 +741,6 @@ body, .karobar {
 .pos-billing-checkout > div.fixed .text-2xl {
   color: oklch(0.22 0.07 245); font-size: clamp(1.35rem, 2vw, 1.8rem);
 }
-@media (min-width: 768px) {
-  .pos-billing-checkout .pos-product-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-}
 @media (min-width: 1280px) {
   .pos-billing-checkout .pos-billing-layout {
     grid-template-columns: minmax(0, 1fr) minmax(410px, 460px);
@@ -754,10 +751,6 @@ body, .karobar {
     max-height: calc(100dvh - 6.25rem); overflow-y: auto;
     scrollbar-width: thin; scrollbar-color: oklch(0.82 0.065 225) transparent;
   }
-  .pos-billing-checkout .pos-product-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-}
-@media (min-width: 1600px) {
-  .pos-billing-checkout .pos-product-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
 }
 @media (max-width: 767px) {
   .pos-main { padding-inline: .65rem; }
