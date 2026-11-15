@@ -25,8 +25,8 @@ export const searchWorkspaceRecords = createServerFn({ method: 'GET' })
     if (byVariant.error || byProduct.error || parties.error || vouchers.error) throw new Error('Workspace search is temporarily unavailable.');
     const productIds = [...new Set([...(byVariant.data ?? []).map(v => v.product_id), ...(byProduct.data ?? []).map(p => p.id)])];
     const [variants, products] = await Promise.all([
-      productIds.length ? context.supabase.from('product_variants').select('id,product_id,name,sku,barcode').eq('business_id', data.businessId).in('product_id', productIds).limit(12) : Promise.resolve({ data: [], error: null }),
-      productIds.length ? context.supabase.from('products').select('id,name').eq('business_id', data.businessId).in('id', productIds) : Promise.resolve({ data: [], error: null }),
+      context.supabase.from('product_variants').select('id,product_id,name,sku,barcode').eq('business_id', data.businessId).in('product_id', productIds).limit(12),
+      context.supabase.from('products').select('id,name').eq('business_id', data.businessId).in('id', productIds),
     ]);
     if (variants.error || products.error) throw new Error('Product search is temporarily unavailable.');
     const names = new Map((products.data ?? []).map(p => [p.id, p.name]));
