@@ -1,5 +1,4 @@
 import {PaymentQr} from './payment-qr';
-import { ReceiptText } from 'lucide-react';
 import { formatNPR } from '@/lib/format';
 import { earnedPoints, membershipNumber } from '@/lib/loyalty';
 
@@ -9,8 +8,8 @@ export function CheckoutReceipt({ businessId, business, branch, reference, name,
 }) {
   return <article aria-label="Receipt preview" className="mx-auto w-full max-w-sm border bg-card p-5 text-sm">
     <header className="border-b border-dashed pb-4 text-center">
-      <ReceiptText className="mx-auto mb-3 size-6 text-primary" />
-      <h3 className="brand break-words text-lg font-semibold">{business}</h3>
+      <img src="/brand/auraluxe-invoice-logo.jpg" alt="AURALUXE logo" width="400" height="400" loading="eager" decoding="sync" className="mx-auto mb-2 h-auto w-28 max-w-full object-contain" />
+      <h3 className="break-words text-lg font-semibold">AURALUXE</h3>
       <p className="mt-1 text-muted-foreground">{branch}</p>
       <p className="mt-3 text-xs font-semibold uppercase text-muted-foreground">Unconfirmed · Preview</p>
       <p className="mt-1 break-all font-mono text-xs">{reference}</p>
