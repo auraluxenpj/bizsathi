@@ -1,9 +1,8 @@
 import { useMemo, useState } from 'react';
-import { Search, Users, Award, Sparkles, ArrowUpRight, ArrowDownRight, ChevronRight, Gift, Phone, CalendarDays, RotateCcw } from 'lucide-react';
+import { Search, Users, Award, Sparkles, ArrowUpRight, ChevronRight, Gift, Phone, CalendarDays } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { useCommerce, CommerceFrame } from '@/components/commerce-workspace';
-import { formatNPR } from '@/lib/format';
 import { normalizeMobile } from '@/lib/loyalty';
 
 type Member = { id: string; mobile: string; membership_number: string; created_at?: string };
@@ -78,7 +77,7 @@ export function MembershipLoyalty() {
         </article>
         <article className="rounded-xl border bg-card p-5"><h3 className="font-semibold">Points activity</h3><p className="mt-1 text-xs text-muted-foreground">Append-only history from confirmed sales, returns and redemptions.</p>
           <div className="mt-4 space-y-3">
-            {[...memberEvents.map(e=>({id:e.id,points:Number(e.points),created_at:e.created_at,label:e.points >= 0 ? 'Points earned' : 'Return adjustment',kind:e.points >= 0 ? 'earn' : 'adjust'})),...memberRedemptions.map(e=>({id:e.id,points:Number(e.points),created_at:e.created_at,label:e.kind==='spend'?'Points redeemed':'Points restored',kind:e.kind}))].sort((a,b)=>b.created_at.localeCompare(a.created_at)).map(row=><div key={row.id} className="flex items-center justify-between gap-3 border-b pb-3 text-sm last:border-0"><div className="min-w-0"><p className="font-medium">{row.label}</p><p className="text-xs text-muted-foreground">{dateLabel(row.created_at)}</p></div><span className={`shrink-0 font-semibold tabular-nums ${row.points>=0?'text-emerald-600':'text-muted-foreground'}`}>{row.points>0?'+':''}{row.points.toLocaleString('en-IN')}</span></div>)}
+            {[...memberEvents.map(e=>({id:e.id,points:Number(e.points),created_at:e.created_at,label:Number(e.points) >= 0 ? 'Points earned' : 'Return adjustment',kind:Number(e.points) >= 0 ? 'earn' : 'adjust'})),...memberRedemptions.map(e=>({id:e.id,points:Number(e.points),created_at:e.created_at,label:e.kind==='spend'?'Points redeemed':'Points restored',kind:e.kind}))].sort((a,b)=>b.created_at.localeCompare(a.created_at)).map(row=><div key={row.id} className="flex items-center justify-between gap-3 border-b pb-3 text-sm last:border-0"><div className="min-w-0"><p className="font-medium">{row.label}</p><p className="text-xs text-muted-foreground">{dateLabel(row.created_at)}</p></div><span className={`shrink-0 font-semibold tabular-nums ${row.points>=0?'text-emerald-600':'text-muted-foreground'}`}>{row.points>0?'+':''}{row.points.toLocaleString('en-IN')}</span></div>)}
             {!memberEvents.length && !memberRedemptions.length && <p className="py-8 text-center text-sm text-muted-foreground">No points activity yet.</p>}
           </div>
         </article>
