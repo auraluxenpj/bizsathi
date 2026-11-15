@@ -248,7 +248,13 @@ DECLARE
   m uuid;
 BEGIN
   IF NOT public.has_business_role(_business, 'accountant')
-     AND NOT (public.has_business_job_title(_business, 'sales_person') AND public.has_permission(_business, 'customers.view')) THEN
+     AND NOT (
+       public.has_permission(_business, 'customers.view')
+       AND (
+         public.has_business_job_title(_business, 'sales_person')
+         OR public.has_business_job_title(_business, 'entry_person')
+       )
+     ) THEN
     RAISE EXCEPTION 'Loyalty access denied';
   END IF;
   IF n IS NULL THEN RETURN 0; END IF;
@@ -275,7 +281,13 @@ BEGIN
   IF TG_TABLE_NAME = 'commerce_documents' THEN
     IF NEW.kind = 'sale'
        AND NOT public.has_business_role(NEW.business_id, 'accountant')
-       AND NOT (public.has_business_job_title(NEW.business_id, 'sales_person') AND public.has_permission(NEW.business_id, 'sales.view')) THEN
+       AND NOT (
+         public.has_permission(NEW.business_id, 'sales.create')
+         AND (
+           public.has_business_job_title(NEW.business_id, 'sales_person')
+           OR public.has_business_job_title(NEW.business_id, 'entry_person')
+         )
+       ) THEN
       RAISE EXCEPTION 'Sales access requires the Sales Person job title';
     END IF;
   ELSIF TG_TABLE_NAME = 'commerce_payments' THEN
@@ -284,7 +296,13 @@ BEGIN
     WHERE d.id = NEW.document_id AND d.business_id = NEW.business_id;
     IF document_kind = 'sale'
        AND NOT public.has_business_role(NEW.business_id, 'accountant')
-       AND NOT (public.has_business_job_title(NEW.business_id, 'sales_person') AND public.has_permission(NEW.business_id, 'sales.view')) THEN
+       AND NOT (
+         public.has_permission(NEW.business_id, 'sales.create')
+         AND (
+           public.has_business_job_title(NEW.business_id, 'sales_person')
+           OR public.has_business_job_title(NEW.business_id, 'entry_person')
+         )
+       ) THEN
       RAISE EXCEPTION 'Sales payment access requires the Sales Person job title';
     END IF;
   ELSIF TG_TABLE_NAME = 'cash_counter_events' THEN
