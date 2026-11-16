@@ -152,7 +152,7 @@ export function TeamAccessPanel({
   const grant = useMutation({
     mutationFn: () => grantFn({ data: {
       businessId, branchId: selectedBranchId, managerUserId,
-      roles: delegatedRoles as ('accountant' | 'staff' | 'viewer')[],
+      roles: delegatedRoles as ('staff' | 'viewer')[],
       maxUses: 25, maxDays: 14,
     } }),
     onSuccess: () => { setMessage('Branch delegation updated.'); refresh(); },
