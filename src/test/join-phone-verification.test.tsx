@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -22,7 +23,7 @@ const mocks = vi.hoisted(() => ({
 
 vi.mock('@tanstack/react-router', () => ({
   createFileRoute: () => (options: unknown) => options,
-  Link: ({ children }: { children: React.ReactNode }) => children,
+  Link: ({ children }: { children: ReactNode }) => children,
   useNavigate: () => mocks.navigate,
 }));
 vi.mock('@tanstack/react-start', () => ({ useServerFn: (fn: unknown) => fn }));
