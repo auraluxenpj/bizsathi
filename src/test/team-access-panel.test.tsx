@@ -45,17 +45,17 @@ import { TeamAccessPanel } from '@/components/team-access-panel';
 describe('Team Access hierarchy panel', () => {
   beforeEach(() => createInvite.mockClear());
 
-  it('shows the approved seven-role hierarchy and rank ceilings', () => {
+  it('shows the approved role hierarchy and rank ceilings', () => {
     render(<QueryClientProvider client={new QueryClient()}>
       <TeamAccessPanel businessId={BUSINESS} branches={[{ id: BRANCH, name: 'Nepalgunj', code: 'NP', is_active: true }]} members={[]} branchAccess={[]} userId={MANAGER} isAdmin={false} isOwner={false} />
     </QueryClientProvider>);
-    for (const role of ['CEO / Platform Owner', 'Administrator / Partner', 'Store Manager', 'Accountant', 'Inventory Manager', 'Cashier / POS', 'Store Team']) {
+    for (const role of ['Master Owner', 'Business Owner', 'Administrator', 'Branch Manager', 'Accountant', 'Inventory Manager', 'Cashier / POS', 'Store Team', 'Viewer']) {
       expect(screen.getAllByText(role).length).toBeGreaterThan(0);
     }
-    expect(screen.getByText(/Rank\s*100/)).toBeInTheDocument();
+    expect(screen.getAllByText(/Rank\s*100/)).toHaveLength(2);
     expect(screen.getByText(/Rank\s*80/)).toBeInTheDocument();
-    expect(screen.getAllByText(/Rank\s*60/)).toHaveLength(2);
-    expect(screen.getAllByText(/Rank\s*40/)).toHaveLength(3);
+    expect(screen.getAllByText(/Rank\s*60/)).toHaveLength(1);\n    expect(screen.getAllByText(/Rank\s*50/)).toHaveLength(1);
+    expect(screen.getAllByText(/Rank\s*40/)).toHaveLength(3);\n    expect(screen.getAllByText(/Rank\s*20/)).toHaveLength(1);
   });
 
   it('keeps all five major Team Access areas collapsed until selected', () => {
