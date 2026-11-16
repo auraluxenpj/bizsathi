@@ -55,8 +55,10 @@ describe('Team Access hierarchy panel', () => {
     }
     expect(screen.getAllByText(/Rank\s*100/)).toHaveLength(2);
     expect(screen.getByText(/Rank\s*80/)).toBeInTheDocument();
-    expect(screen.getAllByText(/Rank\s*60/)).toHaveLength(1);\n    expect(screen.getAllByText(/Rank\s*50/)).toHaveLength(1);
-    expect(screen.getAllByText(/Rank\s*40/)).toHaveLength(3);\n    expect(screen.getAllByText(/Rank\s*20/)).toHaveLength(1);
+    expect(screen.getAllByText(/Rank\s*60/)).toHaveLength(1);
+    expect(screen.getAllByText(/Rank\s*50/)).toHaveLength(1);
+    expect(screen.getAllByText(/Rank\s*40/)).toHaveLength(3);
+    expect(screen.getAllByText(/Rank\s*20/)).toHaveLength(1);
   });
 
   it('keeps all five major Team Access areas collapsed until selected', () => {
