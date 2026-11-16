@@ -1,17 +1,17 @@
--- Run only in an isolated test database with the project's migrations (through 0046) applied.
+-- Run only in an isolated test database with the project's migrations (through 0049) applied.
 -- The explicit transaction guarantees all synthetic auth/business records are rolled back.
 BEGIN;
 DO $tests$
 DECLARE
   master uuid:=gen_random_uuid(); owner_a uuid:=gen_random_uuid(); mgr_a uuid:=gen_random_uuid(); staff_a uuid:=gen_random_uuid();
-  new1 uuid:=gen_random_uuid(); new2 uuid:=gen_random_uuid(); new3 uuid:=gen_random_uuid(); unverified uuid:=gen_random_uuid(); owner_b uuid:=gen_random_uuid();
+  new1 uuid:=gen_random_uuid(); new2 uuid:=gen_random_uuid(); new3 uuid:=gen_random_uuid(); new4 uuid:=gen_random_uuid(); unverified uuid:=gen_random_uuid(); owner_b uuid:=gen_random_uuid();
   ba uuid; bb uuid; br_a uuid; br_b uuid; iid uuid; iid2 uuid; ok boolean; n int;
   h1 text:=repeat('1',64); h2 text:=repeat('2',64); h3 text:=repeat('3',64); h4 text:=repeat('4',64);
 BEGIN
   INSERT INTO auth.users(id,email,phone,email_confirmed_at,phone_confirmed_at)
   SELECT u,'t+'||u||'@example.invalid',NULL,now(),NULL FROM unnest(ARRAY[master,owner_a,mgr_a,staff_a,owner_b]) u;
   INSERT INTO auth.users(id,email,phone,email_confirmed_at,phone_confirmed_at) VALUES
-    (new1,'n1@example.invalid','9841000001',now(),now()), (new2,'n2@example.invalid','9841000002',now(),now()), (new3,'n3@example.invalid','9841000003',now(),now()),
+    (new1,'n1@example.invalid','9841000001',now(),now()), (new2,'n2@example.invalid','9841000002',now(),now()), (new3,'n3@example.invalid','9841000003',now(),now()), (new4,'other@example.invalid','9841000001',now(),now()),
     (unverified,'u@example.invalid','9841000009',now(),NULL);
   INSERT INTO public.businesses(name,created_by) VALUES('Biz A',owner_a) RETURNING id INTO ba;
   INSERT INTO public.businesses(name,created_by) VALUES('Biz B',owner_b) RETURNING id INTO bb;
@@ -44,12 +44,12 @@ BEGIN
 
   -- Branch manager invites into their own branch.
   SET LOCAL ROLE authenticated; PERFORM set_config('request.jwt.claims',json_build_object('sub',mgr_a,'role','authenticated')::text,true);
-  iid:=public.create_team_invitation(ba,br_a,'staff','sales_person','{}','9841000001',h1,now()+interval '2 days',1,'WhatsApp');
-  ok:=false; BEGIN PERFORM public.create_team_invitation(ba,br_b,'staff',NULL,'{}','9841000001',h2,now()+interval '2 days',1); EXCEPTION WHEN insufficient_privilege THEN ok:=true; END; ASSERT ok,'manager cannot invite into another branch';
-  ok:=false; BEGIN PERFORM public.create_team_invitation(ba,br_a,'accountant',NULL,'{}','9841000001',h2,now()+interval '2 days',1); EXCEPTION WHEN insufficient_privilege THEN ok:=true; END; ASSERT ok,'manager cannot assign an undelegated role';
-  ok:=false; BEGIN PERFORM public.create_team_invitation(ba,br_a,'admin',NULL,'{}','9841000001',h2,now()+interval '2 days',1); EXCEPTION WHEN insufficient_privilege THEN ok:=true; END; ASSERT ok,'manager cannot assign admin';
-  ok:=false; BEGIN PERFORM public.create_team_invitation(ba,br_a,'staff',NULL,'{}','9841000001',h2,now()+interval '2 days',50); EXCEPTION WHEN OTHERS THEN ok:=true; END; ASSERT ok,'phone-bound invitation must be single-use';
-  ok:=false; BEGIN PERFORM public.create_team_invitation(bb,br_a,'staff',NULL,'{}','9841000001',h2,now()+interval '2 days',1); EXCEPTION WHEN insufficient_privilege THEN ok:=true; END; ASSERT ok,'manager cannot invite into another business';
+  iid:=public.create_team_invitation(ba,br_a,'staff','sales_person','{}','N1@EXAMPLE.INVALID','9841000001',h1,now()+interval '2 days',1,'WhatsApp');
+  ok:=false; BEGIN PERFORM public.create_team_invitation(ba,br_b,'staff',NULL,'{}','n1@example.invalid','9841000001',h2,now()+interval '2 days',1); EXCEPTION WHEN insufficient_privilege THEN ok:=true; END; ASSERT ok,'manager cannot invite into another branch';
+  ok:=false; BEGIN PERFORM public.create_team_invitation(ba,br_a,'accountant',NULL,'{}','n1@example.invalid','9841000001',h2,now()+interval '2 days',1); EXCEPTION WHEN insufficient_privilege THEN ok:=true; END; ASSERT ok,'manager cannot assign an undelegated role';
+  ok:=false; BEGIN PERFORM public.create_team_invitation(ba,br_a,'admin',NULL,'{}','n1@example.invalid','9841000001',h2,now()+interval '2 days',1); EXCEPTION WHEN insufficient_privilege THEN ok:=true; END; ASSERT ok,'manager cannot assign admin';
+  ok:=false; BEGIN PERFORM public.create_team_invitation(ba,br_a,'staff',NULL,'{}','n1@example.invalid','9841000001',h2,now()+interval '2 days',50); EXCEPTION WHEN OTHERS THEN ok:=true; END; ASSERT ok,'phone-bound invitation must be single-use';
+  ok:=false; BEGIN PERFORM public.create_team_invitation(bb,br_a,'staff',NULL,'{}','n1@example.invalid','9841000001',h2,now()+interval '2 days',1); EXCEPTION WHEN insufficient_privilege THEN ok:=true; END; ASSERT ok,'manager cannot invite into another business';
   ok:=false; BEGIN PERFORM public.grant_branch_delegation(ba,br_a,staff_a,ARRAY['staff'],1,1); EXCEPTION WHEN insufficient_privilege THEN ok:=true; END; ASSERT ok,'manager cannot self-delegate to others';
   ASSERT (SELECT count(*) FROM public.team_invitations)=1,'manager sees only own invitations';
   ASSERT (SELECT invitee_mobile_masked FROM public.team_invitations_status WHERE id=iid)='••••0001','invitation status exposes only masked mobile';
@@ -57,7 +57,7 @@ BEGIN
 
   -- Staff without delegation cannot invite.
   SET LOCAL ROLE authenticated; PERFORM set_config('request.jwt.claims',json_build_object('sub',staff_a,'role','authenticated')::text,true);
-  ok:=false; BEGIN PERFORM public.create_team_invitation(ba,br_a,'viewer',NULL,'{}','9841000003',h3,now()+interval '2 days',1); EXCEPTION WHEN insufficient_privilege THEN ok:=true; END; ASSERT ok,'staff cannot invite';
+  ok:=false; BEGIN PERFORM public.create_team_invitation(ba,br_a,'viewer',NULL,'{}','n3@example.invalid','9841000003',h3,now()+interval '2 days',1); EXCEPTION WHEN insufficient_privilege THEN ok:=true; END; ASSERT ok,'staff cannot invite';
   ASSERT (SELECT count(*) FROM public.team_invitations)=0,'staff sees no invitations';
   RESET ROLE;
 
@@ -66,6 +66,8 @@ BEGIN
   ok:=false; BEGIN PERFORM public.accept_team_invitation(h1); EXCEPTION WHEN insufficient_privilege THEN ok:=true; END; ASSERT ok,'unverified mobile cannot accept';
   PERFORM set_config('request.jwt.claims',json_build_object('sub',new2,'role','authenticated')::text,true);
   ok:=false; BEGIN PERFORM public.accept_team_invitation(h1); EXCEPTION WHEN insufficient_privilege THEN ok:=true; END; ASSERT ok,'wrong verified mobile cannot accept';
+  PERFORM set_config('request.jwt.claims',json_build_object('sub',new4,'role','authenticated')::text,true);
+  ok:=false; BEGIN PERFORM public.accept_team_invitation(h1); EXCEPTION WHEN insufficient_privilege THEN ok:=true; END; ASSERT ok,'wrong verified email cannot accept';
   PERFORM set_config('request.jwt.claims',json_build_object('sub',new1,'role','authenticated')::text,true);
   ASSERT public.accept_team_invitation(h1)=ba,'matching verified invitation accepted';
   ok:=false; BEGIN PERFORM public.accept_team_invitation(h1); EXCEPTION WHEN insufficient_privilege THEN ok:=true; END; ASSERT ok,'same user cannot reuse';
@@ -79,7 +81,7 @@ BEGIN
 
   -- Revoked and expired invitations.
   SET LOCAL ROLE authenticated; PERFORM set_config('request.jwt.claims',json_build_object('sub',mgr_a,'role','authenticated')::text,true);
-  iid2:=public.create_team_invitation(ba,br_a,'viewer',NULL,'{}','9841000003',h4,now()+interval '2 days',1);
+  iid2:=public.create_team_invitation(ba,br_a,'viewer',NULL,'{}','n3@example.invalid','9841000003',h4,now()+interval '2 days',1);
   PERFORM public.revoke_team_invitation(iid2);
   PERFORM set_config('request.jwt.claims',json_build_object('sub',new3,'role','authenticated')::text,true);
   ok:=false; BEGIN PERFORM public.accept_team_invitation(h4); EXCEPTION WHEN insufficient_privilege THEN ok:=true; END; ASSERT ok,'revoked invitation rejected';
@@ -88,7 +90,7 @@ BEGIN
   ASSERT (SELECT status FROM public.team_invitations_status WHERE id=iid2)='revoked','revoked wins over expired';
   -- Delegation revoked => pending invitations stop working.
   SET LOCAL ROLE authenticated; PERFORM set_config('request.jwt.claims',json_build_object('sub',mgr_a,'role','authenticated')::text,true);
-  iid:=public.create_team_invitation(ba,br_a,'viewer',NULL,'{}','9841000003',repeat('5',64),now()+interval '2 days',1);
+  iid:=public.create_team_invitation(ba,br_a,'viewer',NULL,'{}','n3@example.invalid','9841000003',repeat('5',64),now()+interval '2 days',1);
   PERFORM set_config('request.jwt.claims',json_build_object('sub',owner_a,'role','authenticated')::text,true);
   PERFORM public.revoke_branch_delegation((SELECT id FROM public.delegation_grants WHERE manager_user_id=mgr_a AND revoked_at IS NULL));
   PERFORM set_config('request.jwt.claims',json_build_object('sub',new3,'role','authenticated')::text,true);
