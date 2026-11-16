@@ -2,15 +2,17 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const BUSINESS = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
-const BRANCH = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
-const MANAGER = 'cccccccc-cccc-4ccc-8ccc-cccccccccccc';
-const createInvite = vi.hoisted(() => vi.fn(async (_: unknown) => ({
+const { BUSINESS, BRANCH, MANAGER, createInvite } = vi.hoisted(() => ({
+  BUSINESS: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+  BRANCH: 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',
+  MANAGER: 'cccccccc-cccc-4ccc-8ccc-cccccccccccc',
+  createInvite: vi.fn(async (_: unknown) => ({
   invitationId: 'dddddddd-dddd-4ddd-8ddd-dddddddddddd',
   token: 'a'.repeat(64),
   path: '/join#token=' + 'a'.repeat(64),
   expiresAt: '2026-11-23T00:00:00.000Z',
-})));
+  })),
+}));
 
 vi.mock('@tanstack/react-start', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@tanstack/react-start')>()),
