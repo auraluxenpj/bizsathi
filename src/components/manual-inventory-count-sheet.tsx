@@ -1,11 +1,12 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useServerFn } from '@tanstack/react-start';
-import { Download, FileSpreadsheet, FileText, ClipboardList } from 'lucide-react';
+import { Download, FileSpreadsheet, FileText, ClipboardList, Camera } from 'lucide-react';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { CameraBarcodeScanner } from '@/components/camera-barcode-scanner';
 import { makeCsv } from '@/lib/inventory-csv';
 import { downloadCsv } from '@/lib/download-csv';
 import { stockBalances } from '@/lib/inventory-schemas';
@@ -30,6 +31,7 @@ export function ManualInventoryCountSheet({ variants, branches, movements, busin
   const [status, setStatus] = useState('');
   const [scanCode, setScanCode] = useState('');
   const [scanFeedback, setScanFeedback] = useState('');
+  const [cameraScannerOpen, setCameraScannerOpen] = useState(false);
   const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
   const [sessionVariantIds, setSessionVariantIds] = useState<string[] | null>(null);
   const [activeSessionStatus, setActiveSessionStatus] = useState<SessionSummary['status'] | null>(null);
@@ -54,6 +56,7 @@ export function ManualInventoryCountSheet({ variants, branches, movements, busin
     setSessionVariantIds(null);
     setActiveSessionStatus(null);
     setStatus('');
+    setCameraScannerOpen(false);
   }, [businessId]);
   const activeBranches = branches.filter(b => b.is_active);
   const selectedBranch = activeBranches.find(b => b.id === branchId) ?? activeBranches[0];
@@ -209,8 +212,12 @@ export function ManualInventoryCountSheet({ variants, branches, movements, busin
     </div>
     <div className="mt-5 rounded-lg border bg-muted/20 p-3">
       <label className="block text-sm font-medium" htmlFor="inventory-count-barcode">Scan product barcode or SKU</label>
-      <p className="mt-1 text-xs text-muted-foreground">Use a USB or Bluetooth barcode scanner in keyboard mode. Scan each unit once; the physical quantity increases by one per scan. You can still edit the quantity manually.</p>
-      <Input id="inventory-count-barcode" aria-label="Scan product barcode or SKU" className="mt-2 sm:max-w-md" value={scanCode} placeholder="Scan here, then press Enter" autoComplete="off" disabled={!selectedBranch || (activeSessionStatus !== null && activeSessionStatus !== 'draft')} onChange={e => setScanCode(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); scanInventoryBarcode(scanCode); setScanCode(''); } }} />
+      <p className="mt-1 text-xs text-muted-foreground">Scan each unit once; the physical quantity increases by one per scan. Use a USB/Bluetooth scanner in keyboard mode, your phone's rear camera, or edit the quantity manually.</p>
+      <div className="mt-2 flex flex-wrap items-center gap-2">
+        <Input id="inventory-count-barcode" aria-label="Scan product barcode or SKU" className="sm:max-w-md" value={scanCode} placeholder="USB/Bluetooth scanner: scan, then press Enter" autoComplete="off" disabled={!selectedBranch || (activeSessionStatus !== null && activeSessionStatus !== 'draft')} onChange={e => setScanCode(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); scanInventoryBarcode(scanCode); setScanCode(''); } }} />
+        <Button type="button" variant="outline" disabled={!selectedBranch || (activeSessionStatus !== null && activeSessionStatus !== 'draft')} onClick={() => setCameraScannerOpen(open => !open)}><Camera className="mr-2 size-4"/>{cameraScannerOpen ? 'Close camera' : 'Scan with camera'}</Button>
+      </div>
+      {cameraScannerOpen && <CameraBarcodeScanner onDetected={value => { scanInventoryBarcode(value); setCameraScannerOpen(false); }} onClose={() => setCameraScannerOpen(false)} />}
       {scanFeedback && <p role="status" className="mt-2 text-sm">{scanFeedback}</p>}
     </div>
     <div className="mt-4 grid gap-3 sm:grid-cols-3">
