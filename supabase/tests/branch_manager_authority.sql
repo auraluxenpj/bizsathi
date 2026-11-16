@@ -164,7 +164,9 @@ BEGIN
 
   RESET ROLE;
 
-  -- A role_code without its matching Branch Manager title fails closed.
+  -- Change the fixture as the business owner, not as the restricted Branch Manager.
+  -- The membership guard correctly rejects a Branch Manager editing their own staff record.
+  PERFORM set_config('request.jwt.claims',json_build_object('sub',owner_id,'role','authenticated')::text,true);
   UPDATE public.business_memberships
   SET job_title=NULL
   WHERE business_id=v_business_id AND user_id=manager_id;
@@ -187,6 +189,8 @@ BEGIN
   ASSERT ok, 'Incomplete Branch Manager assignment cannot delegate invitations';
   RESET ROLE;
 
+  -- Restore the valid fixture using the owner identity as well.
+  PERFORM set_config('request.jwt.claims',json_build_object('sub',owner_id,'role','authenticated')::text,true);
   UPDATE public.business_memberships
   SET job_title='branch_manager'
   WHERE business_id=v_business_id AND user_id=manager_id;
