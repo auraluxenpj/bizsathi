@@ -8,7 +8,7 @@ const anyDb = (client: unknown) => client as SupabaseClient<any, 'public', any>;
 const newToken = async () => { const token = Array.from(crypto.getRandomValues(new Uint8Array(32)), b => b.toString(16).padStart(2, '0')).join(''); const hash = Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(token))), b => b.toString(16).padStart(2, '0')).join(''); return { token, hash }; };
 
 export const listBusinesses = createServerFn({ method: 'GET' }).middleware([requireSupabaseAuth]).handler(async ({ context }) => {
-  const { data: isPlatformOwner, error: ownerError } = await context.supabase.rpc('is_platform_owner');
+  const { data: isPlatformOwner, error: ownerError } = await anyDb(context.supabase).rpc('is_platform_owner');
   if (ownerError) throw new Error('Business access could not be loaded.');
   if (isPlatformOwner) {
     // The protected platform-owner mapping grants virtual rank 100; RLS still scopes this query.
