@@ -84,7 +84,7 @@ export function TeamAccessPanel({
   const selectedBranchId = branches.some((b) => b.id === branchId) ? branchId : branches[0]?.id ?? '';
   const [managerUserId, setManagerUserId] = useState('');
   const [delegatedRoles, setDelegatedRoles] = useState<string[]>(['staff', 'viewer']);
-  const [maxUses, setMaxUses] = useState(1);
+  const [inviteeMobile, setInviteeMobile] = useState('');
   const [expiryDays, setExpiryDays] = useState(7);
   const [roleCode, setRoleCode] = useState('staff');
   const [jobTitle, setJobTitle] = useState<JobTitle>('sales_person');
@@ -116,14 +116,15 @@ export function TeamAccessPanel({
 
   const createInvite = useMutation({
     mutationFn: () => createInviteFn({ data: {
-      businessId, branchId: selectedBranchId, role: roleCode as 'admin' | 'accountant' | 'staff' | 'viewer',
+      businessId, branchId: selectedBranchId, role: roleCode as 'admin' | 'accountant' | 'staff' | 'viewer', inviteeMobile,
       jobTitle: availableTitles.includes(jobTitle) ? jobTitle : undefined,
-      deniedPermissions: [], expiresInHours: effectiveExpiryDays * 24, maxUses: effectiveMaxUses, label: label || undefined,
+      deniedPermissions: [], expiresInHours: effectiveExpiryDays * 24, maxUses: 1, label: label || undefined,
     } }),
     onSuccess: (result) => {
       setInviteLink(`${window.location.origin}${result.path}`);
       setMessage('Invitation link created. Share it with the invited team member.');
       setLabel('');
+      setInviteeMobile('');
       refresh();
     },
     onError: (error) => setMessage(error instanceof Error ? error.message : 'Invitation could not be created.'),
@@ -210,7 +211,7 @@ export function TeamAccessPanel({
 
         <div className="rounded-xl border p-4 md:p-5">
           <div className="mb-4 flex items-center gap-2"><UserPlus className="size-4 text-primary" /><h4 className="font-semibold">Invite team member</h4></div>
-          <p className="mb-4 text-sm text-muted-foreground">Every invitation is locked to one branch. The server rechecks your role, rank and delegation before creating it.</p>
+          <p className="mb-4 text-sm text-muted-foreground">Every invitation is locked to one branch, one Nepal mobile number and one use. The recipient must verify that number with Supabase Auth before joining.</p>
           <label className="mb-3 block text-sm">Branch
             <select className="mt-1 h-10 w-full rounded-md border bg-background px-3" value={selectedBranchId} onChange={(e) => setBranchId(e.target.value)} disabled={!branches.length}>
               {branches.map((b) => <option key={b.id} value={b.id}>{b.name} ({b.code})</option>)}
@@ -226,10 +227,10 @@ export function TeamAccessPanel({
               {availableTitles.map((t) => <option key={t} value={t}>{titleLabel[t]}</option>)}
             </select>
           </label>}
+          <label className="mb-3 block text-sm">Invitee Nepal mobile number
+            <input className="mt-1 h-10 w-full rounded-md border bg-background px-3" type="tel" inputMode="tel" autoComplete="tel" maxLength={20} placeholder="98XXXXXXXX" value={inviteeMobile} onChange={(e) => setInviteeMobile(e.target.value)} />
+          </label>
           <div className="grid gap-3 sm:grid-cols-2">
-            <label className="block text-sm">Maximum registrations
-              <input className="mt-1 h-10 w-full rounded-md border bg-background px-3" type="number" min={1} max={maxAllowedUses} value={effectiveMaxUses} onChange={(e) => setMaxUses(Math.max(1, Math.min(Number(e.target.value) || 1, currentGrant?.max_invite_uses ?? 100)))} />
-            </label>
             <label className="block text-sm">Link expiry (days)
               <input className="mt-1 h-10 w-full rounded-md border bg-background px-3" type="number" min={1} max={maxAllowedDays} value={effectiveExpiryDays} onChange={(e) => setExpiryDays(Math.max(1, Math.min(Number(e.target.value) || 1, currentGrant?.max_invite_days ?? 30)))} />
             </label>
@@ -237,7 +238,7 @@ export function TeamAccessPanel({
           <label className="my-3 block text-sm">Invitation label (optional)
             <input className="mt-1 h-10 w-full rounded-md border bg-background px-3" maxLength={120} value={label} onChange={(e) => setLabel(e.target.value)} placeholder="e.g. Nepalgunj cashier team" />
           </label>
-          <Button className="w-full" disabled={!selectedBranchId || !allowedInviteRoles.includes(roleCode) || createInvite.isPending} onClick={() => createInvite.mutate()}>
+          <Button className="w-full" disabled={!selectedBranchId || !inviteeMobile.trim() || !allowedInviteRoles.includes(roleCode) || createInvite.isPending} onClick={() => createInvite.mutate()}>
             <UserPlus className="mr-2 size-4" />{createInvite.isPending ? 'Creating link…' : 'Create invitation link'}
           </Button>
           {inviteLink && <div className="mt-3 rounded-lg border p-3">
@@ -256,9 +257,9 @@ export function TeamAccessPanel({
       <div className="grid gap-5 xl:grid-cols-[1.2fr_1fr]">
         <div className="rounded-xl border p-4 md:p-5">
           <div className="mb-3 flex items-center gap-2"><Users className="size-4 text-primary" /><h4 className="font-semibold">Branch invitations</h4></div>
-          {invitations.isPending ? <p className="text-sm text-muted-foreground">Loading invitations…</p> : invitations.error ? <p role="alert" className="text-sm text-destructive">Invitations could not be loaded.</p> : !(invitations.data?.invitations.length) ? <p className="text-sm text-muted-foreground">No team invitations yet.</p> : <div className="divide-y">{invitations.data.invitations.map((i: { id: string; branch_id: string; role_code: string; job_title: string | null; label: string | null; expires_at: string; max_uses: number; use_count: number; status: string }) => (
+          {invitations.isPending ? <p className="text-sm text-muted-foreground">Loading invitations…</p> : invitations.error ? <p role="alert" className="text-sm text-destructive">Invitations could not be loaded.</p> : !(invitations.data?.invitations.length) ? <p className="text-sm text-muted-foreground">No team invitations yet.</p> : <div className="divide-y">{invitations.data.invitations.map((i: { id: string; branch_id: string; role_code: string; job_title: string | null; label: string | null; expires_at: string; max_uses: number; use_count: number; invitee_mobile_masked: string | null; status: string }) => (
             <article key={i.id} className="flex flex-wrap items-center justify-between gap-3 py-3 text-sm">
-              <div><p className="font-medium">{i.label || titleLabel[(i.job_title ?? '') as JobTitle] || i.role_code}</p><p className="text-xs text-muted-foreground">{branches.find((b) => b.id === i.branch_id)?.name || 'Assigned branch'} · {i.use_count}/{i.max_uses} used · expires {new Date(i.expires_at).toLocaleDateString()} · {i.status.replace('_', ' ')}</p></div>
+              <div><p className="font-medium">{i.label || titleLabel[(i.job_title ?? '') as JobTitle] || i.role_code}</p><p className="text-xs text-muted-foreground">{branches.find((b) => b.id === i.branch_id)?.name || 'Assigned branch'} · {i.invitee_mobile_masked || 'Mobile not bound'} · expires {new Date(i.expires_at).toLocaleDateString()} · {i.status.replace('_', ' ')}</p></div>
               {i.status === 'pending' || i.status === 'partially_used' ? <Button size="sm" variant="outline" disabled={revokeInvite.isPending} onClick={() => revokeInvite.mutate(i.id)}><Ban className="mr-1 size-3" />Revoke</Button> : null}
             </article>
           ))}</div>}
