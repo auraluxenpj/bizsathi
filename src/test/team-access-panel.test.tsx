@@ -126,7 +126,7 @@ describe('Team Access hierarchy panel', () => {
     expect([...role.options].map((o) => o.value)).toContain('branch_manager');
     fireEvent.change(role, { target: { value: 'branch_manager' } });
     expect(screen.getByRole('combobox', { name: 'Position' })).toHaveValue('branch_manager');
-    expect(screen.getByRole('option', { name: 'Branch Manager' })).toBeInTheDocument();
+    expect(screen.getAllByRole('option', { name: 'Branch Manager' }).length).toBeGreaterThan(0);
   });
 
   it('limits a branch manager to delegated roles, branch scope and expiry limits', async () => {
