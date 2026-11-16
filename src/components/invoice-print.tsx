@@ -62,7 +62,7 @@ export function InvoiceSheet({ data: d, layout, extra }: { data: InvoiceData; la
         <style>{`
           .thermal-receipt { width:76mm; max-width:100%; padding:3mm; border:1px solid #e5e7eb; background:#fff; color:#000; font:9pt/1.3 ui-monospace,SFMono-Regular,Menlo,monospace; }
           .thermal-receipt__header { text-align:center; padding-bottom:3mm; border-bottom:1px dashed #777; }
-          .thermal-receipt__logo { display:block !important; width:38mm !important; height:auto !important; max-width:100% !important; object-fit:contain; margin:0 auto 1.5mm !important; visibility:visible !important; }
+          .thermal-receipt__logo { display:block !important; width:38mm !important; height:auto !important; max-width:100% !important; object-fit:contain; mix-blend-mode:multiply; filter:brightness(1.06) contrast(1.08); background:transparent; margin:0 auto 1.5mm !important; visibility:visible !important; }
           .thermal-receipt__header h2 { margin:0 0 1mm; font:700 12pt/1.2 Arial,sans-serif; overflow-wrap:anywhere; }
           .thermal-receipt__header p,.thermal-receipt__meta p,.thermal-receipt__party p { margin:0; overflow-wrap:anywhere; }
           .thermal-receipt__meta { padding:2.5mm 0; border-bottom:1px dashed #777; }
@@ -121,7 +121,7 @@ export function InvoiceSheet({ data: d, layout, extra }: { data: InvoiceData; la
     ) : (
       <article aria-label="Invoice receipt" data-layout="a4" className="mx-auto box-border max-w-3xl border-y bg-white px-4 py-7 text-black print:max-w-none">
         <div className="flex flex-wrap justify-between gap-4 border-b pb-6">
-          <div><img src="/brand/auraluxe-invoice-logo.jpg" alt="AURALUXE" className="mb-3 h-auto w-36 max-w-full object-contain" />{d.pan && <p className="mt-2 text-sm text-neutral-600">PAN/VAT {d.pan}</p>}{d.branch && <p className="text-sm text-neutral-600">{d.branch}</p>}</div>
+          <div><img src="/brand/auraluxe-invoice-logo.jpg" alt="AURALUXE" className="mb-3 h-auto w-36 max-w-full object-contain mix-blend-multiply [filter:brightness(1.06)_contrast(1.08)]" />{d.pan && <p className="mt-2 text-sm text-neutral-600">PAN/VAT {d.pan}</p>}{d.branch && <p className="text-sm text-neutral-600">{d.branch}</p>}</div>
           <div className="text-right text-sm"><p className="text-lg font-semibold uppercase tracking-wide">{invoiceTitle(d.kind)}</p><p className="font-semibold">{d.reference}</p><p>{formatBsAd(d.date)}</p><p className="capitalize">{d.status}</p></div>
         </div>
         <div className="my-5 text-sm"><p className="text-xs uppercase text-neutral-500">{d.kind.startsWith('purchase') ? 'Supplier' : 'Bill to'}</p><p className="font-medium">{d.party || 'Walk-in customer'}</p>{d.phone && <p>{d.phone}</p>}{d.address&&<p>{d.address}</p>}{d.partyPan&&<p>PAN/VAT {d.partyPan}</p>}</div>
