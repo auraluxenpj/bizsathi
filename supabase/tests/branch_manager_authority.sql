@@ -146,6 +146,33 @@ BEGIN
 
   RESET ROLE;
 
+  -- A role_code without its matching Branch Manager title fails closed.
+  UPDATE public.business_memberships
+  SET job_title=NULL
+  WHERE business_id=v_business_id AND user_id=manager_id;
+
+  SET LOCAL ROLE authenticated;
+  PERFORM set_config('request.jwt.claims',json_build_object('sub',manager_id,'role','authenticated')::text,true);
+  ASSERT NOT public.has_permission(v_business_id,'stock.edit'),
+    'Incomplete Branch Manager assignment has no permissions';
+  ASSERT NOT public.can_approve_inventory_count(v_business_id,v_branch_a),
+    'Incomplete Branch Manager assignment cannot approve counts';
+  ok := false;
+  BEGIN
+    PERFORM public.create_team_invitation(
+      v_business_id,v_branch_a,'staff','sales_person','{}',
+      'invitee4@example.invalid','9841000004',repeat('d',64),
+      now()+interval '2 days',1,'Incomplete manager test'
+    );
+  EXCEPTION WHEN OTHERS THEN ok := true;
+  END;
+  ASSERT ok, 'Incomplete Branch Manager assignment cannot delegate invitations';
+  RESET ROLE;
+
+  UPDATE public.business_memberships
+  SET job_title='branch_manager'
+  WHERE business_id=v_business_id AND user_id=manager_id;
+
   -- Accountant keeps financial rank but is not automatically a Branch Manager approver.
   SET LOCAL ROLE authenticated;
   PERFORM set_config('request.jwt.claims',json_build_object('sub',accountant_id,'role','authenticated')::text,true);
