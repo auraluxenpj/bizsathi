@@ -2564,6 +2564,18 @@ export type Database = {
         Args: { _session_id: string }
         Returns: boolean
       }
+      read_inventory_count_adjustment: {
+        Args: { _session_id: string }
+        Returns: Json
+      }
+      prepare_inventory_count_adjustment: {
+        Args: { _session_id: string }
+        Returns: Json
+      }
+      confirm_inventory_count_adjustment: {
+        Args: { _session_id: string; _reason: string }
+        Returns: Json
+      }
       review_inventory_count_session: {
         Args: { _session_id: string; _decision: string; _note?: string }
         Returns: boolean

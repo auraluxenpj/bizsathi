@@ -10,7 +10,7 @@ import { CameraBarcodeScanner } from '@/components/camera-barcode-scanner';
 import { makeCsv } from '@/lib/inventory-csv';
 import { downloadCsv } from '@/lib/download-csv';
 import { stockBalances } from '@/lib/inventory-schemas';
-import { createInventoryCountSession, updateInventoryCountSession, listInventoryCountSessions, readInventoryCountSession, submitInventoryCountSession, reviewInventoryCountSession } from '@/lib/inventory.functions';
+import { createInventoryCountSession, updateInventoryCountSession, listInventoryCountSessions, readInventoryCountSession, submitInventoryCountSession, reviewInventoryCountSession, readInventoryCountAdjustment, prepareInventoryCountAdjustment, confirmInventoryCountAdjustment } from '@/lib/inventory.functions';
 
 type Variant = { id: string; sku: string; barcode?: string | null; name: string; unit: string; purchase_price?: number | string | null; is_active: boolean; products?: { name?: string; is_active?: boolean | null } | null };
 type Branch = { id: string; name: string; is_active: boolean };
@@ -21,6 +21,8 @@ type Props = { variants: Variant[]; branches: Branch[]; movements: Movement[]; b
 
 type DraftRow = { physical: string; cost: string; system?: number; sku?: string; product?: string; variant?: string; unit?: string };
 type SessionSummary = { id: string; branch_id: string; branch_name: string; count_date: string; counted_by: string; status: 'draft'|'submitted'|'approved'|'rejected'; created_by: string; created_at: string; submitted_at: string | null; reviewed_by: string | null; reviewed_at: string | null; review_note: string | null; line_count: number; counted_line_count: number };
+type CountAdjustmentLine = { id: string; variant_id: string; sku: string; product: string; system_quantity: number; physical_quantity: number; delta: number; current_quantity_at_prepare: number; stock_operation_id: string | null };
+type CountAdjustmentDetail = { batch: { id: string; status: 'pending'|'posted'|'stale'|'no_adjustments'; prepared_by: string; prepared_at: string; confirmed_by: string | null; confirmed_at: string | null; confirmation_reason: string | null; stale_at: string | null }; lines: CountAdjustmentLine[] };
 type SavedCountDetail = { session: { id: string; branch_id: string; count_date: string; counted_by: string; status: SessionSummary['status'] }; lines: { variant_id: string; sku: string; product: string; variant: string; unit: string; system_quantity: number; physical_quantity: number | null; cost_price: number | null; note: string | null }[] };
 
 export function ManualInventoryCountSheet({ variants, branches, movements, businessId, manager, currentUserId, canViewPurchasePrice }: Props) {
@@ -35,6 +37,7 @@ export function ManualInventoryCountSheet({ variants, branches, movements, busin
   const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
   const [sessionVariantIds, setSessionVariantIds] = useState<string[] | null>(null);
   const [activeSessionStatus, setActiveSessionStatus] = useState<SessionSummary['status'] | null>(null);
+  const [adjustmentReason, setAdjustmentReason] = useState('');
   const queryClient = useQueryClient();
   const createSession = useServerFn(createInventoryCountSession);
   const updateSession = useServerFn(updateInventoryCountSession);
@@ -42,6 +45,31 @@ export function ManualInventoryCountSheet({ variants, branches, movements, busin
   const readSession = useServerFn(readInventoryCountSession);
   const submitSession = useServerFn(submitInventoryCountSession);
   const reviewSession = useServerFn(reviewInventoryCountSession);
+  const readAdjustment = useServerFn(readInventoryCountAdjustment);
+  const prepareAdjustment = useServerFn(prepareInventoryCountAdjustment);
+  const confirmAdjustment = useServerFn(confirmInventoryCountAdjustment);
+  const adjustmentQuery = useQuery({
+    queryKey: ['inventory-count-adjustment', activeSessionId],
+    queryFn: async () => (await readAdjustment({ data: { sessionId: activeSessionId! } })) as unknown as CountAdjustmentDetail | null,
+    enabled: !!activeSessionId && activeSessionStatus === 'approved' && manager,
+  });
+  const prepareAdjustmentMutation = useMutation({
+    mutationFn: async () => prepareAdjustment({ data: { sessionId: activeSessionId! } }),
+    onSuccess: async () => {
+      setStatus('Adjustment proposal prepared. Review every shortage and surplus before confirming.');
+      await queryClient.invalidateQueries({ queryKey: ['inventory-count-adjustment', activeSessionId] });
+    },
+    onError: e => setStatus(e instanceof Error ? e.message : 'Adjustment proposal could not be prepared.'),
+  });
+  const confirmAdjustmentMutation = useMutation({
+    mutationFn: async () => confirmAdjustment({ data: { sessionId: activeSessionId!, reason: adjustmentReason.trim() } }),
+    onSuccess: async () => {
+      setAdjustmentReason('');
+      setStatus('Stock adjustments posted to the stock ledger and linked to this approved count.');
+      await queryClient.invalidateQueries();
+    },
+    onError: e => setStatus(e instanceof Error ? e.message : 'Stock adjustments were not posted.'),
+  });
   const sessionsQuery = useQuery({
     queryKey: ['inventory-count-sessions', businessId],
     queryFn: async () => (await listSessions({ data: { businessId } })) as SessionSummary[],
@@ -55,6 +83,7 @@ export function ManualInventoryCountSheet({ variants, branches, movements, busin
     setActiveSessionId(null);
     setSessionVariantIds(null);
     setActiveSessionStatus(null);
+    setAdjustmentReason('');
     setStatus('');
     setCameraScannerOpen(false);
   }, [businessId]);
@@ -134,6 +163,7 @@ export function ManualInventoryCountSheet({ variants, branches, movements, busin
       setActiveSessionId(detail.session.id);
       setSessionVariantIds(detail.lines.map(line => line.variant_id));
       setActiveSessionStatus(detail.session.status);
+      setAdjustmentReason('');
       setDrafts(Object.fromEntries(detail.lines.map(line => [`${detail.session.branch_id}:${line.variant_id}`, {
         physical: line.physical_quantity === null ? '' : String(line.physical_quantity),
         cost: line.cost_price === null ? (canViewPurchasePrice ? String(Number(variants.find(v => v.id === line.variant_id)?.purchase_price ?? 0)) : '') : String(line.cost_price),
@@ -204,6 +234,27 @@ export function ManualInventoryCountSheet({ variants, branches, movements, busin
         </div>
       </article>)}</div>}
     </div>
+    {manager && activeSessionId && activeSessionStatus === 'approved' && <section className="mt-5 rounded-lg border border-primary/30 p-4">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div><h3 className="font-semibold">Stock adjustment proposal</h3><p className="mt-1 text-sm text-muted-foreground">Approval did not change stock. Review the proposed differences, then confirm separately to post them to the existing stock ledger.</p></div>
+        <Button type="button" variant="outline" size="sm" onClick={() => adjustmentQuery.refetch()} disabled={adjustmentQuery.isFetching}>Refresh proposal</Button>
+      </div>
+      {adjustmentQuery.isPending ? <p className="py-3 text-sm text-muted-foreground">Checking adjustment proposal…</p>
+      : adjustmentQuery.error ? <p role="alert" className="py-3 text-sm text-destructive">Adjustment proposal could not be loaded. Refresh and try again.</p>
+      : !adjustmentQuery.data ? <div className="mt-3"><Button type="button" disabled={prepareAdjustmentMutation.isPending} onClick={() => prepareAdjustmentMutation.mutate()}>{prepareAdjustmentMutation.isPending ? 'Preparing…' : 'Prepare proposed adjustments'}</Button></div>
+      : <div className="mt-3 space-y-3">
+        <div className="flex flex-wrap items-center gap-2 text-sm"><span className="font-medium">Proposal status:</span><span className="rounded-full bg-muted px-2 py-1 text-xs capitalize">{adjustmentQuery.data.batch.status.replace('_',' ')}</span><span className="text-xs text-muted-foreground">Prepared {new Date(adjustmentQuery.data.batch.prepared_at).toLocaleString()} · by {adjustmentQuery.data.batch.prepared_by.slice(0,8)}</span></div>
+        {adjustmentQuery.data.batch.status === 'pending' && <>
+          <div className="overflow-x-auto"><table className="w-full min-w-[620px] text-left text-sm"><thead><tr>{['Product / SKU','System qty','Physical qty','Adjustment','Stock at preparation'].map(h => <th key={h} className="border-b px-2 py-2 font-medium text-muted-foreground">{h}</th>)}</tr></thead><tbody>{adjustmentQuery.data.lines.map(line => <tr key={line.id} className="border-b"><td className="px-2 py-2"><span className="font-medium">{line.product}</span><span className="block text-xs text-muted-foreground">{line.sku}</span></td><td className="px-2 py-2 tabular-nums">{formatQuantity(line.system_quantity)}</td><td className="px-2 py-2 tabular-nums">{formatQuantity(line.physical_quantity)}</td><td className="px-2 py-2 font-semibold tabular-nums">{line.delta > 0 ? '+' : ''}{formatQuantity(line.delta)} {line.delta > 0 ? 'surplus' : 'shortage'}</td><td className="px-2 py-2 tabular-nums">{formatQuantity(line.current_quantity_at_prepare)}</td></tr>)}</tbody></table></div>
+          <label className="block text-sm">Reason for confirming this stock adjustment<Input maxLength={500} required value={adjustmentReason} onChange={e => setAdjustmentReason(e.target.value)} placeholder="Explain why these count differences are being posted" /></label>
+          <p className="text-xs text-muted-foreground">Confirmation rechecks live stock. If any counted item has changed since the physical count, the entire adjustment is stopped and a fresh count is required. All lines post together or none do.</p>
+          <Button type="button" disabled={!adjustmentReason.trim() || confirmAdjustmentMutation.isPending} onClick={() => confirmAdjustmentMutation.mutate()}>{confirmAdjustmentMutation.isPending ? 'Posting adjustments…' : 'Confirm and post stock adjustments'}</Button>
+        </>}
+        {adjustmentQuery.data.batch.status === 'stale' && <p role="alert" className="rounded-md bg-destructive/5 p-3 text-sm text-destructive">Stock changed after the physical count. No adjustments were posted. Start a fresh physical count before trying again.</p>}
+        {adjustmentQuery.data.batch.status === 'no_adjustments' && <p className="rounded-md bg-muted p-3 text-sm">No stock adjustments are required. All counted quantities match the approved system quantities.</p>}
+        {adjustmentQuery.data.batch.status === 'posted' && <div className="rounded-md bg-muted p-3 text-sm"><p className="font-medium">All proposed adjustments were posted successfully.</p><p className="mt-1 text-xs text-muted-foreground">Confirmed {adjustmentQuery.data.batch.confirmed_at ? new Date(adjustmentQuery.data.batch.confirmed_at).toLocaleString() : ''} · by {adjustmentQuery.data.batch.confirmed_by?.slice(0,8) ?? 'administrator'}</p><p className="mt-1">Reason: {adjustmentQuery.data.batch.confirmation_reason}</p></div>}
+      </div>}
+    </section>}
     {!canViewPurchasePrice && <p role="status" className="mt-4 rounded-md border border-amber-500/40 bg-amber-500/5 p-3 text-sm">Purchase price access is currently restricted. Ask the business owner to open Team → Users → Edit permissions and keep “See Purchase Price” enabled for this team member. Cost and stock values will appear after access is enabled and the inventory is refreshed.</p>}
     <div className="mt-5 grid gap-3 sm:grid-cols-3">
       <label className="text-sm">Branch<select aria-label="Count branch" disabled={!!activeSessionId} className="mt-2 h-10 w-full rounded-md border bg-card px-3" value={selectedBranch?.id ?? ''} onChange={e => setBranchId(e.target.value)}><option value="">Select branch</option>{activeBranches.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}</select></label>
@@ -227,6 +278,6 @@ export function ManualInventoryCountSheet({ variants, branches, movements, busin
     </div>
     {!activeBranches.length ? <p className="py-8 text-sm text-muted-foreground">No active branches are available for counting.</p> : <div className="mt-5 overflow-x-auto"><table className="w-full min-w-[1120px] text-left text-sm"><thead><tr>{['Product / SKU','System qty','Physical qty (enter)','Variance','Cost price / unit (read-only)','System value','Physical value','Difference (value)'].map(h => <th key={h} className="border-b px-2 py-3 font-medium text-muted-foreground">{h}</th>)}</tr></thead><tbody>{rows.map(r => <tr key={r.key} className="border-b last:border-0"><td className="px-2 py-3"><p className="font-medium">{r.product}</p><p className="text-xs text-muted-foreground">{r.variant} · {r.sku}</p></td><td className="px-2 py-3 tabular-nums">{formatQuantity(r.system)} {r.unit}</td><td className="w-36 px-2 py-3"><Input aria-label={`Physical quantity for ${r.sku}`} type="number" min="0" step="1" value={drafts[r.key]?.physical ?? ''} placeholder="Enter count" disabled={activeSessionStatus !== null && activeSessionStatus !== 'draft'} onChange={e => update(r.key, 'physical', e.target.value)}/></td><td className={`px-2 py-3 tabular-nums ${r.difference !== null && r.difference !== 0 ? 'font-semibold text-destructive' : ''}`}>{r.difference === null ? '—' : formatQuantity(r.difference)}</td><td className="px-2 py-3 tabular-nums">{r.cost === null ? '—' : r.cost.toFixed(2)}</td><td className="px-2 py-3 tabular-nums">{r.systemValue === null ? '—' : r.systemValue.toFixed(2)}</td><td className="px-2 py-3 tabular-nums">{r.physicalValue === null ? '—' : r.physicalValue.toFixed(2)}</td><td className={`px-2 py-3 tabular-nums ${r.valueDifference !== null && r.valueDifference !== 0 ? 'font-semibold' : ''}`}>{r.valueDifference === null ? '—' : r.valueDifference.toFixed(2)}</td></tr>)}</tbody><tfoot><tr className="bg-muted/40 font-semibold"><td className="px-2 py-3">Total</td><td className="px-2 py-3 tabular-nums">{formatQuantity(rows.reduce((s,r)=>s+r.system,0))}</td><td className="px-2 py-3 tabular-nums">{formatQuantity(enteredRows.reduce((s,r)=>s+(r.physical??0),0))}</td><td className="px-2 py-3 tabular-nums">{formatQuantity(totalDifference)}</td><td className="px-2 py-3">—</td><td className="px-2 py-3 tabular-nums">{totalSystemValue === null ? '—' : totalSystemValue.toFixed(2)}</td><td className="px-2 py-3 tabular-nums">{totalPhysicalValue === null ? '—' : totalPhysicalValue.toFixed(2)}</td><td className="px-2 py-3 tabular-nums">{totalValueDifference === null ? '—' : totalValueDifference.toFixed(2)}</td></tr></tfoot></table></div>}
     {status && <p role="status" className="mt-4 text-sm text-primary">{status}</p>}
-    <p className="mt-4 text-xs text-muted-foreground">Cost price is read-only and sourced from the product's saved purchase price (or the saved count snapshot when reopening a count). {canViewPurchasePrice ? 'System and physical stock values use this same cost basis.' : 'Purchase-price access is restricted for this account. Ask the business owner to enable “See Purchase Price” in this team member’s permissions. Valuation fields are shown as unavailable, not zero.'} Difference (value) is calculated as physical quantity minus system quantity, multiplied by cost price; shortages are negative and surpluses are positive. Saved drafts persist across refreshes; submitted counts are locked for review. Blank physical quantities are not treated as zero. Approval records the review only and never posts stock adjustments.</p>
+    <p className="mt-4 text-xs text-muted-foreground">Cost price is read-only and sourced from the product's saved purchase price (or the saved count snapshot when reopening a count). {canViewPurchasePrice ? 'System and physical stock values use this same cost basis.' : 'Purchase-price access is restricted for this account. Ask the business owner to enable “See Purchase Price” in this team member’s permissions. Valuation fields are shown as unavailable, not zero.'} Difference (value) is calculated as physical quantity minus system quantity, multiplied by cost price; shortages are negative and surpluses are positive. Saved drafts persist across refreshes; submitted counts are locked for review. Blank physical quantities are not treated as zero. Approval records the review only. Stock adjustments require a separate administrator proposal review and explicit confirmation.</p>
   </section>;
 }
