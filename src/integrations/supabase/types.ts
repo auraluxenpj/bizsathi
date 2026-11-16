@@ -2593,6 +2593,22 @@ export type Database = {
       }
       adjust_payment_account: { Args: { _request: Json }; Returns: string }
       archive_business: { Args: { _business_id: string }; Returns: undefined }
+      request_business_archive: { Args: { _business_id: string; _reason: string }; Returns: string }
+      list_business_archive_requests: {
+        Args: { _business_id: string }
+        Returns: {
+          id: string
+          business_id: string
+          requested_by: string
+          request_reason: string
+          status: string
+          reviewed_by: string | null
+          review_note: string | null
+          created_at: string
+          reviewed_at: string | null
+        }[]
+      }
+      review_business_archive_request: { Args: { _request_id: string; _approve: boolean; _review_note?: string | null }; Returns: undefined }
       begin_website_stock_sync: {
         Args: { _branch_id: string; _business_id: string; _lease_id: string }
         Returns: undefined
