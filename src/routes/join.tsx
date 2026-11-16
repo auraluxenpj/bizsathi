@@ -38,6 +38,7 @@ export function Join() {
     expiresAt: string;
     seatsLeft: number;
     inviteeMobileMasked: string | null;
+    inviteeEmailMasked: string | null;
   } | null>(null);
 
   useEffect(() => {
@@ -159,6 +160,7 @@ export function Join() {
             <div className="rounded-md bg-muted p-3 text-sm space-y-1">
               <p><strong>Invited by:</strong> {details.inviterName}</p>
               {details.jobTitle && <p><strong>Position:</strong> {details.jobTitle.replace('_', ' ')}</p>}
+              <p><strong>Invited email:</strong> {details.inviteeEmailMasked || 'Not available'}</p>
               <p><strong>Invited mobile:</strong> {details.inviteeMobileMasked || 'Not available'}</p>
               <p><strong>Remaining uses:</strong> {details.seatsLeft}</p>
             </div>
