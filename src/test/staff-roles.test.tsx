@@ -31,8 +31,8 @@ describe('Team Access invitations', () => {
     render(<QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}><RouterProvider router={router} /></QueryClientProvider>);
 
     await screen.findByText('Invite team member');
-    await waitFor(() => expect(screen.getByLabelText('Role').querySelectorAll('option').length).toBeGreaterThan(0));
-    fireEvent.change(screen.getByLabelText('Role'), { target: { value: 'accountant' } });
+    await waitFor(() => expect(screen.getByRole('combobox', { name: 'Role' }).querySelectorAll('option').length).toBeGreaterThan(0));
+    fireEvent.change(screen.getByRole('combobox', { name: 'Role' }), { target: { value: 'accountant' } });
     fireEvent.change(screen.getByLabelText('Position'), { target: { value: 'accountant' } });
     fireEvent.change(screen.getByLabelText('Invitee email address'), { target: { value: 'staff@example.com' } });
     fireEvent.change(screen.getByLabelText('Invitee Nepal mobile number'), { target: { value: '9800000000' } });
