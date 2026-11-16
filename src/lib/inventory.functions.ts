@@ -63,7 +63,7 @@ export const postStock = createServerFn({method:'POST'}).middleware([requireSupa
 
 const countLineInput = z.object({
   variantId: z.string().uuid(),
-  physicalQuantity: z.number().finite().nonnegative().max(999999999).refine(n => Math.abs(n * 1000 - Math.round(n * 1000)) < 0.00001).nullable(),
+  physicalQuantity: z.number().int().nonnegative().max(999999999).nullable(),
   costPrice: z.number().finite().nonnegative().max(999999999).refine(n => Math.abs(n * 100 - Math.round(n * 100)) < 0.00001).nullable().optional(),
   note: z.string().max(500).optional(),
 });
