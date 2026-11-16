@@ -17,11 +17,19 @@ BEGIN
   INSERT INTO public.platform_owners(user_id,note)
   VALUES (master_owner,'synthetic Stage 1 regression test');
 
+  -- Seed synthetic business and memberships as the disposable database owner.
+  -- Migration 0041 intentionally disables the application create_business RPC.
+  INSERT INTO public.businesses(name,created_by)
+  VALUES ('Synthetic ownership boundary',business_owner)
+  RETURNING id INTO v_business_id;
+  INSERT INTO public.business_memberships(business_id,user_id,role_code,status)
+  VALUES
+    (v_business_id,business_owner,'owner','active'),
+    (v_business_id,new_owner,'admin','active'),
+    (v_business_id,master_owner,'admin','active');
+
   SET LOCAL ROLE authenticated;
   PERFORM set_config('request.jwt.claims',json_build_object('sub',business_owner,'role','authenticated')::text,true);
-  v_business_id := public.create_business('Synthetic ownership boundary');
-  PERFORM public.add_business_member(v_business_id,new_owner,'admin');
-  PERFORM public.add_business_member(v_business_id,master_owner,'admin');
 
   -- Master Owner has global rank 100, but that rank must not authorize a
   -- business-level ownership transfer.
