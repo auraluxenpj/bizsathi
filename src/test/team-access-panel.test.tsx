@@ -47,10 +47,10 @@ describe('Team Access hierarchy panel', () => {
     for (const role of ['CEO / Platform Owner', 'Administrator / Partner', 'Store Manager', 'Accountant', 'Inventory Manager', 'Cashier / POS', 'Store Team']) {
       expect(screen.getAllByText(role).length).toBeGreaterThan(0);
     }
-    expect(screen.getByText(/Rank\\s*100/)).toBeInTheDocument();
-    expect(screen.getByText(/Rank\\s*80/)).toBeInTheDocument();
-    expect(screen.getAllByText(/Rank\\s*60/)).toHaveLength(2);
-    expect(screen.getAllByText(/Rank\\s*40/)).toHaveLength(3);
+    expect(screen.getByText(/Rank\s*100/)).toBeInTheDocument();
+    expect(screen.getByText(/Rank\s*80/)).toBeInTheDocument();
+    expect(screen.getAllByText(/Rank\s*60/)).toHaveLength(2);
+    expect(screen.getAllByText(/Rank\s*40/)).toHaveLength(3);
   });
 
   it('limits a branch manager to delegated roles, branch scope and expiry limits', async () => {
