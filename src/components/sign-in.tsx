@@ -54,8 +54,12 @@ export function SignIn() {
           if (parsed.type === 'email') {
             const { error } = await supabase.auth.signInWithPassword({ email: parsed.value, password });
             if (error) throw error;
-          } else {
+          } else if (parsed.type === 'mobile') {
             const t = await signInWithMobile({ data: { mobile: parsed.value, password } });
+            const { error } = await supabase.auth.setSession(t);
+            if (error) throw error;
+          } else {
+            const t = await signInWithEmployeeId({ data: { employeeId: parsed.value, password } });
             const { error } = await supabase.auth.setSession(t);
             if (error) throw error;
           }
