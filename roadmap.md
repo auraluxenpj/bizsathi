@@ -1,5 +1,6 @@
 # Security review workspace
-- [ ] Phase 1 audit of secure hierarchy, branch team invitations and email/mobile password sign-in; present findings and plan only, with no database or production changes.
+- [x] Phase 1 secure access audit: live owner binding absent, missing /join page, incomplete verified signup and delegation/identity gaps identified; 539 tests passed; findings and proposed plan prepared without database or production changes.
+- [ ] Implement secure team-access phases 2–8: awaits review of the Phase 1 findings and proposed plan.
 - [x] Recurring POS failure diagnosed: published browser throws missing SUPABASE_URL during root auth subscription before POS queries; restored explicit allowlisted public Cloud build configuration with missing-value checks. Production config resolves both values; 26 tests passed, build OK, signed-in 409-product catalogue and unsaved receipt verified without errors or record changes.
 - [ ] Publish the corrected Cloud connection configuration and verify live /pos recovery: waits for publication approval; existing published bundle remains broken until updated.
 - [x] Investigate POS page-load error: fresh signed-in POS, 409 real product cards and unsaved receipt verified with no console errors; checkout and navigation compilation blockers corrected; 22 regression tests passed and build OK. Screenshot's original session failure could not be reproduced; no live transactions posted.
