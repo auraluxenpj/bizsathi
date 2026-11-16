@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { tenantInput } from './business-schemas';
+import { normalizeVerifiedNepalMobile } from './login-identifier';
 
 // Input rules for branch-scoped team invitations and delegation.
 // The browser only ever sends ids and choices; every authority check is repeated in the database RPCs.
@@ -11,10 +12,12 @@ export const invitationToken = z.string().regex(/^[a-f0-9]{64}$/);
 export const teamInviteInput = tenantInput.extend({
   branchId: uuid,
   role: z.enum(['admin', 'accountant', 'staff', 'viewer']), // 'owner' can never be invited
+  inviteeEmail: z.string().trim().toLowerCase().email().max(254),
+  inviteeMobile: z.string().trim().min(10).max(40).refine(value => Boolean(normalizeVerifiedNepalMobile(value)), 'Enter a valid Nepal mobile number.'),
   jobTitle: jobTitle.optional(),
   deniedPermissions: z.array(permissionKey).max(80).default([]),
   expiresInHours: z.number().int().min(1).max(720).default(168), // 1 hour .. 30 days, default 7 days
-  maxUses: z.number().int().min(1).max(100).default(1),
+  maxUses: z.literal(1).default(1),
   label: z.string().trim().max(120).optional(),
 });
 export const teamInviteListInput = tenantInput.extend({ branchId: uuid.optional() });

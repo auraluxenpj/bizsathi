@@ -18,7 +18,7 @@ export function SignIn() {
   const [signedIn, setSignedIn] = useState(false);
   const [mode, setMode] = useState<'login'|'signup'|'recovery'>('login'); const [hasInvite, setHasInvite] = useState(false);
   const [email, setEmail] = useState(''); const [mobile, setMobile] = useState(''); const [identifier, setIdentifier] = useState(''); const [password, setPassword] = useState(''); const [message, setMessage] = useState('');
-  useEffect(() => { supabase.auth.getUser().then(({ data }) => setSignedIn(Boolean(data.user))); setHasInvite(Boolean(sessionStorage.getItem('bizsathi-invite'))); }, []);
+  useEffect(() => { supabase.auth.getUser().then(({ data }) => setSignedIn(Boolean(data.user))); setHasInvite(Boolean(sessionStorage.getItem('bizsathi-invite') || sessionStorage.getItem('bizsathi-team-token'))); }, []);
   async function login(provider: 'google' | 'lovable') {
     setBusy(true); setError('');
     try {
@@ -26,7 +26,7 @@ export function SignIn() {
       if (result.error) throw result.error;
       if (result.redirected) return;
       const { data } = await supabase.auth.getUser();
-      if (data.user) await navigate({ to: sessionStorage.getItem('bizsathi-invite') ? '/invite' : '/dashboard' });
+      if (data.user) await navigate({ to: sessionStorage.getItem('bizsathi-team-token') ? '/join' : sessionStorage.getItem('bizsathi-invite') ? '/invite' : '/dashboard' });
     } catch { setError('Sign-in could not be completed. Please try again.'); }
     finally { setBusy(false); }
   }
@@ -43,7 +43,9 @@ export function SignIn() {
           if (!hasInvite) throw new Error('invitation required');
           const normalizedMobile = normalizeLoginMobile(mobile);
           if (!isEmailLoginIdentifier(email) || !normalizedMobile || password.length < 8) throw new Error('invalid');
-          const { data, error } = await supabase.auth.signUp({ email: email.trim().toLowerCase(), password, options: { data: { mobile: normalizedMobile }, emailRedirectTo: `${window.location.origin}/auth` } });
+          const teamToken = sessionStorage.getItem('bizsathi-team-token');
+          const emailRedirectTo = teamToken ? `${window.location.origin}/join#token=${teamToken}` : `${window.location.origin}/auth`;
+          const { data, error } = await supabase.auth.signUp({ email: email.trim().toLowerCase(), password, options: { data: { mobile: normalizedMobile }, emailRedirectTo } });
           if (error) throw error;
           if (!data.session) { setMessage('Check your email to confirm your account before signing in.'); return; }
         } else {
@@ -58,7 +60,7 @@ export function SignIn() {
             if (error) throw error;
           }
         }
-        await navigate({ to: sessionStorage.getItem('bizsathi-invite') ? '/invite' : '/dashboard' });
+        await navigate({ to: sessionStorage.getItem('bizsathi-team-token') ? '/join' : sessionStorage.getItem('bizsathi-invite') ? '/invite' : '/dashboard' });
       }
     } catch { setError('This request could not be completed. Check your details and try again.'); }
     finally { setBusy(false); }

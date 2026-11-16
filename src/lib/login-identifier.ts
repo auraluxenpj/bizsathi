@@ -18,3 +18,9 @@ export function classifyLoginIdentifier(value: string):
   const mobile = normalizeLoginMobile(trimmed);
   return mobile ? { type: 'mobile', value: mobile } : null;
 }
+
+/** Return a Nepal mobile accepted by the membership verification policy. */
+export function normalizeVerifiedNepalMobile(value: string): string | null {
+  const mobile = normalizeLoginMobile(value);
+  return mobile && /^9[78]\d{8}$/.test(mobile) ? mobile : null;
+}

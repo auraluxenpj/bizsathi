@@ -14,6 +14,15 @@ vi.mock('@/lib/business.functions', () => ({
   registerBusiness: vi.fn(), createBranch: vi.fn(), updateMember: vi.fn(), setBranchAccess: vi.fn(), revokeInvitation: vi.fn(),
   reissueInvitation: vi.fn(), changeInvitationRole: vi.fn(), removeMember: vi.fn(), getRoleTemplates: async () => ({ templates: {} }), resetRoleTemplate: vi.fn(), saveRoleTemplate: vi.fn(),
 }));
+vi.mock('@/lib/team-access.functions', () => ({
+  listTeamInvitations: async () => ({ invitations: [], members: [] }),
+  listBranchDelegations: async () => ({ grants: [] }),
+  listAccessAudit: async () => ({ entries: [] }),
+  createTeamInvitation: vi.fn(),
+  grantBranchDelegation: vi.fn(),
+  revokeBranchDelegation: vi.fn(),
+  revokeTeamInvitation: vi.fn(),
+}));
 import { BusinessAccess } from '@/components/business-access';
 
 describe('Invite staff role cards', () => {
