@@ -13,6 +13,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as InviteRouteImport } from './routes/invite'
+import { Route as JoinRouteImport } from './routes/join'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as AuthenticatedAccountingRouteImport } from './routes/_authenticated/accounting'
 import { Route as AuthenticatedBillGalleryRouteImport } from './routes/_authenticated/bill-gallery'
@@ -60,6 +61,11 @@ const AuthRoute = AuthRouteImport.update({
 const InviteRoute = InviteRouteImport.update({
   id: '/invite',
   path: '/invite',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const JoinRoute = JoinRouteImport.update({
+  id: '/join',
+  path: '/join',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ResetPasswordRoute = ResetPasswordRouteImport.update({
@@ -220,6 +226,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/invite': typeof InviteRoute
+  '/join': typeof JoinRoute
   '/reset-password': typeof ResetPasswordRoute
   '/accounting': typeof AuthenticatedAccountingRoute
   '/bill-gallery': typeof AuthenticatedBillGalleryRoute
@@ -254,6 +261,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/invite': typeof InviteRoute
+  '/join': typeof JoinRoute
   '/reset-password': typeof ResetPasswordRoute
   '/accounting': typeof AuthenticatedAccountingRoute
   '/bill-gallery': typeof AuthenticatedBillGalleryRoute
@@ -290,6 +298,7 @@ export interface FileRoutesById {
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
   '/auth': typeof AuthRoute
   '/invite': typeof InviteRoute
+  '/join': typeof JoinRoute
   '/reset-password': typeof ResetPasswordRoute
   '/_authenticated/accounting': typeof AuthenticatedAccountingRoute
   '/_authenticated/bill-gallery': typeof AuthenticatedBillGalleryRoute
@@ -326,6 +335,7 @@ export interface FileRouteTypes {
     | '/'
     | '/auth'
     | '/invite'
+    | '/join'
     | '/reset-password'
     | '/accounting'
     | '/bill-gallery'
@@ -360,6 +370,7 @@ export interface FileRouteTypes {
     | '/'
     | '/auth'
     | '/invite'
+    | '/join'
     | '/reset-password'
     | '/accounting'
     | '/bill-gallery'
@@ -395,6 +406,7 @@ export interface FileRouteTypes {
     | '/_authenticated'
     | '/auth'
     | '/invite'
+    | '/join'
     | '/reset-password'
     | '/_authenticated/accounting'
     | '/_authenticated/bill-gallery'
@@ -431,6 +443,7 @@ export interface RootRouteChildren {
   AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
   AuthRoute: typeof AuthRoute
   InviteRoute: typeof InviteRoute
+  JoinRoute: typeof JoinRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
 }
 
@@ -462,6 +475,13 @@ declare module '@tanstack/react-router' {
       path: '/invite'
       fullPath: '/invite'
       preLoaderRoute: typeof InviteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/join': {
+      id: '/join'
+      path: '/join'
+      fullPath: '/join'
+      preLoaderRoute: typeof JoinRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/reset-password': {
@@ -740,6 +760,7 @@ const rootRouteChildren: RootRouteChildren = {
   AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
   AuthRoute: AuthRoute,
   InviteRoute: InviteRoute,
+  JoinRoute: JoinRoute,
   ResetPasswordRoute: ResetPasswordRoute,
 }
 export const routeTree = rootRouteImport
