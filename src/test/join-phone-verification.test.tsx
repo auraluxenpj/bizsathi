@@ -16,7 +16,7 @@ const mocks = vi.hoisted(() => ({
   preview: vi.fn(async () => ({ invitation: {
     businessName: 'Auraluxe', branchName: 'Nepalgunj', roleName: 'Store Team',
     jobTitle: 'entry_person', inviterName: 'Store Manager', expiresAt: '2026-11-23T00:00:00.000Z',
-    seatsLeft: 1, inviteeMobileMasked: '••••5678',
+    seatsLeft: 1, inviteeMobileMasked: '••••5678', inviteeEmailMasked: 's***@example.com',
   } })),
   accept: vi.fn(async () => ({ businessId: 'business-1' })),
 }));
