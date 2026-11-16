@@ -127,7 +127,7 @@ LANGUAGE sql
 STABLE
 SECURITY DEFINER
 SET search_path = public
-AS $
+AS $function$
   SELECT public.can_access_branch(_business_id, _branch_id)
     AND (
       public.has_business_role(_business_id, 'accountant')
@@ -149,7 +149,7 @@ AS $
         )
       )
     )
-$;
+$function$;
 REVOKE ALL ON FUNCTION public.can_read_cash_counter_session(uuid, uuid, uuid) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.can_read_cash_counter_session(uuid, uuid, uuid) TO authenticated, service_role;
 
@@ -225,7 +225,7 @@ LANGUAGE sql
 STABLE
 SECURITY DEFINER
 SET search_path = public
-AS $
+AS $function$
   SELECT auth.uid() IS NOT NULL
     AND public.can_access_branch(_business_id, _branch_id)
     AND (
