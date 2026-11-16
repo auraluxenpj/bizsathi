@@ -23,7 +23,7 @@ export const createTeamInvitation = createServerFn({ method: 'POST' }).middlewar
   const expiresAt = new Date(Date.now() + data.expiresInHours * 3_600_000).toISOString();
   const { data: invitationId, error } = await anyDb(context.supabase).rpc('create_team_invitation', {
     _business_id: data.businessId, _branch_id: data.branchId, _role: data.role, _job_title: data.jobTitle ?? null,
-    _denied: data.deniedPermissions, _invitee_mobile: data.inviteeMobile, _token_hash: hash, _expires_at: expiresAt, _max_uses: data.maxUses, _label: data.label ?? null,
+    _denied: data.deniedPermissions, _invitee_email: data.inviteeEmail, _invitee_mobile: data.inviteeMobile, _token_hash: hash, _expires_at: expiresAt, _max_uses: data.maxUses, _label: data.label ?? null,
   });
   if (error) throw new Error(friendly(error, 'You are not allowed to invite this role into this branch.'));
   // The raw token is returned exactly once. The page builds `${origin}/join#token=...` (fragment: not sent to servers or logs).
@@ -32,7 +32,7 @@ export const createTeamInvitation = createServerFn({ method: 'POST' }).middlewar
 
 export const listTeamInvitations = createServerFn({ method: 'GET' }).middleware([requireSupabaseAuth]).inputValidator(teamInviteListInput).handler(async ({ data, context }) => {
   // Row Level Security decides what the caller can see: admins and the master owner see the business, managers see their own.
-  let q = anyDb(context.supabase).from('team_invitations_status').select('id,branch_id,role_code,job_title,label,invited_by,expires_at,max_uses,use_count,revoked_at,created_at,invitee_mobile_masked,status').eq('business_id', data.businessId).order('created_at', { ascending: false }).limit(200);
+  let q = anyDb(context.supabase).from('team_invitations_status').select('id,branch_id,role_code,job_title,label,invited_by,expires_at,max_uses,use_count,revoked_at,created_at,invitee_mobile_masked,invitee_email_masked,status').eq('business_id', data.businessId).order('created_at', { ascending: false }).limit(200);
   if (data.branchId) q = q.eq('branch_id', data.branchId);
   const { data: invitations, error } = await q;
   if (error) throw new Error('Invitations could not be loaded.');
@@ -58,7 +58,7 @@ export const previewTeamInvitation = createServerFn({ method: 'POST' }).inputVal
   const { data: rows, error } = await anyDb(anon).rpc('preview_team_invitation', { _token_hash: await hashOf(data.token) });
   const row = Array.isArray(rows) ? rows[0] : null;
   if (error || !row) return { invitation: null };
-  return { invitation: { businessName: row.business_name as string, branchName: row.branch_name as string, roleName: row.role_name as string, jobTitle: (row.job_title ?? null) as string | null, inviterName: row.inviter_name as string, expiresAt: row.expires_at as string, seatsLeft: row.seats_left as number, inviteeMobileMasked: (row.invitee_mobile_masked ?? null) as string | null } };
+  return { invitation: { businessName: row.business_name as string, branchName: row.branch_name as string, roleName: row.role_name as string, jobTitle: (row.job_title ?? null) as string | null, inviterName: row.inviter_name as string, expiresAt: row.expires_at as string, seatsLeft: row.seats_left as number, inviteeMobileMasked: (row.invitee_mobile_masked ?? null) as string | null, inviteeEmailMasked: (row.invitee_email_masked ?? null) as string | null } };
 });
 
 // The database refuses unless BOTH email and mobile are verified in Supabase Auth, re-checks the inviter's authority, and serialises concurrent acceptances.
