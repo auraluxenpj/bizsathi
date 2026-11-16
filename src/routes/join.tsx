@@ -67,6 +67,8 @@ export function Join() {
       setEmailConfirmed(Boolean(user?.email_confirmed_at));
       setCurrentPhone(user?.phone ?? '');
       setCurrentPhoneConfirmed(Boolean(user?.phone_confirmed_at));
+      const signupMobile = typeof user?.user_metadata?.mobile === 'string' ? user.user_metadata.mobile : '';
+      if (signupMobile) setMobile(signupMobile);
     });
   }, [previewFn]);
 
