@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useServerFn } from '@tanstack/react-start';
 import { GitBranch, ShieldCheck, Users, UserPlus, Ban, ClipboardList } from 'lucide-react';
@@ -95,10 +95,13 @@ export function TeamAccessPanel({
   const currentGrant = delegations.data?.grants.find((g: { branch_id: string; manager_user_id: string }) =>
     g.branch_id === selectedBranchId && g.manager_user_id === userId);
   const currentGrantRoles = (currentGrant?.allowed_role_codes ?? []) as string[];
-  const allowedInviteRoles = useMemo(() => {
-    if (isAdmin) return isOwner ? ['admin', 'accountant', 'staff', 'viewer'] : ['accountant', 'staff', 'viewer'];
-    return currentGrantRoles.filter((r) => (roleRank[r] ?? 100) < 60);
-  }, [isAdmin, isOwner, currentGrantRoles.join('|')]);
+  const allowedInviteRoles = isAdmin
+    ? (isOwner ? ['admin', 'accountant', 'staff', 'viewer'] : ['accountant', 'staff', 'viewer'])
+    : currentGrantRoles.filter((r) => (roleRank[r] ?? 100) < 60);
+  const maxAllowedUses = currentGrant?.max_invite_uses ?? 100;
+  const maxAllowedDays = currentGrant?.max_invite_days ?? 30;
+  const effectiveMaxUses = Math.min(maxUses, maxAllowedUses);
+  const effectiveExpiryDays = Math.min(expiryDays, maxAllowedDays);
   const availableTitles = titleByRole[roleCode] ?? [];
   const eligibleManagers = members.filter((m) =>
     m.status === 'active' && m.job_title === 'manager' &&
@@ -115,7 +118,7 @@ export function TeamAccessPanel({
     mutationFn: () => createInviteFn({ data: {
       businessId, branchId: selectedBranchId, role: roleCode as 'admin' | 'accountant' | 'staff' | 'viewer',
       jobTitle: availableTitles.includes(jobTitle) ? jobTitle : undefined,
-      deniedPermissions: [], expiresInHours: expiryDays * 24, maxUses, label: label || undefined,
+      deniedPermissions: [], expiresInHours: effectiveExpiryDays * 24, maxUses: effectiveMaxUses, label: label || undefined,
     } }),
     onSuccess: (result) => {
       setInviteLink(`${window.location.origin}${result.path}`);
@@ -225,10 +228,10 @@ export function TeamAccessPanel({
           </label>}
           <div className="grid gap-3 sm:grid-cols-2">
             <label className="block text-sm">Maximum registrations
-              <input className="mt-1 h-10 w-full rounded-md border bg-background px-3" type="number" min={1} max={currentGrant?.max_invite_uses ?? 100} value={maxUses} onChange={(e) => setMaxUses(Math.max(1, Math.min(Number(e.target.value) || 1, currentGrant?.max_invite_uses ?? 100)))} />
+              <input className="mt-1 h-10 w-full rounded-md border bg-background px-3" type="number" min={1} max={maxAllowedUses} value={effectiveMaxUses} onChange={(e) => setMaxUses(Math.max(1, Math.min(Number(e.target.value) || 1, currentGrant?.max_invite_uses ?? 100)))} />
             </label>
             <label className="block text-sm">Link expiry (days)
-              <input className="mt-1 h-10 w-full rounded-md border bg-background px-3" type="number" min={1} max={currentGrant?.max_invite_days ?? 30} value={expiryDays} onChange={(e) => setExpiryDays(Math.max(1, Math.min(Number(e.target.value) || 1, currentGrant?.max_invite_days ?? 30)))} />
+              <input className="mt-1 h-10 w-full rounded-md border bg-background px-3" type="number" min={1} max={maxAllowedDays} value={effectiveExpiryDays} onChange={(e) => setExpiryDays(Math.max(1, Math.min(Number(e.target.value) || 1, currentGrant?.max_invite_days ?? 30)))} />
             </label>
           </div>
           <label className="my-3 block text-sm">Invitation label (optional)
