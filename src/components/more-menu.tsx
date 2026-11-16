@@ -4,7 +4,6 @@ import { useServerFn } from '@tanstack/react-start';
 import { Banknote, Building2, ScanLine, Image as ImageIcon, NotebookPen, Shapes, Calculator, ChevronRight, LogOut, MessageSquareText, ShieldCheck, ShoppingCart, ArrowLeftRight, BarChart3, UserCog, UsersRound, Upload, Wallet, type LucideIcon } from 'lucide-react';
 import { listBusinesses } from '@/lib/business.functions';
 import { FiscalYearClose } from '@/components/fiscal-year-close';
-import { WhatsNew } from '@/components/whats-new';
 import { AppearanceSettings } from '@/components/appearance-settings';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -51,7 +50,6 @@ export function MoreMenu() {
     <Group title="Utilities" items={[...utilities, ...(admin ? adminOnly : [])]} />
     {business && <FiscalYearClose businessId={business.id} businessName={business.name} role={business.role} />}
     <AppearanceSettings />
-    <WhatsNew />
     <section className="mt-6"><h2 className="mb-2 text-sm font-medium text-muted-foreground">Others</h2><button type="button" onClick={signOut} className="flex min-h-14 w-full items-center gap-4 rounded-2xl border bg-card px-4 py-3 text-base hover:bg-secondary/50"><LogOut className="size-5 text-muted-foreground" />Sign out</button></section>
   </main>;
 }
