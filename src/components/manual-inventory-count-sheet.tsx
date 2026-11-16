@@ -11,7 +11,7 @@ import { downloadCsv } from '@/lib/download-csv';
 import { stockBalances } from '@/lib/inventory-schemas';
 import { createInventoryCountSession, updateInventoryCountSession, listInventoryCountSessions, readInventoryCountSession, submitInventoryCountSession, reviewInventoryCountSession } from '@/lib/inventory.functions';
 
-type Variant = { id: string; sku: string; name: string; unit: string; purchase_price?: number | string | null; is_active: boolean; products?: { name?: string; is_active?: boolean | null } | null };
+type Variant = { id: string; sku: string; barcode?: string | null; name: string; unit: string; purchase_price?: number | string | null; is_active: boolean; products?: { name?: string; is_active?: boolean | null } | null };
 type Branch = { id: string; name: string; is_active: boolean };
 type Movement = { variant_id: string; branch_id: string; quantity: number };
 type Props = { variants: Variant[]; branches: Branch[]; movements: Movement[]; businessId: string; manager: boolean; currentUserId?: string };
@@ -26,6 +26,8 @@ export function ManualInventoryCountSheet({ variants, branches, movements, busin
   const [countDate, setCountDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [drafts, setDrafts] = useState<Record<string, DraftRow>>({});
   const [status, setStatus] = useState('');
+  const [scanCode, setScanCode] = useState('');
+  const [scanFeedback, setScanFeedback] = useState('');
   const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
   const [sessionVariantIds, setSessionVariantIds] = useState<string[] | null>(null);
   const [activeSessionStatus, setActiveSessionStatus] = useState<SessionSummary['status'] | null>(null);
@@ -139,6 +141,24 @@ export function ManualInventoryCountSheet({ variants, branches, movements, busin
     setDrafts(current => ({ ...current, [key]: { ...(current[key] ?? { physical: '', cost: '' }), [field]: value } }));
     setStatus('');
   };
+  const scanInventoryBarcode = (rawCode: string) => {
+    const code = rawCode.trim();
+    if (!code) return;
+    if (!selectedBranch) { setScanFeedback('Select a branch before scanning.'); return; }
+    if (activeSessionStatus !== null && activeSessionStatus !== 'draft') { setScanFeedback('This count is locked. Start a new count to scan more products.'); return; }
+    const normalized = code.toLocaleLowerCase();
+    const match = variants.find(v => v.is_active && v.products?.is_active !== false && [v.barcode, v.sku].some(value => value?.trim().toLocaleLowerCase() === normalized));
+    if (!match) { setScanFeedback(`No active product matches barcode or SKU “${code}”. Check the product barcode in the catalogue.`); return; }
+    const key = `${selectedBranch.id}:${match.id}`;
+    const currentValue = drafts[key]?.physical ?? '';
+    const currentQuantity = currentValue.trim() === '' ? 0 : Number(currentValue);
+    if (!Number.isFinite(currentQuantity) || currentQuantity < 0) { setScanFeedback(`Correct the physical quantity for ${match.sku} before scanning it again.`); return; }
+    const nextQuantity = currentQuantity + 1;
+    setDrafts(current => ({ ...current, [key]: { ...(current[key] ?? { physical: '', cost: String(Number(match.purchase_price ?? 0) || '') }), physical: String(nextQuantity) } }));
+    setSessionVariantIds(current => current ? (current.includes(match.id) ? current : [...current, match.id]) : null);
+    setScanFeedback(`Added ${match.products?.name ?? match.name} · ${match.name} (${match.sku}) — physical count: ${nextQuantity} ${match.unit}.`);
+    setStatus('');
+  };
   const exportRows = rows.map(r => ({ sku: r.sku, product: r.product, variant: r.variant, branch: selectedBranch?.name ?? '', system_quantity: r.system, physical_quantity: r.physical ?? '', variance: r.difference ?? '', cost_price: r.cost, system_stock_value: r.systemValue.toFixed(2), physical_stock_value: r.physicalValue?.toFixed(2) ?? '', counted_by: countedBy.trim(), count_date: countDate }));
   const exportCsv = () => {
     if (!canExport) { setStatus('Enter the team member name and at least one physical quantity. Correct invalid values before exporting.'); return; }
@@ -181,6 +201,12 @@ export function ManualInventoryCountSheet({ variants, branches, movements, busin
       <label className="text-sm">Branch<select aria-label="Count branch" disabled={!!activeSessionId} className="mt-2 h-10 w-full rounded-md border bg-card px-3" value={selectedBranch?.id ?? ''} onChange={e => setBranchId(e.target.value)}><option value="">Select branch</option>{activeBranches.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}</select></label>
       <label className="text-sm">Inventory count date<Input type="date" value={countDate} onChange={e => setCountDate(e.target.value)}/></label>
       <label className="text-sm">Counted by (team member)<Input required maxLength={120} placeholder="Enter team member name" value={countedBy} onChange={e => setCountedBy(e.target.value)}/></label>
+    </div>
+    <div className="mt-5 rounded-lg border bg-muted/20 p-3">
+      <label className="block text-sm font-medium" htmlFor="inventory-count-barcode">Scan product barcode or SKU</label>
+      <p className="mt-1 text-xs text-muted-foreground">Use a USB or Bluetooth barcode scanner in keyboard mode. Scan each unit once; the physical quantity increases by one per scan. You can still edit the quantity manually.</p>
+      <Input id="inventory-count-barcode" aria-label="Scan product barcode or SKU" className="mt-2 sm:max-w-md" value={scanCode} placeholder="Scan here, then press Enter" autoComplete="off" disabled={!selectedBranch || (activeSessionStatus !== null && activeSessionStatus !== 'draft')} onChange={e => setScanCode(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); scanInventoryBarcode(scanCode); setScanCode(''); } }} />
+      {scanFeedback && <p role="status" className="mt-2 text-sm">{scanFeedback}</p>}
     </div>
     <div className="mt-4 grid gap-3 sm:grid-cols-3">
       <div className="rounded-lg bg-muted/50 p-3"><p className="text-xs text-muted-foreground">Products counted</p><p className="mt-1 text-xl font-semibold tabular-nums">{enteredRows.length} / {rows.length}</p></div>
