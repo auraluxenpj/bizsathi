@@ -1,0 +1,69 @@
+name: Isolated SQL security validation
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - "drizzle/migrations/**"
+      - "supabase/tests/**"
+      - ".github/workflows/sql-security.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: sql-security-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  isolated-supabase:
+    name: Replay migrations and run Stage 1/2 SQL security tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Install Supabase CLI
+        uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      - name: Install PostgreSQL client
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes postgresql-client
+
+      - name: Start isolated local Supabase stack
+        run: supabase start -x studio,imgproxy,edge-runtime,logflare,vector
+
+      - name: Replay repository SQL migrations in a disposable local database
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:54322/postgres
+        run: |
+          set -euo pipefail
+          while IFS= read -r migration; do
+            echo "::group::Applying ${migration}"
+            psql "${DATABASE_URL}" --no-psqlrc --set ON_ERROR_STOP=1 --file "${migration}"
+            echo "::endgroup::"
+          done < <(find drizzle/migrations -maxdepth 1 -type f -name '*.sql' -print | sort)
+
+      - name: Run Stage 1 and Stage 2 SQL security regression tests
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:54322/postgres
+        run: |
+          set -euo pipefail
+          for test_file in \
+            supabase/tests/business_ownership_boundary.sql \
+            supabase/tests/business_archive_approval.sql \
+            supabase/tests/branch_manager_authority.sql; do
+            echo "::group::Running ${test_file}"
+            psql "${DATABASE_URL}" --no-psqlrc --set ON_ERROR_STOP=1 --file "${test_file}"
+            echo "::endgroup::"
+          done
+
+      - name: Stop isolated Supabase stack
+        if: always()
+        continue-on-error: true
+        run: supabase stop --no-backup
