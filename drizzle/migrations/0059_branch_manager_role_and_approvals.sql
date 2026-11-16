@@ -79,7 +79,7 @@ FROM unnest(ARRAY[
   'other.party_adjustments','other.purchase_price','other.change_date'
 ]::text[]) AS p(permission)
 WHERE p.permission <> ALL (ARRAY[
-  'sales.view','purchases.view','expenses.view','inventory.view','categories.view',
+  'sales.view','expenses.view','inventory.view','categories.view',
   'stock.create','stock.edit','customers.view','suppliers.view','staff.view',
   'reports.view','reports.home_stats','reports.expenses','reports.items','reports.parties','reports.transactions'
 ]::text[])
@@ -115,7 +115,7 @@ AS $function$
           AND m.role_code = 'branch_manager'
       )
       OR _perm = ANY (ARRAY[
-        'sales.view','purchases.view','expenses.view','inventory.view','categories.view',
+        'sales.view','expenses.view','inventory.view','categories.view',
         'stock.create','stock.edit','customers.view','suppliers.view','staff.view',
         'reports.view','reports.home_stats','reports.expenses','reports.items','reports.parties','reports.transactions'
       ]::text[])
