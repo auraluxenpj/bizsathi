@@ -53,7 +53,7 @@ export function KarobarHome(p: KarobarHomeProps) {
         </div>
         <div className="mt-5 grid grid-cols-2 gap-3 border-t border-white/20 pt-4">
           <Link to="/parties" search={{tab:'receive'}} className="rounded-xl bg-white/10 p-3 text-white"><span className="block text-xs text-white/75">Received · To collect</span><span className="mt-1 block text-lg font-bold tabular-nums">{p.money(p.receive)}</span></Link>
-          <Link to="/parties" search={{tab:'give'}} className="rounded-xl bg-white/10 p-3 text-white"><span className="block text-xs text-white/75">To pay</span><span className="mt-1 block text-lg font-bold tabular-nums">{p.money(p.give)}</span></Link>
+          <Link to="/parties" search={{tab:'give'}} className="rounded-xl bg-white/10 p-3 text-white"><span className="block text-xs text-white/75">Payables</span><span className="mt-1 block text-lg font-bold tabular-nums">{p.money(p.give)}</span></Link>
         </div>
       </div>
       <div className="biz-quick-actions mt-4 grid grid-cols-3 gap-3">
