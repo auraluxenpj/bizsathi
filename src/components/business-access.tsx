@@ -12,7 +12,7 @@ import { PermissionChecklist } from './permission-checklist';
 import { TeamAccessPanel } from './team-access-panel';
 import { jobTitles, jobTitleCodes, type JobTitle } from '@/lib/job-titles';
 type BusinessRole = 'admin' | 'accountant' | 'staff' | 'viewer';
-import { branchInput, mobileInviteInput } from '@/lib/business-schemas';
+import { branchInput } from '@/lib/business-schemas';
 
 const roleCards: Record<string, { name: string; about: string }> = {
   admin: { name: 'Administrator', about: 'Manage staff, items, parties and settings.' },
