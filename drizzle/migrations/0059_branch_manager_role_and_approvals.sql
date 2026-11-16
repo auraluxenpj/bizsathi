@@ -131,8 +131,10 @@ AS $
   SELECT public.can_access_branch(_business_id, _branch_id)
     AND (
       public.has_business_role(_business_id, 'accountant')
-      OR (public.has_business_job_title(_business_id, 'branch_manager')
-          AND public.has_permission(_business_id, 'stock.edit'))
+      OR (
+        public.has_business_job_title(_business_id, 'branch_manager')
+        AND public.has_permission(_business_id, 'sales.view')
+      )
       OR (
         public.has_business_job_title(_business_id, 'sales_person')
         AND public.has_permission(_business_id, 'sales.view')
@@ -223,14 +225,17 @@ LANGUAGE sql
 STABLE
 SECURITY DEFINER
 SET search_path = public
-AS $$
+AS $
   SELECT auth.uid() IS NOT NULL
     AND public.can_access_branch(_business_id, _branch_id)
     AND (
       public.has_business_role(_business_id, 'admin')
-      OR public.has_business_job_title(_business_id, 'branch_manager')
+      OR (
+        public.has_business_job_title(_business_id, 'branch_manager')
+        AND public.has_permission(_business_id, 'stock.edit')
+      )
     )
-$$;
+$;
 REVOKE ALL ON FUNCTION public.can_approve_inventory_count(uuid, uuid) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.can_approve_inventory_count(uuid, uuid) TO authenticated, service_role;
 
