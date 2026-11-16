@@ -28,7 +28,9 @@ export function Join() {
   const [otp, setOtp] = useState('');
   const [phoneVerified, setPhoneVerified] = useState(false);
   const [busy, setBusy] = useState(false);
-  const [message, setMessage] = useState('');\n  const [assignedEmployeeId, setAssignedEmployeeId] = useState('');\n  const [assignedEmployeeId, setAssignedEmployeeId] = useState('');
+  const [message, setMessage] = useState('');
+  const [assignedEmployeeId, setAssignedEmployeeId] = useState('');
+  const [assignedEmployeeId, setAssignedEmployeeId] = useState('');
   const [details, setDetails] = useState<{
     businessName: string;
     branchName: string;
@@ -136,7 +138,12 @@ export function Join() {
     try {
       await acceptFn({ data: { token } });
       sessionStorage.removeItem('bizsathi-team-token');
-      setMessage('Invitation accepted! Redirecting...');
+      const { data: authData } = await supabase.auth.getUser();
+      if (authData.user) {
+        const { data: profile } = await supabase.from('profiles').select('employee_id').eq('id', authData.user.id).maybeSingle();
+        if (profile?.employee_id) setAssignedEmployeeId(profile.employee_id);
+      }
+      setMessage('Invitation accepted! Your Employee ID is shown below.');
       setTimeout(() => navigate({ to: '/businesses' }), 1200);
     } catch (e) {
       setMessage(e instanceof Error ? e.message : 'Invitation could not be accepted. Confirm the invited mobile number matches this account.');
@@ -220,7 +227,8 @@ export function Join() {
             </>
           )}
 
-          {assignedEmployeeId && <div className="rounded-md border border-primary/30 bg-primary/5 p-3 text-center"><p className="text-xs text-muted-foreground">Your Employee ID</p><p className="mt-1 font-mono text-xl font-semibold tracking-wider">{assignedEmployeeId}</p><p className="mt-1 text-xs text-muted-foreground">Use this ID with your password for future sign-in.</p></div>}\n          {message && <p role="status" className="text-sm text-center text-muted-foreground">{message}</p>}
+          {assignedEmployeeId && <div className="rounded-md border border-primary/30 bg-primary/5 p-3 text-center"><p className="text-xs text-muted-foreground">Your Employee ID</p><p className="mt-1 font-mono text-xl font-semibold tracking-wider">{assignedEmployeeId}</p><p className="mt-1 text-xs text-muted-foreground">Use this ID with your password for future sign-in.</p></div>}
+          {message && <p role="status" className="text-sm text-center text-muted-foreground">{message}</p>}
         </CardContent>
       </Card>
     </main>
