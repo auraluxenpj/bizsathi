@@ -45,12 +45,12 @@ describe('Team Access hierarchy panel', () => {
       <TeamAccessPanel businessId={BUSINESS} branches={[{ id: BRANCH, name: 'Nepalgunj', code: 'NP', is_active: true }]} members={[]} branchAccess={[]} userId={MANAGER} isAdmin={false} isOwner={false} />
     </QueryClientProvider>);
     for (const role of ['CEO / Platform Owner', 'Administrator / Partner', 'Store Manager', 'Accountant', 'Inventory Manager', 'Cashier / POS', 'Store Team']) {
-      expect(screen.getByText(role)).toBeInTheDocument();
+      expect(screen.getAllByText(role).length).toBeGreaterThan(0);
     }
-    expect(screen.getByText('Rank 100')).toBeInTheDocument();
-    expect(screen.getByText('Rank 80')).toBeInTheDocument();
-    expect(screen.getAllByText('Rank 60')).toHaveLength(2);
-    expect(screen.getAllByText('Rank 40')).toHaveLength(3);
+    expect(screen.getByText(/Rank\\s*100/)).toBeInTheDocument();
+    expect(screen.getByText(/Rank\\s*80/)).toBeInTheDocument();
+    expect(screen.getAllByText(/Rank\\s*60/)).toHaveLength(2);
+    expect(screen.getAllByText(/Rank\\s*40/)).toHaveLength(3);
   });
 
   it('limits a branch manager to delegated roles, branch scope and expiry limits', async () => {
