@@ -3,14 +3,13 @@ import { RouterProvider, createMemoryHistory, createRootRoute, createRouter } fr
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
-const BIZ = '55555555-5555-4555-8555-555555555555'; const ME = '66666666-6666-4666-8666-666666666666';
-const invite = vi.hoisted(() => vi.fn(async (_: unknown) => ({ token: 'abc' })));
+const BIZ = '55555555-5555-4555-8555-555555555555'; const ME = '66666666-6666-4666-8666-666666666666'; const BRANCH = '77777777-7777-4777-8777-777777777777';
+const invite = vi.hoisted(() => vi.fn(async (_: unknown) => ({ path: '/join#token=' + 'a'.repeat(64) })));
 vi.mock('@tanstack/react-start', async (importOriginal) => ({ ...(await importOriginal<typeof import('@tanstack/react-start')>()), useServerFn: (f: unknown) => f }));
 vi.mock('@/lib/business.functions', () => ({
   getMemberPermissions: async () => ({ userId: ME, denials: [], roleDenials: [] }),
-  createMobileInvitation: (a: unknown) => invite(a),
   listBusinesses: async () => [{ id: BIZ, name: 'Auraluxe', role: 'owner' }],
-  getBusinessAccess: async () => ({ manager: true, userId: ME, branches: [], members: [], invitations: [], grants: [] }),
+  getBusinessAccess: async () => ({ manager: true, userId: ME, branches: [{ id: BRANCH, name: 'Nepalgunj', code: '001', is_active: true }], members: [], invitations: [], grants: [] }),
   registerBusiness: vi.fn(), createBranch: vi.fn(), updateMember: vi.fn(), setBranchAccess: vi.fn(), revokeInvitation: vi.fn(),
   reissueInvitation: vi.fn(), changeInvitationRole: vi.fn(), removeMember: vi.fn(), getRoleTemplates: async () => ({ templates: {} }), resetRoleTemplate: vi.fn(), saveRoleTemplate: vi.fn(),
 }));
@@ -18,24 +17,35 @@ vi.mock('@/lib/team-access.functions', () => ({
   listTeamInvitations: async () => ({ invitations: [], members: [] }),
   listBranchDelegations: async () => ({ grants: [] }),
   listAccessAudit: async () => ({ entries: [] }),
-  createTeamInvitation: vi.fn(),
+  createTeamInvitation: (a: unknown) => invite(a),
   grantBranchDelegation: vi.fn(),
   revokeBranchDelegation: vi.fn(),
   revokeTeamInvitation: vi.fn(),
 }));
 import { BusinessAccess } from '@/components/business-access';
 
-describe('Invite staff role cards', () => {
-  it('shows the four real roles as cards and invites with the chosen one', async () => {
+describe('Team Access invitations', () => {
+  it('creates a branch-locked invitation using the selected role and position', async () => {
     const root = createRootRoute({ component: BusinessAccess });
     const router = createRouter({ routeTree: root, history: createMemoryHistory({ initialEntries: ['/'] }) });
     render(<QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}><RouterProvider router={router} /></QueryClientProvider>);
-    const group = await screen.findByRole('radiogroup', { name: 'Invitation role' });
-    for (const name of ['Partner', 'Manager', 'Accountant', 'Sales Person', 'Stock Manager', 'Entry Person']) expect(group).toHaveTextContent(name);
-    fireEvent.change(screen.getByLabelText('Staff mobile number'), { target: { value: '9800000000' } });
-    fireEvent.click(screen.getByRole('radio', { name: /Accountant/ }));
-    fireEvent.click(screen.getByRole('button', { name: /Create invite link/ }));
+
+    await screen.findByText('Invite team member');
+    fireEvent.change(screen.getByLabelText('Role'), { target: { value: 'accountant' } });
+    fireEvent.change(screen.getByLabelText('Position'), { target: { value: 'accountant' } });
+    fireEvent.change(screen.getByLabelText('Invitee email address'), { target: { value: 'staff@example.com' } });
+    fireEvent.change(screen.getByLabelText('Invitee Nepal mobile number'), { target: { value: '9800000000' } });
+    fireEvent.click(screen.getByRole('button', { name: /Create invitation link/ }));
+
     await waitFor(() => expect(invite).toHaveBeenCalledTimes(1));
-    expect((invite.mock.calls[0]![0] as { data: Record<string, unknown> }).data).toMatchObject({ businessId: BIZ, mobile: '9800000000', jobTitle: 'accountant' });
+    expect((invite.mock.calls[0]![0] as { data: Record<string, unknown> }).data).toMatchObject({
+      businessId: BIZ,
+      branchId: BRANCH,
+      role: 'accountant',
+      jobTitle: 'accountant',
+      inviteeEmail: 'staff@example.com',
+      inviteeMobile: '9800000000',
+      maxUses: 1,
+    });
   });
 });
