@@ -64,8 +64,9 @@ describe('Team Access hierarchy panel', () => {
     </QueryClientProvider>);
     const sectionTitles = ['Role hierarchy', 'Branch delegation', 'Invite team member', 'Invitation history & activity', 'Role permissions'];
     for (const title of sectionTitles) {
-      const summaryText = screen.getByText(title);
-      const accordion = summaryText.closest('details');
+      const summaries = screen.getAllByText(title).map((element) => element.closest('summary')).filter(Boolean);
+      expect(summaries).toHaveLength(1);
+      const accordion = summaries[0]?.closest('details');
       expect(accordion).not.toBeNull();
       expect(accordion).not.toHaveAttribute('open');
       expect(accordion).toHaveAttribute('name', 'team-access-sections');
@@ -120,7 +121,7 @@ describe('Team Access hierarchy panel', () => {
     </QueryClientProvider>);
 
     await screen.findByText('Delegation active for this branch');
-    const role = screen.getByLabelText('Role') as HTMLSelectElement;
+    const role = screen.getByRole('combobox', { name: 'Role' }) as HTMLSelectElement;
     expect([...role.options].map((o) => o.value)).toEqual(['staff']);
     expect(screen.getByLabelText('Link expiry (days)')).toHaveValue(2);
 
