@@ -74,9 +74,7 @@ BEGIN
     jsonb_build_object('branch', _branch_id, 'role', _role, 'invitee_email_domain', split_part(invited_email, '@', 2), 'invitee_mobile_last4', right(mobile, 4),
       'max_uses', 1, 'expires_at', _expires_at));
   RETURN iid;
-END $$;
-REVOKE ALL ON FUNCTION public.create_team_invitation(uuid, uuid, text, text, text[], text, text, timestamptz, int, text) FROM PUBLIC, anon;
-GRANT EXECUTE ON FUNCTION public.create_team_invitation(uuid, uuid, text, text, text[], text, text, timestamptz, int, text) TO authenticated, service_role; THEN
+END $$; THEN
     RAISE EXCEPTION 'Enter a valid invitee email address';
   END IF;
   mobile := public.normalize_member_mobile(_invitee_mobile);
@@ -136,8 +134,8 @@ GRANT EXECUTE ON FUNCTION public.create_team_invitation(uuid, uuid, text, text, 
       'max_uses', 1, 'expires_at', _expires_at));
   RETURN iid;
 END $$;
-REVOKE ALL ON FUNCTION public.create_team_invitation(uuid, uuid, text, text, text[], text, text, timestamptz, int, text) FROM PUBLIC, anon;
-GRANT EXECUTE ON FUNCTION public.create_team_invitation(uuid, uuid, text, text, text[], text, text, timestamptz, int, text) TO authenticated, service_role;
+REVOKE ALL ON FUNCTION public.create_team_invitation(uuid, uuid, text, text, text[], text, text, text, timestamptz, int, text) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.create_team_invitation(uuid, uuid, text, text, text[], text, text, text, timestamptz, int, text) TO authenticated, service_role;
 
 CREATE OR REPLACE VIEW public.team_invitations_status WITH (security_invoker = true) AS
 SELECT i.id, i.business_id, i.branch_id, i.role_code, i.job_title, i.label, i.invited_by,
@@ -152,6 +150,106 @@ SELECT i.id, i.business_id, i.branch_id, i.role_code, i.job_title, i.label, i.in
 FROM public.team_invitations i;
 REVOKE ALL ON public.team_invitations_status FROM PUBLIC, anon, authenticated;
 GRANT SELECT ON public.team_invitations_status TO authenticated, service_role;
+
+DROP FUNCTION IF EXISTS public.preview_team_invitation(text);
+CREATE FUNCTION public.preview_team_invitation(_token_hash text)
+RETURNS TABLE (
+  business_name text, branch_name text, role_name text, job_title text,
+  inviter_name text, expires_at timestamptz, seats_left int, invitee_mobile_masked text
+)
+LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public AS $$
+  SELECT b.name, br.name, r.name, i.job_title, COALESCE(p.full_name, 'Your manager'),
+    i.expires_at, (i.max_uses - i.use_count)::int,
+    CASE WHEN i.invitee_mobile IS NULL THEN NULL ELSE '••••' || right(i.invitee_mobile, 4) END
+  FROM public.team_invitations i
+  JOIN public.businesses b ON b.id = i.business_id
+  JOIN public.branches br ON br.id = i.branch_id AND br.business_id = i.business_id
+  JOIN public.roles r ON r.code = i.role_code
+  LEFT JOIN public.profiles p ON p.id = i.invited_by
+  WHERE i.token_hash = _token_hash AND i.invitee_mobile IS NOT NULL
+    AND i.revoked_at IS NULL AND i.expires_at > now() AND i.use_count < i.max_uses
+$$;
+REVOKE ALL ON FUNCTION public.preview_team_invitation(text) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.preview_team_invitation(text) TO anon, authenticated, service_role;
+
+CREATE OR REPLACE FUNCTION public.accept_team_invitation(_token_hash text)
+RETURNS uuid LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
+DECLARE actor uuid := auth.uid(); i public.team_invitations; au record; mobile text; m public.business_memberships;
+BEGIN
+  IF actor IS NULL THEN RAISE EXCEPTION 'Authentication required' USING ERRCODE = '42501'; END IF;
+  SELECT email_confirmed_at, phone_confirmed_at, phone INTO au FROM auth.users WHERE id = actor;
+  mobile := public.normalize_member_mobile(au.phone);
+  IF au.email_confirmed_at IS NULL OR au.phone_confirmed_at IS NULL OR mobile IS NULL THEN
+    RAISE EXCEPTION 'Verify your email and mobile number first' USING ERRCODE = '42501';
+  END IF;
+
+  SELECT * INTO i FROM public.team_invitations WHERE token_hash = _token_hash FOR UPDATE;
+  IF i.id IS NULL OR i.invitee_mobile IS NULL OR mobile IS DISTINCT FROM i.invitee_mobile
+     OR i.revoked_at IS NOT NULL OR i.expires_at <= now()
+     OR i.use_count >= i.max_uses OR i.invited_by = actor THEN
+    RAISE EXCEPTION 'Invitation unavailable for this account' USING ERRCODE = '42501';
+  END IF;
+  IF EXISTS (SELECT 1 FROM public.team_invitation_uses WHERE invitation_id = i.id AND user_id = actor) THEN
+    RAISE EXCEPTION 'Invitation unavailable for this account' USING ERRCODE = '42501';
+  END IF;
+
+  IF NOT public.platform_owner_check(i.invited_by) THEN
+    PERFORM 1 FROM public.business_memberships
+    WHERE business_id = i.business_id AND user_id = i.invited_by AND status = 'active'
+    FOR SHARE;
+    IF NOT FOUND THEN RAISE EXCEPTION 'Invitation no longer authorized' USING ERRCODE = '42501'; END IF;
+    IF COALESCE(public.business_role_rank(i.business_id, i.invited_by), 0) < 80 THEN
+      PERFORM 1 FROM public.delegation_grants
+      WHERE business_id = i.business_id AND branch_id = i.branch_id
+        AND manager_user_id = i.invited_by AND revoked_at IS NULL
+        AND can_invite AND i.role_code = ANY (allowed_role_codes)
+      FOR SHARE;
+      IF NOT FOUND THEN RAISE EXCEPTION 'Invitation no longer authorized' USING ERRCODE = '42501'; END IF;
+      PERFORM 1 FROM public.branch_memberships
+      WHERE business_id = i.business_id AND branch_id = i.branch_id AND user_id = i.invited_by
+      FOR SHARE;
+      IF NOT FOUND THEN RAISE EXCEPTION 'Invitation no longer authorized' USING ERRCODE = '42501'; END IF;
+    END IF;
+  END IF;
+
+  IF NOT public.team_invite_authority(i.invited_by, i.business_id, i.branch_id, i.role_code) THEN
+    RAISE EXCEPTION 'Invitation no longer authorized' USING ERRCODE = '42501';
+  END IF;
+
+  BEGIN
+    UPDATE public.profiles SET phone = mobile
+    WHERE id = actor AND phone IS DISTINCT FROM mobile;
+  EXCEPTION WHEN unique_violation THEN
+    RAISE EXCEPTION 'This mobile number is already registered' USING ERRCODE = '42501';
+  END;
+
+  SELECT * INTO m FROM public.business_memberships
+  WHERE business_id = i.business_id AND user_id = actor FOR UPDATE;
+  IF m.id IS NULL THEN
+    INSERT INTO public.business_memberships (business_id, user_id, role_code, job_title, invited_by)
+    VALUES (i.business_id, actor, i.role_code, i.job_title, i.invited_by);
+    INSERT INTO public.member_permission_denials (business_id, user_id, permission, granted_by)
+      SELECT i.business_id, actor, d.permission, i.invited_by
+      FROM public.job_title_denials d
+      WHERE i.job_title IS NOT NULL AND d.job_title = i.job_title
+      UNION
+      SELECT i.business_id, actor, unnest(i.denied_permissions), i.invited_by
+      ON CONFLICT DO NOTHING;
+  ELSIF m.status <> 'active' THEN
+    RAISE EXCEPTION 'Invitation unavailable for this account' USING ERRCODE = '42501';
+  END IF;
+
+  INSERT INTO public.branch_memberships (business_id, branch_id, user_id, granted_by)
+  VALUES (i.business_id, i.branch_id, actor, i.invited_by)
+  ON CONFLICT DO NOTHING;
+  INSERT INTO public.team_invitation_uses
+    (invitation_id, business_id, user_id, email_verified_at, phone_verified_at)
+  VALUES (i.id, i.business_id, actor, au.email_confirmed_at, au.phone_confirmed_at);
+  UPDATE public.team_invitations SET use_count = use_count + 1 WHERE id = i.id;
+  PERFORM public.write_audit(i.business_id, 'team_invite.accept', 'team_invitations', i.id::text, NULL,
+    jsonb_build_object('branch', i.branch_id, 'role', i.role_code));
+  RETURN i.business_id;
+END $$;
 
 DROP FUNCTION IF EXISTS public.preview_team_invitation(text);
 CREATE FUNCTION public.preview_team_invitation(_token_hash text)
@@ -172,6 +270,87 @@ LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public AS $$
   WHERE i.token_hash = _token_hash AND i.invitee_email IS NOT NULL AND i.invitee_mobile IS NOT NULL
     AND i.revoked_at IS NULL AND i.expires_at > now() AND i.use_count < i.max_uses
 $$;
+REVOKE ALL ON FUNCTION public.preview_team_invitation(text) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.preview_team_invitation(text) TO anon, authenticated, service_role;
+
+CREATE OR REPLACE FUNCTION public.accept_team_invitation(_token_hash text)
+RETURNS uuid LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
+DECLARE actor uuid := auth.uid(); i public.team_invitations; au record; mobile text; m public.business_memberships;
+BEGIN
+  IF actor IS NULL THEN RAISE EXCEPTION 'Authentication required' USING ERRCODE = '42501'; END IF;
+  SELECT email_confirmed_at, phone_confirmed_at, phone INTO au FROM auth.users WHERE id = actor;
+  mobile := public.normalize_member_mobile(au.phone);
+  IF au.email_confirmed_at IS NULL OR au.phone_confirmed_at IS NULL OR mobile IS NULL THEN
+    RAISE EXCEPTION 'Verify your email and mobile number first' USING ERRCODE = '42501';
+  END IF;
+
+  SELECT * INTO i FROM public.team_invitations WHERE token_hash = _token_hash FOR UPDATE;
+  IF i.id IS NULL OR i.invitee_mobile IS NULL OR mobile IS DISTINCT FROM i.invitee_mobile
+     OR i.revoked_at IS NOT NULL OR i.expires_at <= now()
+     OR i.use_count >= i.max_uses OR i.invited_by = actor THEN
+    RAISE EXCEPTION 'Invitation unavailable for this account' USING ERRCODE = '42501';
+  END IF;
+  IF EXISTS (SELECT 1 FROM public.team_invitation_uses WHERE invitation_id = i.id AND user_id = actor) THEN
+    RAISE EXCEPTION 'Invitation unavailable for this account' USING ERRCODE = '42501';
+  END IF;
+
+  IF NOT public.platform_owner_check(i.invited_by) THEN
+    PERFORM 1 FROM public.business_memberships
+    WHERE business_id = i.business_id AND user_id = i.invited_by AND status = 'active'
+    FOR SHARE;
+    IF NOT FOUND THEN RAISE EXCEPTION 'Invitation no longer authorized' USING ERRCODE = '42501'; END IF;
+    IF COALESCE(public.business_role_rank(i.business_id, i.invited_by), 0) < 80 THEN
+      PERFORM 1 FROM public.delegation_grants
+      WHERE business_id = i.business_id AND branch_id = i.branch_id
+        AND manager_user_id = i.invited_by AND revoked_at IS NULL
+        AND can_invite AND i.role_code = ANY (allowed_role_codes)
+      FOR SHARE;
+      IF NOT FOUND THEN RAISE EXCEPTION 'Invitation no longer authorized' USING ERRCODE = '42501'; END IF;
+      PERFORM 1 FROM public.branch_memberships
+      WHERE business_id = i.business_id AND branch_id = i.branch_id AND user_id = i.invited_by
+      FOR SHARE;
+      IF NOT FOUND THEN RAISE EXCEPTION 'Invitation no longer authorized' USING ERRCODE = '42501'; END IF;
+    END IF;
+  END IF;
+
+  IF NOT public.team_invite_authority(i.invited_by, i.business_id, i.branch_id, i.role_code) THEN
+    RAISE EXCEPTION 'Invitation no longer authorized' USING ERRCODE = '42501';
+  END IF;
+
+  BEGIN
+    UPDATE public.profiles SET phone = mobile
+    WHERE id = actor AND phone IS DISTINCT FROM mobile;
+  EXCEPTION WHEN unique_violation THEN
+    RAISE EXCEPTION 'This mobile number is already registered' USING ERRCODE = '42501';
+  END;
+
+  SELECT * INTO m FROM public.business_memberships
+  WHERE business_id = i.business_id AND user_id = actor FOR UPDATE;
+  IF m.id IS NULL THEN
+    INSERT INTO public.business_memberships (business_id, user_id, role_code, job_title, invited_by)
+    VALUES (i.business_id, actor, i.role_code, i.job_title, i.invited_by);
+    INSERT INTO public.member_permission_denials (business_id, user_id, permission, granted_by)
+      SELECT i.business_id, actor, d.permission, i.invited_by
+      FROM public.job_title_denials d
+      WHERE i.job_title IS NOT NULL AND d.job_title = i.job_title
+      UNION
+      SELECT i.business_id, actor, unnest(i.denied_permissions), i.invited_by
+      ON CONFLICT DO NOTHING;
+  ELSIF m.status <> 'active' THEN
+    RAISE EXCEPTION 'Invitation unavailable for this account' USING ERRCODE = '42501';
+  END IF;
+
+  INSERT INTO public.branch_memberships (business_id, branch_id, user_id, granted_by)
+  VALUES (i.business_id, i.branch_id, actor, i.invited_by)
+  ON CONFLICT DO NOTHING;
+  INSERT INTO public.team_invitation_uses
+    (invitation_id, business_id, user_id, email_verified_at, phone_verified_at)
+  VALUES (i.id, i.business_id, actor, au.email_confirmed_at, au.phone_confirmed_at);
+  UPDATE public.team_invitations SET use_count = use_count + 1 WHERE id = i.id;
+  PERFORM public.write_audit(i.business_id, 'team_invite.accept', 'team_invitations', i.id::text, NULL,
+    jsonb_build_object('branch', i.branch_id, 'role', i.role_code));
+  RETURN i.business_id;
+END $$;
 REVOKE ALL ON FUNCTION public.preview_team_invitation(text) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.preview_team_invitation(text) TO anon, authenticated, service_role;
 
