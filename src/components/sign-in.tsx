@@ -18,7 +18,7 @@ export function SignIn() {
   const [signedIn, setSignedIn] = useState(false);
   const [mode, setMode] = useState<'login'|'signup'|'recovery'>('login'); const [hasInvite, setHasInvite] = useState(false);
   const [email, setEmail] = useState(''); const [mobile, setMobile] = useState(''); const [identifier, setIdentifier] = useState(''); const [password, setPassword] = useState(''); const [message, setMessage] = useState('');
-  useEffect(() => { supabase.auth.getUser().then(({ data }) => setSignedIn(Boolean(data.user))); setHasInvite(Boolean(sessionStorage.getItem('bizsathi-invite'))); }, []);
+  useEffect(() => { supabase.auth.getUser().then(({ data }) => setSignedIn(Boolean(data.user))); setHasInvite(Boolean(sessionStorage.getItem('bizsathi-invite') || sessionStorage.getItem('bizsathi-team-token'))); }, []);
   async function login(provider: 'google' | 'lovable') {
     setBusy(true); setError('');
     try {
@@ -26,7 +26,7 @@ export function SignIn() {
       if (result.error) throw result.error;
       if (result.redirected) return;
       const { data } = await supabase.auth.getUser();
-      if (data.user) await navigate({ to: sessionStorage.getItem('bizsathi-invite') ? '/invite' : '/dashboard' });
+      if (data.user) await navigate({ to: sessionStorage.getItem('bizsathi-team-token') ? '/join' : sessionStorage.getItem('bizsathi-team-token') ? '/join' : sessionStorage.getItem('bizsathi-invite') ? '/invite' : '/dashboard' });
     } catch { setError('Sign-in could not be completed. Please try again.'); }
     finally { setBusy(false); }
   }
