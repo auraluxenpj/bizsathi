@@ -53,6 +53,7 @@ BEGIN
   ok:=false; BEGIN PERFORM public.grant_branch_delegation(ba,br_a,staff_a,ARRAY['staff'],1,1); EXCEPTION WHEN insufficient_privilege THEN ok:=true; END; ASSERT ok,'manager cannot self-delegate to others';
   ASSERT (SELECT count(*) FROM public.team_invitations)=1,'manager sees only own invitations';
   ASSERT (SELECT invitee_mobile_masked FROM public.team_invitations_status WHERE id=iid)='••••0001','invitation status exposes only masked mobile';
+  ASSERT (SELECT invitee_email_masked FROM public.team_invitations_status WHERE id=iid)='n***@example.invalid','invitation status exposes only masked email';
   RESET ROLE;
 
   -- Staff without delegation cannot invite.
