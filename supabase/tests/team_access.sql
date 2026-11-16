@@ -26,7 +26,8 @@ BEGIN
   ASSERT (SELECT count(*) FROM public.businesses)=2,'master sees all businesses';
   ASSERT (SELECT count(*) FROM public.branches)=2,'master sees all branches';
   ASSERT public.is_platform_owner(),'is_platform_owner true for master';
-  PERFORM public.grant_branch_delegation(ba,br_a,mgr_a,ARRAY['staff','viewer'],5,7);   -- master delegates authority
+  ok:=false; BEGIN PERFORM public.grant_branch_delegation(ba,br_a,mgr_a,ARRAY['accountant'],5,7); EXCEPTION WHEN insufficient_privilege THEN ok:=true; END; ASSERT ok,'manager cannot receive delegation for an equal-ranked role';
+  PERFORM public.grant_branch_delegation(ba,br_a,mgr_a,ARRAY['staff','viewer'],5,7);   -- master delegates lower-ranked roles
   RESET ROLE;
   -- Cross-check: a normal user is not a platform owner, and API roles cannot touch platform_owners.
   SET LOCAL ROLE authenticated; PERFORM set_config('request.jwt.claims',json_build_object('sub',owner_a,'role','authenticated')::text,true);
