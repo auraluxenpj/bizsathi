@@ -26,7 +26,14 @@ REVOKE ALL ON FUNCTION public.assign_employee_id_after_membership() FROM PUBLIC,
 DROP TRIGGER IF EXISTS assign_employee_id_after_membership ON public.business_memberships;
 CREATE TRIGGER assign_employee_id_after_membership
 AFTER INSERT ON public.business_memberships
-FOR EACH ROW EXECUTE FUNCTION public.assign_employee_id_after_membership();\n\n-- Give existing active members an ID as part of the rollout.\nUPDATE public.profiles p\nSET employee_id = 'BS-' || upper(substr(replace(gen_random_uuid()::text, '-', ''), 1, 8)), updated_at = now()\nWHERE p.employee_id IS NULL\n  AND EXISTS (SELECT 1 FROM public.business_memberships bm JOIN public.businesses b ON b.id = bm.business_id\n              WHERE bm.user_id = p.id AND bm.status = 'active' AND b.archived_at IS NULL);
+FOR EACH ROW EXECUTE FUNCTION public.assign_employee_id_after_membership();
+
+-- Give existing active members an ID as part of the rollout.
+UPDATE public.profiles p
+SET employee_id = 'BS-' || upper(substr(replace(gen_random_uuid()::text, '-', ''), 1, 8)), updated_at = now()
+WHERE p.employee_id IS NULL
+  AND EXISTS (SELECT 1 FROM public.business_memberships bm JOIN public.businesses b ON b.id = bm.business_id
+              WHERE bm.user_id = p.id AND bm.status = 'active' AND b.archived_at IS NULL);
 
 CREATE OR REPLACE FUNCTION public.login_email_for_employee_id(_employee_id text)
 RETURNS text
