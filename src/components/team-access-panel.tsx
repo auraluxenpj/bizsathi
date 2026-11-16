@@ -226,7 +226,7 @@ export function TeamAccessPanel({
           ) : <p className="rounded-lg bg-muted/50 p-3 text-sm text-muted-foreground">No invitation delegation is assigned to your account for this branch. Ask an administrator to grant it.</p>}
           {isAdmin && (delegations.data?.grants ?? []).filter((g: { branch_id: string }) => g.branch_id === selectedBranchId).map((g: { id: string; manager_user_id: string; allowed_role_codes: string[] }) => (
             <div key={g.id} className="mt-3 flex items-center justify-between gap-3 rounded-lg border p-3 text-sm">
-              <span>{members.find((m) => m.user_id === g.manager_user_id)?.profiles?.full_name || 'Store Manager'} · {g.allowed_role_codes.join(', ')}</span>
+              <span>{members.find((m) => m.user_id === g.manager_user_id)?.profiles?.full_name || 'Branch Manager'} · {g.allowed_role_codes.join(', ')}</span>
               <Button size="sm" variant="outline" disabled={revokeGrant.isPending} onClick={() => revokeGrant.mutate(g.id)}><Ban className="mr-1 size-3" />Revoke</Button>
             </div>
           ))}
