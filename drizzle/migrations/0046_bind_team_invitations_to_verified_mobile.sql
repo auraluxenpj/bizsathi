@@ -88,12 +88,12 @@ GRANT EXECUTE ON FUNCTION public.create_team_invitation(uuid, uuid, text, text, 
 CREATE OR REPLACE VIEW public.team_invitations_status WITH (security_invoker = true) AS
 SELECT i.id, i.business_id, i.branch_id, i.role_code, i.job_title, i.label, i.invited_by,
   i.expires_at, i.max_uses, i.use_count, i.revoked_at, i.created_at,
-  CASE WHEN i.invitee_mobile IS NULL THEN NULL ELSE '••••' || right(i.invitee_mobile, 4) END AS invitee_mobile_masked,
   CASE WHEN i.revoked_at IS NOT NULL THEN 'revoked'
        WHEN i.use_count >= i.max_uses THEN 'accepted'
        WHEN i.expires_at <= now() THEN 'expired'
        WHEN i.use_count > 0 THEN 'partially_used'
-       ELSE 'pending' END AS status
+       ELSE 'pending' END AS status,
+  CASE WHEN i.invitee_mobile IS NULL THEN NULL ELSE '••••' || right(i.invitee_mobile, 4) END AS invitee_mobile_masked
 FROM public.team_invitations i;
 REVOKE ALL ON public.team_invitations_status FROM PUBLIC, anon, authenticated;
 GRANT SELECT ON public.team_invitations_status TO authenticated, service_role;
