@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useServerFn } from '@tanstack/react-start';
 import { GitBranch, ShieldCheck, Users, UserPlus, Ban, ClipboardList } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { RolePermissions } from '@/components/role-permissions';
 import { jobTitles, type JobTitle } from '@/lib/job-titles';
 import { normalizeVerifiedNepalMobile } from '@/lib/login-identifier';
 import {
@@ -164,13 +165,17 @@ export function TeamAccessPanel({
 
   return (
     <section className="space-y-7 border-b py-7" aria-labelledby="team-access-heading">
-      <div>
-        <div className="flex items-center gap-2 text-primary"><ShieldCheck className="size-4" /><p className="text-xs font-semibold tracking-wide">TEAM ACCESS & DELEGATION</p></div>
-        <h3 id="team-access-heading" className="brand mt-2 text-2xl">Role hierarchy</h3>
-        <p className="mt-1 max-w-3xl text-sm text-muted-foreground">Rank sets the maximum authority a role may delegate. Actual access is controlled by security permissions and branch assignments.</p>
-      </div>
-
-      <div className="mx-auto grid max-w-5xl gap-3 sm:grid-cols-2 lg:grid-cols-4">
+      <details name="team-access-sections" className="rounded-xl border p-4">
+        <summary className="flex cursor-pointer list-none items-center justify-between gap-3 [&::-webkit-details-marker]:hidden">
+          <div>
+            <div className="flex items-center gap-2 text-primary"><ShieldCheck className="size-4" /><p className="text-xs font-semibold tracking-wide">TEAM ACCESS & DELEGATION</p></div>
+            <h3 id="team-access-heading" className="brand mt-2 text-xl">Role hierarchy</h3>
+            <p className="mt-1 text-sm text-muted-foreground">Seven roles · Rank defines delegation ceilings</p>
+          </div>
+          <span aria-hidden="true" className="text-xl text-muted-foreground">⌄</span>
+        </summary>
+        <p className="mt-4 max-w-3xl text-sm text-muted-foreground">Rank sets the maximum authority a role may delegate. Actual access is controlled by security permissions and branch assignments.</p>
+      <div className="mx-auto mt-4 grid max-w-5xl gap-3 sm:grid-cols-2 lg:grid-cols-4">
         {hierarchy.map((item, index) => (
           <article key={item.title} className={`rounded-xl border p-4 ${item.tone} ${index === 0 ? 'sm:col-span-2 lg:col-span-4 lg:mx-auto lg:w-1/2' : ''}`}>
             <div className="flex items-center justify-between gap-2">
@@ -181,10 +186,12 @@ export function TeamAccessPanel({
           </article>
         ))}
       </div>
+      </details>
 
       <div className="grid gap-5 xl:grid-cols-[1fr_1fr]">
-        <div className="rounded-xl border p-4 md:p-5">
-          <div className="mb-4 flex items-center gap-2"><GitBranch className="size-4 text-primary" /><h4 className="font-semibold">Branch delegation</h4></div>
+        <details name="team-access-sections" className="rounded-xl border p-4 md:p-5">
+          <summary className="flex cursor-pointer list-none items-center justify-between gap-3 font-semibold [&::-webkit-details-marker]:hidden"><span className="flex items-center gap-2"><GitBranch className="size-4 text-primary" />Branch delegation</span><span className="text-xs font-normal text-muted-foreground">Branch-scoped hiring authority</span></summary>
+          <div className="mt-4">
           <p className="mb-4 text-sm text-muted-foreground">Administrators can grant a Store Manager permission to invite only lower-ranked roles in a specific branch.</p>
           <label className="mb-3 block text-sm">Branch
             <select className="mt-1 h-10 w-full rounded-md border bg-background px-3" value={selectedBranchId} onChange={(e) => { setBranchId(e.target.value); setManagerUserId(''); }} disabled={!branches.length}>
@@ -219,10 +226,11 @@ export function TeamAccessPanel({
               <Button size="sm" variant="outline" disabled={revokeGrant.isPending} onClick={() => revokeGrant.mutate(g.id)}><Ban className="mr-1 size-3" />Revoke</Button>
             </div>
           ))}
-        </div>
-
-        <div className="rounded-xl border p-4 md:p-5">
-          <div className="mb-4 flex items-center gap-2"><UserPlus className="size-4 text-primary" /><h4 className="font-semibold">Invite team member</h4></div>
+          </div>
+        </details>
+        <details name="team-access-sections" className="rounded-xl border p-4 md:p-5">
+          <summary className="flex cursor-pointer list-none items-center justify-between gap-3 font-semibold [&::-webkit-details-marker]:hidden"><span className="flex items-center gap-2"><UserPlus className="size-4 text-primary" />Invite team member</span><span className="text-xs font-normal text-muted-foreground">Create a secure, branch-locked invitation</span></summary>
+          <div className="mt-4">
           <p className="mb-4 text-sm text-muted-foreground">Every invitation is locked to one branch, one email, one Nepal mobile number and one use. The recipient must confirm the email and verify that mobile with Supabase Auth before joining.</p>
           <label className="mb-3 block text-sm">Branch
             <select className="mt-1 h-10 w-full rounded-md border bg-background px-3" value={selectedBranchId} onChange={(e) => setBranchId(e.target.value)} disabled={!branches.length}>
@@ -264,12 +272,15 @@ export function TeamAccessPanel({
               <Button size="sm" variant="outline" onClick={() => { window.open(`https://wa.me/?text=${encodeURIComponent(`Join our team on BizSathi: ${inviteLink}`)}`, '_blank', 'noopener,noreferrer'); }}>Share on WhatsApp</Button>
             </div>
           </div>}
-        </div>
+          </div>
+        </details>
       </div>
 
       {message && <p role="status" className="border-l-2 border-primary pl-3 text-sm">{message}</p>}
 
-      <div className="grid gap-5 xl:grid-cols-[1.2fr_1fr]">
+      <details name="team-access-sections" className="rounded-xl border p-4 md:p-5">
+        <summary className="flex cursor-pointer list-none items-center justify-between gap-3 font-semibold [&::-webkit-details-marker]:hidden"><span className="flex items-center gap-2"><Users className="size-4 text-primary" />Invitation history & activity</span><span className="text-xs font-normal text-muted-foreground">{(invitations.data?.invitations.length ?? 0) + legacyInvitations.length} invitations</span></summary>
+        <div className="mt-4 grid gap-5 xl:grid-cols-[1.2fr_1fr]">
         <div className="rounded-xl border p-4 md:p-5">
           <div className="mb-3 flex items-center gap-2"><Users className="size-4 text-primary" /><h4 className="font-semibold">Invitations</h4></div>
           {invitations.isPending ? <p className="text-sm text-muted-foreground">Loading branch-locked invitations…</p> : invitations.error ? <p role="alert" className="text-sm text-destructive">Branch-locked invitations could not be loaded.</p> : !(invitations.data?.invitations.length) ? <p className="text-sm text-muted-foreground">No branch-locked invitations yet.</p> : <div className="divide-y">{invitations.data.invitations.map((i: { id: string; branch_id: string; role_code: string; job_title: string | null; label: string | null; expires_at: string; max_uses: number; use_count: number; invitee_mobile_masked: string | null; invitee_email_masked: string | null; status: string; created_at: string }) => (
@@ -309,7 +320,12 @@ export function TeamAccessPanel({
           <div className="mb-3 flex items-center gap-2"><ClipboardList className="size-4 text-primary" /><h4 className="font-semibold">Access activity</h4></div>
           {audit.isPending ? <p className="text-sm text-muted-foreground">Loading activity…</p> : audit.error ? <p role="alert" className="text-sm text-destructive">Activity could not be loaded.</p> : !(audit.data?.entries.length) ? <p className="text-sm text-muted-foreground">No delegation or invitation activity yet.</p> : <ul className="divide-y">{audit.data.entries.map((entry: { id: number; actor: string; action: string; created_at: string }) => <li key={entry.id} className="py-2 text-sm"><p className="font-medium">{entry.action.replaceAll('.', ' ')}</p><p className="text-xs text-muted-foreground">{entry.actor} · {new Date(entry.created_at).toLocaleString()}</p></li>)}</ul>}
         </div>
-      </div>
+        </div>
+      </details>
+      <details name="team-access-sections" className="rounded-xl border p-4 md:p-5">
+        <summary className="flex cursor-pointer list-none items-center justify-between gap-3 font-semibold [&::-webkit-details-marker]:hidden"><span className="flex items-center gap-2"><ShieldCheck className="size-4 text-primary" />Role permissions</span><span className="text-xs font-normal text-muted-foreground">Review and configure access by role</span></summary>
+        <div className="mt-4"><RolePermissions businessId={businessId} isOwner={isOwner} /></div>
+      </details>
       <div className="flex items-start gap-2 text-xs text-muted-foreground"><ShieldCheck className="mt-0.5 size-4 shrink-0" /><p>Role titles describe the job. Rank and server-enforced permissions determine authority. Branch access and delegation are separate grants; removing either stops further access.</p></div>
     </section>
   );

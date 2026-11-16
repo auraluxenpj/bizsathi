@@ -18,6 +18,11 @@ vi.mock('@tanstack/react-start', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@tanstack/react-start')>()),
   useServerFn: (fn: unknown) => fn,
 }));
+vi.mock('@/lib/business.functions', () => ({
+  getRoleTemplates: async () => ({ templates: { sales_person: { denied: [], customized: false } } }),
+  saveRoleTemplate: vi.fn(),
+  resetRoleTemplate: vi.fn(),
+}));
 vi.mock('@/lib/team-access.functions', () => ({
   listTeamInvitations: async () => ({ invitations: [], members: [] }),
   listBranchDelegations: async () => ({ grants: [{
@@ -51,6 +56,21 @@ describe('Team Access hierarchy panel', () => {
     expect(screen.getByText(/Rank\s*80/)).toBeInTheDocument();
     expect(screen.getAllByText(/Rank\s*60/)).toHaveLength(2);
     expect(screen.getAllByText(/Rank\s*40/)).toHaveLength(3);
+  });
+
+  it('keeps all five major Team Access areas collapsed until selected', () => {
+    render(<QueryClientProvider client={new QueryClient()}>
+      <TeamAccessPanel businessId={BUSINESS} branches={[{ id: BRANCH, name: 'Nepalgunj', code: 'NP', is_active: true }]} members={[]} branchAccess={[]} userId={MANAGER} isAdmin={false} isOwner={false} />
+    </QueryClientProvider>);
+    const sectionTitles = ['Role hierarchy', 'Branch delegation', 'Invite team member', 'Invitation history & activity', 'Role permissions'];
+    for (const title of sectionTitles) {
+      const summaries = screen.getAllByText(title).map((element) => element.closest('summary')).filter(Boolean);
+      expect(summaries).toHaveLength(1);
+      const accordion = summaries[0]?.closest('details');
+      expect(accordion).not.toBeNull();
+      expect(accordion).not.toHaveAttribute('open');
+      expect(accordion).toHaveAttribute('name', 'team-access-sections');
+    }
   });
 
   it('keeps earlier invitation history and management actions inside Team Access', async () => {
@@ -101,7 +121,7 @@ describe('Team Access hierarchy panel', () => {
     </QueryClientProvider>);
 
     await screen.findByText('Delegation active for this branch');
-    const role = screen.getByLabelText('Role') as HTMLSelectElement;
+    const role = screen.getByRole('combobox', { name: 'Role' }) as HTMLSelectElement;
     expect([...role.options].map((o) => o.value)).toEqual(['staff']);
     expect(screen.getByLabelText('Link expiry (days)')).toHaveValue(2);
 
