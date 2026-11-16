@@ -52,6 +52,7 @@ BEGIN
   ok:=false; BEGIN PERFORM public.create_team_invitation(bb,br_a,'staff',NULL,'{}','9841000001',h2,now()+interval '2 days',1); EXCEPTION WHEN insufficient_privilege THEN ok:=true; END; ASSERT ok,'manager cannot invite into another business';
   ok:=false; BEGIN PERFORM public.grant_branch_delegation(ba,br_a,staff_a,ARRAY['staff'],1,1); EXCEPTION WHEN insufficient_privilege THEN ok:=true; END; ASSERT ok,'manager cannot self-delegate to others';
   ASSERT (SELECT count(*) FROM public.team_invitations)=1,'manager sees only own invitations';
+  ASSERT (SELECT invitee_mobile_masked FROM public.team_invitations_status WHERE id=iid)='••••0001','invitation status exposes only masked mobile';
   RESET ROLE;
 
   -- Staff without delegation cannot invite.
