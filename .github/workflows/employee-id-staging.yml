@@ -22,7 +22,6 @@ jobs:
       EXPECTED_STAGING_URL: https://efcxhbyaazfvpbaxyvpu.supabase.co
       STAGING_URL: ${{ secrets.STAGING_SUPABASE_URL }}
       STAGING_PUBLISHABLE_KEY: ${{ secrets.STAGING_SUPABASE_PUBLISHABLE_KEY }}
-      STAGING_SERVICE_ROLE_KEY: ${{ secrets.STAGING_SUPABASE_SERVICE_ROLE_KEY }}
     steps:
       - name: Refuse to run outside the dedicated staging branch
         shell: bash
@@ -55,9 +54,9 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          if [[ -z "${STAGING_URL}" || -z "${STAGING_PUBLISHABLE_KEY}" || -z "${STAGING_SERVICE_ROLE_KEY}" ]]; then
+          if [[ -z "${STAGING_URL}" || -z "${STAGING_PUBLISHABLE_KEY}" ]]; then
             echo "configured=false" >> "$GITHUB_OUTPUT"
-            echo "::notice::Staging smoke check skipped. Add repository Actions secrets STAGING_SUPABASE_URL, STAGING_SUPABASE_PUBLISHABLE_KEY, and STAGING_SUPABASE_SERVICE_ROLE_KEY to enable it."
+            echo "::notice::Staging smoke check skipped. Add repository Actions secrets STAGING_SUPABASE_URL and STAGING_SUPABASE_PUBLISHABLE_KEY to enable it."
             exit 0
           fi
           if [[ "${STAGING_URL}" != "${EXPECTED_STAGING_URL}" ]]; then
