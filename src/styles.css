@@ -1043,3 +1043,117 @@ button, [role='button'], a, input, select { touch-action: manipulation; }
 .karobar .biz-section-title{color:#1B2559;font-weight:800;letter-spacing:-.02em;}
 @media(min-width:768px) and (max-width:1279px){.app-sidebar{width:220px!important}.app-workspace:not([data-sidebar-compact=true]){padding-left:220px!important}.dashboard-primary-grid{grid-template-columns:minmax(0,1.4fr) minmax(260px,.8fr)}.dashboard-secondary-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(260px,.8fr);gap:20px}}
 @media(max-width:767px){.karobar .biz-quick-actions{grid-template-columns:repeat(3,minmax(0,1fr))}.karobar .biz-surface{padding:16px}}
+
+
+/* Central BizSathi visual theme: colour, typography and surface styling only. */
+:root,
+.dark {
+  color-scheme: light;
+  --background: #F3F6FF;
+  --foreground: #101828;
+  --card: #FFFFFF;
+  --card-foreground: #101828;
+  --popover: #FFFFFF;
+  --popover-foreground: #101828;
+  --primary: #2F5BF0;
+  --primary-foreground: #FFFFFF;
+  --secondary: #E6EDFF;
+  --secondary-foreground: #2347D9;
+  --muted: #EEF2FC;
+  --muted-foreground: #55607A;
+  --accent: #E6EDFF;
+  --accent-foreground: #1B2559;
+  --destructive: #E5392D;
+  --destructive-foreground: #FFFFFF;
+  --border: #E1E8FB;
+  --input: #E1E8FB;
+  --ring: #2F5BF0;
+  --sidebar: #FFFFFF;
+  --sidebar-foreground: #101828;
+  --sidebar-primary: #2F5BF0;
+  --sidebar-primary-foreground: #FFFFFF;
+  --sidebar-accent: #E6EDFF;
+  --sidebar-accent-foreground: #2347D9;
+  --sidebar-border: #E1E8FB;
+  --sidebar-ring: #2F5BF0;
+  --workspace: #F3F6FF;
+  --revenue: #079455;
+  --expense: #E5392D;
+  --purchase: #2F5BF0;
+  --money-in: #079455;
+  --money-in-text: #067647;
+  --money-out: #E5392D;
+  --money-out-text: #D92D20;
+  --status-partial: #8A5A00;
+  --status-partial-bg: #FFF1CC;
+  --accent-amber: #FFB41F;
+  --accent-amber-text: #1B2559;
+  --border: #E1E8FB;
+  --radius: 1rem;
+}
+
+html,
+body,
+button,
+input,
+select,
+textarea {
+  font-family: 'Plus Jakarta Sans', 'Noto Sans Devanagari', sans-serif;
+}
+
+body,
+.karobar {
+  background-color: var(--background);
+  color: var(--foreground);
+}
+
+.brand,
+h1,
+h2,
+h3,
+h4 {
+  font-family: 'Plus Jakarta Sans', 'Noto Sans Devanagari', sans-serif;
+}
+
+:where([data-slot="card"], .biz-surface, .pos-product-card, .app-sidebar, .app-topbar) {
+  border-color: var(--border);
+  border-radius: 16px;
+  box-shadow: 0 6px 22px rgba(35, 71, 217, 0.055);
+}
+
+.workspace-nav-item[aria-current="page"] {
+  background: #E6EDFF;
+  color: #2347D9;
+}
+
+a:not([class*="text-"]) {
+  color: inherit;
+}
+
+.karobar .biz-sales-hero {
+  background: linear-gradient(115deg, #1F3FD0 0%, #2F5BF0 100%);
+  color: #FFFFFF;
+  border-radius: 16px;
+  box-shadow: 0 10px 26px rgba(31, 63, 208, 0.18);
+}
+
+.karobar .biz-sales-hero :where(p, span, a) {
+  color: inherit;
+}
+
+.karobar .biz-quick-action-new {
+  background: #FFB41F;
+  color: #1B2559;
+}
+
+.karobar .biz-surface {
+  background: #FFFFFF;
+  border-color: #E1E8FB;
+  border-radius: 16px;
+  box-shadow: 0 6px 22px rgba(35, 71, 217, 0.055);
+}
+
+::selection {
+  background: #E6EDFF;
+  color: #1B2559;
+}
