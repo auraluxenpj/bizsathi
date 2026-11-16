@@ -186,7 +186,7 @@ export function Join() {
                 />
               </label>
               {!phoneVerified && !pendingPhone && (
-                <Button className="w-full" disabled={busy || !details} onClick={sendPhoneCode}>
+                <Button className="w-full" disabled={busy || !details || !validNepalMobile} onClick={sendPhoneCode}>
                   {busy ? 'Please wait…' : currentPhoneConfirmed ? 'Check invited mobile number' : 'Send mobile verification code'}
                 </Button>
               )}
