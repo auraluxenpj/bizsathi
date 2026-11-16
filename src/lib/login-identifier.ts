@@ -11,10 +11,12 @@ export function normalizeLoginMobile(value: string): string | null {
 
 export function classifyLoginIdentifier(value: string):
   | { type: 'email'; value: string }
-  | { type: 'mobile'; value: string }\n  | { type: 'employee'; value: string }
+  | { type: 'mobile'; value: string }
+  | { type: 'employee'; value: string }
   | null {
   const trimmed = value.trim();
-  if (isEmailLoginIdentifier(trimmed)) return { type: 'email', value: trimmed.toLowerCase() };\n  if (/^BS-[A-F0-9]{8}$/i.test(trimmed)) return { type: 'employee', value: trimmed.toUpperCase() };
+  if (isEmailLoginIdentifier(trimmed)) return { type: 'email', value: trimmed.toLowerCase() };
+  if (/^BS-[A-F0-9]{8}$/i.test(trimmed)) return { type: 'employee', value: trimmed.toUpperCase() };
   const mobile = normalizeLoginMobile(trimmed);
   return mobile ? { type: 'mobile', value: mobile } : null;
 }
