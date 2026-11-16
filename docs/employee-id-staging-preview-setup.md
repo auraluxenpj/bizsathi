@@ -53,3 +53,14 @@ If any check points to production, stop immediately and do not submit forms, acc
 - No full invitation-to-login end-to-end test has passed yet.
 - The Lovable remix attempt could not create a separate test project because the workspace had no credits.
 - This document is preparation only. It does not change app runtime configuration, secrets, database schema, Auth settings, or deployment state.
+
+## GitHub Actions staging workflow
+
+The branch includes `.github/workflows/employee-id-staging.yml`. It runs tests and lint, then performs a read-only Auth health check only when both of these repository Actions secrets are configured:
+
+- `STAGING_SUPABASE_URL` — must be exactly `https://efcxhbyaazfvpbaxyvpu.supabase.co`.
+- `STAGING_SUPABASE_PUBLISHABLE_KEY` — publishable/anon key from that same Tokyo staging project.
+
+Add them under GitHub repository Settings → Secrets and variables → Actions → Repository secrets. Do not add the production URL or key. Do not add a service-role key; this workflow does not need one and never writes to the database. If the secrets are absent, the staging network check is skipped and the build uses CI placeholders. A successful quality-only run must not be mistaken for a successful staging connection test.
+
+The workflow is restricted to this feature branch and has no deployment or migration steps. It does not publish a website or alter database records.
