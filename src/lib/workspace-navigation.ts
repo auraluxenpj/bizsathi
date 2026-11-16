@@ -25,6 +25,7 @@ export const workspaceGroups: WorkspaceGroup[] = [
   { name: 'Sale Returns', to: '/sales', search: { kind: 'sale_return' }, icon: RotateCcw }, { name: 'Purchase Returns', to: '/purchases', search: { kind: 'purchase_return' }, icon: RotateCcw },
  ] },
  { name: 'Stock & Inventory', icon: Warehouse, items: [
+  { name: 'Physical Inventory Count', to: '/inventory', search: { tool: 'count' }, icon: ClipboardCheck, note: 'Scan barcodes or enter physical quantities, then save and submit the count' },
   { name: 'Batch & Expiry', icon: Clock, unavailable: true }, { name: 'Stock Adjustments', to: '/inventory', search: { tool: 'adjust' }, icon: SlidersHorizontal },
   { name: 'Stocktake Sessions', icon: ClipboardCheck, unavailable: true }, { name: 'Quarantine & Disposal', to: '/inventory', search: { tool: 'dispose' }, icon: ShieldAlert, note: 'Disposal available; quarantine not available' },
  ] },
