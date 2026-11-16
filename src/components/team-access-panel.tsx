@@ -4,6 +4,7 @@ import { useServerFn } from '@tanstack/react-start';
 import { GitBranch, ShieldCheck, Users, UserPlus, Ban, ClipboardList } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { jobTitles, type JobTitle } from '@/lib/job-titles';
+import { normalizeVerifiedNepalMobile } from '@/lib/login-identifier';
 import {
   createTeamInvitation,
   grantBranchDelegation,
@@ -100,6 +101,7 @@ export function TeamAccessPanel({
     : currentGrantRoles.filter((r) => (roleRank[r] ?? 100) < 60);
   const maxAllowedDays = currentGrant?.max_invite_days ?? 30;
   const effectiveExpiryDays = Math.min(expiryDays, maxAllowedDays);
+  const inviteMobileValid = Boolean(normalizeVerifiedNepalMobile(inviteeMobile));
   const availableTitles = titleByRole[roleCode] ?? [];
   const eligibleManagers = members.filter((m) =>
     m.status === 'active' && m.job_title === 'manager' &&
@@ -236,7 +238,7 @@ export function TeamAccessPanel({
           <label className="my-3 block text-sm">Invitation label (optional)
             <input className="mt-1 h-10 w-full rounded-md border bg-background px-3" maxLength={120} value={label} onChange={(e) => setLabel(e.target.value)} placeholder="e.g. Nepalgunj cashier team" />
           </label>
-          <Button className="w-full" disabled={!selectedBranchId || !inviteeMobile.trim() || !allowedInviteRoles.includes(roleCode) || createInvite.isPending} onClick={() => createInvite.mutate()}>
+          <Button className="w-full" disabled={!selectedBranchId || !inviteMobileValid || !allowedInviteRoles.includes(roleCode) || createInvite.isPending} onClick={() => createInvite.mutate()}>
             <UserPlus className="mr-2 size-4" />{createInvite.isPending ? 'Creating link…' : 'Create invitation link'}
           </Button>
           {inviteLink && <div className="mt-3 rounded-lg border p-3">
