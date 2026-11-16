@@ -59,12 +59,6 @@ BEGIN
   PERFORM public.review_business_archive_request(request_id,true,'Verified by platform owner');
   ASSERT (SELECT status FROM public.list_business_archive_requests(v_business_id) WHERE id=request_id)='approved',
     'Request becomes approved';
-  ASSERT (SELECT archived_at IS NOT NULL FROM public.businesses WHERE id=v_business_id),
-    'Approval archives the business';
-  ASSERT (SELECT count(*) FROM public.audit_logs al
-          WHERE al.business_id=v_business_id AND al.entity_table='business_archive_requests') >= 2,
-    'Request and review are audited';
-
   -- The old one-step RPC is no longer executable by authenticated users.
   denied := false;
   BEGIN
@@ -72,6 +66,14 @@ BEGIN
   EXCEPTION WHEN insufficient_privilege THEN denied := true;
   END;
   ASSERT denied,'Legacy direct archive RPC is revoked';
+
+  -- Inspect final persisted state as the isolated test database owner (bypasses tenant RLS).
+  RESET ROLE;
+  ASSERT (SELECT archived_at IS NOT NULL FROM public.businesses WHERE id=v_business_id),
+    'Approval archives the business';
+  ASSERT (SELECT count(*) FROM public.audit_logs al
+          WHERE al.business_id=v_business_id AND al.entity_table='business_archive_requests') >= 2,
+    'Request and review are audited';
 
   RAISE NOTICE 'BUSINESS_ARCHIVE_APPROVAL_TESTS_PASSED';
 END;
