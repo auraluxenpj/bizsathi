@@ -204,7 +204,7 @@ export function TeamAccessPanel({
           </label>
           {isAdmin ? (
             <>
-              <label className="mb-3 block text-sm">Store Manager
+              <label className="mb-3 block text-sm">Branch Manager
                 <select className="mt-1 h-10 w-full rounded-md border bg-background px-3" value={managerUserId} onChange={(e) => setManagerUserId(e.target.value)}>
                   <option value="">Select a Branch Manager with branch access</option>
                   {eligibleManagers.map((m) => <option key={m.user_id} value={m.user_id}>{m.profiles?.full_name || m.user_id.slice(0, 8)}</option>)}
