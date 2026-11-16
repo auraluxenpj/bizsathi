@@ -10,8 +10,13 @@ const rank: Record<string, number> = { viewer: 10, staff: 20, accountant: 40, ad
 const badge = { open: 'bg-emerald-100 text-emerald-800', closed: 'bg-amber-100 text-amber-800', locked: 'bg-slate-200 text-slate-700' } as const;
 
 export function FiscalYearClose({ businessId, businessName, role }: { businessId: string; businessName: string; role: string }) {
-  const client = useQueryClient(); const load = useServerFn(listFiscalYears); const setStatus = useServerFn(setFiscalYearStatus);\n  const checkPlatformOwner = useServerFn(getPlatformOwnerStatusFn); const loadArchiveRequests = useServerFn(listBusinessArchiveRequestsFn);\n  const requestArchive = useServerFn(requestBusinessArchiveFn); const reviewArchive = useServerFn(reviewBusinessArchiveRequestFn);
-  const [message, setMessage] = useState('');\n  const platformOwner = useQuery({ queryKey: ['platform-owner-status'], queryFn: () => checkPlatformOwner() });\n  const canSeeArchiveRequests = role === 'owner' || platformOwner.data === true;\n  const archiveRequests = useQuery({ queryKey: ['business-archive-requests', businessId], queryFn: () => loadArchiveRequests({ data: { businessId } }), enabled: Boolean(businessId) && canSeeArchiveRequests });
+  const client = useQueryClient(); const load = useServerFn(listFiscalYears); const setStatus = useServerFn(setFiscalYearStatus);
+  const checkPlatformOwner = useServerFn(getPlatformOwnerStatusFn); const loadArchiveRequests = useServerFn(listBusinessArchiveRequestsFn);
+  const requestArchive = useServerFn(requestBusinessArchiveFn); const reviewArchive = useServerFn(reviewBusinessArchiveRequestFn);
+  const [message, setMessage] = useState('');
+  const platformOwner = useQuery({ queryKey: ['platform-owner-status'], queryFn: () => checkPlatformOwner() });
+  const canSeeArchiveRequests = role === 'owner' || platformOwner.data === true;
+  const archiveRequests = useQuery({ queryKey: ['business-archive-requests', businessId], queryFn: () => loadArchiveRequests({ data: { businessId } }), enabled: Boolean(businessId) && canSeeArchiveRequests });
   const years = useQuery({ queryKey: ['fiscal-years', businessId], queryFn: () => load({ data: { businessId } }), enabled: Boolean(businessId) });
   const change = useMutation({
     mutationFn: (v: { id: string; status: 'open' | 'closed' | 'locked' }) => setStatus({ data: { periodId: v.id, status: v.status } }),
@@ -34,7 +39,9 @@ export function FiscalYearClose({ businessId, businessName, role }: { businessId
   });
   const r = rank[role] ?? 0;
   if (r < rank['accountant']!) return null;
-  const run = (id: string, name: string, status: 'open' | 'closed' | 'locked', warning: string) => { if (window.confirm(`${warning}\n\nFinancial year: ${name}`)) change.mutate({ id, status }); };
+  const run = (id: string, name: string, status: 'open' | 'closed' | 'locked', warning: string) => { if (window.confirm(`${warning}
+
+Financial year: ${name}`)) change.mutate({ id, status }); };
   return <section className="mt-6"><h2 className="mb-2 text-sm font-medium text-muted-foreground">Financial year</h2>
     <div className="divide-y rounded-2xl border bg-card">
       {years.isPending && <p className="px-4 py-4 text-sm text-muted-foreground">Loading…</p>}
