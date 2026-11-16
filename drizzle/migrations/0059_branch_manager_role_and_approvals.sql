@@ -172,6 +172,17 @@ BEGIN
   IF _job_title IS NOT NULL AND public.job_title_role(_job_title) IS DISTINCT FROM _role THEN
     RAISE EXCEPTION 'Job title does not match the role';
   END IF;
+  IF _role = 'branch_manager' AND _job_title IS DISTINCT FROM 'branch_manager' THEN
+    RAISE EXCEPTION 'Branch Manager invitations must use the Branch Manager title';
+  END IF;
+  IF EXISTS (
+    SELECT 1 FROM public.business_memberships m
+    WHERE m.business_id = _business_id AND m.user_id = actor
+      AND m.status = 'active' AND m.role_code = 'branch_manager'
+      AND m.job_title IS DISTINCT FROM 'branch_manager'
+  ) THEN
+    RAISE EXCEPTION 'Branch Manager assignment is incomplete';
+  END IF;
 
   _denied := COALESCE(_denied, '{}');
   -- The invitee must never receive permissions that the inviter has denied.
