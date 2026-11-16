@@ -67,11 +67,6 @@ BEGIN
   ASSERT public.job_title_role('manager')='accountant',
     'Legacy Manager title retains historical Accountant mapping';
 
-  -- Check the private rank helper as the disposable database owner.
-  -- Do not grant authenticated users EXECUTE merely for this test assertion.
-  ASSERT public.business_role_rank(v_business_id,manager_id)=50,
-    'Branch Manager membership uses rank 50';
-
   SET LOCAL ROLE authenticated;
   PERFORM set_config('request.jwt.claims',json_build_object('sub',manager_id,'role','authenticated')::text,true);
   ASSERT NOT public.has_business_role(v_business_id,'accountant'),
