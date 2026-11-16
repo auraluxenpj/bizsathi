@@ -75,7 +75,7 @@ FROM unnest(ARRAY[
   'staff.create','staff.delete','staff.edit','staff.view',
   'settings.edit','settings.invoice','settings.item','settings.party','settings.transaction','settings.delete_business',
   'accounts.create','accounts.adjust_create','accounts.delete','accounts.edit','accounts.adjust_edit_delete','accounts.view',
-  'reports.business_status','reports.home_stats','reports.expenses','reports.items','reports.parties','reports.transactions','reports.view',
+  'reports.business_status','reports.view','reports.home_stats','reports.expenses','reports.items','reports.parties','reports.transactions','reports.view',
   'notebook.create','notebook.view','notebook.delete','notebook.edit',
   'other.party_adjustments','other.purchase_price','other.change_date'
 ]::text[]) AS p(permission)
@@ -223,6 +223,7 @@ BEGIN
      OR NOT public.can_approve_inventory_count(_s.business_id, _s.branch_id)
      OR _s.status <> 'submitted'
      OR _s.created_by = auth.uid()
+     OR _decision IS NULL
      OR _decision NOT IN ('approved','rejected')
      OR (_decision = 'rejected' AND char_length(btrim(coalesce(_note,''))) = 0)
      OR char_length(coalesce(_note,'')) > 1000 THEN
