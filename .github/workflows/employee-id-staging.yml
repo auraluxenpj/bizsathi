@@ -1,0 +1,100 @@
+name: Employee ID staging verification
+
+on:
+  push:
+    branches:
+      - feature/employee-id-staging-preview
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: employee-id-staging-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  safety-and-quality:
+    name: Verify staging target and run quality checks
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      EXPECTED_STAGING_URL: https://efcxhbyaazfvpbaxyvpu.supabase.co
+      STAGING_URL: ${{ secrets.STAGING_SUPABASE_URL }}
+      STAGING_PUBLISHABLE_KEY: ${{ secrets.STAGING_SUPABASE_PUBLISHABLE_KEY }}
+      STAGING_SERVICE_ROLE_KEY: ${{ secrets.STAGING_SUPABASE_SERVICE_ROLE_KEY }}
+    steps:
+      - name: Refuse to run outside the dedicated staging branch
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ "${GITHUB_REF}" != "refs/heads/feature/employee-id-staging-preview" ]]; then
+            echo "::error::This workflow is restricted to feature/employee-id-staging-preview."
+            exit 1
+          fi
+
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install locked dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Run unit and component tests
+        run: bun run test
+
+      - name: Run ESLint
+        run: bun run lint
+
+      - name: Verify staging secrets and project identity
+        id: staging
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ -z "${STAGING_URL}" || -z "${STAGING_PUBLISHABLE_KEY}" || -z "${STAGING_SERVICE_ROLE_KEY}" ]]; then
+            echo "configured=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::Staging smoke check skipped. Add repository Actions secrets STAGING_SUPABASE_URL, STAGING_SUPABASE_PUBLISHABLE_KEY, and STAGING_SUPABASE_SERVICE_ROLE_KEY to enable it."
+            exit 0
+          fi
+          if [[ "${STAGING_URL}" != "${EXPECTED_STAGING_URL}" ]]; then
+            echo "::error::Staging URL does not match the approved Tokyo staging project. No network request was made."
+            exit 1
+          fi
+          echo "configured=true" >> "$GITHUB_OUTPUT"
+
+      - name: Check staging Auth endpoint (read-only)
+        if: steps.staging.outputs.configured == 'true'
+        env:
+          SUPABASE_URL: ${{ secrets.STAGING_SUPABASE_URL }}
+          SUPABASE_PUBLISHABLE_KEY: ${{ secrets.STAGING_SUPABASE_PUBLISHABLE_KEY }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl --fail --silent --show-error \
+            --output /dev/null \
+            --write-out "Staging Auth endpoint HTTP %{http_code}\n" \
+            -H "apikey: ${SUPABASE_PUBLISHABLE_KEY}" \
+            "${SUPABASE_URL}/auth/v1/health"
+
+      - name: Build against staging public configuration
+        env:
+          VITE_SUPABASE_URL: ${{ secrets.STAGING_SUPABASE_URL }}
+          VITE_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.STAGING_SUPABASE_PUBLISHABLE_KEY }}
+          SUPABASE_URL: ${{ secrets.STAGING_SUPABASE_URL }}
+          SUPABASE_PUBLISHABLE_KEY: ${{ secrets.STAGING_SUPABASE_PUBLISHABLE_KEY }}
+        run: |
+          if [[ -z "${VITE_SUPABASE_URL}" || -z "${VITE_SUPABASE_PUBLISHABLE_KEY}" ]]; then
+            echo "Staging secrets are not configured; building with CI-only placeholders."
+            VITE_SUPABASE_URL=https://ci-placeholder.supabase.co \
+            VITE_SUPABASE_PUBLISHABLE_KEY=sb_publishable_ci_placeholder \
+            SUPABASE_URL=https://ci-placeholder.supabase.co \
+            SUPABASE_PUBLISHABLE_KEY=sb_publishable_ci_placeholder \
+            bun run build
+          else
+            test "${VITE_SUPABASE_URL}" = "${EXPECTED_STAGING_URL}"
+            bun run build
+          fi
