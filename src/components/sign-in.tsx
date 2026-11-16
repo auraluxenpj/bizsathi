@@ -17,7 +17,7 @@ export function SignIn() {
   const [error, setError] = useState('');
   const [signedIn, setSignedIn] = useState(false);
   const [mode, setMode] = useState<'login'|'signup'|'recovery'>('login'); const [hasInvite, setHasInvite] = useState(false);
-  const [email, setEmail] = useState(''); const [mobile, setMobile] = useState(''); const [identifier, setIdentifier] = useState(''); const [password, setPassword] = useState(''); const [message, setMessage] = useState('');
+  const [email, setEmail] = useState(''); const [mobile, setMobile] = useState(''); const [fullName, setFullName] = useState(''); const [identifier, setIdentifier] = useState(''); const [password, setPassword] = useState(''); const [confirmPassword, setConfirmPassword] = useState(''); const [message, setMessage] = useState('');
   useEffect(() => { supabase.auth.getUser().then(({ data }) => setSignedIn(Boolean(data.user))); setHasInvite(Boolean(sessionStorage.getItem('bizsathi-invite') || sessionStorage.getItem('bizsathi-team-token'))); }, []);
   async function login(provider: 'google' | 'lovable') {
     setBusy(true); setError('');
@@ -42,12 +42,12 @@ export function SignIn() {
         if (mode === 'signup') {
           if (!hasInvite) throw new Error('invitation required');
           const normalizedMobile = normalizeLoginMobile(mobile);
-          if (!isEmailLoginIdentifier(email) || !normalizedMobile || password.length < 8) throw new Error('invalid');
+          if (!fullName.trim() || fullName.trim().length > 120 || !isEmailLoginIdentifier(email) || !normalizedMobile || password.length < 8 || password !== confirmPassword) throw new Error('invalid');
           const teamToken = sessionStorage.getItem('bizsathi-team-token');
           const emailRedirectTo = teamToken ? `${window.location.origin}/join#token=${teamToken}` : `${window.location.origin}/auth`;
-          const { data, error } = await supabase.auth.signUp({ email: email.trim().toLowerCase(), password, options: { data: { mobile: normalizedMobile }, emailRedirectTo } });
+          const { data, error } = await supabase.auth.signUp({ email: email.trim().toLowerCase(), password, options: { data: { full_name: fullName.trim(), mobile: normalizedMobile }, emailRedirectTo } });
           if (error) throw error;
-          if (!data.session) { setMessage('Check your email to confirm your account before signing in.'); return; }
+          if (!data.session) { setMessage('Account created. Check your email and confirm it before returning to your invitation.'); return; }
         } else {
           const parsed = classifyLoginIdentifier(identifier);
           if (!parsed || password.length < 8) throw new Error('invalid');
@@ -78,10 +78,13 @@ export function SignIn() {
           <h1 className="brand text-xl font-semibold">{title}</h1>
           <form className="mt-5 space-y-4" onSubmit={e => { e.preventDefault(); emailLogin(); }}>
             {mode === 'signup' ? <>
+              <label className="block text-sm">Full name<Input className="mt-1 h-11" type="text" autoComplete="name" required minLength={2} maxLength={120} value={fullName} onChange={e => setFullName(e.target.value)} /></label>
               <label className="block text-sm">Email<Input className="mt-1 h-11" type="email" autoComplete="email" required maxLength={254} value={email} onChange={e => setEmail(e.target.value)} /></label>
               <label className="block text-sm">Mobile number<Input className="mt-1 h-11" type="tel" inputMode="numeric" autoComplete="tel" required maxLength={20} placeholder="98XXXXXXXX" value={mobile} onChange={e => setMobile(e.target.value)} /></label>
             </> : <label className="block text-sm">{mode === 'recovery' ? 'Email' : 'Email or mobile number'}<Input className="mt-1 h-11" type={mode === 'recovery' ? 'email' : 'text'} autoComplete="username" required maxLength={254} value={identifier} onChange={e => setIdentifier(e.target.value)} /></label>}
             {mode !== 'recovery' && <label className="block text-sm">Password<Input className="mt-1 h-11" type="password" autoComplete={mode === 'signup' ? 'new-password' : 'current-password'} required minLength={8} maxLength={128} value={password} onChange={e => setPassword(e.target.value)} /></label>}
+            {mode === 'signup' && <label className="block text-sm">Confirm password<Input className="mt-1 h-11" type="password" autoComplete="new-password" required minLength={8} maxLength={128} value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)} /></label>}
+            {mode === 'signup' && password && confirmPassword && password !== confirmPassword && <p className="text-sm text-destructive">Passwords do not match.</p>}
             <Button className="h-11 w-full" disabled={busy}>{busy ? 'Please wait…' : mode === 'recovery' ? 'Send recovery link' : mode === 'signup' ? 'Create account' : 'Sign in'}</Button>
             <div className="flex flex-wrap justify-between gap-2 text-sm">
               {(hasInvite || mode === 'signup') && <button type="button" className="text-primary hover:underline" onClick={() => { setMode(mode === 'signup' ? 'login' : 'signup'); setError(''); setMessage(''); }}>{mode === 'signup' ? 'Already have an account?' : 'Create account'}</button>}
