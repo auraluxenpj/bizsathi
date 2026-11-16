@@ -34,7 +34,7 @@ jobs:
       - name: Start isolated local Supabase stack
         run: supabase start -x studio,imgproxy,edge-runtime,logflare,vector
 
-      - name: Apply test-only compatibility bootstrap
+      - name: Apply early test-only compatibility bootstrap
         run: |
           set -euo pipefail
           DB_CONTAINER="$(docker ps --filter 'name=supabase_db_' --format '{{.Names}}' | head -n1)"
@@ -50,6 +50,11 @@ jobs:
             echo "::group::Applying ${migration}"
             docker exec -i "${DB_CONTAINER}" psql -U postgres -d postgres --no-psqlrc --set ON_ERROR_STOP=1 < "${migration}"
             echo "::endgroup::"
+            if [[ "${migration}" == "drizzle/migrations/0000_migration.sql" ]]; then
+              echo "::group::Applying test-only payment-account baseline after core schema"
+              docker exec -i "${DB_CONTAINER}" psql -U postgres -d postgres --no-psqlrc --set ON_ERROR_STOP=1 < .github/scripts/sql-payment-accounts-bootstrap.sql
+              echo "::endgroup::"
+            fi
           done < <(find drizzle/migrations -maxdepth 1 -type f -name '*.sql' -print | sort)
 
       - name: Run Stage 1 and Stage 2 SQL security regression tests
