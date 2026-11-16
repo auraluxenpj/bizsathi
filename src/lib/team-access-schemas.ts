@@ -12,6 +12,7 @@ export const invitationToken = z.string().regex(/^[a-f0-9]{64}$/);
 export const teamInviteInput = tenantInput.extend({
   branchId: uuid,
   role: z.enum(['admin', 'accountant', 'staff', 'viewer']), // 'owner' can never be invited
+  inviteeEmail: z.string().trim().toLowerCase().email().max(254),
   inviteeMobile: z.string().trim().min(10).max(40).refine(value => Boolean(normalizeVerifiedNepalMobile(value)), 'Enter a valid Nepal mobile number.'),
   jobTitle: jobTitle.optional(),
   deniedPermissions: z.array(permissionKey).max(80).default([]),
