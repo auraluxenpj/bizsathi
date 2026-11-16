@@ -226,9 +226,7 @@ export function TeamAccessPanel({
               <Button size="sm" variant="outline" disabled={revokeGrant.isPending} onClick={() => revokeGrant.mutate(g.id)}><Ban className="mr-1 size-3" />Revoke</Button>
             </div>
           ))}
-        </div>
-
-        </div>
+          </div>
         </details>
         <details name="team-access-sections" className="rounded-xl border p-4 md:p-5">
           <summary className="flex cursor-pointer list-none items-center justify-between gap-3 font-semibold [&::-webkit-details-marker]:hidden"><span className="flex items-center gap-2"><UserPlus className="size-4 text-primary" />Invite team member</span><span className="text-xs font-normal text-muted-foreground">Create a secure, branch-locked invitation</span></summary>
