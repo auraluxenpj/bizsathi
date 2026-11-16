@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { classifyLoginIdentifier, normalizeLoginMobile } from './login-identifier';
+import { classifyLoginIdentifier, normalizeLoginMobile, normalizeVerifiedNepalMobile } from './login-identifier';
 
 describe('login identifier', () => {
   it('recognizes email addresses without regard to case', () => {
@@ -15,6 +15,11 @@ describe('login identifier', () => {
   it('normalizes Nepal country prefixes and separators', () => {
     expect(normalizeLoginMobile('+977 981-234-5678')).toBe('9812345678');
     expect(normalizeLoginMobile('9779812345678')).toBe('9812345678');
+  });
+  it('accepts only mobile ranges supported by BizSathi member records', () => {
+    expect(normalizeVerifiedNepalMobile('+977 981-234-5678')).toBe('9812345678');
+    expect(normalizeVerifiedNepalMobile('8812345678')).toBeNull();
+    expect(normalizeVerifiedNepalMobile('981234567')).toBeNull();
   });
   it('rejects incomplete or malformed mobile identifiers', () => {
     expect(normalizeLoginMobile('981234567')).toBeNull();
