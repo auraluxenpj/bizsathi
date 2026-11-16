@@ -1,6 +1,6 @@
 import {allPermissions} from './permissions';
 /** Karobar-style staff roles. Each sits on top of an existing security role, so all existing role checks keep working.
- *  The "allowed" lists are the defaults; each business owner can change them in Role permissions (stored in the database). */
+ *  The "allowed" lists are defaults. Owners may further restrict templates; Branch Manager also has a database-enforced branch-only ceiling. */
 const only=(...rx:RegExp[])=>allPermissions.filter(p=>rx.some(r=>r.test(p)));
 export const jobTitles={
  partner:{label:'Partner',base:'admin',allowed:only(/^(?!settings\.delete_business$).*$/)},
