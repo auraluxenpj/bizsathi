@@ -1,8 +1,8 @@
 -- 0053: Globally unique employee identifier and server-only login resolution.
--- Employee IDs are assigned automatically when an account first receives a business membership.
+-- Employee IDs are assigned sequentially (AL0001, AL0002, ...) when an account first receives a business membership.
 ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS employee_id text;
 
-CREATE UNIQUE INDEX IF NOT EXISTS profiles_employee_id_unique
+CREATE SEQUENCE IF NOT EXISTS public.employee_id_seq START WITH 1 INCREMENT BY 1 NO CYCLE;\nREVOKE ALL ON SEQUENCE public.employee_id_seq FROM PUBLIC, anon, authenticated;\n\nCREATE UNIQUE INDEX IF NOT EXISTS profiles_employee_id_unique
   ON public.profiles (upper(employee_id))
   WHERE employee_id IS NOT NULL;
 
@@ -14,7 +14,7 @@ SET search_path = public, pg_temp
 AS $$
 BEGIN
   UPDATE public.profiles
-     SET employee_id = 'BS-' || upper(substr(replace(gen_random_uuid()::text, '-', ''), 1, 8)),
+     SET employee_id = 'AL' || lpad(nextval('public.employee_id_seq')::text, 4, '0'),
          updated_at = now()
    WHERE id = NEW.user_id AND employee_id IS NULL;
   RETURN NEW;
