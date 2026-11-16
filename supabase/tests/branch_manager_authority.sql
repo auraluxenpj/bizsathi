@@ -10,6 +10,7 @@ DECLARE
   v_business_id uuid;
   v_branch_a uuid;
   v_branch_b uuid;
+  v_invitation_id uuid;
   ok boolean;
 BEGIN
   INSERT INTO auth.users(id,email,email_confirmed_at)
@@ -88,7 +89,7 @@ BEGIN
 
   ok := false;
   BEGIN
-    PERFORM public.create_team_invitation(
+    v_invitation_id := public.create_team_invitation(
       v_business_id,v_branch_a,'staff','sales_person','{}',
       'invitee@example.invalid','9841000001',repeat('a',64),
       now()+interval '2 days',1,'Branch manager test'
@@ -96,6 +97,12 @@ BEGIN
   EXCEPTION WHEN OTHERS THEN ok := true;
   END;
   ASSERT NOT ok, 'Delegated staff invitation is permitted in the assigned branch';
+  ASSERT EXISTS (
+    SELECT 1 FROM public.team_invitations
+    WHERE id=v_invitation_id
+      AND 'settings.edit'=ANY(denied_permissions)
+      AND 'other.purchase_price'=ANY(denied_permissions)
+  ), 'Delegated invitation automatically inherits the Branch Manager permission ceiling';
 
   ok := false;
   BEGIN
