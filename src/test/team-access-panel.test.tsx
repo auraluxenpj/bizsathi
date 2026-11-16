@@ -150,6 +150,7 @@ describe('Team Access hierarchy panel', () => {
       role: 'staff',
       inviteeEmail: 'staff@example.com',
       inviteeMobile: '9812345678',
+      deniedPermissions: expect.arrayContaining(['settings.edit', 'other.purchase_price']),
       expiresInHours: 48,
       maxUses: 1,
     }) });
