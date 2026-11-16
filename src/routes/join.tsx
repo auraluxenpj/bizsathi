@@ -28,7 +28,7 @@ export function Join() {
   const [otp, setOtp] = useState('');
   const [phoneVerified, setPhoneVerified] = useState(false);
   const [busy, setBusy] = useState(false);
-  const [message, setMessage] = useState('');\n  const [assignedEmployeeId, setAssignedEmployeeId] = useState('');
+  const [message, setMessage] = useState('');\n  const [assignedEmployeeId, setAssignedEmployeeId] = useState('');\n  const [assignedEmployeeId, setAssignedEmployeeId] = useState('');
   const [details, setDetails] = useState<{
     businessName: string;
     branchName: string;
