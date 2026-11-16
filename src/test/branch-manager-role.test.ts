@@ -14,6 +14,7 @@ describe('Branch Manager role boundary', () => {
     for (const permission of [
       'sales.delete',
       'purchases.delete',
+      'purchases.view',
       'accounts.view',
       'accounts.create',
       'settings.edit',
@@ -26,7 +27,6 @@ describe('Branch Manager role boundary', () => {
     }
     for (const permission of [
       'sales.view',
-      'purchases.view',
       'expenses.view',
       'inventory.view',
       'stock.create',
