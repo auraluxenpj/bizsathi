@@ -2526,6 +2526,46 @@ export type Database = {
       }
     }
     Functions: {
+      create_inventory_count_session: {
+        Args: { _business_id: string; _branch_id: string; _count_date: string; _counted_by: string; _lines: Json }
+        Returns: string
+      }
+      update_inventory_count_session: {
+        Args: { _session_id: string; _count_date: string; _counted_by: string; _lines: Json }
+        Returns: boolean
+      }
+      list_inventory_count_sessions: {
+        Args: { _business_id: string }
+        Returns: {
+          id: string
+          branch_id: string
+          branch_name: string
+          count_date: string
+          counted_by: string
+          status: string
+          created_by: string
+          created_at: string
+          submitted_at: string | null
+          reviewed_by: string | null
+          reviewed_at: string | null
+          review_note: string | null
+          line_count: number
+          counted_line_count: number
+        }[]
+      }
+      read_inventory_count_session: {
+        Args: { _session_id: string }
+        Returns: Json
+      }
+      submit_inventory_count_session: {
+        Args: { _session_id: string }
+        Returns: boolean
+      }
+      review_inventory_count_session: {
+        Args: { _session_id: string; _decision: string; _note?: string }
+        Returns: boolean
+      }
+
       accept_business_invitation: {
         Args: { _token_hash: string }
         Returns: string

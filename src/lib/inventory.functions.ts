@@ -1,4 +1,5 @@
 import { createServerFn } from '@tanstack/react-start';
+import { z } from 'zod';
 import { requireSupabaseAuth } from '@/integrations/supabase/auth-middleware';
 import { tenantInput } from './business-schemas';
 import { catalogueInput, partyInput, stockInput, variantEditInput } from './inventory-schemas';
@@ -58,4 +59,89 @@ export const saveParty = createServerFn({method:'POST'}).middleware([requireSupa
 export const postStock = createServerFn({method:'POST'}).middleware([requireSupabaseAuth]).inputValidator(stockInput).handler(async ({data,context})=>{
  const {data:id,error}=await context.supabase.rpc('post_stock_request',{_request:data});
  if(error) throw new Error('Stock was not confirmed. Check access, available stock, active branches, and whether opening stock was already recorded. Retry unchanged input if the connection was interrupted.');return {id};
+});
+
+const countLineInput = z.object({
+  variantId: z.string().uuid(),
+  physicalQuantity: z.number().finite().nonnegative().max(999999999).refine(n => Math.abs(n * 1000 - Math.round(n * 1000)) < 0.00001).nullable(),
+  costPrice: z.number().finite().nonnegative().max(999999999).refine(n => Math.abs(n * 100 - Math.round(n * 100)) < 0.00001).nullable().optional(),
+  note: z.string().max(500).optional(),
+});
+const countDateInput = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
+const createCountSessionInput = z.object({
+  businessId: z.string().uuid(),
+  branchId: z.string().uuid(),
+  countDate: countDateInput,
+  countedBy: z.string().trim().min(1).max(120),
+  lines: z.array(countLineInput).max(10000),
+});
+const updateCountSessionInput = z.object({
+  sessionId: z.string().uuid(),
+  countDate: countDateInput,
+  countedBy: z.string().trim().min(1).max(120),
+  lines: z.array(countLineInput).max(10000),
+});
+const countSessionIdInput = z.object({ sessionId: z.string().uuid() });
+const reviewCountSessionInput = z.object({
+  sessionId: z.string().uuid(),
+  decision: z.enum(['approved','rejected']),
+  note: z.string().max(1000).optional(),
+});
+
+const countLinesToRpc = (lines: z.infer<typeof countLineInput>[]) => lines.map(line => ({
+  variant_id: line.variantId,
+  physical_quantity: line.physicalQuantity,
+  cost_price: line.costPrice ?? null,
+  note: line.note ?? null,
+}));
+
+export const createInventoryCountSession = createServerFn({method:'POST'}).middleware([requireSupabaseAuth]).inputValidator(createCountSessionInput).handler(async ({data,context}) => {
+  const {data:sessionId,error} = await context.supabase.rpc('create_inventory_count_session', {
+    _business_id:data.businessId,
+    _branch_id:data.branchId,
+    _count_date:data.countDate,
+    _counted_by:data.countedBy,
+    _lines:countLinesToRpc(data.lines),
+  });
+  if(error || !sessionId) throw new Error('Inventory count could not be saved. Check branch access and the entered quantities.');
+  return {sessionId};
+});
+
+export const updateInventoryCountSession = createServerFn({method:'POST'}).middleware([requireSupabaseAuth]).inputValidator(updateCountSessionInput).handler(async ({data,context}) => {
+  const {data:updated,error} = await context.supabase.rpc('update_inventory_count_session', {
+    _session_id:data.sessionId,
+    _count_date:data.countDate,
+    _counted_by:data.countedBy,
+    _lines:countLinesToRpc(data.lines),
+  });
+  if(error || updated !== true) throw new Error('Draft could not be updated. It may already have been submitted or reviewed.');
+  return {ok:true};
+});
+
+export const listInventoryCountSessions = createServerFn({method:'GET'}).middleware([requireSupabaseAuth]).inputValidator(tenantInput).handler(async ({data,context}) => {
+  const {data:sessions,error} = await context.supabase.rpc('list_inventory_count_sessions',{_business_id:data.businessId});
+  if(error) throw new Error('Inventory count history could not be loaded.');
+  return sessions ?? [];
+});
+
+export const readInventoryCountSession = createServerFn({method:'GET'}).middleware([requireSupabaseAuth]).inputValidator(countSessionIdInput).handler(async ({data,context}) => {
+  const {data:session,error} = await context.supabase.rpc('read_inventory_count_session',{_session_id:data.sessionId});
+  if(error || !session) throw new Error('Inventory count could not be opened.');
+  return session;
+});
+
+export const submitInventoryCountSession = createServerFn({method:'POST'}).middleware([requireSupabaseAuth]).inputValidator(countSessionIdInput).handler(async ({data,context}) => {
+  const {data:submitted,error} = await context.supabase.rpc('submit_inventory_count_session',{_session_id:data.sessionId});
+  if(error || submitted !== true) throw new Error('Inventory count could not be submitted.');
+  return {ok:true};
+});
+
+export const reviewInventoryCountSession = createServerFn({method:'POST'}).middleware([requireSupabaseAuth]).inputValidator(reviewCountSessionInput).handler(async ({data,context}) => {
+  const {data:reviewed,error} = await context.supabase.rpc('review_inventory_count_session',{
+    _session_id:data.sessionId,
+    _decision:data.decision,
+    _note:data.note,
+  });
+  if(error || reviewed !== true) throw new Error('Inventory count review could not be saved. The reviewer must be a different business administrator.');
+  return {ok:true};
 });

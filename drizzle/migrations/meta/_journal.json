@@ -239,6 +239,20 @@
       "when": 1794691356711,
       "tag": "0041_single_auraluxe_workspace_lockdown",
       "breakpoints": true
+    },
+    {
+      "idx": 34,
+      "version": "7",
+      "when": 1794816048630,
+      "tag": "0050_persistent_inventory_count_sessions",
+      "breakpoints": true
+    },
+    {
+      "idx": 35,
+      "version": "7",
+      "when": 1794816096073,
+      "tag": "0051_preserve_inventory_count_snapshots",
+      "breakpoints": true
     }
   ]
 }
