@@ -39,7 +39,7 @@ BEGIN
 
   PERFORM set_config('request.jwt.claims',json_build_object('sub',owner_id,'role','authenticated')::text,true);
   request_id := public.request_business_archive(business_id,'Business is being closed permanently');
-  ASSERT (SELECT status FROM public.business_archive_requests WHERE id=request_id)='pending',
+  ASSERT (SELECT status FROM public.list_business_archive_requests(business_id) WHERE id=request_id)='pending',
     'Owner request is pending';
   ASSERT (SELECT archived_at IS NULL FROM public.businesses WHERE id=business_id),
     'Request alone does not archive the business';
@@ -57,12 +57,12 @@ BEGIN
   ASSERT (SELECT count(*) FROM public.list_business_archive_requests(business_id) WHERE status='pending')=1,
     'Master Owner can see pending request';
   PERFORM public.review_business_archive_request(request_id,true,'Verified by platform owner');
-  ASSERT (SELECT status FROM public.business_archive_requests WHERE id=request_id)='approved',
+  ASSERT (SELECT status FROM public.list_business_archive_requests(business_id) WHERE id=request_id)='approved',
     'Request becomes approved';
   ASSERT (SELECT archived_at IS NOT NULL FROM public.businesses WHERE id=business_id),
     'Approval archives the business';
-  ASSERT (SELECT count(*) FROM public.audit_logs
-          WHERE business_id=business_id AND entity_table='business_archive_requests') >= 2,
+  ASSERT (SELECT count(*) FROM public.audit_logs al
+          WHERE al.business_id=business_id AND al.entity_table='business_archive_requests') >= 2,
     'Request and review are audited';
 
   -- The old one-step RPC is no longer executable by authenticated users.
