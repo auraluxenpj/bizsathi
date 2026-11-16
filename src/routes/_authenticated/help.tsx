@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { createFileRoute } from '@tanstack/react-router';
-import { BookOpen, Download, ChevronDown } from 'lucide-react';
+import { BookOpen, Download } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { pageHead } from '@/lib/head';
 
