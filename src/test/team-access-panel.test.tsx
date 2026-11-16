@@ -115,6 +115,20 @@ describe('Team Access hierarchy panel', () => {
     expect(revoke).toHaveBeenCalledWith('ffffffff-ffff-4fff-8fff-ffffffffffff');
   });
 
+
+  it('lets an Administrator invite a distinct Branch Manager', async () => {
+    render(<QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
+      <TeamAccessPanel businessId={BUSINESS} branches={[{ id: BRANCH, name: 'Nepalgunj', code: 'NP', is_active: true }]} members={[]} branchAccess={[]} userId={MANAGER} isAdmin={true} isOwner={false} />
+    </QueryClientProvider>);
+
+    fireEvent.click(screen.getByText('Invite team member'));
+    const role = screen.getByRole('combobox', { name: 'Role' }) as HTMLSelectElement;
+    expect([...role.options].map((o) => o.value)).toContain('branch_manager');
+    fireEvent.change(role, { target: { value: 'branch_manager' } });
+    expect(screen.getByRole('combobox', { name: 'Position' })).toHaveValue('branch_manager');
+    expect(screen.getByRole('option', { name: 'Branch Manager' })).toBeInTheDocument();
+  });
+
   it('limits a branch manager to delegated roles, branch scope and expiry limits', async () => {
     render(<QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
       <TeamAccessPanel businessId={BUSINESS} branches={[{ id: BRANCH, name: 'Nepalgunj', code: 'NP', is_active: true }]} members={[]} branchAccess={[]} userId={MANAGER} isAdmin={false} isOwner={false} />
