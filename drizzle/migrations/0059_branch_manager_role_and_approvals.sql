@@ -80,19 +80,108 @@ FROM unnest(ARRAY[
   'other.party_adjustments','other.purchase_price','other.change_date'
 ]::text[]) AS p(permission)
 WHERE p.permission <> ALL (ARRAY[
-  'sales.create','sales.edit','sales.view',
-  'purchases.create','purchases.edit','purchases.view',
-  'expenses.create','expenses.view',
-  'inventory.edit','inventory.view',
-  'categories.view',
-  'stock.create','stock.edit',
-  'customers.create','customers.edit','customers.view',
-  'suppliers.create','suppliers.edit','suppliers.view',
-  'features.business_cards','features.greeting_cards',
-  'staff.view',
-  'reports.home_stats','reports.expenses','reports.items','reports.parties','reports.transactions',
-  'notebook.create','notebook.view','notebook.edit'
+  'sales.view','purchases.view','expenses.view','inventory.view','categories.view',
+  'stock.create','stock.edit','customers.view','suppliers.view','staff.view',
+  'reports.home_stats','reports.expenses','reports.items','reports.parties','reports.transactions'
 ]::text[]);
+
+
+-- Branch Managers may read operational sales/purchase/payment evidence only for assigned branches.
+-- They do not gain accountant journal access, business-wide access, or cashier posting authority.
+CREATE OR REPLACE FUNCTION public.can_read_cash_counter_session(
+  _business_id uuid, _branch_id uuid, _session_id uuid
+)
+RETURNS boolean
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = public
+AS $
+  SELECT public.can_access_branch(_business_id, _branch_id)
+    AND (
+      public.has_business_role(_business_id, 'accountant')
+      OR public.has_business_job_title(_business_id, 'branch_manager')
+      OR (
+        public.has_business_job_title(_business_id, 'sales_person')
+        AND public.has_permission(_business_id, 'sales.view')
+        AND EXISTS (
+          SELECT 1
+          FROM public.cash_counter_events opening
+          WHERE opening.business_id = _business_id
+            AND opening.branch_id = _branch_id
+            AND opening.session_id = _session_id
+            AND opening.kind = 'open'
+            AND opening.actor_id = auth.uid()
+        )
+      )
+    )
+$;
+REVOKE ALL ON FUNCTION public.can_read_cash_counter_session(uuid, uuid, uuid) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.can_read_cash_counter_session(uuid, uuid, uuid) TO authenticated, service_role;
+
+DROP POLICY IF EXISTS commerce_documents_read ON public.commerce_documents;
+CREATE POLICY commerce_documents_read ON public.commerce_documents
+FOR SELECT TO authenticated
+USING (
+  public.can_access_branch(business_id, branch_id)
+  AND (
+    public.has_business_role(business_id, 'accountant')
+    OR public.is_cashier_sale_or_return(business_id, branch_id, id)
+    OR (
+      (
+        public.has_business_job_title(business_id, 'entry_person')
+        OR public.has_business_job_title(business_id, 'stock_manager')
+        OR public.has_business_job_title(business_id, 'branch_manager')
+        OR EXISTS (
+          SELECT 1 FROM public.business_memberships viewer
+          WHERE viewer.business_id = commerce_documents.business_id
+            AND viewer.user_id = auth.uid()
+            AND viewer.status = 'active'
+            AND viewer.role_code = 'viewer'
+        )
+      )
+      AND (
+        (kind IN ('sale', 'sale_return') AND public.has_permission(business_id, 'sales.view'))
+        OR (kind IN ('purchase', 'purchase_return', 'purchase_order', 'goods_receipt')
+            AND public.has_permission(business_id, 'purchases.view'))
+      )
+    )
+  )
+);
+
+DROP POLICY IF EXISTS commerce_payments_read ON public.commerce_payments;
+CREATE POLICY commerce_payments_read ON public.commerce_payments
+FOR SELECT TO authenticated
+USING (
+  public.can_access_branch(business_id, branch_id)
+  AND (
+    public.has_business_role(business_id, 'accountant')
+    OR public.is_cashier_sale_or_return(business_id, branch_id, document_id)
+    OR EXISTS (
+      SELECT 1
+      FROM public.commerce_documents d
+      WHERE d.id = commerce_payments.document_id
+        AND d.business_id = commerce_payments.business_id
+        AND d.branch_id = commerce_payments.branch_id
+        AND (
+          (d.kind IN ('sale', 'sale_return') AND public.has_permission(business_id, 'sales.view'))
+          OR (d.kind IN ('purchase', 'purchase_return') AND public.has_permission(business_id, 'purchases.view'))
+        )
+        AND (
+          public.has_business_job_title(business_id, 'entry_person')
+          OR public.has_business_job_title(business_id, 'stock_manager')
+          OR public.has_business_job_title(business_id, 'branch_manager')
+          OR EXISTS (
+            SELECT 1 FROM public.business_memberships viewer
+            WHERE viewer.business_id = commerce_payments.business_id
+              AND viewer.user_id = auth.uid()
+              AND viewer.status = 'active'
+              AND viewer.role_code = 'viewer'
+          )
+        )
+    )
+  )
+);
 
 -- One database authorization predicate for the Branch Manager approval boundary.
 -- Admins retain business-wide approval; Branch Managers require the exact branch grant.
