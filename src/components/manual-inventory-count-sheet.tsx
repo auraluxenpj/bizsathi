@@ -1,0 +1,83 @@
+import { useMemo, useState } from 'react';
+import { Download, FileSpreadsheet, FileText, ClipboardList } from 'lucide-react';
+import { jsPDF } from 'jspdf';
+import autoTable from 'jspdf-autotable';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { makeCsv } from '@/lib/inventory-csv';
+import { downloadCsv } from '@/lib/download-csv';
+import { stockBalances } from '@/lib/inventory-schemas';
+
+type Variant = { id: string; sku: string; name: string; unit: string; purchase_price?: number | string | null; is_active: boolean; products?: { name?: string; is_active?: boolean | null } | null };
+type Branch = { id: string; name: string; is_active: boolean };
+type Movement = { variant_id: string; branch_id: string; quantity: number };
+type Props = { variants: Variant[]; branches: Branch[]; movements: Movement[] };
+
+type DraftRow = { physical: string; cost: string };
+
+export function ManualInventoryCountSheet({ variants, branches, movements }: Props) {
+  const [branchId, setBranchId] = useState('');
+  const [countedBy, setCountedBy] = useState('');
+  const [countDate, setCountDate] = useState(() => new Date().toISOString().slice(0, 10));
+  const [drafts, setDrafts] = useState<Record<string, DraftRow>>({});
+  const [status, setStatus] = useState('');
+  const activeBranches = branches.filter(b => b.is_active);
+  const selectedBranch = activeBranches.find(b => b.id === branchId) ?? activeBranches[0];
+  const balances = useMemo(() => stockBalances(movements), [movements]);
+  const rows = variants.filter(v => v.is_active && v.products?.is_active !== false).map(v => {
+    const key = `${selectedBranch?.id ?? ''}:${v.id}`;
+    const draft = drafts[key] ?? { physical: '', cost: String(Number(v.purchase_price ?? 0) || '') };
+    const system = balances.get(key) ?? 0;
+    const counted = draft.physical.trim() === '' ? null : Number(draft.physical);
+    const cost = draft.cost.trim() === '' ? 0 : Number(draft.cost);
+    const validPhysical = counted !== null && Number.isFinite(counted) && counted >= 0;
+    const validCost = Number.isFinite(cost) && cost >= 0;
+    const difference = validPhysical ? counted - system : null;
+    return { key, sku: v.sku, product: v.products?.name ?? 'Product', variant: v.name, unit: v.unit, system, physical: validPhysical ? counted : null, cost: validCost ? cost : 0, difference, physicalValue: validPhysical && validCost ? counted * cost : null, systemValue: validCost ? system * cost : 0, invalid: (draft.physical.trim() !== '' && !validPhysical) || !validCost };
+  });
+  const enteredRows = rows.filter(r => r.physical !== null);
+  const totalSystemValue = rows.reduce((sum, r) => sum + r.systemValue, 0);
+  const totalPhysicalValue = enteredRows.reduce((sum, r) => sum + (r.physicalValue ?? 0), 0);
+  const totalDifference = enteredRows.reduce((sum, r) => sum + (r.difference ?? 0), 0);
+  const canExport = !!countedBy.trim() && !!selectedBranch && enteredRows.length > 0 && rows.every(r => !r.invalid);
+  const update = (key: string, field: keyof DraftRow, value: string) => {
+    setDrafts(current => ({ ...current, [key]: { ...(current[key] ?? { physical: '', cost: '' }), [field]: value } }));
+    setStatus('');
+  };
+  const exportRows = rows.map(r => ({ sku: r.sku, product: r.product, variant: r.variant, branch: selectedBranch?.name ?? '', system_quantity: r.system, physical_quantity: r.physical ?? '', variance: r.difference ?? '', cost_price: r.cost, system_stock_value: r.systemValue.toFixed(2), physical_stock_value: r.physicalValue?.toFixed(2) ?? '', counted_by: countedBy.trim(), count_date: countDate }));
+  const exportCsv = () => {
+    if (!canExport) { setStatus('Enter the team member name and at least one physical quantity. Correct invalid values before exporting.'); return; }
+    downloadCsv(`inventory-count-${countDate}.csv`, makeCsv(exportRows, ['count_date','counted_by','branch','sku','product','variant','system_quantity','physical_quantity','variance','cost_price','system_stock_value','physical_stock_value']));
+    setStatus('CSV report exported.');
+  };
+  const exportPdf = () => {
+    if (!canExport) { setStatus('Enter the team member name and at least one physical quantity. Correct invalid values before exporting.'); return; }
+    const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
+    doc.setFontSize(16); doc.text('Physical Inventory Count', 14, 15);
+    doc.setFontSize(9); doc.text(`Business inventory count | Branch: ${selectedBranch?.name} | Date: ${countDate} | Counted by: ${countedBy.trim()}`, 14, 22);
+    autoTable(doc, { startY: 28, head: [['SKU','Product / Variant','System Qty','Physical Qty','Variance','Cost Price','System Value','Physical Value']], body: rows.map(r => [r.sku, `${r.product} / ${r.variant}`, String(r.system), r.physical === null ? '—' : String(r.physical), r.difference === null ? '—' : String(r.difference), r.cost.toFixed(2), r.systemValue.toFixed(2), r.physicalValue === null ? '—' : r.physicalValue.toFixed(2)]), styles: { fontSize: 7, cellPadding: 2 }, headStyles: { fillColor: [35, 55, 75] }, didDrawPage: () => { doc.setFontSize(8); doc.text('BizSathi Nepal · Physical count worksheet', 14, 200); } });
+    const y = (doc as jsPDF & { lastAutoTable?: { finalY: number } }).lastAutoTable?.finalY ?? 30;
+    doc.setFontSize(9); doc.text(`System stock value: ${totalSystemValue.toFixed(2)}    Physical stock value (entered rows): ${totalPhysicalValue.toFixed(2)}    Net quantity variance: ${totalDifference.toFixed(3)}`, 14, Math.min(y + 8, 195));
+    doc.save(`inventory-count-${countDate}.pdf`);
+    setStatus('PDF report exported.');
+  };
+  return <section className="mt-7 rounded-xl border bg-card p-4 sm:p-6">
+    <div className="flex flex-wrap items-start justify-between gap-4">
+      <div className="flex items-start gap-3"><span className="flex size-10 items-center justify-center rounded-lg bg-primary/10 text-primary"><ClipboardList className="size-5"/></span><div><h2 className="brand text-xl">Manual inventory count sheet</h2><p className="mt-1 max-w-2xl text-sm text-muted-foreground">Count products against the live stock ledger, enter physical quantities and unit cost, then export a signed-off worksheet. This is a read-only count; it does not adjust stock.</p></div></div>
+      <div className="flex flex-wrap gap-2"><Button variant="outline" disabled={!canExport} onClick={exportCsv}><FileSpreadsheet className="size-4"/>Export CSV</Button><Button variant="outline" disabled={!canExport} onClick={exportPdf}><FileText className="size-4"/>Export PDF</Button></div>
+    </div>
+    <div className="mt-5 grid gap-3 sm:grid-cols-3">
+      <label className="text-sm">Branch<select aria-label="Count branch" className="mt-2 h-10 w-full rounded-md border bg-card px-3" value={selectedBranch?.id ?? ''} onChange={e => setBranchId(e.target.value)}><option value="">Select branch</option>{activeBranches.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}</select></label>
+      <label className="text-sm">Inventory count date<Input type="date" value={countDate} onChange={e => setCountDate(e.target.value)}/></label>
+      <label className="text-sm">Counted by (team member)<Input required maxLength={120} placeholder="Enter team member name" value={countedBy} onChange={e => setCountedBy(e.target.value)}/></label>
+    </div>
+    <div className="mt-4 grid gap-3 sm:grid-cols-3">
+      <div className="rounded-lg bg-muted/50 p-3"><p className="text-xs text-muted-foreground">Products counted</p><p className="mt-1 text-xl font-semibold tabular-nums">{enteredRows.length} / {rows.length}</p></div>
+      <div className="rounded-lg bg-muted/50 p-3"><p className="text-xs text-muted-foreground">System stock value</p><p className="mt-1 text-xl font-semibold tabular-nums">{totalSystemValue.toFixed(2)}</p></div>
+      <div className="rounded-lg bg-muted/50 p-3"><p className="text-xs text-muted-foreground">Physical stock value (entered)</p><p className="mt-1 text-xl font-semibold tabular-nums">{totalPhysicalValue.toFixed(2)}</p></div>
+    </div>
+    {!activeBranches.length ? <p className="py-8 text-sm text-muted-foreground">No active branches are available for counting.</p> : <div className="mt-5 overflow-x-auto"><table className="w-full min-w-[1120px] text-left text-sm"><thead><tr>{['Product / SKU','System qty','Physical qty (enter)','Variance','Cost price / unit','System value','Physical value'].map(h => <th key={h} className="border-b px-2 py-3 font-medium text-muted-foreground">{h}</th>)}</tr></thead><tbody>{rows.map(r => <tr key={r.key} className="border-b last:border-0"><td className="px-2 py-3"><p className="font-medium">{r.product}</p><p className="text-xs text-muted-foreground">{r.variant} · {r.sku}</p></td><td className="px-2 py-3 tabular-nums">{r.system} {r.unit}</td><td className="w-36 px-2 py-3"><Input aria-label={`Physical quantity for ${r.sku}`} type="number" min="0" step="0.001" value={drafts[r.key]?.physical ?? ''} placeholder="Enter count" onChange={e => update(r.key, 'physical', e.target.value)}/></td><td className={`px-2 py-3 tabular-nums ${r.difference !== null && r.difference !== 0 ? 'font-semibold text-destructive' : ''}`}>{r.difference === null ? '—' : r.difference.toFixed(3)}</td><td className="w-36 px-2 py-3"><Input aria-label={`Cost price for ${r.sku}`} type="number" min="0" step="0.01" value={drafts[r.key]?.cost ?? String(Number(variants.find(v => v.id === r.key.split(':').slice(1).join(':'))?.purchase_price ?? 0) || '')} placeholder="Enter cost" onChange={e => update(r.key, 'cost', e.target.value)}/></td><td className="px-2 py-3 tabular-nums">{r.systemValue.toFixed(2)}</td><td className="px-2 py-3 tabular-nums">{r.physicalValue === null ? '—' : r.physicalValue.toFixed(2)}</td></tr>)}</tbody><tfoot><tr className="bg-muted/40 font-semibold"><td className="px-2 py-3">Total</td><td className="px-2 py-3 tabular-nums">{rows.reduce((s,r)=>s+r.system,0).toFixed(3)}</td><td className="px-2 py-3 tabular-nums">{enteredRows.reduce((s,r)=>s+(r.physical??0),0).toFixed(3)}</td><td className="px-2 py-3 tabular-nums">{totalDifference.toFixed(3)}</td><td className="px-2 py-3">—</td><td className="px-2 py-3 tabular-nums">{totalSystemValue.toFixed(2)}</td><td className="px-2 py-3 tabular-nums">{totalPhysicalValue.toFixed(2)}</td></tr></tfoot></table></div>}
+    {status && <p role="status" className="mt-4 text-sm text-primary">{status}</p>}
+    <p className="mt-4 text-xs text-muted-foreground">Cost price defaults to the saved purchase price when available and can be entered or corrected per item. Blank physical quantities are not treated as zero. Currency follows the business's configured currency. Refreshing this page clears this unsaved worksheet; export it before leaving.</p>
+  </section>;
+}
