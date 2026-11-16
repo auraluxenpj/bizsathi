@@ -29,7 +29,7 @@ export const getInventory = createServerFn({method:'GET'}).middleware([requireSu
  for(let offset=0;;offset+=1000){const page=await context.supabase.rpc('read_customer_loyalty',{_business_id:data.businessId}).order('mobile').range(offset,offset+999);if(page.error)throw new Error('Customer loyalty could not be loaded.');loyalty.push(...(page.data ?? []));if((page.data?.length ?? 0)<1000)break;}
  const {data:seesCost,error:costError}=await context.supabase.rpc('has_permission',{_business:data.businessId,_perm:'other.purchase_price'});
  const safeVariants=costError||seesCost!==true?variants.map(v=>({...v,purchase_price:0})):variants; // fail closed: cost never leaves the server without permission
- return {variants:safeVariants,parties,loyalty,movements:movements.sort((a,b)=>b.created_at.localeCompare(a.created_at))};
+ return {variants:safeVariants,parties,loyalty,canViewPurchasePrice:!costError&&seesCost===true,movements:movements.sort((a,b)=>b.created_at.localeCompare(a.created_at))};
 });
 export const saveCatalogue = createServerFn({method:'POST'}).middleware([requireSupabaseAuth]).inputValidator(catalogueInput).handler(async ({data,context})=>{
  const {data:count,error}=await context.supabase.rpc('save_catalogue_variant',{_business_id:data.businessId,_rows:data.rows.map(({opening_stock:_o,...row})=>row)});
