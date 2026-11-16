@@ -59,7 +59,6 @@ $$;
 
 -- Branch Manager defaults are operational and deliberately exclude purchase cost,
 -- account management, business settings, destructive actions and staff role changes.
-DELETE FROM public.job_title_denials WHERE job_title = 'branch_manager';
 INSERT INTO public.job_title_denials(job_title, permission)
 SELECT 'branch_manager', p.permission
 FROM unnest(ARRAY[
@@ -75,15 +74,16 @@ FROM unnest(ARRAY[
   'staff.create','staff.delete','staff.edit','staff.view',
   'settings.edit','settings.invoice','settings.item','settings.party','settings.transaction','settings.delete_business',
   'accounts.create','accounts.adjust_create','accounts.delete','accounts.edit','accounts.adjust_edit_delete','accounts.view',
-  'reports.business_status','reports.view','reports.home_stats','reports.expenses','reports.items','reports.parties','reports.transactions','reports.view',
+  'reports.business_status','reports.view','reports.home_stats','reports.expenses','reports.items','reports.parties','reports.transactions',
   'notebook.create','notebook.view','notebook.delete','notebook.edit',
   'other.party_adjustments','other.purchase_price','other.change_date'
 ]::text[]) AS p(permission)
 WHERE p.permission <> ALL (ARRAY[
   'sales.view','purchases.view','expenses.view','inventory.view','categories.view',
   'stock.create','stock.edit','customers.view','suppliers.view','staff.view',
-  'reports.home_stats','reports.expenses','reports.items','reports.parties','reports.transactions'
-]::text[]);
+  'reports.view','reports.home_stats','reports.expenses','reports.items','reports.parties','reports.transactions'
+]::text[])
+ON CONFLICT (job_title, permission) DO NOTHING;
 
 
 -- Fail closed if a Branch Manager security role is ever created without its matching
