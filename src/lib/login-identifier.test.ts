@@ -25,6 +25,11 @@ describe('login identifier', () => {
     expect(normalizeLoginMobile('981234567')).toBeNull();
     expect(normalizeLoginMobile('98abc45678')).toBeNull();
   });
+  it('recognizes ALEMP employee IDs case-insensitively', () => {
+    expect(classifyLoginIdentifier('ALEMP0001')).toEqual({ type: 'employee', value: 'ALEMP0001' });
+    expect(classifyLoginIdentifier('alemp0012')).toEqual({ type: 'employee', value: 'ALEMP0012' });
+    expect(classifyLoginIdentifier('AL0001')).toBeNull();
+  });
   it('does not classify an invalid identifier', () => {
     expect(classifyLoginIdentifier('not-an-email-or-mobile')).toBeNull();
   });
