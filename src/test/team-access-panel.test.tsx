@@ -63,6 +63,7 @@ describe('Team Access hierarchy panel', () => {
     expect([...role.options].map((o) => o.value)).toEqual(['staff']);
     expect(screen.getByLabelText('Link expiry (days)')).toHaveValue(2);
 
+    fireEvent.change(screen.getByLabelText('Invitee email address'), { target: { value: 'staff@example.com' } });
     fireEvent.change(screen.getByLabelText('Invitee Nepal mobile number'), { target: { value: '9812345678' } });
     fireEvent.click(screen.getByRole('button', { name: /Create invitation link/ }));
     await waitFor(() => expect(createInvite).toHaveBeenCalledTimes(1));
@@ -70,6 +71,7 @@ describe('Team Access hierarchy panel', () => {
       businessId: BUSINESS,
       branchId: BRANCH,
       role: 'staff',
+      inviteeEmail: 'staff@example.com',
       inviteeMobile: '9812345678',
       expiresInHours: 48,
       maxUses: 1,
