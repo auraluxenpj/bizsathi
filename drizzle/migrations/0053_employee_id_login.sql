@@ -1,0 +1,68 @@
+-- 0053: Globally unique employee identifier and server-only login resolution.
+-- Employee IDs are assigned automatically when an account first receives a business membership.
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS employee_id text;
+
+CREATE UNIQUE INDEX IF NOT EXISTS profiles_employee_id_unique
+  ON public.profiles (upper(employee_id))
+  WHERE employee_id IS NOT NULL;
+
+CREATE OR REPLACE FUNCTION public.assign_employee_id_after_membership()
+RETURNS trigger
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, pg_temp
+AS $$
+DECLARE
+  candidate text;
+  attempt integer := 0;
+BEGIN
+  LOOP
+    UPDATE public.profiles
+       SET employee_id = 'BS-' || upper(substr(replace(gen_random_uuid()::text, '-', ''), 1, 8)),
+           updated_at = now()
+     WHERE id = NEW.user_id AND employee_id IS NULL;
+
+    IF FOUND THEN
+      RETURN NEW;
+    END IF;
+
+    IF EXISTS (SELECT 1 FROM public.profiles WHERE id = NEW.user_id AND employee_id IS NOT NULL) THEN
+      RETURN NEW;
+    END IF;
+
+    attempt := attempt + 1;
+    IF attempt >= 5 THEN
+      RAISE EXCEPTION 'Could not assign employee ID';
+    END IF;
+  END LOOP;
+END;
+$$;
+
+REVOKE ALL ON FUNCTION public.assign_employee_id_after_membership() FROM PUBLIC, anon, authenticated;
+
+DROP TRIGGER IF EXISTS assign_employee_id_after_membership ON public.business_memberships;
+CREATE TRIGGER assign_employee_id_after_membership
+AFTER INSERT ON public.business_memberships
+FOR EACH ROW EXECUTE FUNCTION public.assign_employee_id_after_membership();
+
+CREATE OR REPLACE FUNCTION public.login_email_for_employee_id(_employee_id text)
+RETURNS text
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = public, auth
+AS $$
+  SELECT u.email::text
+  FROM public.profiles p
+  JOIN auth.users u ON u.id = p.id
+  WHERE upper(p.employee_id) = upper(btrim(_employee_id))
+    AND EXISTS (
+      SELECT 1 FROM public.business_memberships m
+      JOIN public.businesses b ON b.id = m.business_id
+      WHERE m.user_id = p.id AND m.status = 'active' AND b.archived_at IS NULL
+    )
+  LIMIT 1
+$$;
+
+REVOKE ALL ON FUNCTION public.login_email_for_employee_id(text) FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.login_email_for_employee_id(text) TO service_role;
