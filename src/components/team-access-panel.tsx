@@ -22,30 +22,34 @@ type BranchAccess = { user_id: string; branch_id: string };
 type LegacyInvitation = { id: string; email: string | null; mobile: string | null; invitee_name: string | null; job_title: string | null; role_code: string; expires_at: string; accepted_at: string | null; revoked_at: string | null; created_at: string };
 
 const hierarchy = [
-  { title: 'CEO / Platform Owner', rank: 100, detail: 'Global authority across businesses, branches and delegation', tone: 'border-primary/40 bg-primary/5' },
-  { title: 'Administrator / Partner', rank: 80, detail: 'Business administration and manager appointments', tone: 'border-border bg-card' },
-  { title: 'Store Manager', rank: 60, detail: 'Assigned branches and delegated team hiring', tone: 'border-border bg-card' },
-  { title: 'Accountant', rank: 60, detail: 'Vouchers, financial periods and P&L audits', tone: 'border-border bg-card' },
-  { title: 'Inventory Manager', rank: 40, detail: 'Stock ledger, purchase orders and catalog', tone: 'border-border bg-muted/40' },
-  { title: 'Cashier / POS', rank: 40, detail: 'POS checkout, sales invoices and loyalty', tone: 'border-border bg-muted/40' },
-  { title: 'Store Team', rank: 40, detail: 'Basic daily entries and view-only stock', tone: 'border-border bg-muted/40' },
+  { title: 'Master Owner', rank: 100, detail: 'Protected global authority across all businesses', tone: 'border-primary/40 bg-primary/5' },
+  { title: 'Business Owner', rank: 100, detail: 'Full authority over their own business only', tone: 'border-primary/30 bg-primary/5' },
+  { title: 'Administrator', rank: 80, detail: 'Business operations, team and settings; cannot transfer ownership or archive', tone: 'border-border bg-card' },
+  { title: 'Accountant', rank: 60, detail: 'Accounts, vouchers, ledgers and financial reports', tone: 'border-border bg-card' },
+  { title: 'Branch Manager', rank: 50, detail: 'Assigned branches only; delegated team invitations and branch approvals', tone: 'border-border bg-card' },
+  { title: 'Inventory Manager', rank: 40, detail: 'Products, barcode, stock ledger and physical counts', tone: 'border-border bg-muted/40' },
+  { title: 'Cashier / POS', rank: 40, detail: 'POS checkout, sales invoices and customer loyalty', tone: 'border-border bg-muted/40' },
+  { title: 'Store Team', rank: 40, detail: 'Assigned daily tasks and permitted stock viewing', tone: 'border-border bg-muted/40' },
+  { title: 'Viewer', rank: 20, detail: 'Read-only access to specifically approved screens', tone: 'border-border bg-muted/40' },
 ] as const;
 
 const titleByRole: Record<string, JobTitle[]> = {
   admin: ['partner'],
-  accountant: ['manager', 'accountant'],
+  branch_manager: ['branch_manager'],
+  accountant: ['accountant'],
   staff: ['sales_person', 'stock_manager', 'entry_person'],
   viewer: [],
 };
 const titleLabel: Record<JobTitle, string> = {
   partner: 'Administrator / Partner',
-  manager: 'Store Manager',
+  manager: 'Manager (legacy)',
+  branch_manager: 'Branch Manager',
   accountant: 'Accountant',
   sales_person: 'Cashier / POS',
   stock_manager: 'Inventory Manager',
   entry_person: 'Store Team',
 };
-const roleRank: Record<string, number> = { owner: 100, admin: 80, accountant: 60, staff: 40, viewer: 20 };
+const roleRank: Record<string, number> = { owner: 100, admin: 80, accountant: 60, branch_manager: 50, staff: 40, viewer: 20 };
 
 export function TeamAccessPanel({
   businessId, branches, members, branchAccess, userId, isAdmin, isOwner,
@@ -109,14 +113,14 @@ export function TeamAccessPanel({
     g.branch_id === selectedBranchId && g.manager_user_id === userId);
   const currentGrantRoles = (currentGrant?.allowed_role_codes ?? []) as string[];
   const allowedInviteRoles = isAdmin
-    ? (isOwner ? ['admin', 'accountant', 'staff', 'viewer'] : ['accountant', 'staff', 'viewer'])
+    ? (isOwner ? ['admin', 'branch_manager', 'accountant', 'staff', 'viewer'] : ['branch_manager', 'accountant', 'staff', 'viewer'])
     : currentGrantRoles.filter((r) => (roleRank[r] ?? 100) < 60);
   const maxAllowedDays = currentGrant?.max_invite_days ?? 30;
   const effectiveExpiryDays = Math.min(expiryDays, maxAllowedDays);
   const inviteMobileValid = Boolean(normalizeVerifiedNepalMobile(inviteeMobile));
   const availableTitles = titleByRole[roleCode] ?? [];
   const eligibleManagers = members.filter((m) =>
-    m.status === 'active' && m.job_title === 'manager' &&
+    m.status === 'active' && (m.job_title === 'branch_manager' || m.job_title === 'manager') &&
     branchAccess.some((g) => g.user_id === m.user_id && g.branch_id === selectedBranchId));
   const selectedManager = eligibleManagers.find((m) => m.user_id === managerUserId);
 
@@ -128,7 +132,7 @@ export function TeamAccessPanel({
 
   const createInvite = useMutation({
     mutationFn: () => createInviteFn({ data: {
-      businessId, branchId: selectedBranchId, role: roleCode as 'admin' | 'accountant' | 'staff' | 'viewer', inviteeEmail, inviteeMobile,
+      businessId, branchId: selectedBranchId, role: roleCode as 'admin' | 'branch_manager' | 'accountant' | 'staff' | 'viewer', inviteeEmail, inviteeMobile,
       jobTitle: availableTitles.includes(jobTitle) ? jobTitle : undefined,
       deniedPermissions: [], expiresInHours: effectiveExpiryDays * 24, maxUses: 1, label: label || undefined,
     } }),
@@ -170,7 +174,7 @@ export function TeamAccessPanel({
           <div>
             <div className="flex items-center gap-2 text-primary"><ShieldCheck className="size-4" /><p className="text-xs font-semibold tracking-wide">TEAM ACCESS & DELEGATION</p></div>
             <h3 id="team-access-heading" className="brand mt-2 text-xl">Role hierarchy</h3>
-            <p className="mt-1 text-sm text-muted-foreground">Seven roles · Rank defines delegation ceilings</p>
+            <p className="mt-1 text-sm text-muted-foreground">Nine role and access types · Rank defines delegation ceilings</p>
           </div>
           <span aria-hidden="true" className="text-xl text-muted-foreground">⌄</span>
         </summary>
@@ -192,7 +196,7 @@ export function TeamAccessPanel({
         <details name="team-access-sections" className="rounded-xl border p-4 md:p-5">
           <summary className="flex cursor-pointer list-none items-center justify-between gap-3 font-semibold [&::-webkit-details-marker]:hidden"><span className="flex items-center gap-2"><GitBranch className="size-4 text-primary" />Branch delegation</span><span className="text-xs font-normal text-muted-foreground">Branch-scoped hiring authority</span></summary>
           <div className="mt-4">
-          <p className="mb-4 text-sm text-muted-foreground">Administrators can grant a Store Manager permission to invite only lower-ranked roles in a specific branch.</p>
+          <p className="mb-4 text-sm text-muted-foreground">Administrators can assign a Branch Manager to a branch and delegate only lower-ranked team roles.</p>
           <label className="mb-3 block text-sm">Branch
             <select className="mt-1 h-10 w-full rounded-md border bg-background px-3" value={selectedBranchId} onChange={(e) => { setBranchId(e.target.value); setManagerUserId(''); }} disabled={!branches.length}>
               {branches.map((b) => <option key={b.id} value={b.id}>{b.name} ({b.code})</option>)}
@@ -202,7 +206,7 @@ export function TeamAccessPanel({
             <>
               <label className="mb-3 block text-sm">Store Manager
                 <select className="mt-1 h-10 w-full rounded-md border bg-background px-3" value={managerUserId} onChange={(e) => setManagerUserId(e.target.value)}>
-                  <option value="">Select a manager with branch access</option>
+                  <option value="">Select a Branch Manager with branch access</option>
                   {eligibleManagers.map((m) => <option key={m.user_id} value={m.user_id}>{m.profiles?.full_name || m.user_id.slice(0, 8)}</option>)}
                 </select>
               </label>
@@ -239,7 +243,7 @@ export function TeamAccessPanel({
           </label>
           <label className="mb-3 block text-sm">Role
             <select className="mt-1 h-10 w-full rounded-md border bg-background px-3" value={roleCode} onChange={(e) => { setRoleCode(e.target.value); setJobTitle((titleByRole[e.target.value] ?? [])[0] ?? 'sales_person'); }}>
-              {allowedInviteRoles.map((r) => <option key={r} value={r}>{r === 'admin' ? 'Administrator / Partner' : r === 'accountant' ? 'Store Manager / Accountant' : r === 'staff' ? 'Operational Team' : 'Viewer'}</option>)}
+              {allowedInviteRoles.map((r) => <option key={r} value={r}>{r === 'admin' ? 'Administrator / Partner' : r === 'branch_manager' ? 'Branch Manager' : r === 'accountant' ? 'Accountant' : r === 'staff' ? 'Operational Team' : 'Viewer'}</option>)}
             </select>
           </label>
           {availableTitles.length > 0 && <label className="mb-3 block text-sm">Position
