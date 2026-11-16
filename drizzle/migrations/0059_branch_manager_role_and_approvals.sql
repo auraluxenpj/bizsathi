@@ -105,6 +105,21 @@ AS $function$
         AND m.role_code = 'branch_manager'
         AND m.job_title IS DISTINCT FROM 'branch_manager'
     )
+    AND (
+      NOT EXISTS (
+        SELECT 1
+        FROM public.business_memberships m
+        WHERE m.business_id = _business
+          AND m.user_id = auth.uid()
+          AND m.status = 'active'
+          AND m.role_code = 'branch_manager'
+      )
+      OR _perm = ANY (ARRAY[
+        'sales.view','purchases.view','expenses.view','inventory.view','categories.view',
+        'stock.create','stock.edit','customers.view','suppliers.view','staff.view',
+        'reports.view','reports.home_stats','reports.expenses','reports.items','reports.parties','reports.transactions'
+      ]::text[])
+    )
     AND NOT EXISTS (
       SELECT 1
       FROM public.member_permission_denials d
