@@ -1,5 +1,5 @@
 -- 0053: Globally unique employee identifier and server-only login resolution.
--- Employee IDs are assigned sequentially (ALEMP0001, AL0002, ...) when an account first receives a business membership.
+-- Employee IDs are assigned sequentially (ALEMP0001, ALEMP0002, ...) when an account first receives a business membership.
 ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS employee_id text;
 
 CREATE SEQUENCE IF NOT EXISTS public.employee_id_seq START WITH 1 INCREMENT BY 1 NO CYCLE;
