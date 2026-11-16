@@ -88,7 +88,7 @@ ON CONFLICT (job_title, permission) DO NOTHING;
 -- Keep the member-denial constraint in sync with job-title defaults added above.
 -- Migration 0043 widens this constraint for the defaults that exist at that point;
 -- Branch Manager introduces additional keys later, so include them here as well.
-DO $
+DO $branch_manager_permission_keys$
 DECLARE
   cdef text;
   keys text;
@@ -113,7 +113,7 @@ BEGIN
   ALTER TABLE public.member_permission_denials
     DROP CONSTRAINT IF EXISTS member_permission_denials_permission_check;
   EXECUTE 'ALTER TABLE public.member_permission_denials ADD CONSTRAINT member_permission_denials_permission_check CHECK (permission IN (' || keys || '))';
-END $;
+END $branch_manager_permission_keys$;
 
 
 -- Fail closed if a Branch Manager security role is ever created without its matching
