@@ -50,7 +50,7 @@ BEGIN
   ASSERT (SELECT m.role_code FROM public.business_memberships m
           WHERE m.business_id=v_business_id AND m.user_id=new_owner)='owner',
     'Active target becomes Business Owner';
-  ASSERT (SELECT role_code FROM public.business_memberships
+  ASSERT (SELECT m.role_code FROM public.business_memberships m
           WHERE m.business_id=v_business_id AND m.user_id=business_owner)='admin',
     'Previous Business Owner becomes Admin';
 
