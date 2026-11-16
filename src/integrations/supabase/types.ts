@@ -1129,6 +1129,87 @@ export type Database = {
           },
         ]
       }
+      delegation_grants: {
+        Row: {
+          allowed_role_codes: string[]
+          branch_id: string
+          business_id: string
+          can_invite: boolean
+          created_at: string
+          granted_by: string
+          id: string
+          manager_user_id: string
+          max_invite_days: number
+          max_invite_uses: number
+          revoked_at: string | null
+          revoked_by: string | null
+        }
+        Insert: {
+          allowed_role_codes: string[]
+          branch_id: string
+          business_id: string
+          can_invite?: boolean
+          created_at?: string
+          granted_by: string
+          id?: string
+          manager_user_id: string
+          max_invite_days?: number
+          max_invite_uses?: number
+          revoked_at?: string | null
+          revoked_by?: string | null
+        }
+        Update: {
+          allowed_role_codes?: string[]
+          branch_id?: string
+          business_id?: string
+          can_invite?: boolean
+          created_at?: string
+          granted_by?: string
+          id?: string
+          manager_user_id?: string
+          max_invite_days?: number
+          max_invite_uses?: number
+          revoked_at?: string | null
+          revoked_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "delegation_grants_business_id_branch_id_fkey"
+            columns: ["business_id", "branch_id"]
+            isOneToOne: false
+            referencedRelation: "branches"
+            referencedColumns: ["business_id", "id"]
+          },
+          {
+            foreignKeyName: "delegation_grants_business_id_fkey"
+            columns: ["business_id"]
+            isOneToOne: false
+            referencedRelation: "businesses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "delegation_grants_business_id_manager_user_id_fkey"
+            columns: ["business_id", "manager_user_id"]
+            isOneToOne: false
+            referencedRelation: "business_memberships"
+            referencedColumns: ["business_id", "user_id"]
+          },
+          {
+            foreignKeyName: "delegation_grants_granted_by_fkey"
+            columns: ["granted_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "delegation_grants_revoked_by_fkey"
+            columns: ["revoked_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       expense_receipts: {
         Row: {
           ai_error: string | null
@@ -1281,6 +1362,24 @@ export type Database = {
         Update: {
           job_title?: string
           permission?: string
+        }
+        Relationships: []
+      }
+      login_failures: {
+        Row: {
+          bucket: string
+          created_at: string
+          id: number
+        }
+        Insert: {
+          bucket: string
+          created_at?: string
+          id?: number
+        }
+        Update: {
+          bucket?: string
+          created_at?: string
+          id?: number
         }
         Relationships: []
       }
@@ -1590,6 +1689,27 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      platform_owners: {
+        Row: {
+          created_at: string
+          is_active: boolean
+          note: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          is_active?: boolean
+          note?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          is_active?: boolean
+          note?: string | null
+          user_id?: string
+        }
+        Relationships: []
       }
       product_variants: {
         Row: {
@@ -2062,6 +2182,155 @@ export type Database = {
           },
         ]
       }
+      team_invitation_uses: {
+        Row: {
+          accepted_at: string
+          business_id: string
+          email_verified_at: string
+          id: string
+          invitation_id: string
+          phone_verified_at: string
+          user_id: string
+        }
+        Insert: {
+          accepted_at?: string
+          business_id: string
+          email_verified_at: string
+          id?: string
+          invitation_id: string
+          phone_verified_at: string
+          user_id: string
+        }
+        Update: {
+          accepted_at?: string
+          business_id?: string
+          email_verified_at?: string
+          id?: string
+          invitation_id?: string
+          phone_verified_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "team_invitation_uses_business_id_fkey"
+            columns: ["business_id"]
+            isOneToOne: false
+            referencedRelation: "businesses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "team_invitation_uses_invitation_id_fkey"
+            columns: ["invitation_id"]
+            isOneToOne: false
+            referencedRelation: "team_invitations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "team_invitation_uses_invitation_id_fkey"
+            columns: ["invitation_id"]
+            isOneToOne: false
+            referencedRelation: "team_invitations_status"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "team_invitation_uses_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      team_invitations: {
+        Row: {
+          branch_id: string
+          business_id: string
+          created_at: string
+          denied_permissions: string[]
+          expires_at: string
+          id: string
+          invited_by: string
+          job_title: string | null
+          label: string | null
+          max_uses: number
+          revoked_at: string | null
+          revoked_by: string | null
+          role_code: string
+          token_hash: string
+          use_count: number
+        }
+        Insert: {
+          branch_id: string
+          business_id: string
+          created_at?: string
+          denied_permissions?: string[]
+          expires_at: string
+          id?: string
+          invited_by: string
+          job_title?: string | null
+          label?: string | null
+          max_uses?: number
+          revoked_at?: string | null
+          revoked_by?: string | null
+          role_code: string
+          token_hash: string
+          use_count?: number
+        }
+        Update: {
+          branch_id?: string
+          business_id?: string
+          created_at?: string
+          denied_permissions?: string[]
+          expires_at?: string
+          id?: string
+          invited_by?: string
+          job_title?: string | null
+          label?: string | null
+          max_uses?: number
+          revoked_at?: string | null
+          revoked_by?: string | null
+          role_code?: string
+          token_hash?: string
+          use_count?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "team_invitations_business_id_branch_id_fkey"
+            columns: ["business_id", "branch_id"]
+            isOneToOne: false
+            referencedRelation: "branches"
+            referencedColumns: ["business_id", "id"]
+          },
+          {
+            foreignKeyName: "team_invitations_business_id_fkey"
+            columns: ["business_id"]
+            isOneToOne: false
+            referencedRelation: "businesses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "team_invitations_invited_by_fkey"
+            columns: ["invited_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "team_invitations_revoked_by_fkey"
+            columns: ["revoked_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "team_invitations_role_code_fkey"
+            columns: ["role_code"]
+            isOneToOne: false
+            referencedRelation: "roles"
+            referencedColumns: ["code"]
+          },
+        ]
+      }
       website_stock_acknowledgements: {
         Row: {
           actor_id: string
@@ -2178,13 +2447,90 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      team_invitations_status: {
+        Row: {
+          branch_id: string | null
+          business_id: string | null
+          created_at: string | null
+          expires_at: string | null
+          id: string | null
+          invited_by: string | null
+          job_title: string | null
+          label: string | null
+          max_uses: number | null
+          revoked_at: string | null
+          role_code: string | null
+          status: string | null
+          use_count: number | null
+        }
+        Insert: {
+          branch_id?: string | null
+          business_id?: string | null
+          created_at?: string | null
+          expires_at?: string | null
+          id?: string | null
+          invited_by?: string | null
+          job_title?: string | null
+          label?: string | null
+          max_uses?: number | null
+          revoked_at?: string | null
+          role_code?: string | null
+          status?: never
+          use_count?: number | null
+        }
+        Update: {
+          branch_id?: string | null
+          business_id?: string | null
+          created_at?: string | null
+          expires_at?: string | null
+          id?: string | null
+          invited_by?: string | null
+          job_title?: string | null
+          label?: string | null
+          max_uses?: number | null
+          revoked_at?: string | null
+          role_code?: string | null
+          status?: never
+          use_count?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "team_invitations_business_id_branch_id_fkey"
+            columns: ["business_id", "branch_id"]
+            isOneToOne: false
+            referencedRelation: "branches"
+            referencedColumns: ["business_id", "id"]
+          },
+          {
+            foreignKeyName: "team_invitations_business_id_fkey"
+            columns: ["business_id"]
+            isOneToOne: false
+            referencedRelation: "businesses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "team_invitations_invited_by_fkey"
+            columns: ["invited_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "team_invitations_role_code_fkey"
+            columns: ["role_code"]
+            isOneToOne: false
+            referencedRelation: "roles"
+            referencedColumns: ["code"]
+          },
+        ]
+      }
     }
     Functions: {
       accept_business_invitation: {
         Args: { _token_hash: string }
         Returns: string
       }
+      accept_team_invitation: { Args: { _token_hash: string }; Returns: string }
       account_balances: { Args: { _business: string }; Returns: Json }
       add_business_member: {
         Args: { _business_id: string; _role: string; _user_id: string }
@@ -2203,6 +2549,10 @@ export type Database = {
       }
       can_access_branch: {
         Args: { _branch_id: string; _business_id: string }
+        Returns: boolean
+      }
+      can_read_cash_counter_session: {
+        Args: { _branch_id: string; _business_id: string; _session_id: string }
         Returns: boolean
       }
       change_invitation_role: {
@@ -2279,11 +2629,40 @@ export type Database = {
         }
         Returns: string
       }
+      create_team_invitation: {
+        Args: {
+          _branch_id: string
+          _business_id: string
+          _denied: string[]
+          _expires_at: string
+          _job_title: string
+          _label?: string
+          _max_uses: number
+          _role: string
+          _token_hash: string
+        }
+        Returns: string
+      }
       end_website_stock_sync: {
         Args: { _business_id: string; _lease_id: string }
         Returns: undefined
       }
       get_role_templates: { Args: { _business: string }; Returns: Json }
+      grant_branch_delegation: {
+        Args: {
+          _branch_id: string
+          _business_id: string
+          _manager: string
+          _max_days?: number
+          _max_uses?: number
+          _roles: string[]
+        }
+        Returns: string
+      }
+      has_business_job_title: {
+        Args: { _business_id: string; _job_title: string }
+        Returns: boolean
+      }
       has_business_role: {
         Args: { _business_id: string; _min_role: string }
         Returns: boolean
@@ -2294,8 +2673,19 @@ export type Database = {
       }
       inv_sync_push: { Args: { _items: Json }; Returns: Json }
       is_business_member: { Args: { _business_id: string }; Returns: boolean }
+      is_cashier_sale_or_return: {
+        Args: { _branch_id: string; _business_id: string; _document_id: string }
+        Returns: boolean
+      }
+      is_platform_owner: { Args: never; Returns: boolean }
       job_title_role: { Args: { _title: string }; Returns: string }
+      login_clear_failures: { Args: { _bucket: string }; Returns: undefined }
       login_email_for_mobile: { Args: { _mobile: string }; Returns: string }
+      login_record_failure: { Args: { _bucket: string }; Returns: undefined }
+      login_throttle_blocked: {
+        Args: { _bucket: string; _max: number; _window_seconds: number }
+        Returns: boolean
+      }
       loyalty_available_points: {
         Args: { _business: string; _mobile: string }
         Returns: number
@@ -2358,6 +2748,7 @@ export type Database = {
         Args: { _account: string; _b: string; _payment: string }
         Returns: undefined
       }
+      platform_owner_check: { Args: { _user_id: string }; Returns: boolean }
       post_accounting_voucher: { Args: { _request: Json }; Returns: string }
       post_accounting_voucher_with_account: {
         Args: { _account: string; _request: Json }
@@ -2389,6 +2780,18 @@ export type Database = {
         Returns: string
       }
       post_stock_request: { Args: { _request: Json }; Returns: string }
+      preview_team_invitation: {
+        Args: { _token_hash: string }
+        Returns: {
+          branch_name: string
+          business_name: string
+          expires_at: string
+          inviter_name: string
+          job_title: string
+          role_name: string
+          seats_left: number
+        }[]
+      }
       product_image_business: { Args: { _name: string }; Returns: string }
       read_accounting_snapshot: {
         Args: { _branch_id?: string; _business_id: string; _through?: string }
@@ -2438,8 +2841,16 @@ export type Database = {
         Args: { _business: string; _title: string }
         Returns: undefined
       }
+      revoke_branch_delegation: {
+        Args: { _grant_id: string }
+        Returns: undefined
+      }
       revoke_business_invitation: {
         Args: { _business_id: string; _invitation_id: string }
+        Returns: undefined
+      }
+      revoke_team_invitation: {
+        Args: { _invitation_id: string }
         Returns: undefined
       }
       role_template_denials: {
@@ -2481,6 +2892,15 @@ export type Database = {
         Returns: undefined
       }
       shares_business_with: { Args: { _other: string }; Returns: boolean }
+      team_invite_authority: {
+        Args: {
+          _actor: string
+          _branch_id: string
+          _business_id: string
+          _role: string
+        }
+        Returns: boolean
+      }
       transfer_between_accounts: { Args: { _request: Json }; Returns: string }
       transfer_business_ownership: {
         Args: { _business_id: string; _new_owner: string }
