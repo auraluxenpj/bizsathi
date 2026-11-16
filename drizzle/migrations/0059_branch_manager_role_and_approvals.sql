@@ -86,6 +86,37 @@ WHERE p.permission <> ALL (ARRAY[
 ]::text[]);
 
 
+-- Fail closed if a Branch Manager security role is ever created without its matching
+-- Branch Manager title. That title is what installs the restrictive permission-denial template.
+CREATE OR REPLACE FUNCTION public.has_permission(_business uuid, _perm text)
+RETURNS boolean
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = public
+AS $
+  SELECT auth.uid() IS NULL OR (
+    NOT EXISTS (
+      SELECT 1
+      FROM public.business_memberships m
+      WHERE m.business_id = _business
+        AND m.user_id = auth.uid()
+        AND m.status = 'active'
+        AND m.role_code = 'branch_manager'
+        AND m.job_title IS DISTINCT FROM 'branch_manager'
+    )
+    AND NOT EXISTS (
+      SELECT 1
+      FROM public.member_permission_denials d
+      WHERE d.business_id = _business
+        AND d.user_id = auth.uid()
+        AND d.permission = _perm
+    )
+  )
+$;
+REVOKE ALL ON FUNCTION public.has_permission(uuid, text) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.has_permission(uuid, text) TO authenticated;
+
 -- Branch Managers may read operational sales/purchase/payment evidence only for assigned branches.
 -- They do not gain accountant journal access, business-wide access, or cashier posting authority.
 CREATE OR REPLACE FUNCTION public.can_read_cash_counter_session(
