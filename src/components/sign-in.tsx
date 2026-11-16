@@ -58,7 +58,7 @@ export function SignIn() {
             if (error) throw error;
           }
         }
-        await navigate({ to: sessionStorage.getItem('bizsathi-invite') ? '/invite' : '/dashboard' });
+        await navigate({ to: sessionStorage.getItem('bizsathi-team-token') ? '/join' : sessionStorage.getItem('bizsathi-invite') ? '/invite' : '/dashboard' });
       }
     } catch { setError('This request could not be completed. Check your details and try again.'); }
     finally { setBusy(false); }
