@@ -235,7 +235,7 @@ AS $function$
         AND public.has_permission(_business_id, 'stock.edit')
       )
     )
-$;
+$function$;
 REVOKE ALL ON FUNCTION public.can_approve_inventory_count(uuid, uuid) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.can_approve_inventory_count(uuid, uuid) TO authenticated, service_role;
 
