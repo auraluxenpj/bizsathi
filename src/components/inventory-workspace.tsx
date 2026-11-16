@@ -13,7 +13,7 @@ export function useInventoryWorkspace() {
  const access=useQuery({queryKey:['business-access',businessId],queryFn:()=>getAccess({data:{businessId}}),enabled:!!businessId});
  const inventory=useQuery({queryKey:['inventory',businessId],queryFn:()=>load({data:{businessId}}),enabled:!!businessId});
  const business=businesses.data.find(b=>b.id===businessId);
- return {businesses:businesses.data,businessId,setSelected,access,inventory,manager:business?.role==='owner'||business?.role==='admin',canPost:['owner','admin','accountant','staff'].includes(business?.role ?? '')};
+ return {businesses:businesses.data,businessId,setSelected,access,inventory,manager:business?.role==='owner'||business?.role==='admin',canApproveCounts:['owner','admin','branch_manager'].includes(business?.role ?? ''),canPost:['owner','admin','accountant','branch_manager','staff'].includes(business?.role ?? '')};
 }
 export type Workspace = ReturnType<typeof useInventoryWorkspace>;
 export function InventoryWorkspace({workspace:w,title,active,children}:{workspace:Workspace;title:string;active:string;children:ReactNode}) {
