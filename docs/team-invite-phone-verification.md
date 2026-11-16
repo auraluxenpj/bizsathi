@@ -2,10 +2,10 @@
 
 ## Invitation contract
 
-- A new branch-scoped invitation is bound to one normalized Nepal mobile number.
-- The database stores the number on the invitation row and exposes only its last four digits in the invitation status and public preview.
+- A new branch-scoped invitation is bound to one verified email address and one normalized Nepal mobile number.
+- The database stores the number on the invitation row and exposes only its masked email and last four mobile digits in the invitation status and public preview.
 - Phone-bound invitations are single-use. The role, business, branch, inviter, expiry and mobile are server-assigned.
-- Acceptance requires a confirmed Supabase Auth email and a confirmed Auth phone that normalizes to the exact invited mobile.
+- Acceptance requires a confirmed Supabase Auth email that exactly matches the invited email, plus a confirmed Auth phone that normalizes to the exact invited mobile.
 - The join page uses Supabase Auth `updateUser({ phone })` followed by `verifyOtp({ phone, token, type: 'phone_change' })`. OTP codes are not stored by BizSathi.
 - The database rechecks invitation validity, inviter authority, branch delegation, role rank and mobile match inside the acceptance transaction.
 
