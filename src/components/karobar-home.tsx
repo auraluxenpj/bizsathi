@@ -1,5 +1,5 @@
 import { Link } from '@tanstack/react-router';
-import { Bell, Building2, Calculator, ChevronDown, ChevronRight, ArrowDown, ArrowUp, EyeOff, FilePlus2, HandCoins, MessageSquareText, NotebookText, Package, PackagePlus, ReceiptText, ShoppingCart, Tag, Undo2, UserPlus, Wallet, Zap, BarChart3, type LucideIcon } from 'lucide-react';
+import { Bell, Building2, Calculator, ChevronDown, ChevronRight, ArrowDown, ArrowUp, EyeOff, FilePlus2, HandCoins, MessageSquareText, NotebookText, Package, PackagePlus, ReceiptText, ShoppingCart, Tag, Undo2, UserPlus, Wallet, Zap, BarChart3, Plus, type LucideIcon } from 'lucide-react';
 import { Switch } from '@/components/ui/switch';
 
 export type KarobarHomeProps = {
@@ -30,7 +30,7 @@ function Stat({ to, value, label, tone }: { to?: string | undefined; value: stri
   return to ? <Link to={to} className={base}>{body}</Link> : <div className={base}>{body}</div>;
 }
 function Round({ t }: { t: Tile }) {
-  return <Link to={t.to} search={(t.search ?? {}) as never} className="flex flex-col items-center gap-2 text-center"><span className="flex size-[54px] items-center justify-center rounded-full bg-[#e7f4fc] text-[#55aee8]"><t.icon className="size-6" /></span><span className="text-[15px] leading-tight text-[#1b1f23]">{t.label}</span></Link>;
+  return <Link to={t.to} search={(t.search ?? {}) as never} className="flex flex-col items-center gap-2 text-center"><span className="flex size-[54px] items-center justify-center rounded-2xl bg-[#E6EDFF] text-[#2347D9]"><t.icon className="size-6" /></span><span className="text-[15px] leading-tight text-[#1b1f23]">{t.label}</span></Link>;
 }
 
 export function KarobarHome(p: KarobarHomeProps) {
@@ -45,21 +45,35 @@ export function KarobarHome(p: KarobarHomeProps) {
     <section aria-label="Dashboard period" className="mt-3 flex flex-wrap gap-2">
       {([['today', 'Today'], ['month', 'This month'], ['week', '7 days'], ['30', '30 days']] as const).map(([id, label]) => <button key={id} type="button" aria-pressed={p.period === id} onClick={() => p.onPeriodChange(id)} className={`rounded-full border px-3 py-2 text-sm font-medium transition-colors ${p.period === id ? 'border-[#55aee8] bg-[#e7f4fc] text-[#2478a8]' : 'border-[#e5e7eb] bg-white text-[#6b7280]'}`}>{label}</button>)}
     </section>
-    <section aria-label="Summary" className="mt-4 grid grid-cols-2 gap-3">
-      <Stat tone="receive" to={ok('/parties') ? '/parties' : undefined} value={p.money(p.receive)} label={<>To Receive <ArrowDown className="size-4" /></>} />
-      <Stat tone="give" to={ok('/parties') ? '/parties' : undefined} value={p.money(p.give)} label={<>To Give <ArrowUp className="size-4" /></>} />
-      <Stat to={ok('/sales') ? '/sales' : undefined} value={p.money(p.sales)} label={`Sales (${p.periodName})`} />
+    <section aria-label="Sales summary" className="mt-4">
+      <div className="biz-sales-hero p-5 sm:p-6">
+        <div className="flex items-start justify-between gap-3">
+          <div><p className="biz-hero-label text-sm font-semibold">Sales · {p.periodName}</p><p className="biz-hero-value mt-2 tabular-nums">{p.money(p.sales)}</p></div>
+          <span className="rounded-full bg-[#FFB41F] px-3 py-1 text-[10px] font-extrabold tracking-wide text-[#1B2559]">PRO</span>
+        </div>
+        <div className="mt-5 grid grid-cols-2 gap-3 border-t border-white/20 pt-4">
+          <Link to="/parties" search={{tab:'receive'}} className="rounded-xl bg-white/10 p-3 text-white"><span className="block text-xs text-white/75">Received · To collect</span><span className="mt-1 block text-lg font-bold tabular-nums">{p.money(p.receive)}</span></Link>
+          <Link to="/parties" search={{tab:'give'}} className="rounded-xl bg-white/10 p-3 text-white"><span className="block text-xs text-white/75">Payables</span><span className="mt-1 block text-lg font-bold tabular-nums">{p.money(p.give)}</span></Link>
+        </div>
+      </div>
+      <div className="biz-quick-actions mt-4 grid grid-cols-3 gap-3">
+        {ok('/sales') && <Link to="/sales" search={{new:'1'}} className="biz-quick-action biz-quick-action-new flex flex-col items-center justify-center gap-2 text-center"><Plus /><span>New Bill</span></Link>}
+        {ok('/expenses') && <Link to="/expenses" className="biz-quick-action biz-quick-action-expense flex flex-col items-center justify-center gap-2 text-center"><ReceiptText /><span>Add Expense</span></Link>}
+        {ok('/parties') && <Link to="/parties" search={{tab:'receive'}} className="biz-quick-action biz-quick-action-collect flex flex-col items-center justify-center gap-2 text-center"><HandCoins /><span>Collect Payment</span></Link>}
+      </div>
+    </section>
+    <section aria-label="Other balances" className="mt-4 grid grid-cols-2 gap-3">
       <Stat to={ok('/purchases') ? '/purchases' : undefined} value={p.money(p.purchases)} label={`Purchase (${p.periodName})`} />
       <Stat to={ok('/expenses') ? '/expenses' : undefined} value={p.money(p.expenses)} label={`Expense (${p.periodName})`} />
       <Stat to={ok('/cash-bank') ? '/cash-bank' : undefined} value={p.money(p.cashBank)} label="Cash & Bank" />
     </section>
-    <section aria-label="Recent activities" className="mt-6 rounded-xl bg-white p-4 shadow-[0_1px_4px_rgba(16,24,40,.06)]">
+    <section aria-label="Recent activities" className="biz-surface mt-6 p-4">
       <div className="flex items-center justify-between gap-2"><h2 className="text-lg font-semibold text-[#1b1f23]">Recent activities</h2><Link to="/transactions" className="text-sm font-medium text-[#2478a8]">View all</Link></div>
       {p.recent?.length ? <ul className="mt-2 divide-y">{p.recent.slice(0, 4).map(item => <li key={item.id} className="flex min-w-0 items-center gap-3 py-3"><span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-[#e7f4fc] text-[#2478a8]"><ReceiptText className="size-4" /></span><span className="min-w-0 flex-1"><span className="block truncate text-sm font-medium text-[#1b1f23]">{item.reference}</span><span className="block text-xs capitalize text-[#6b7280]">{item.kind.replaceAll("_", " ")} · {item.document_date}</span></span><span className="shrink-0 text-sm font-semibold tabular-nums text-[#1b1f23]">{p.money(item.total)}</span></li>)}</ul> : <p className="py-5 text-center text-sm text-[#6b7280]">No confirmed activity recorded.</p>}
     </section>
-    <h2 className="mt-7 text-xl font-semibold text-[#1b1f23]">Explore App</h2>
-    <section className="mt-3 grid grid-cols-4 gap-3">{explore.filter(t => ok(t.to)).map(t => <Link key={t.label} to={t.to} className="relative flex flex-col items-center gap-3 rounded-xl bg-white px-1 py-4 text-center shadow-[0_1px_4px_rgba(16,24,40,.06)]">{t.badge && <span className="absolute -top-1 right-0 rounded bg-[#ef4444] px-1.5 py-0.5 text-[11px] font-medium text-white">{t.badge}</span>}<t.icon className="size-7 text-[#55aee8]" /><span className="text-[13px] leading-5 text-[#1b1f23]">{t.label}</span></Link>)}</section>
+    <h2 className="biz-section-title mt-7 text-xl">Explore App</h2>
+    <section className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-4">{explore.filter(t => ok(t.to)).map(t => <Link key={t.label} to={t.to} className="relative flex flex-col items-center gap-3 rounded-xl bg-white px-1 py-4 text-center shadow-[0_1px_4px_rgba(16,24,40,.06)]">{t.badge && <span className="absolute -top-1 right-0 rounded bg-[#ef4444] px-1.5 py-0.5 text-[11px] font-medium text-white">{t.badge}</span>}<t.icon className="size-7 text-[#55aee8]" /><span className="text-[13px] leading-5 text-[#1b1f23]">{t.label}</span></Link>)}</section>
     <div className="mt-7 flex items-center justify-between"><h2 className="text-xl font-semibold text-[#1b1f23]">Shortcuts</h2><Link to="/more" className="flex items-center gap-2 text-base font-semibold text-[#55aee8]"><FilePlus2 className="size-5" />Edit Menu</Link></div>
-    <section className="mt-3 grid grid-cols-4 gap-y-5 rounded-xl bg-white px-2 py-5 shadow-[0_1px_4px_rgba(16,24,40,.06)]">{shortcuts.filter(t => ok(t.to)).map(t => <Round key={t.label} t={t} />)}</section>
+    <section className="biz-surface mt-3 grid grid-cols-3 gap-y-5 px-2 py-5 sm:grid-cols-4">{shortcuts.filter(t => ok(t.to)).map(t => <Round key={t.label} t={t} />)}</section>
   </main>;
 }
