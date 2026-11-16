@@ -21,8 +21,31 @@ export const setFiscalYearStatus = createServerFn({ method: 'POST' }).middleware
     return { ok: true };
   });
 
-export const archiveBusinessFn = createServerFn({ method: 'POST' }).middleware([requireSupabaseAuth]).inputValidator(business).handler(async ({ data, context }) => {
-  const r = await db(context.supabase).rpc('archive_business', { _business_id: data.businessId });
-  if (r.error) throw new Error(r.error.code === '42501' ? r.error.message : 'The business could not be archived.');
-  return { ok: true };
+export const getPlatformOwnerStatusFn = createServerFn({ method: 'GET' }).middleware([requireSupabaseAuth]).handler(async ({ context }) => {
+  const r = await db(context.supabase).rpc('is_platform_owner');
+  if (r.error) throw new Error('Platform access could not be checked.');
+  return Boolean(r.data);
 });
+
+export const requestBusinessArchiveFn = createServerFn({ method: 'POST' }).middleware([requireSupabaseAuth])
+  .inputValidator(z.object({ businessId: z.string().uuid(), reason: z.string().trim().min(1).max(1000) }))
+  .handler(async ({ data, context }) => {
+    const r = await db(context.supabase).rpc('request_business_archive', { _business_id: data.businessId, _reason: data.reason });
+    if (r.error) throw new Error(r.error.message || 'The archive request could not be submitted.');
+    return { requestId: r.data as string };
+  });
+
+export const listBusinessArchiveRequestsFn = createServerFn({ method: 'GET' }).middleware([requireSupabaseAuth])
+  .inputValidator(business).handler(async ({ data, context }) => {
+    const r = await db(context.supabase).rpc('list_business_archive_requests', { _business_id: data.businessId });
+    if (r.error) throw new Error('Archive requests could not be loaded.');
+    return (r.data ?? []) as { id: string; business_id: string; requested_by: string; request_reason: string; status: 'pending' | 'approved' | 'rejected'; reviewed_by: string | null; review_note: string | null; created_at: string; reviewed_at: string | null }[];
+  });
+
+export const reviewBusinessArchiveRequestFn = createServerFn({ method: 'POST' }).middleware([requireSupabaseAuth])
+  .inputValidator(z.object({ requestId: z.string().uuid(), approve: z.boolean(), note: z.string().max(1000).optional() }))
+  .handler(async ({ data, context }) => {
+    const r = await db(context.supabase).rpc('review_business_archive_request', { _request_id: data.requestId, _approve: data.approve, _review_note: data.note ?? null });
+    if (r.error) throw new Error(r.error.message || 'The archive request could not be reviewed.');
+    return { ok: true };
+  });
