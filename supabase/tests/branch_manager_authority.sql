@@ -78,6 +78,8 @@ BEGIN
     'Branch Manager does not inherit Admin rank';
   ASSERT public.has_permission(v_business_id,'stock.edit'),
     'Branch Manager may use permitted branch stock operations';
+  ASSERT NOT public.has_permission(v_business_id,'purchases.view'),
+    'Branch Manager cannot read purchase documents containing unit costs';
   ASSERT NOT public.has_permission(v_business_id,'settings.edit'),
     'Branch Manager cannot gain business settings by missing or customized denials';
   ASSERT public.can_access_branch(v_business_id,v_branch_a),
@@ -131,7 +133,11 @@ BEGIN
   ASSERT EXISTS (
     SELECT 1 FROM public.job_title_denials
     WHERE job_title='branch_manager' AND permission='other.purchase_price'
-  ), 'Branch Manager purchase price is denied by default';
+  ), 'Branch Manager purchase price field is denied by default';
+  ASSERT EXISTS (
+    SELECT 1 FROM public.job_title_denials
+    WHERE job_title='branch_manager' AND permission='purchases.view'
+  ), 'Branch Manager purchase documents are denied because their lines contain unit costs';
   ASSERT EXISTS (
     SELECT 1 FROM public.job_title_denials
     WHERE job_title='branch_manager' AND permission='settings.edit'
