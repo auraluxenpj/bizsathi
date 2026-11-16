@@ -8,7 +8,7 @@ export function CheckoutReceipt({ businessId, business, branch, reference, name,
 }) {
   return <article aria-label="Receipt preview" className="mx-auto w-full max-w-sm border bg-card p-5 text-sm">
     <header className="border-b border-dashed pb-4 text-center">
-      <img src="/brand/auraluxe-invoice-logo.jpg" alt="AURALUXE logo" width="400" height="400" loading="eager" decoding="sync" className="mx-auto mb-2 h-auto w-28 max-w-full object-contain" />
+      <img src="/brand/auraluxe-invoice-logo.jpg" alt="AURALUXE logo" width="400" height="400" loading="eager" decoding="sync" className="mx-auto mb-2 h-auto w-28 max-w-full object-contain mix-blend-multiply [filter:brightness(1.06)_contrast(1.08)]" />
       <h3 className="break-words text-lg font-semibold">AURALUXE</h3>
       <p className="mt-1 text-muted-foreground">{branch}</p>
       <p className="mt-3 text-xs font-semibold uppercase text-muted-foreground">Unconfirmed · Preview</p>
