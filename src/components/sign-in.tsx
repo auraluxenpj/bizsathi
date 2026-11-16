@@ -7,7 +7,7 @@ import { lovable } from '@/integrations/lovable';
 import { supabase } from '@/integrations/supabase/client';
 import '@lovable.dev/cloud-auth-js/styles.css';
 import { Input } from '@/components/ui/input';
-import { signInWithMobile } from '@/lib/mobile-login.functions';
+import { signInWithEmployeeId, signInWithMobile } from '@/lib/mobile-login.functions';
 import { classifyLoginIdentifier, isEmailLoginIdentifier, normalizeLoginMobile } from '@/lib/login-identifier';
 
 export function SignIn() {
@@ -54,8 +54,12 @@ export function SignIn() {
           if (parsed.type === 'email') {
             const { error } = await supabase.auth.signInWithPassword({ email: parsed.value, password });
             if (error) throw error;
-          } else {
+          } else if (parsed.type === 'mobile') {
             const t = await signInWithMobile({ data: { mobile: parsed.value, password } });
+            const { error } = await supabase.auth.setSession(t);
+            if (error) throw error;
+          } else {
+            const t = await signInWithEmployeeId({ data: { employeeId: parsed.value, password } });
             const { error } = await supabase.auth.setSession(t);
             if (error) throw error;
           }
@@ -81,7 +85,7 @@ export function SignIn() {
               <label className="block text-sm">Full name<Input className="mt-1 h-11" type="text" autoComplete="name" required minLength={2} maxLength={120} value={fullName} onChange={e => setFullName(e.target.value)} /></label>
               <label className="block text-sm">Email<Input className="mt-1 h-11" type="email" autoComplete="email" required maxLength={254} value={email} onChange={e => setEmail(e.target.value)} /></label>
               <label className="block text-sm">Mobile number<Input className="mt-1 h-11" type="tel" inputMode="numeric" autoComplete="tel" required maxLength={20} placeholder="98XXXXXXXX" value={mobile} onChange={e => setMobile(e.target.value)} /></label>
-            </> : <label className="block text-sm">{mode === 'recovery' ? 'Email' : 'Email or mobile number'}<Input className="mt-1 h-11" type={mode === 'recovery' ? 'email' : 'text'} autoComplete="username" required maxLength={254} value={identifier} onChange={e => setIdentifier(e.target.value)} /></label>}
+            </> : <label className="block text-sm">{mode === 'recovery' ? 'Email' : 'Email, mobile, or Employee ID'}<Input className="mt-1 h-11" type={mode === 'recovery' ? 'email' : 'text'} autoComplete="username" required maxLength={254} value={identifier} onChange={e => setIdentifier(e.target.value)} placeholder="Email / +977 mobile / ALEMP0001" /></label>}
             {mode !== 'recovery' && <label className="block text-sm">Password<Input className="mt-1 h-11" type="password" autoComplete={mode === 'signup' ? 'new-password' : 'current-password'} required minLength={8} maxLength={128} value={password} onChange={e => setPassword(e.target.value)} /></label>}
             {mode === 'signup' && <label className="block text-sm">Confirm password<Input className="mt-1 h-11" type="password" autoComplete="new-password" required minLength={8} maxLength={128} value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)} /></label>}
             {mode === 'signup' && password && confirmPassword && password !== confirmPassword && <p className="text-sm text-destructive">Passwords do not match.</p>}

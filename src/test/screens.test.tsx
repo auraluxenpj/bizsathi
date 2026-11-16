@@ -106,7 +106,7 @@ describe('Navigation and sign-in', () => {
     auth.user = null;
     mount(<SignIn />);
     expect(await screen.findByRole('heading', { name: 'Sign in' })).toBeInTheDocument();
-    expect(screen.getByLabelText('Email or mobile number')).toBeInTheDocument();
+    expect(screen.getByLabelText('Email, mobile, or Employee ID')).toBeInTheDocument();
     expect(screen.getByLabelText('Password')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /Continue with Google/ })).toBeInTheDocument();
   });
