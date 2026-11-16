@@ -4,7 +4,9 @@ import { useServerFn } from '@tanstack/react-start';
 import { GitBranch, ShieldCheck, Users, UserPlus, Ban, ClipboardList } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { RolePermissions } from '@/components/role-permissions';
-import { jobTitles, type JobTitle } from '@/lib/job-titles';
+import { deniedForTitle, jobTitles, type JobTitle } from '@/lib/job-titles';
+import { deniedForRole } from '@/lib/permissions';
+import { getMemberPermissions } from '@/lib/business.functions';
 import { normalizeVerifiedNepalMobile } from '@/lib/login-identifier';
 import {
   createTeamInvitation,
@@ -72,6 +74,12 @@ export function TeamAccessPanel({
   legacyInviteLink?: string;
 }) {
   const client = useQueryClient();
+  const getMemberPermissionsFn = useServerFn(getMemberPermissions);
+  const ownPermissions = useQuery({
+    queryKey: ['permissions', businessId],
+    queryFn: () => getMemberPermissionsFn({ data: { businessId } }),
+    enabled: Boolean(businessId),
+  });
   const listInvitesFn = useServerFn(listTeamInvitations);
   const listDelegationsFn = useServerFn(listBranchDelegations);
   const listAuditFn = useServerFn(listAccessAudit);
@@ -112,6 +120,10 @@ export function TeamAccessPanel({
   const currentGrant = delegations.data?.grants.find((g: { branch_id: string; manager_user_id: string }) =>
     g.branch_id === selectedBranchId && g.manager_user_id === userId);
   const currentGrantRoles = (currentGrant?.allowed_role_codes ?? []) as string[];
+  const ownDeniedPermissions = [...new Set([
+    ...(ownPermissions.data?.denials ?? []).filter(d => d.user_id === userId).map(d => d.permission),
+    ...(ownPermissions.data?.roleDenials ?? []).filter(d => d.user_id === userId).map(d => d.permission),
+  ])];
   const allowedInviteRoles = isAdmin
     ? (isOwner ? ['admin', 'branch_manager', 'accountant', 'staff', 'viewer'] : ['branch_manager', 'accountant', 'staff', 'viewer'])
     : currentGrantRoles.filter((r) => (roleRank[r] ?? 100) < 60);
@@ -134,7 +146,10 @@ export function TeamAccessPanel({
     mutationFn: () => createInviteFn({ data: {
       businessId, branchId: selectedBranchId, role: roleCode as 'admin' | 'branch_manager' | 'accountant' | 'staff' | 'viewer', inviteeEmail, inviteeMobile,
       jobTitle: availableTitles.includes(jobTitle) ? jobTitle : undefined,
-      deniedPermissions: [], expiresInHours: effectiveExpiryDays * 24, maxUses: 1, label: label || undefined,
+      deniedPermissions: [...new Set([
+        ...ownDeniedPermissions,
+        ...(availableTitles.includes(jobTitle) ? deniedForTitle(jobTitle) : deniedForRole(roleCode)),
+      ])], expiresInHours: effectiveExpiryDays * 24, maxUses: 1, label: label || undefined,
     } }),
     onSuccess: (result) => {
       setInviteLink(`${window.location.origin}${result.path}`);
