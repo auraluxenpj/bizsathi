@@ -15,10 +15,18 @@ BEGIN
   INSERT INTO public.platform_owners(user_id,note)
   VALUES (master_id,'synthetic archive approval regression test');
 
+  -- Seed synthetic business and memberships as the disposable database owner.
+  -- Migration 0041 intentionally disables the application create_business RPC.
+  INSERT INTO public.businesses(name,created_by)
+  VALUES ('Synthetic archive approval',owner_id)
+  RETURNING id INTO v_business_id;
+  INSERT INTO public.business_memberships(business_id,user_id,role_code,status)
+  VALUES
+    (v_business_id,owner_id,'owner','active'),
+    (v_business_id,admin_id,'admin','active');
+
   SET LOCAL ROLE authenticated;
   PERFORM set_config('request.jwt.claims',json_build_object('sub',owner_id,'role','authenticated')::text,true);
-  v_business_id := public.create_business('Synthetic archive approval');
-  PERFORM public.add_business_member(v_business_id,admin_id,'admin');
 
   -- Only the actual Business Owner can request archiving.
   PERFORM set_config('request.jwt.claims',json_build_object('sub',admin_id,'role','authenticated')::text,true);

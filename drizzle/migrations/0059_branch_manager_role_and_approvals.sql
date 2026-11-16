@@ -85,6 +85,36 @@ WHERE p.permission <> ALL (ARRAY[
 ]::text[])
 ON CONFLICT (job_title, permission) DO NOTHING;
 
+-- Keep the member-denial constraint in sync with job-title defaults added above.
+-- Migration 0043 widens this constraint for the defaults that exist at that point;
+-- Branch Manager introduces additional keys later, so include them here as well.
+DO $branch_manager_permission_keys$
+DECLARE
+  cdef text;
+  keys text;
+BEGIN
+  SELECT pg_get_constraintdef(oid) INTO cdef
+  FROM pg_constraint
+  WHERE conname = 'member_permission_denials_permission_check'
+    AND conrelid = 'public.member_permission_denials'::regclass;
+
+  SELECT string_agg(quote_literal(permission), ',')
+  INTO keys
+  FROM (
+    SELECT DISTINCT permission
+    FROM (
+      SELECT (regexp_matches(COALESCE(cdef, ''), '''([a-z_.]+)''', 'g'))[1] AS permission
+      UNION
+      SELECT permission FROM public.job_title_denials
+    ) allowed_permissions
+    WHERE permission IS NOT NULL
+  ) all_permissions;
+
+  ALTER TABLE public.member_permission_denials
+    DROP CONSTRAINT IF EXISTS member_permission_denials_permission_check;
+  EXECUTE 'ALTER TABLE public.member_permission_denials ADD CONSTRAINT member_permission_denials_permission_check CHECK (permission IN (' || keys || '))';
+END $branch_manager_permission_keys$;
+
 
 -- Fail closed if a Branch Manager security role is ever created without its matching
 -- Branch Manager title. That title is what installs the restrictive permission-denial template.
