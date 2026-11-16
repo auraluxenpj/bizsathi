@@ -67,7 +67,7 @@ const countLineInput = z.object({
   costPrice: z.number().finite().nonnegative().max(999999999).refine(n => Math.abs(n * 100 - Math.round(n * 100)) < 0.00001).nullable().optional(),
   note: z.string().max(500).optional(),
 });
-const countDateInput = z.string().regex(/^\\d{4}-\\d{2}-\\d{2}$/);
+const countDateInput = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
 const createCountSessionInput = z.object({
   businessId: z.string().uuid(),
   branchId: z.string().uuid(),
