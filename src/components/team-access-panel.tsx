@@ -49,7 +49,7 @@ const roleRank: Record<string, number> = { owner: 100, admin: 80, accountant: 60
 export function TeamAccessPanel({
   businessId, branches, members, branchAccess, userId, isAdmin, isOwner,
   legacyInvitations = [], legacyTitles = [], onLegacyReissue, onLegacyChangeRole, onLegacyRevoke,
-  legacyActionsPending = false,
+  legacyActionsPending = false, legacyInviteLink = '',
 }: {
   businessId: string;
   branches: Branch[];
@@ -64,6 +64,7 @@ export function TeamAccessPanel({
   onLegacyChangeRole?: (invitationId: string, jobTitle: JobTitle) => void;
   onLegacyRevoke?: (invitationId: string) => void;
   legacyActionsPending?: boolean;
+  legacyInviteLink?: string;
 }) {
   const client = useQueryClient();
   const listInvitesFn = useServerFn(listTeamInvitations);
@@ -294,6 +295,14 @@ export function TeamAccessPanel({
                 </div>}
               </article>;
             })}</div>}
+            {legacyInviteLink && <div className="mt-3 rounded-lg border p-3">
+              <p className="mb-2 text-sm font-medium">New link for the earlier invitation</p>
+              <input aria-label="New earlier invitation link" readOnly className="h-10 w-full rounded-md border bg-background px-2 text-xs" value={legacyInviteLink} />
+              <div className="mt-2 flex flex-wrap gap-2">
+                <Button size="sm" variant="outline" onClick={() => { void navigator.clipboard.writeText(legacyInviteLink); }}>Copy link</Button>
+                <Button size="sm" variant="outline" onClick={() => { window.open(`https://wa.me/?text=${encodeURIComponent(`Join our business on BizSathi: ${legacyInviteLink}`)}`, '_blank', 'noopener,noreferrer'); }}>Share on WhatsApp</Button>
+              </div>
+            </div>}
           </div>
         </div>
         <div className="rounded-xl border p-4 md:p-5">
