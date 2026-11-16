@@ -49,6 +49,8 @@ BEGIN
 
   INSERT INTO public.branch_memberships(business_id,branch_id,user_id,granted_by)
   VALUES (v_business_id,v_branch_a,manager_id,admin_id);
+  INSERT INTO public.branch_memberships(business_id,branch_id,user_id,granted_by)
+  VALUES (v_business_id,v_branch_a,accountant_id,admin_id);
 
   -- Admin assigns only the staff/viewer delegation to the one branch.
   SET LOCAL ROLE authenticated;
