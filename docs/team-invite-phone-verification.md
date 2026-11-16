@@ -2,7 +2,7 @@
 
 ## Invitation contract
 
-- A new branch-scoped invitation is bound to one verified email address and one normalized Nepal mobile number.
+- A new branch-scoped invitation is bound to one verified email address and one normalized Nepal mobile number. The email is stored in lowercase; both identity values must match the authenticated account at acceptance.
 - The database stores the number on the invitation row and exposes only its masked email and last four mobile digits in the invitation status and public preview.
 - Phone-bound invitations are single-use. The role, business, branch, inviter, expiry and mobile are server-assigned.
 - Acceptance requires a confirmed Supabase Auth email that exactly matches the invited email, plus a confirmed Auth phone that normalizes to the exact invited mobile.
