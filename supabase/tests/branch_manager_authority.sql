@@ -106,6 +106,7 @@ BEGIN
     WHERE id=v_invitation_id
       AND 'settings.edit'=ANY(denied_permissions)
       AND 'other.purchase_price'=ANY(denied_permissions)
+      AND 'purchases.view'=ANY(denied_permissions)
   ), 'Delegated invitation automatically inherits the Branch Manager permission ceiling';
 
   ok := false;
