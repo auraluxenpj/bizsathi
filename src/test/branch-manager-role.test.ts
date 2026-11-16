@@ -31,6 +31,7 @@ describe('Branch Manager role boundary', () => {
       'inventory.view',
       'stock.create',
       'stock.edit',
+      'reports.view',
       'reports.items',
       'reports.transactions',
     ]) {
