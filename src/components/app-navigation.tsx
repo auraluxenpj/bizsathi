@@ -41,7 +41,7 @@ export function AppNavigation({ children, pathname }: { children: ReactNode; pat
  const extras = [
   { name: 'Quotations / estimates', to: '/quotations' }, { name: 'Transactions', to: '/transactions' }, { name: 'All reports', to: '/reports' }, { name: 'Stock ledger', to: '/inventory' }, { name: 'Credit reminder', to: '/credit-reminder' },
   { name: 'Calculators', to: '/calculators' }, { name: 'Notebook', to: '/notebook' }, { name: 'Bill gallery', to: '/bill-gallery' }, { name: 'Scan receipts', to: '/expense-receipts' },
-  ...(admin ? [{ name: 'Security findings', to: '/security' }, { name: 'Review history', to: '/security-history' }] : []), { name: 'My account', to: '/profile' }, { name: 'More tools', to: '/more' },
+  ...(admin ? [{ name: 'Security findings', to: '/security' }, { name: 'Review history', to: '/security-history' }] : []), { name: 'How to use BizSathi', to: '/help' }, { name: 'My account', to: '/profile' }, { name: 'More tools', to: '/more' },
  ];
  const workspaceMenu = <DropdownMenu><DropdownMenuTrigger asChild><Button variant="ghost" size="icon" aria-label="More workspace pages" title="More workspace pages" className="size-10 shrink-0"><MoreHorizontal className="size-5" /></Button></DropdownMenuTrigger><DropdownMenuContent align="end" className="max-h-[70dvh] overflow-y-auto">{extras.filter(i => visible(i.to)).map(i => <DropdownMenuItem key={i.to} asChild><Link to={i.to} search={['/reports', '/transactions'].includes(i.to) ? validateReportSearch(search) : {}}>{i.name}</Link></DropdownMenuItem>)}</DropdownMenuContent></DropdownMenu>;
  return <div data-sidebar-compact={compact ? 'true' : 'false'} className={`app-workspace min-h-screen bg-workspace ${compact ? 'lg:pl-[76px]' : 'lg:pl-[280px]'}`}>
