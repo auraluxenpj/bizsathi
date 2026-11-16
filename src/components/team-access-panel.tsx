@@ -98,9 +98,7 @@ export function TeamAccessPanel({
   const allowedInviteRoles = isAdmin
     ? (isOwner ? ['admin', 'accountant', 'staff', 'viewer'] : ['accountant', 'staff', 'viewer'])
     : currentGrantRoles.filter((r) => (roleRank[r] ?? 100) < 60);
-  const maxAllowedUses = currentGrant?.max_invite_uses ?? 100;
   const maxAllowedDays = currentGrant?.max_invite_days ?? 30;
-  const effectiveMaxUses = Math.min(maxUses, maxAllowedUses);
   const effectiveExpiryDays = Math.min(expiryDays, maxAllowedDays);
   const availableTitles = titleByRole[roleCode] ?? [];
   const eligibleManagers = members.filter((m) =>
