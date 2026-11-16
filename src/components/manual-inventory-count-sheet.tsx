@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useServerFn } from '@tanstack/react-start';
 import { Download, FileSpreadsheet, FileText, ClipboardList } from 'lucide-react';
@@ -40,6 +40,15 @@ export function ManualInventoryCountSheet({ variants, branches, movements, busin
     queryFn: async () => (await listSessions({ data: { businessId } })) as SessionSummary[],
     enabled: !!businessId,
   });
+  useEffect(() => {
+    setBranchId('');
+    setCountedBy('');
+    setCountDate(new Date().toISOString().slice(0,10));
+    setDrafts({});
+    setActiveSessionId(null);
+    setActiveSessionStatus(null);
+    setStatus('');
+  }, [businessId]);
   const activeBranches = branches.filter(b => b.is_active);
   const selectedBranch = activeBranches.find(b => b.id === branchId) ?? activeBranches[0];
   const balances = useMemo(() => stockBalances(movements), [movements]);
