@@ -1,5 +1,5 @@
 -- 0053: Globally unique employee identifier and server-only login resolution.
--- Employee IDs are assigned sequentially (AL0001, AL0002, ...) when an account first receives a business membership.
+-- Employee IDs are assigned sequentially (ALEMP0001, AL0002, ...) when an account first receives a business membership.
 ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS employee_id text;
 
 CREATE SEQUENCE IF NOT EXISTS public.employee_id_seq START WITH 1 INCREMENT BY 1 NO CYCLE;
@@ -17,7 +17,7 @@ SET search_path = public, pg_temp
 AS $$
 BEGIN
   UPDATE public.profiles
-     SET employee_id = 'AL' || lpad(nextval('public.employee_id_seq')::text, 4, '0'),
+     SET employee_id = 'ALEMP' || lpad(nextval('public.employee_id_seq')::text, 4, '0'),
          updated_at = now()
    WHERE id = NEW.user_id AND employee_id IS NULL;
   RETURN NEW;
@@ -33,7 +33,7 @@ FOR EACH ROW EXECUTE FUNCTION public.assign_employee_id_after_membership();
 
 -- Give existing active members an ID as part of the rollout.
 UPDATE public.profiles p
-SET employee_id = 'AL' || lpad(nextval('public.employee_id_seq')::text, 4, '0'), updated_at = now()
+SET employee_id = 'ALEMP' || lpad(nextval('public.employee_id_seq')::text, 4, '0'), updated_at = now()
 WHERE p.employee_id IS NULL
   AND EXISTS (SELECT 1 FROM public.business_memberships bm JOIN public.businesses b ON b.id = bm.business_id
               WHERE bm.user_id = p.id AND bm.status = 'active' AND b.archived_at IS NULL);
