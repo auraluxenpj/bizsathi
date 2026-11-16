@@ -243,7 +243,7 @@ export function TeamAccessPanel({
           <label className="my-3 block text-sm">Invitation label (optional)
             <input className="mt-1 h-10 w-full rounded-md border bg-background px-3" maxLength={120} value={label} onChange={(e) => setLabel(e.target.value)} placeholder="e.g. Nepalgunj cashier team" />
           </label>
-          <Button className="w-full" disabled={!selectedBranchId || !/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(inviteeEmail.trim()) || !inviteMobileValid || !allowedInviteRoles.includes(roleCode) || createInvite.isPending} onClick={() => createInvite.mutate()}>
+          <Button className="w-full" disabled={!selectedBranchId || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(inviteeEmail.trim()) || !inviteMobileValid || !allowedInviteRoles.includes(roleCode) || createInvite.isPending} onClick={() => createInvite.mutate()}>
             <UserPlus className="mr-2 size-4" />{createInvite.isPending ? 'Creating link…' : 'Create invitation link'}
           </Button>
           {inviteLink && <div className="mt-3 rounded-lg border p-3">
