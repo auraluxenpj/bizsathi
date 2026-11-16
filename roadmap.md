@@ -63,3 +63,4 @@
 - [x] Report PDF export
 - [x] Report date presets (Today, This month, This financial year)
 - [x] Report previous-period comparison
+- [ ] Repair preview type errors and verify existing connection/cash/team schema checks.
