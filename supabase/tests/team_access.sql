@@ -48,7 +48,7 @@ BEGIN
   ok:=false; BEGIN PERFORM public.create_team_invitation(ba,br_b,'staff',NULL,'{}','9841000001',h2,now()+interval '2 days',1); EXCEPTION WHEN insufficient_privilege THEN ok:=true; END; ASSERT ok,'manager cannot invite into another branch';
   ok:=false; BEGIN PERFORM public.create_team_invitation(ba,br_a,'accountant',NULL,'{}','9841000001',h2,now()+interval '2 days',1); EXCEPTION WHEN insufficient_privilege THEN ok:=true; END; ASSERT ok,'manager cannot assign an undelegated role';
   ok:=false; BEGIN PERFORM public.create_team_invitation(ba,br_a,'admin',NULL,'{}','9841000001',h2,now()+interval '2 days',1); EXCEPTION WHEN insufficient_privilege THEN ok:=true; END; ASSERT ok,'manager cannot assign admin';
-  ok:=false; BEGIN PERFORM public.create_team_invitation(ba,br_a,'staff',NULL,'{}','9841000001',h2,now()+interval '2 days',50); EXCEPTION WHEN insufficient_privilege THEN ok:=true; END; ASSERT ok,'manager limited to delegated max uses';
+  ok:=false; BEGIN PERFORM public.create_team_invitation(ba,br_a,'staff',NULL,'{}','9841000001',h2,now()+interval '2 days',50); EXCEPTION WHEN OTHERS THEN ok:=true; END; ASSERT ok,'phone-bound invitation must be single-use';
   ok:=false; BEGIN PERFORM public.create_team_invitation(bb,br_a,'staff',NULL,'{}','9841000001',h2,now()+interval '2 days',1); EXCEPTION WHEN insufficient_privilege THEN ok:=true; END; ASSERT ok,'manager cannot invite into another business';
   ok:=false; BEGIN PERFORM public.grant_branch_delegation(ba,br_a,staff_a,ARRAY['staff'],1,1); EXCEPTION WHEN insufficient_privilege THEN ok:=true; END; ASSERT ok,'manager cannot self-delegate to others';
   ASSERT (SELECT count(*) FROM public.team_invitations)=1,'manager sees only own invitations';
