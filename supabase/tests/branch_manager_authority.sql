@@ -12,6 +12,8 @@ DECLARE
   v_branch_b uuid;
   v_invitation_id uuid;
   ok boolean;
+  invitation_error text;
+  invitation_sqlstate text;
 BEGIN
   INSERT INTO auth.users(id,email,email_confirmed_at)
   VALUES
@@ -95,7 +97,11 @@ BEGIN
       'invitee@example.invalid','9841000001',repeat('a',64),
       now()+interval '2 days',1,'Branch manager test'
     );
-  EXCEPTION WHEN OTHERS THEN ok := true;
+  EXCEPTION WHEN OTHERS THEN
+    ok := true;
+    GET STACKED DIAGNOSTICS invitation_error = MESSAGE_TEXT,
+                            invitation_sqlstate = RETURNED_SQLSTATE;
+    RAISE NOTICE 'Delegated staff invitation failed [SQLSTATE %]: %', invitation_sqlstate, invitation_error;
   END;
   ASSERT NOT ok, 'Delegated staff invitation is permitted in the assigned branch';
   ASSERT EXISTS (
