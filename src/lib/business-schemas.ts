@@ -5,7 +5,7 @@ export const registrationInput = z.object({ name: z.string().trim().min(1).max(2
 const jobTitle = z.enum(['partner', 'manager', 'branch_manager', 'accountant', 'sales_person', 'stock_manager', 'entry_person']);
 export const inviteInput = tenantInput.extend({ email: z.string().trim().toLowerCase().email().max(254), role: z.enum(['admin', 'branch_manager', 'accountant', 'staff', 'viewer']), jobTitle: jobTitle.optional() }).refine(d => d.role !== 'branch_manager' || d.jobTitle === 'branch_manager', { message: 'Branch Manager invitations must use the Branch Manager position.', path: ['jobTitle'] });
 export const acceptInput = z.object({ token: z.string().regex(/^[a-f0-9]{64}$/) });
-export const memberInput = tenantInput.extend({ userId: z.string().uuid(), role: z.enum(['admin', 'accountant', 'staff', 'viewer']), status: z.enum(['active', 'suspended']), jobTitle: jobTitle.optional() });
+export const memberInput = tenantInput.extend({ userId: z.string().uuid(), role: z.enum(['admin', 'branch_manager', 'accountant', 'staff', 'viewer']), status: z.enum(['active', 'suspended']), jobTitle: jobTitle.optional() }).refine(d => d.role !== 'branch_manager' || d.jobTitle === 'branch_manager', { message: 'Branch Manager access must use the Branch Manager position.', path: ['jobTitle'] });
 export const branchInput = tenantInput.extend({ name: z.string().trim().min(1).max(200), code: z.string().regex(/^[A-Za-z0-9_-]{1,20}$/), address: z.string().trim().max(500) });
 export const branchGrantInput = tenantInput.extend({ userId: z.string().uuid(), branchId: z.string().uuid(), allowed: z.boolean() });
 export const revokeInviteInput = tenantInput.extend({ invitationId: z.string().uuid() });
