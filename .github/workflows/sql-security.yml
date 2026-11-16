@@ -7,6 +7,7 @@ on:
       - "drizzle/migrations/**"
       - "supabase/tests/**"
       - ".github/workflows/sql-security.yml"
+      - ".github/scripts/**"
   workflow_dispatch:
 
 permissions:
@@ -32,6 +33,13 @@ jobs:
 
       - name: Start isolated local Supabase stack
         run: supabase start -x studio,imgproxy,edge-runtime,logflare,vector
+
+      - name: Apply test-only compatibility bootstrap
+        run: |
+          set -euo pipefail
+          DB_CONTAINER="$(docker ps --filter 'name=supabase_db_' --format '{{.Names}}' | head -n1)"
+          test -n "${DB_CONTAINER}" || { echo "Local Supabase database container was not found"; exit 1; }
+          docker exec -i "${DB_CONTAINER}" psql -U postgres -d postgres --no-psqlrc --set ON_ERROR_STOP=1 < .github/scripts/sql-replay-bootstrap.sql
 
       - name: Replay repository SQL migrations in a disposable local database
         run: |
