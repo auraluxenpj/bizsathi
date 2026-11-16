@@ -18,6 +18,7 @@ import {
 type Branch = { id: string; name: string; code: string; is_active: boolean };
 type Member = { user_id: string; role_code: string; job_title: string | null; status: string; profiles?: { full_name: string | null } | null };
 type BranchAccess = { user_id: string; branch_id: string };
+type LegacyInvitation = { id: string; email: string | null; mobile: string | null; invitee_name: string | null; job_title: string | null; role_code: string; expires_at: string; accepted_at: string | null; revoked_at: string | null; created_at: string };
 
 const hierarchy = [
   { title: 'CEO / Platform Owner', rank: 100, detail: 'Global authority across businesses, branches and delegation', tone: 'border-primary/40 bg-primary/5' },
@@ -47,6 +48,8 @@ const roleRank: Record<string, number> = { owner: 100, admin: 80, accountant: 60
 
 export function TeamAccessPanel({
   businessId, branches, members, branchAccess, userId, isAdmin, isOwner,
+  legacyInvitations = [], legacyTitles = [], onLegacyReissue, onLegacyChangeRole, onLegacyRevoke,
+  legacyActionsPending = false, legacyInviteLink = '',
 }: {
   businessId: string;
   branches: Branch[];
@@ -55,6 +58,13 @@ export function TeamAccessPanel({
   userId: string;
   isAdmin: boolean;
   isOwner: boolean;
+  legacyInvitations?: LegacyInvitation[];
+  legacyTitles?: JobTitle[];
+  onLegacyReissue?: (invitationId: string, mobile: string) => void;
+  onLegacyChangeRole?: (invitationId: string, jobTitle: JobTitle) => void;
+  onLegacyRevoke?: (invitationId: string) => void;
+  legacyActionsPending?: boolean;
+  legacyInviteLink?: string;
 }) {
   const client = useQueryClient();
   const listInvitesFn = useServerFn(listTeamInvitations);
@@ -261,13 +271,39 @@ export function TeamAccessPanel({
 
       <div className="grid gap-5 xl:grid-cols-[1.2fr_1fr]">
         <div className="rounded-xl border p-4 md:p-5">
-          <div className="mb-3 flex items-center gap-2"><Users className="size-4 text-primary" /><h4 className="font-semibold">Branch invitations</h4></div>
-          {invitations.isPending ? <p className="text-sm text-muted-foreground">Loading invitations…</p> : invitations.error ? <p role="alert" className="text-sm text-destructive">Invitations could not be loaded.</p> : !(invitations.data?.invitations.length) ? <p className="text-sm text-muted-foreground">No team invitations yet.</p> : <div className="divide-y">{invitations.data.invitations.map((i: { id: string; branch_id: string; role_code: string; job_title: string | null; label: string | null; expires_at: string; max_uses: number; use_count: number; invitee_mobile_masked: string | null; invitee_email_masked: string | null; status: string }) => (
+          <div className="mb-3 flex items-center gap-2"><Users className="size-4 text-primary" /><h4 className="font-semibold">Invitations</h4></div>
+          {invitations.isPending ? <p className="text-sm text-muted-foreground">Loading branch-locked invitations…</p> : invitations.error ? <p role="alert" className="text-sm text-destructive">Branch-locked invitations could not be loaded.</p> : !(invitations.data?.invitations.length) ? <p className="text-sm text-muted-foreground">No branch-locked invitations yet.</p> : <div className="divide-y">{invitations.data.invitations.map((i: { id: string; branch_id: string; role_code: string; job_title: string | null; label: string | null; expires_at: string; max_uses: number; use_count: number; invitee_mobile_masked: string | null; invitee_email_masked: string | null; status: string; created_at: string }) => (
             <article key={i.id} className="flex flex-wrap items-center justify-between gap-3 py-3 text-sm">
-              <div><p className="font-medium">{i.label || titleLabel[(i.job_title ?? '') as JobTitle] || i.role_code}</p><p className="text-xs text-muted-foreground">{branches.find((b) => b.id === i.branch_id)?.name || 'Assigned branch'} · {i.invitee_email_masked || 'Email not bound'} · {i.invitee_mobile_masked || 'Mobile not bound'} · expires {new Date(i.expires_at).toLocaleDateString()} · {i.status.replace('_', ' ')}</p></div>
+              <div className="min-w-0"><p className="font-medium">{i.label || titleLabel[(i.job_title ?? '') as JobTitle] || i.role_code}</p><p className="text-xs text-muted-foreground">{branches.find((b) => b.id === i.branch_id)?.name || 'Assigned branch'} · {i.invitee_email_masked || 'Email not bound'} · {i.invitee_mobile_masked || 'Mobile not bound'} · {i.status.replaceAll('_', ' ')} · created {new Date(i.created_at).toLocaleDateString()} · expires {new Date(i.expires_at).toLocaleDateString()}</p></div>
               {i.status === 'pending' || i.status === 'partially_used' ? <Button size="sm" variant="outline" disabled={revokeInvite.isPending} onClick={() => revokeInvite.mutate(i.id)}><Ban className="mr-1 size-3" />Revoke</Button> : null}
             </article>
           ))}</div>}
+          <div className="mt-5 border-t pt-4">
+            <h5 className="mb-1 text-sm font-semibold">Earlier invitations</h5>
+            <p className="mb-2 text-xs text-muted-foreground">Existing invitations from the previous staff-invite flow remain valid and manageable here.</p>
+            {!legacyInvitations.length ? <p className="text-sm text-muted-foreground">No earlier invitations.</p> : <div className="divide-y">{legacyInvitations.map((i) => {
+              const status = i.accepted_at ? 'Accepted' : i.revoked_at ? 'Revoked' : new Date(i.expires_at).getTime() <= Date.now() ? 'Expired' : 'Pending';
+              const open = !i.accepted_at && !i.revoked_at;
+              return <article key={i.id} className="flex flex-wrap items-center justify-between gap-3 py-3 text-sm">
+                <div className="min-w-0"><p className="break-all font-medium">{i.invitee_name ? `${i.invitee_name} · ` : ''}{i.mobile ?? i.email ?? 'Invitee not identified'}</p><p className="text-xs text-muted-foreground">{(i.job_title && jobTitles[i.job_title as JobTitle]?.label) || i.role_code} · {status} · created {new Date(i.created_at).toLocaleDateString()} · expires {new Date(i.expires_at).toLocaleDateString()}</p></div>
+                {open && <div className="flex flex-wrap items-center gap-2">
+                  <select aria-label={`Change invited role for ${i.invitee_name || i.mobile || i.email || i.id}`} className="h-9 rounded-md border bg-card px-2 text-sm" value={i.job_title ?? ''} disabled={legacyActionsPending} onChange={(e) => { const next = e.target.value as JobTitle; if (next) onLegacyChangeRole?.(i.id, next); }}>
+                    {!i.job_title && <option value="" disabled>{i.role_code}</option>}{legacyTitles.map((t) => <option key={t} value={t}>{jobTitles[t].label}</option>)}
+                  </select>
+                  <Button size="sm" variant="outline" disabled={legacyActionsPending} onClick={() => onLegacyReissue?.(i.id, i.mobile ?? '')}>New link</Button>
+                  <Button size="sm" variant="ghost" disabled={legacyActionsPending} onClick={() => onLegacyRevoke?.(i.id)}><Ban className="mr-1 size-3" />Revoke</Button>
+                </div>}
+              </article>;
+            })}</div>}
+            {legacyInviteLink && <div className="mt-3 rounded-lg border p-3">
+              <p className="mb-2 text-sm font-medium">New link for the earlier invitation</p>
+              <input aria-label="New earlier invitation link" readOnly className="h-10 w-full rounded-md border bg-background px-2 text-xs" value={legacyInviteLink} />
+              <div className="mt-2 flex flex-wrap gap-2">
+                <Button size="sm" variant="outline" onClick={() => { void navigator.clipboard.writeText(legacyInviteLink); }}>Copy link</Button>
+                <Button size="sm" variant="outline" onClick={() => { window.open(`https://wa.me/?text=${encodeURIComponent(`Join our business on BizSathi: ${legacyInviteLink}`)}`, '_blank', 'noopener,noreferrer'); }}>Share on WhatsApp</Button>
+              </div>
+            </div>}
+          </div>
         </div>
         <div className="rounded-xl border p-4 md:p-5">
           <div className="mb-3 flex items-center gap-2"><ClipboardList className="size-4 text-primary" /><h4 className="font-semibold">Access activity</h4></div>

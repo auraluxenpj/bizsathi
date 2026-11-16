@@ -53,6 +53,48 @@ describe('Team Access hierarchy panel', () => {
     expect(screen.getAllByText(/Rank\s*40/)).toHaveLength(3);
   });
 
+  it('keeps earlier invitation history and management actions inside Team Access', async () => {
+    const reissue = vi.fn();
+    const changeRole = vi.fn();
+    const revoke = vi.fn();
+    render(<QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
+      <TeamAccessPanel
+        businessId={BUSINESS}
+        branches={[{ id: BRANCH, name: 'Nepalgunj', code: 'NP', is_active: true }]}
+        members={[]}
+        branchAccess={[]}
+        userId={MANAGER}
+        isAdmin={false}
+        isOwner={false}
+        legacyTitles={['sales_person', 'stock_manager']}
+        legacyInvitations={[{
+          id: 'ffffffff-ffff-4fff-8fff-ffffffffffff',
+          email: null,
+          mobile: '9616595288',
+          invitee_name: null,
+          job_title: 'sales_person',
+          role_code: 'staff',
+          expires_at: '2026-11-22T00:00:00.000Z',
+          accepted_at: null,
+          revoked_at: null,
+          created_at: '2026-11-16T00:00:00.000Z',
+        }]}
+        onLegacyReissue={reissue}
+        onLegacyChangeRole={changeRole}
+        onLegacyRevoke={revoke}
+      />
+    </QueryClientProvider>);
+
+    expect(await screen.findByText('Earlier invitations')).toBeInTheDocument();
+    expect(screen.getByText(/Sales Person · Pending/)).toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText('Change invited role for 9616595288'), { target: { value: 'stock_manager' } });
+    expect(changeRole).toHaveBeenCalledWith('ffffffff-ffff-4fff-8fff-ffffffffffff', 'stock_manager');
+    fireEvent.click(screen.getByRole('button', { name: 'New link' }));
+    expect(reissue).toHaveBeenCalledWith('ffffffff-ffff-4fff-8fff-ffffffffffff', '9616595288');
+    fireEvent.click(screen.getByRole('button', { name: /Revoke/ }));
+    expect(revoke).toHaveBeenCalledWith('ffffffff-ffff-4fff-8fff-ffffffffffff');
+  });
+
   it('limits a branch manager to delegated roles, branch scope and expiry limits', async () => {
     render(<QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
       <TeamAccessPanel businessId={BUSINESS} branches={[{ id: BRANCH, name: 'Nepalgunj', code: 'NP', is_active: true }]} members={[]} branchAccess={[]} userId={MANAGER} isAdmin={false} isOwner={false} />
