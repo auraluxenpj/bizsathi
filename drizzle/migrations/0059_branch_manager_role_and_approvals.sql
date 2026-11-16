@@ -94,7 +94,7 @@ LANGUAGE sql
 STABLE
 SECURITY DEFINER
 SET search_path = public
-AS $
+AS $function$
   SELECT auth.uid() IS NULL OR (
     NOT EXISTS (
       SELECT 1
@@ -113,7 +113,7 @@ AS $
         AND d.permission = _perm
     )
   )
-$;
+$function$;
 REVOKE ALL ON FUNCTION public.has_permission(uuid, text) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.has_permission(uuid, text) TO authenticated;
 
