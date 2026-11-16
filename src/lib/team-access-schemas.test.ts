@@ -3,15 +3,16 @@ import { delegationGrantInput, teamInviteAcceptInput, teamInviteInput, teamInvit
 
 const businessId = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
 const branchId = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
-const validInvite = { businessId, branchId, role: 'staff', inviteeMobile: '9812345678' };
+const validInvite = { businessId, branchId, role: 'staff', inviteeEmail: 'staff@example.com', inviteeMobile: '9812345678' };
 
 describe('Team invitation input rules', () => {
   it('never allows an owner invitation', () => expect(teamInviteInput.safeParse({ ...validInvite, role: 'owner' }).success).toBe(false));
-  it('requires a branch so an invitation can never be business-wide', () => expect(teamInviteInput.safeParse({ businessId, role: 'staff', inviteeMobile: '9812345678' }).success).toBe(false));
+  it('requires a branch so an invitation can never be business-wide', () => expect(teamInviteInput.safeParse({ businessId, role: 'staff', inviteeEmail: 'staff@example.com', inviteeMobile: '9812345678' }).success).toBe(false));
   it('requires a valid Nepal mobile and defaults to a single-use 7-day invitation', () => {
     const p = teamInviteInput.parse(validInvite);
     expect([p.maxUses, p.expiresInHours, p.deniedPermissions]).toEqual([1, 168, []]);
     expect(teamInviteInput.safeParse({ ...validInvite, inviteeMobile: '8812345678' }).success).toBe(false);
+    expect(teamInviteInput.safeParse({ ...validInvite, inviteeEmail: 'not-an-email' }).success).toBe(false);
   });
   it('caps invitation expiry at 30 days and rejects multi-use phone-bound links', () => {
     expect(teamInviteInput.safeParse({ ...validInvite, expiresInHours: 721 }).success).toBe(false);
