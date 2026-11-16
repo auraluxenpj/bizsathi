@@ -140,7 +140,7 @@ export const reviewInventoryCountSession = createServerFn({method:'POST'}).middl
   const {data:reviewed,error} = await context.supabase.rpc('review_inventory_count_session',{
     _session_id:data.sessionId,
     _decision:data.decision,
-    _note:data.note ?? null,
+    _note:data.note,
   });
   if(error || reviewed !== true) throw new Error('Inventory count review could not be saved. The reviewer must be a different business administrator.');
   return {ok:true};
