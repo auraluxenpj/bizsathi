@@ -11,10 +11,11 @@ export const invitationToken = z.string().regex(/^[a-f0-9]{64}$/);
 export const teamInviteInput = tenantInput.extend({
   branchId: uuid,
   role: z.enum(['admin', 'accountant', 'staff', 'viewer']), // 'owner' can never be invited
+  inviteeMobile: z.string().trim().min(10).max(40),
   jobTitle: jobTitle.optional(),
   deniedPermissions: z.array(permissionKey).max(80).default([]),
   expiresInHours: z.number().int().min(1).max(720).default(168), // 1 hour .. 30 days, default 7 days
-  maxUses: z.number().int().min(1).max(100).default(1),
+  maxUses: z.literal(1).default(1),
   label: z.string().trim().max(120).optional(),
 });
 export const teamInviteListInput = tenantInput.extend({ branchId: uuid.optional() });
