@@ -28,7 +28,7 @@ export const teamInviteAcceptInput = z.object({ token: invitationToken });
 export const delegationGrantInput = tenantInput.extend({
   branchId: uuid,
   managerUserId: uuid,
-  roles: z.array(z.enum(['accountant', 'staff', 'viewer'])).min(1).max(3), // delegable roles are always below admin
+  roles: z.array(z.enum(['staff', 'viewer'])).min(1).max(3), // delegable roles are always below admin
   maxUses: z.number().int().min(1).max(100).default(25),
   maxDays: z.number().int().min(1).max(30).default(14),
 });
