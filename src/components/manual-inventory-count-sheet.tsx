@@ -27,6 +27,7 @@ export function ManualInventoryCountSheet({ variants, branches, movements, busin
   const [drafts, setDrafts] = useState<Record<string, DraftRow>>({});
   const [status, setStatus] = useState('');
   const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
+  const [sessionVariantIds, setSessionVariantIds] = useState<string[] | null>(null);
   const [activeSessionStatus, setActiveSessionStatus] = useState<SessionSummary['status'] | null>(null);
   const queryClient = useQueryClient();
   const createSession = useServerFn(createInventoryCountSession);
@@ -46,13 +47,14 @@ export function ManualInventoryCountSheet({ variants, branches, movements, busin
     setCountDate(new Date().toISOString().slice(0,10));
     setDrafts({});
     setActiveSessionId(null);
+    setSessionVariantIds(null);
     setActiveSessionStatus(null);
     setStatus('');
   }, [businessId]);
   const activeBranches = branches.filter(b => b.is_active);
   const selectedBranch = activeBranches.find(b => b.id === branchId) ?? activeBranches[0];
   const balances = useMemo(() => stockBalances(movements), [movements]);
-  const rows = variants.filter(v => v.is_active && v.products?.is_active !== false).map(v => {
+  const rows = variants.filter(v => sessionVariantIds ? sessionVariantIds.includes(v.id) : v.is_active && v.products?.is_active !== false).map(v => {
     const key = `${selectedBranch?.id ?? ''}:${v.id}`;
     const draft = drafts[key] ?? { physical: '', cost: String(Number(v.purchase_price ?? 0) || '') };
     const system = draft.system ?? balances.get(key) ?? 0;
@@ -121,6 +123,7 @@ export function ManualInventoryCountSheet({ variants, branches, movements, busin
       setCountDate(detail.session.count_date);
       setCountedBy(detail.session.counted_by);
       setActiveSessionId(detail.session.id);
+      setSessionVariantIds(detail.lines.map(line => line.variant_id));
       setActiveSessionStatus(detail.session.status);
       setDrafts(Object.fromEntries(detail.lines.map(line => [`${detail.session.branch_id}:${line.variant_id}`, {
         physical: line.physical_quantity === null ? '' : String(line.physical_quantity),
@@ -162,7 +165,7 @@ export function ManualInventoryCountSheet({ variants, branches, movements, busin
       <Button variant="outline" disabled={saveMutation.isPending || submitMutation.isPending || (activeSessionStatus !== null && activeSessionStatus !== 'draft')} onClick={() => saveMutation.mutate()}>{saveMutation.isPending ? 'Saving…' : activeSessionId ? 'Update saved draft' : 'Save draft'}</Button>
       <Button disabled={submitMutation.isPending || saveMutation.isPending || (activeSessionStatus !== null && activeSessionStatus !== 'draft') || !countedBy.trim() || enteredRows.length === 0} onClick={() => submitMutation.mutate()}>{submitMutation.isPending ? 'Submitting…' : 'Submit for review'}</Button>
       {activeSessionId && <span className="text-xs text-muted-foreground">Session {activeSessionId.slice(0,8)} · {activeSessionStatus ?? 'new draft'}</span>}
-      {activeSessionId && <Button size="sm" variant="ghost" onClick={() => { setActiveSessionId(null); setActiveSessionStatus(null); setDrafts({}); setCountedBy(''); setCountDate(new Date().toISOString().slice(0,10)); }}>New count</Button>}
+      {activeSessionId && <Button size="sm" variant="ghost" onClick={() => { setActiveSessionId(null); setSessionVariantIds(null); setActiveSessionStatus(null); setDrafts({}); setCountedBy(''); setCountDate(new Date().toISOString().slice(0,10)); }}>New count</Button>}
     </div>
     <div className="mt-5 rounded-lg border p-3">
       <div className="flex flex-wrap items-center justify-between gap-2"><h3 className="font-medium">Saved count history</h3><Button size="sm" variant="ghost" onClick={() => sessionsQuery.refetch()}>Refresh</Button></div>
