@@ -87,3 +87,15 @@ export const listBranchDelegations = createServerFn({ method: 'GET' }).middlewar
   if (error) throw new Error('Delegations could not be loaded.');
   return { grants: grants ?? [] };
 });
+
+// Access-related audit trail for admins and the master owner (row level security hides it from everyone else).
+export const listAccessAudit = createServerFn({ method: 'GET' }).middleware([requireSupabaseAuth]).inputValidator(delegationListInput).handler(async ({ data, context }) => {
+  const db = anyDb(context.supabase);
+  const { data: rows, error } = await db.from('audit_logs').select('id,actor_id,action,entity_id,created_at').eq('business_id', data.businessId)
+    .or('action.like.team_invite.%,action.like.delegation.%,action.like.job_title.%').order('created_at', { ascending: false }).limit(100);
+  if (error) throw new Error('Activity log could not be loaded.');
+  const actorIds = [...new Set((rows ?? []).map((r: { actor_id: string | null }) => r.actor_id).filter(Boolean))] as string[];
+  const { data: people } = actorIds.length ? await db.from('profiles').select('id,full_name').in('id', actorIds) : { data: [] };
+  const names = Object.fromEntries((people ?? []).map((p: { id: string; full_name: string | null }) => [p.id, p.full_name ?? 'Unknown']));
+  return { entries: (rows ?? []).map((r: { id: number; actor_id: string | null; action: string; entity_id: string | null; created_at: string }) => ({ id: r.id, action: r.action, entityId: r.entity_id, created_at: r.created_at, actor: r.actor_id ? names[r.actor_id] ?? 'Unknown' : 'System' })) };
+});
