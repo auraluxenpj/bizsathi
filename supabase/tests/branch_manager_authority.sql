@@ -73,6 +73,10 @@ BEGIN
     'Branch Manager does not inherit Accountant rank';
   ASSERT NOT public.has_business_role(v_business_id,'admin'),
     'Branch Manager does not inherit Admin rank';
+  ASSERT public.has_permission(v_business_id,'stock.edit'),
+    'Branch Manager may use permitted branch stock operations';
+  ASSERT NOT public.has_permission(v_business_id,'settings.edit'),
+    'Branch Manager cannot gain business settings by missing or customized denials';
   ASSERT public.can_access_branch(v_business_id,v_branch_a),
     'Assigned branch is accessible';
   ASSERT NOT public.can_access_branch(v_business_id,v_branch_b),
