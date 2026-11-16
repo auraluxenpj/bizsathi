@@ -17,7 +17,7 @@ type Branch = { id: string; name: string; is_active: boolean };
 type Movement = { variant_id: string; branch_id: string; quantity: number };
 const formatQuantity = (value: number) => Number.isInteger(value) ? String(value) : String(Number(value.toFixed(3)));
 
-type Props = { variants: Variant[]; branches: Branch[]; movements: Movement[]; businessId: string; manager: boolean; currentUserId?: string; canViewPurchasePrice: boolean };
+type Props = { variants: Variant[]; branches: Branch[]; movements: Movement[]; businessId: string; canApprove: boolean; currentUserId?: string; canViewPurchasePrice: boolean };
 
 type DraftRow = { physical: string; cost: string; system?: number; sku?: string; product?: string; variant?: string; unit?: string };
 type SessionSummary = { id: string; branch_id: string; branch_name: string; count_date: string; counted_by: string; status: 'draft'|'submitted'|'approved'|'rejected'; created_by: string; created_at: string; submitted_at: string | null; reviewed_by: string | null; reviewed_at: string | null; review_note: string | null; line_count: number; counted_line_count: number };
@@ -25,7 +25,7 @@ type CountAdjustmentLine = { id: string; variant_id: string; sku: string; produc
 type CountAdjustmentDetail = { batch: { id: string; status: 'pending'|'posted'|'stale'|'no_adjustments'; prepared_by: string; prepared_at: string; confirmed_by: string | null; confirmed_at: string | null; confirmation_reason: string | null; stale_at: string | null }; lines: CountAdjustmentLine[] };
 type SavedCountDetail = { session: { id: string; branch_id: string; count_date: string; counted_by: string; status: SessionSummary['status'] }; lines: { variant_id: string; sku: string; product: string; variant: string; unit: string; system_quantity: number; physical_quantity: number | null; cost_price: number | null; note: string | null }[] };
 
-export function ManualInventoryCountSheet({ variants, branches, movements, businessId, manager, currentUserId, canViewPurchasePrice }: Props) {
+export function ManualInventoryCountSheet({ variants, branches, movements, businessId, canApprove, currentUserId, canViewPurchasePrice }: Props) {
   const [branchId, setBranchId] = useState('');
   const [countedBy, setCountedBy] = useState('');
   const [countDate, setCountDate] = useState(() => new Date().toISOString().slice(0, 10));
@@ -51,7 +51,7 @@ export function ManualInventoryCountSheet({ variants, branches, movements, busin
   const adjustmentQuery = useQuery({
     queryKey: ['inventory-count-adjustment', activeSessionId],
     queryFn: async () => (await readAdjustment({ data: { sessionId: activeSessionId! } })) as unknown as CountAdjustmentDetail | null,
-    enabled: !!activeSessionId && activeSessionStatus === 'approved' && manager,
+    enabled: !!activeSessionId && activeSessionStatus === 'approved' && canApprove,
   });
   const prepareAdjustmentMutation = useMutation({
     mutationFn: async () => prepareAdjustment({ data: { sessionId: activeSessionId! } }),
@@ -139,7 +139,7 @@ export function ManualInventoryCountSheet({ variants, branches, movements, busin
     onSuccess: async sessionId => {
       setActiveSessionId(sessionId);
       setActiveSessionStatus('submitted');
-      setStatus('Count submitted for administrator review. It will not change stock.');
+      setStatus('Count submitted for Branch Manager or Administrator review. It will not change stock.');
       await queryClient.invalidateQueries({ queryKey: ['inventory-count-sessions', businessId] });
     },
     onError: e => setStatus(e instanceof Error ? e.message : 'Count could not be submitted.'),
@@ -229,12 +229,12 @@ export function ManualInventoryCountSheet({ variants, branches, movements, busin
       {sessionsQuery.isPending ? <p className="py-3 text-sm text-muted-foreground">Loading count history…</p> : sessionsQuery.error ? <p className="py-3 text-sm text-destructive">Count history could not be loaded.</p> : !sessionsQuery.data?.length ? <p className="py-3 text-sm text-muted-foreground">No saved inventory counts yet.</p> : <div className="mt-2 divide-y">{sessionsQuery.data.map(session => <article key={session.id} className="flex flex-wrap items-center justify-between gap-3 py-3 text-sm">
         <button type="button" className="min-w-0 text-left hover:underline" onClick={() => void openSavedSession(session.id)}><span className="font-medium">{session.branch_name} · {session.count_date}</span><span className="block text-xs text-muted-foreground">{session.counted_by} · {session.counted_line_count}/{session.line_count} counted · {session.status}</span></button>
         <div className="flex flex-wrap items-center gap-2">
-          {manager && session.status === 'submitted' && session.created_by !== currentUserId && <><Button size="sm" disabled={reviewMutation.isPending} onClick={() => reviewMutation.mutate({sessionId:session.id,decision:'approved'})}>Approve</Button><Button size="sm" variant="outline" disabled={reviewMutation.isPending} onClick={() => { const note = window.prompt('Reason for rejecting this count (required):'); if (note?.trim()) reviewMutation.mutate({sessionId:session.id,decision:'rejected',note}); }}>Reject</Button></>}
+          {canApprove && session.status === 'submitted' && session.created_by !== currentUserId && <><Button size="sm" disabled={reviewMutation.isPending} onClick={() => reviewMutation.mutate({sessionId:session.id,decision:'approved'})}>Approve</Button><Button size="sm" variant="outline" disabled={reviewMutation.isPending} onClick={() => { const note = window.prompt('Reason for rejecting this count (required):'); if (note?.trim()) reviewMutation.mutate({sessionId:session.id,decision:'rejected',note}); }}>Reject</Button></>}
           <span className="rounded-full bg-muted px-2 py-1 text-xs capitalize">{session.status}</span>
         </div>
       </article>)}</div>}
     </div>
-    {manager && activeSessionId && activeSessionStatus === 'approved' && <section className="mt-5 rounded-lg border border-primary/30 p-4">
+    {canApprove && activeSessionId && activeSessionStatus === 'approved' && <section className="mt-5 rounded-lg border border-primary/30 p-4">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div><h3 className="font-semibold">Stock adjustment proposal</h3><p className="mt-1 text-sm text-muted-foreground">Approval did not change stock. Review the proposed differences, then confirm separately to post them to the existing stock ledger.</p></div>
         <Button type="button" variant="outline" size="sm" onClick={() => adjustmentQuery.refetch()} disabled={adjustmentQuery.isFetching}>Refresh proposal</Button>
