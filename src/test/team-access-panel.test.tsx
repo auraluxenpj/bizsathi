@@ -20,6 +20,7 @@ vi.mock('@tanstack/react-start', async (importOriginal) => ({
 }));
 vi.mock('@/lib/business.functions', () => ({
   getRoleTemplates: async () => ({ templates: { sales_person: { denied: [], customized: false } } }),
+  getMemberPermissions: async () => ({ userId: MANAGER, denials: [{ user_id: MANAGER, permission: 'settings.edit' }], roleDenials: [] }),
   saveRoleTemplate: vi.fn(),
   resetRoleTemplate: vi.fn(),
 }));
