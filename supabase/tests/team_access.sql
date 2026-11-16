@@ -1,4 +1,4 @@
--- Run only in an isolated test database with the project's migrations (through 0042) applied.
+-- Run only in an isolated test database with the project's migrations (through 0046) applied.
 -- The explicit transaction guarantees all synthetic auth/business records are rolled back.
 BEGIN;
 DO $tests$
@@ -44,44 +44,41 @@ BEGIN
 
   -- Branch manager invites into their own branch.
   SET LOCAL ROLE authenticated; PERFORM set_config('request.jwt.claims',json_build_object('sub',mgr_a,'role','authenticated')::text,true);
-  iid:=public.create_team_invitation(ba,br_a,'staff','sales_person','{}',h1,now()+interval '2 days',2,'WhatsApp');
-  ok:=false; BEGIN PERFORM public.create_team_invitation(ba,br_b,'staff',NULL,'{}',h2,now()+interval '2 days',1); EXCEPTION WHEN insufficient_privilege THEN ok:=true; END; ASSERT ok,'manager cannot invite into another branch';
-  ok:=false; BEGIN PERFORM public.create_team_invitation(ba,br_a,'accountant',NULL,'{}',h2,now()+interval '2 days',1); EXCEPTION WHEN insufficient_privilege THEN ok:=true; END; ASSERT ok,'manager cannot assign an undelegated role';
-  ok:=false; BEGIN PERFORM public.create_team_invitation(ba,br_a,'admin',NULL,'{}',h2,now()+interval '2 days',1); EXCEPTION WHEN insufficient_privilege THEN ok:=true; END; ASSERT ok,'manager cannot assign admin';
-  ok:=false; BEGIN PERFORM public.create_team_invitation(ba,br_a,'staff',NULL,'{}',h2,now()+interval '2 days',50); EXCEPTION WHEN insufficient_privilege THEN ok:=true; END; ASSERT ok,'manager limited to delegated max uses';
-  ok:=false; BEGIN PERFORM public.create_team_invitation(bb,br_a,'staff',NULL,'{}',h2,now()+interval '2 days',1); EXCEPTION WHEN insufficient_privilege THEN ok:=true; END; ASSERT ok,'manager cannot invite into another business';
+  iid:=public.create_team_invitation(ba,br_a,'staff','sales_person','{}','9841000001',h1,now()+interval '2 days',1,'WhatsApp');
+  ok:=false; BEGIN PERFORM public.create_team_invitation(ba,br_b,'staff',NULL,'{}','9841000001',h2,now()+interval '2 days',1); EXCEPTION WHEN insufficient_privilege THEN ok:=true; END; ASSERT ok,'manager cannot invite into another branch';
+  ok:=false; BEGIN PERFORM public.create_team_invitation(ba,br_a,'accountant',NULL,'{}','9841000001',h2,now()+interval '2 days',1); EXCEPTION WHEN insufficient_privilege THEN ok:=true; END; ASSERT ok,'manager cannot assign an undelegated role';
+  ok:=false; BEGIN PERFORM public.create_team_invitation(ba,br_a,'admin',NULL,'{}','9841000001',h2,now()+interval '2 days',1); EXCEPTION WHEN insufficient_privilege THEN ok:=true; END; ASSERT ok,'manager cannot assign admin';
+  ok:=false; BEGIN PERFORM public.create_team_invitation(ba,br_a,'staff',NULL,'{}','9841000001',h2,now()+interval '2 days',50); EXCEPTION WHEN insufficient_privilege THEN ok:=true; END; ASSERT ok,'manager limited to delegated max uses';
+  ok:=false; BEGIN PERFORM public.create_team_invitation(bb,br_a,'staff',NULL,'{}','9841000001',h2,now()+interval '2 days',1); EXCEPTION WHEN insufficient_privilege THEN ok:=true; END; ASSERT ok,'manager cannot invite into another business';
   ok:=false; BEGIN PERFORM public.grant_branch_delegation(ba,br_a,staff_a,ARRAY['staff'],1,1); EXCEPTION WHEN insufficient_privilege THEN ok:=true; END; ASSERT ok,'manager cannot self-delegate to others';
   ASSERT (SELECT count(*) FROM public.team_invitations)=1,'manager sees only own invitations';
   RESET ROLE;
 
   -- Staff without delegation cannot invite.
   SET LOCAL ROLE authenticated; PERFORM set_config('request.jwt.claims',json_build_object('sub',staff_a,'role','authenticated')::text,true);
-  ok:=false; BEGIN PERFORM public.create_team_invitation(ba,br_a,'viewer',NULL,'{}',h3,now()+interval '2 days',1); EXCEPTION WHEN insufficient_privilege THEN ok:=true; END; ASSERT ok,'staff cannot invite';
+  ok:=false; BEGIN PERFORM public.create_team_invitation(ba,br_a,'viewer',NULL,'{}','9841000003',h3,now()+interval '2 days',1); EXCEPTION WHEN insufficient_privilege THEN ok:=true; END; ASSERT ok,'staff cannot invite';
   ASSERT (SELECT count(*) FROM public.team_invitations)=0,'staff sees no invitations';
   RESET ROLE;
 
-  -- Acceptance: unverified mobile rejected; verified accepted; limits respected; no reuse.
+  -- Acceptance: unverified and wrong mobile rejected; matching verified mobile accepted; no reuse.
   SET LOCAL ROLE authenticated; PERFORM set_config('request.jwt.claims',json_build_object('sub',unverified,'role','authenticated')::text,true);
   ok:=false; BEGIN PERFORM public.accept_team_invitation(h1); EXCEPTION WHEN insufficient_privilege THEN ok:=true; END; ASSERT ok,'unverified mobile cannot accept';
+  PERFORM set_config('request.jwt.claims',json_build_object('sub',new2,'role','authenticated')::text,true);
+  ok:=false; BEGIN PERFORM public.accept_team_invitation(h1); EXCEPTION WHEN insufficient_privilege THEN ok:=true; END; ASSERT ok,'wrong verified mobile cannot accept';
   PERFORM set_config('request.jwt.claims',json_build_object('sub',new1,'role','authenticated')::text,true);
-  ASSERT public.accept_team_invitation(h1)=ba,'valid invitation accepted';
+  ASSERT public.accept_team_invitation(h1)=ba,'matching verified invitation accepted';
   ok:=false; BEGIN PERFORM public.accept_team_invitation(h1); EXCEPTION WHEN insufficient_privilege THEN ok:=true; END; ASSERT ok,'same user cannot reuse';
   RESET ROLE;
   ASSERT (SELECT role_code FROM public.business_memberships WHERE business_id=ba AND user_id=new1)='staff','invited role assigned';
   ASSERT (SELECT job_title FROM public.business_memberships WHERE business_id=ba AND user_id=new1)='sales_person','job title assigned';
   ASSERT EXISTS(SELECT 1 FROM public.branch_memberships WHERE branch_id=br_a AND user_id=new1),'branch access granted';
   ASSERT NOT EXISTS(SELECT 1 FROM public.branch_memberships WHERE branch_id=br_b AND user_id=new1),'no other branch access';
-  ASSERT (SELECT status FROM public.team_invitations_status WHERE id=iid)='partially_used','partially used status';
-  SET LOCAL ROLE authenticated; PERFORM set_config('request.jwt.claims',json_build_object('sub',new2,'role','authenticated')::text,true);
-  PERFORM public.accept_team_invitation(h1);
-  PERFORM set_config('request.jwt.claims',json_build_object('sub',new3,'role','authenticated')::text,true);
-  ok:=false; BEGIN PERFORM public.accept_team_invitation(h1); EXCEPTION WHEN insufficient_privilege THEN ok:=true; END; ASSERT ok,'max uses respected';
   RESET ROLE;
-  ASSERT (SELECT status FROM public.team_invitations_status WHERE id=iid)='accepted','accepted status after limit';
+  ASSERT (SELECT status FROM public.team_invitations_status WHERE id=iid)='accepted','single-use invitation accepted status';
 
   -- Revoked and expired invitations.
   SET LOCAL ROLE authenticated; PERFORM set_config('request.jwt.claims',json_build_object('sub',mgr_a,'role','authenticated')::text,true);
-  iid2:=public.create_team_invitation(ba,br_a,'viewer',NULL,'{}',h4,now()+interval '2 days',1);
+  iid2:=public.create_team_invitation(ba,br_a,'viewer',NULL,'{}','9841000003',h4,now()+interval '2 days',1);
   PERFORM public.revoke_team_invitation(iid2);
   PERFORM set_config('request.jwt.claims',json_build_object('sub',new3,'role','authenticated')::text,true);
   ok:=false; BEGIN PERFORM public.accept_team_invitation(h4); EXCEPTION WHEN insufficient_privilege THEN ok:=true; END; ASSERT ok,'revoked invitation rejected';
@@ -90,7 +87,7 @@ BEGIN
   ASSERT (SELECT status FROM public.team_invitations_status WHERE id=iid2)='revoked','revoked wins over expired';
   -- Delegation revoked => pending invitations stop working.
   SET LOCAL ROLE authenticated; PERFORM set_config('request.jwt.claims',json_build_object('sub',mgr_a,'role','authenticated')::text,true);
-  iid:=public.create_team_invitation(ba,br_a,'viewer',NULL,'{}',repeat('5',64),now()+interval '2 days',3);
+  iid:=public.create_team_invitation(ba,br_a,'viewer',NULL,'{}','9841000003',repeat('5',64),now()+interval '2 days',1);
   PERFORM set_config('request.jwt.claims',json_build_object('sub',owner_a,'role','authenticated')::text,true);
   PERFORM public.revoke_branch_delegation((SELECT id FROM public.delegation_grants WHERE manager_user_id=mgr_a AND revoked_at IS NULL));
   PERFORM set_config('request.jwt.claims',json_build_object('sub',new3,'role','authenticated')::text,true);
