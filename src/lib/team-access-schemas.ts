@@ -19,7 +19,7 @@ export const teamInviteInput = tenantInput.extend({
   expiresInHours: z.number().int().min(1).max(720).default(168), // 1 hour .. 30 days, default 7 days
   maxUses: z.literal(1).default(1),
   label: z.string().trim().max(120).optional(),
-});
+}).refine(d => d.role !== 'branch_manager' || d.jobTitle === 'branch_manager', { message: 'Branch Manager invitations must use the Branch Manager position.', path: ['jobTitle'] });
 export const teamInviteListInput = tenantInput.extend({ branchId: uuid.optional() });
 export const teamInviteRevokeInput = z.object({ invitationId: uuid });
 export const teamInvitePreviewInput = z.object({ token: invitationToken });
