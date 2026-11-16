@@ -7,9 +7,9 @@ DECLARE
   admin_id uuid := gen_random_uuid();
   manager_id uuid := gen_random_uuid();
   accountant_id uuid := gen_random_uuid();
-  business_id uuid;
-  branch_a uuid;
-  branch_b uuid;
+  v_business_id uuid;
+  v_branch_a uuid;
+  v_branch_b uuid;
   ok boolean;
 BEGIN
   INSERT INTO auth.users(id,email,email_confirmed_at)
@@ -21,43 +21,42 @@ BEGIN
 
   INSERT INTO public.businesses(name,created_by)
   VALUES ('Branch Manager test',owner_id)
-  RETURNING id INTO business_id;
+  RETURNING id INTO v_business_id;
 
   INSERT INTO public.branches(business_id,code,name)
-  VALUES (business_id,'A','Assigned branch')
-  RETURNING id INTO branch_a;
+  VALUES (v_business_id,'A','Assigned branch')
+  RETURNING id INTO v_branch_a;
 
   INSERT INTO public.branches(business_id,code,name)
-  VALUES (business_id,'B','Unassigned branch')
-  RETURNING id INTO branch_b;
+  VALUES (v_business_id,'B','Unassigned branch')
+  RETURNING id INTO v_branch_b;
 
   INSERT INTO public.business_memberships(business_id,user_id,role_code)
   VALUES
-    (business_id,owner_id,'owner'),
-    (business_id,admin_id,'admin'),
-    (business_id,manager_id,'branch_manager'),
-    (business_id,accountant_id,'accountant');
+    (v_business_id,owner_id,'owner'),
+    (v_business_id,admin_id,'admin'),
+    (v_business_id,manager_id,'branch_manager'),
+    (v_business_id,accountant_id,'accountant');
 
   UPDATE public.business_memberships
   SET job_title='branch_manager'
-  WHERE business_id=business_id AND user_id=manager_id;
+  WHERE business_id=v_business_id AND user_id=manager_id;
 
   UPDATE public.business_memberships
   SET job_title='accountant'
-  WHERE business_id=business_id AND user_id=accountant_id;
+  WHERE business_id=v_business_id AND user_id=accountant_id;
 
   INSERT INTO public.branch_memberships(business_id,branch_id,user_id,granted_by)
-  VALUES (business_id,branch_a,manager_id,admin_id);
+  VALUES (v_business_id,v_branch_a,manager_id,admin_id);
 
   -- Admin assigns only the staff/viewer delegation to the one branch.
   SET LOCAL ROLE authenticated;
   PERFORM set_config('request.jwt.claims',json_build_object('sub',admin_id,'role','authenticated')::text,true);
   PERFORM public.grant_branch_delegation(
-    business_id,branch_a,manager_id,ARRAY['staff','viewer'],5,7
+    v_business_id,v_branch_a,manager_id,ARRAY['staff','viewer'],5,7
   );
   RESET ROLE;
 
-  -- The new role is distinct from Accountant and remains below Admin.
   ASSERT (SELECT rank FROM public.roles WHERE code='branch_manager')=50,
     'Branch Manager has its own rank';
   ASSERT public.job_title_role('branch_manager')='branch_manager',
@@ -68,26 +67,54 @@ BEGIN
   SET LOCAL ROLE authenticated;
   PERFORM set_config('request.jwt.claims',json_build_object('sub',manager_id,'role','authenticated')::text,true);
 
-  ASSERT public.business_role_rank(business_id,manager_id)=50,
+  ASSERT public.business_role_rank(v_business_id,manager_id)=50,
     'Branch Manager membership uses rank 50';
-  ASSERT NOT public.has_business_role(business_id,'accountant'),
+  ASSERT NOT public.has_business_role(v_business_id,'accountant'),
     'Branch Manager does not inherit Accountant rank';
-  ASSERT NOT public.has_business_role(business_id,'admin'),
+  ASSERT NOT public.has_business_role(v_business_id,'admin'),
     'Branch Manager does not inherit Admin rank';
-  ASSERT public.can_access_branch(business_id,branch_a),
+  ASSERT public.can_access_branch(v_business_id,v_branch_a),
     'Assigned branch is accessible';
-  ASSERT NOT public.can_access_branch(business_id,branch_b),
+  ASSERT NOT public.can_access_branch(v_business_id,v_branch_b),
     'Unassigned branch is not accessible';
-  ASSERT public.can_approve_inventory_count(business_id,branch_a),
+  ASSERT public.can_approve_inventory_count(v_business_id,v_branch_a),
     'Branch Manager may approve counts in the assigned branch';
-  ASSERT NOT public.can_approve_inventory_count(business_id,branch_b),
+  ASSERT NOT public.can_approve_inventory_count(v_business_id,v_branch_b),
     'Branch Manager cannot approve counts in an unassigned branch';
-  ASSERT public.team_invite_authority(manager_id,business_id,branch_a,'staff'),
-    'Delegated staff invitation is permitted in the assigned branch';
-  ASSERT NOT public.team_invite_authority(manager_id,business_id,branch_b,'staff'),
-    'Invitation is denied in an unassigned branch';
-  ASSERT NOT public.team_invite_authority(manager_id,business_id,branch_a,'branch_manager'),
-    'Branch Manager cannot appoint another Branch Manager';
+
+  ok := false;
+  BEGIN
+    PERFORM public.create_team_invitation(
+      v_business_id,v_branch_a,'staff','sales_person','{}',
+      'invitee@example.invalid','9841000001',repeat('a',64),
+      now()+interval '2 days',1,'Branch manager test'
+    );
+  EXCEPTION WHEN OTHERS THEN ok := true;
+  END;
+  ASSERT NOT ok, 'Delegated staff invitation is permitted in the assigned branch';
+
+  ok := false;
+  BEGIN
+    PERFORM public.create_team_invitation(
+      v_business_id,v_branch_b,'staff','sales_person','{}',
+      'invitee2@example.invalid','9841000002',repeat('b',64),
+      now()+interval '2 days',1,'Unassigned branch test'
+    );
+  EXCEPTION WHEN OTHERS THEN ok := true;
+  END;
+  ASSERT ok, 'Invitation is denied in an unassigned branch';
+
+  ok := false;
+  BEGIN
+    PERFORM public.create_team_invitation(
+      v_business_id,v_branch_a,'branch_manager','branch_manager','{}',
+      'invitee3@example.invalid','9841000003',repeat('c',64),
+      now()+interval '2 days',1,'Peer manager test'
+    );
+  EXCEPTION WHEN OTHERS THEN ok := true;
+  END;
+  ASSERT ok, 'Branch Manager cannot appoint another Branch Manager';
+
   ASSERT EXISTS (
     SELECT 1 FROM public.job_title_denials
     WHERE job_title='branch_manager' AND permission='other.purchase_price'
@@ -100,7 +127,7 @@ BEGIN
   ok := false;
   BEGIN
     PERFORM public.grant_branch_delegation(
-      business_id,branch_a,accountant_id,ARRAY['staff'],5,7
+      v_business_id,v_branch_a,accountant_id,ARRAY['staff'],5,7
     );
   EXCEPTION WHEN insufficient_privilege THEN ok := true;
   END;
@@ -111,16 +138,16 @@ BEGIN
   -- Accountant keeps financial rank but is not automatically a Branch Manager approver.
   SET LOCAL ROLE authenticated;
   PERFORM set_config('request.jwt.claims',json_build_object('sub',accountant_id,'role','authenticated')::text,true);
-  ASSERT NOT public.can_approve_inventory_count(business_id,branch_a),
+  ASSERT NOT public.can_approve_inventory_count(v_business_id,v_branch_a),
     'Accountant cannot approve inventory counts by role alone';
   RESET ROLE;
 
-  -- Admin remains able to approve across business branches.
+  -- Admin retains business-wide approval authority.
   SET LOCAL ROLE authenticated;
   PERFORM set_config('request.jwt.claims',json_build_object('sub',admin_id,'role','authenticated')::text,true);
-  ASSERT public.can_approve_inventory_count(business_id,branch_a),
+  ASSERT public.can_approve_inventory_count(v_business_id,v_branch_a),
     'Admin retains approval authority in assigned branch';
-  ASSERT public.can_approve_inventory_count(business_id,branch_b),
+  ASSERT public.can_approve_inventory_count(v_business_id,v_branch_b),
     'Admin retains business-wide branch approval authority';
   RESET ROLE;
 
