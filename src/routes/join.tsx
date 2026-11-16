@@ -28,7 +28,7 @@ export function Join() {
   const [otp, setOtp] = useState('');
   const [phoneVerified, setPhoneVerified] = useState(false);
   const [busy, setBusy] = useState(false);
-  const [message, setMessage] = useState('');
+  const [message, setMessage] = useState('');\n  const [assignedEmployeeId, setAssignedEmployeeId] = useState('');
   const [details, setDetails] = useState<{
     businessName: string;
     branchName: string;
@@ -220,7 +220,7 @@ export function Join() {
             </>
           )}
 
-          {message && <p role="status" className="text-sm text-center text-muted-foreground">{message}</p>}
+          {assignedEmployeeId && <div className="rounded-md border border-primary/30 bg-primary/5 p-3 text-center"><p className="text-xs text-muted-foreground">Your Employee ID</p><p className="mt-1 font-mono text-xl font-semibold tracking-wider">{assignedEmployeeId}</p><p className="mt-1 text-xs text-muted-foreground">Use this ID with your password for future sign-in.</p></div>}\n          {message && <p role="status" className="text-sm text-center text-muted-foreground">{message}</p>}
         </CardContent>
       </Card>
     </main>
