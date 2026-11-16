@@ -4,7 +4,7 @@ import { useServerFn } from '@tanstack/react-start';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { acceptTeamInvitation, previewTeamInvitation } from '@/lib/team-access.functions';
-import { normalizeLoginMobile } from '@/lib/login-identifier';
+import { normalizeLoginMobile, normalizeVerifiedNepalMobile } from '@/lib/login-identifier';
 import { supabase } from '@/integrations/supabase/client';
 import { pageHead } from '@/lib/head';
 
@@ -69,8 +69,8 @@ export function Join() {
     });
   }, [previewFn]);
 
-  const normalizedMobile = normalizeLoginMobile(mobile);
-  const validNepalMobile = Boolean(normalizedMobile && /^9[78]\d{8}$/.test(normalizedMobile));
+  const normalizedMobile = normalizeVerifiedNepalMobile(mobile);
+  const validNepalMobile = Boolean(normalizedMobile);
 
   const sendPhoneCode = async () => {
     if (!validNepalMobile || !normalizedMobile) {
