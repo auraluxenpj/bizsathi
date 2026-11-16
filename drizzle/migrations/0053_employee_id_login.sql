@@ -12,29 +12,12 @@ LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = public, pg_temp
 AS $$
-DECLARE
-  candidate text;
-  attempt integer := 0;
 BEGIN
-  LOOP
-    UPDATE public.profiles
-       SET employee_id = 'BS-' || upper(substr(replace(gen_random_uuid()::text, '-', ''), 1, 8)),
-           updated_at = now()
-     WHERE id = NEW.user_id AND employee_id IS NULL;
-
-    IF FOUND THEN
-      RETURN NEW;
-    END IF;
-
-    IF EXISTS (SELECT 1 FROM public.profiles WHERE id = NEW.user_id AND employee_id IS NOT NULL) THEN
-      RETURN NEW;
-    END IF;
-
-    attempt := attempt + 1;
-    IF attempt >= 5 THEN
-      RAISE EXCEPTION 'Could not assign employee ID';
-    END IF;
-  END LOOP;
+  UPDATE public.profiles
+     SET employee_id = 'BS-' || upper(substr(replace(gen_random_uuid()::text, '-', ''), 1, 8)),
+         updated_at = now()
+   WHERE id = NEW.user_id AND employee_id IS NULL;
+  RETURN NEW;
 END;
 $$;
 
