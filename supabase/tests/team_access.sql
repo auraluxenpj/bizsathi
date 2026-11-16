@@ -5,13 +5,13 @@ DO $tests$
 DECLARE
   master uuid:=gen_random_uuid(); owner_a uuid:=gen_random_uuid(); mgr_a uuid:=gen_random_uuid(); staff_a uuid:=gen_random_uuid();
   new1 uuid:=gen_random_uuid(); new2 uuid:=gen_random_uuid(); new3 uuid:=gen_random_uuid(); new4 uuid:=gen_random_uuid(); unverified uuid:=gen_random_uuid(); owner_b uuid:=gen_random_uuid();
-  ba uuid; bb uuid; br_a uuid; br_b uuid; iid uuid; iid2 uuid; ok boolean; n int;
-  h1 text:=repeat('1',64); h2 text:=repeat('2',64); h3 text:=repeat('3',64); h4 text:=repeat('4',64);
+  ba uuid; bb uuid; br_a uuid; br_b uuid; iid uuid; iid2 uuid; iid_email uuid; ok boolean; n int;
+  h1 text:=repeat('1',64); h2 text:=repeat('2',64); h3 text:=repeat('3',64); h4 text:=repeat('4',64); h6 text:=repeat('6',64);
 BEGIN
   INSERT INTO auth.users(id,email,phone,email_confirmed_at,phone_confirmed_at)
   SELECT u,'t+'||u||'@example.invalid',NULL,now(),NULL FROM unnest(ARRAY[master,owner_a,mgr_a,staff_a,owner_b]) u;
   INSERT INTO auth.users(id,email,phone,email_confirmed_at,phone_confirmed_at) VALUES
-    (new1,'n1@example.invalid','9841000001',now(),now()), (new2,'n2@example.invalid','9841000002',now(),now()), (new3,'n3@example.invalid','9841000003',now(),now()), (new4,'other@example.invalid','9841000001',now(),now()),
+    (new1,'n1@example.invalid','9841000001',now(),now()), (new2,'n2@example.invalid','9841000002',now(),now()), (new3,'n3@example.invalid','9841000003',now(),now()), (new4,'other@example.invalid','9841000004',now(),now()),
     (unverified,'u@example.invalid','9841000009',now(),NULL);
   INSERT INTO public.businesses(name,created_by) VALUES('Biz A',owner_a) RETURNING id INTO ba;
   INSERT INTO public.businesses(name,created_by) VALUES('Biz B',owner_b) RETURNING id INTO bb;
@@ -45,13 +45,14 @@ BEGIN
   -- Branch manager invites into their own branch.
   SET LOCAL ROLE authenticated; PERFORM set_config('request.jwt.claims',json_build_object('sub',mgr_a,'role','authenticated')::text,true);
   iid:=public.create_team_invitation(ba,br_a,'staff','sales_person','{}','N1@EXAMPLE.INVALID','9841000001',h1,now()+interval '2 days',1,'WhatsApp');
+  iid_email:=public.create_team_invitation(ba,br_a,'viewer',NULL,'{}','someone@example.invalid','9841000004',h6,now()+interval '2 days',1);
   ok:=false; BEGIN PERFORM public.create_team_invitation(ba,br_b,'staff',NULL,'{}','n1@example.invalid','9841000001',h2,now()+interval '2 days',1); EXCEPTION WHEN insufficient_privilege THEN ok:=true; END; ASSERT ok,'manager cannot invite into another branch';
   ok:=false; BEGIN PERFORM public.create_team_invitation(ba,br_a,'accountant',NULL,'{}','n1@example.invalid','9841000001',h2,now()+interval '2 days',1); EXCEPTION WHEN insufficient_privilege THEN ok:=true; END; ASSERT ok,'manager cannot assign an undelegated role';
   ok:=false; BEGIN PERFORM public.create_team_invitation(ba,br_a,'admin',NULL,'{}','n1@example.invalid','9841000001',h2,now()+interval '2 days',1); EXCEPTION WHEN insufficient_privilege THEN ok:=true; END; ASSERT ok,'manager cannot assign admin';
   ok:=false; BEGIN PERFORM public.create_team_invitation(ba,br_a,'staff',NULL,'{}','n1@example.invalid','9841000001',h2,now()+interval '2 days',50); EXCEPTION WHEN OTHERS THEN ok:=true; END; ASSERT ok,'phone-bound invitation must be single-use';
   ok:=false; BEGIN PERFORM public.create_team_invitation(bb,br_a,'staff',NULL,'{}','n1@example.invalid','9841000001',h2,now()+interval '2 days',1); EXCEPTION WHEN insufficient_privilege THEN ok:=true; END; ASSERT ok,'manager cannot invite into another business';
   ok:=false; BEGIN PERFORM public.grant_branch_delegation(ba,br_a,staff_a,ARRAY['staff'],1,1); EXCEPTION WHEN insufficient_privilege THEN ok:=true; END; ASSERT ok,'manager cannot self-delegate to others';
-  ASSERT (SELECT count(*) FROM public.team_invitations)=1,'manager sees only own invitations';
+  ASSERT (SELECT count(*) FROM public.team_invitations)=2,'manager sees only own invitations';
   ASSERT (SELECT invitee_mobile_masked FROM public.team_invitations_status WHERE id=iid)='••••0001','invitation status exposes only masked mobile';
   ASSERT (SELECT invitee_email_masked FROM public.team_invitations_status WHERE id=iid)='n***@example.invalid','invitation status exposes only masked email';
   RESET ROLE;
@@ -68,7 +69,7 @@ BEGIN
   PERFORM set_config('request.jwt.claims',json_build_object('sub',new2,'role','authenticated')::text,true);
   ok:=false; BEGIN PERFORM public.accept_team_invitation(h1); EXCEPTION WHEN insufficient_privilege THEN ok:=true; END; ASSERT ok,'wrong verified mobile cannot accept';
   PERFORM set_config('request.jwt.claims',json_build_object('sub',new4,'role','authenticated')::text,true);
-  ok:=false; BEGIN PERFORM public.accept_team_invitation(h1); EXCEPTION WHEN insufficient_privilege THEN ok:=true; END; ASSERT ok,'wrong verified email cannot accept';
+  ok:=false; BEGIN PERFORM public.accept_team_invitation(h6); EXCEPTION WHEN insufficient_privilege THEN ok:=true; END; ASSERT ok,'wrong verified email cannot accept when mobile matches';
   PERFORM set_config('request.jwt.claims',json_build_object('sub',new1,'role','authenticated')::text,true);
   ASSERT public.accept_team_invitation(h1)=ba,'matching verified invitation accepted';
   ok:=false; BEGIN PERFORM public.accept_team_invitation(h1); EXCEPTION WHEN insufficient_privilege THEN ok:=true; END; ASSERT ok,'same user cannot reuse';
