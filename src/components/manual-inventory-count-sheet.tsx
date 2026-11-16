@@ -16,9 +16,9 @@ type Branch = { id: string; name: string; is_active: boolean };
 type Movement = { variant_id: string; branch_id: string; quantity: number };
 type Props = { variants: Variant[]; branches: Branch[]; movements: Movement[]; businessId: string; manager: boolean; currentUserId?: string };
 
-type DraftRow = { physical: string; cost: string };
+type DraftRow = { physical: string; cost: string; system?: number; sku?: string; product?: string; variant?: string; unit?: string };
 type SessionSummary = { id: string; branch_id: string; branch_name: string; count_date: string; counted_by: string; status: 'draft'|'submitted'|'approved'|'rejected'; created_by: string; created_at: string; submitted_at: string | null; reviewed_by: string | null; reviewed_at: string | null; review_note: string | null; line_count: number; counted_line_count: number };
-type SavedCountDetail = { session: { id: string; branch_id: string; count_date: string; counted_by: string; status: SessionSummary['status'] }; lines: { variant_id: string; physical_quantity: number | null; cost_price: number | null; note: string | null }[] };
+type SavedCountDetail = { session: { id: string; branch_id: string; count_date: string; counted_by: string; status: SessionSummary['status'] }; lines: { variant_id: string; sku: string; product: string; variant: string; unit: string; system_quantity: number; physical_quantity: number | null; cost_price: number | null; note: string | null }[] };
 
 export function ManualInventoryCountSheet({ variants, branches, movements, businessId, manager, currentUserId }: Props) {
   const [branchId, setBranchId] = useState('');
@@ -46,13 +46,13 @@ export function ManualInventoryCountSheet({ variants, branches, movements, busin
   const rows = variants.filter(v => v.is_active && v.products?.is_active !== false).map(v => {
     const key = `${selectedBranch?.id ?? ''}:${v.id}`;
     const draft = drafts[key] ?? { physical: '', cost: String(Number(v.purchase_price ?? 0) || '') };
-    const system = balances.get(key) ?? 0;
+    const system = draft.system ?? balances.get(key) ?? 0;
     const counted = draft.physical.trim() === '' ? null : Number(draft.physical);
     const cost = draft.cost.trim() === '' ? 0 : Number(draft.cost);
     const validPhysical = counted !== null && Number.isFinite(counted) && counted >= 0;
     const validCost = Number.isFinite(cost) && cost >= 0;
     const difference = validPhysical ? counted - system : null;
-    return { key, sku: v.sku, product: v.products?.name ?? 'Product', variant: v.name, unit: v.unit, system, physical: validPhysical ? counted : null, cost: validCost ? cost : 0, difference, physicalValue: validPhysical && validCost ? counted * cost : null, systemValue: validCost ? system * cost : 0, invalid: (draft.physical.trim() !== '' && !validPhysical) || !validCost };
+    return { key, id: v.id, sku: draft.sku ?? v.sku, product: draft.product ?? v.products?.name ?? 'Product', variant: draft.variant ?? v.name, unit: draft.unit ?? v.unit, system, physical: validPhysical ? counted : null, cost: validCost ? cost : 0, difference, physicalValue: validPhysical && validCost ? counted * cost : null, systemValue: validCost ? system * cost : 0, invalid: (draft.physical.trim() !== '' && !validPhysical) || !validCost };
   });
   const enteredRows = rows.filter(r => r.physical !== null);
   const totalSystemValue = rows.reduce((sum, r) => sum + r.systemValue, 0);
@@ -62,7 +62,7 @@ export function ManualInventoryCountSheet({ variants, branches, movements, busin
   const persistCount = async () => {
     if (!selectedBranch || !countedBy.trim()) throw new Error('Select a branch and enter the team member name.');
     if (rows.some(r => r.invalid)) throw new Error('Correct invalid quantities and cost prices before saving.');
-    const lines = rows.map(r => ({ variantId: variants.find(v => v.sku === r.sku)?.id ?? '', physicalQuantity: r.physical, costPrice: r.cost, note: '' }));
+    const lines = rows.map(r => ({ variantId: r.id, physicalQuantity: r.physical, costPrice: r.cost, note: '' }));
     if (lines.some(line => !line.variantId)) throw new Error('A product could not be matched. Refresh the inventory and try again.');
     if (activeSessionId) {
       await updateSession({ data: { sessionId: activeSessionId, countDate, countedBy: countedBy.trim(), lines } });
@@ -116,6 +116,7 @@ export function ManualInventoryCountSheet({ variants, branches, movements, busin
       setDrafts(Object.fromEntries(detail.lines.map(line => [`${detail.session.branch_id}:${line.variant_id}`, {
         physical: line.physical_quantity === null ? '' : String(line.physical_quantity),
         cost: line.cost_price === null ? '' : String(line.cost_price),
+        system: Number(line.system_quantity), sku: line.sku, product: line.product, variant: line.variant, unit: line.unit,
       }])));
       setStatus('Saved count opened.');
     } catch (e) {
@@ -165,7 +166,7 @@ export function ManualInventoryCountSheet({ variants, branches, movements, busin
       </article>)}</div>}
     </div>
     <div className="mt-5 grid gap-3 sm:grid-cols-3">
-      <label className="text-sm">Branch<select aria-label="Count branch" className="mt-2 h-10 w-full rounded-md border bg-card px-3" value={selectedBranch?.id ?? ''} onChange={e => setBranchId(e.target.value)}><option value="">Select branch</option>{activeBranches.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}</select></label>
+      <label className="text-sm">Branch<select aria-label="Count branch" disabled={!!activeSessionId} className="mt-2 h-10 w-full rounded-md border bg-card px-3" value={selectedBranch?.id ?? ''} onChange={e => setBranchId(e.target.value)}><option value="">Select branch</option>{activeBranches.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}</select></label>
       <label className="text-sm">Inventory count date<Input type="date" value={countDate} onChange={e => setCountDate(e.target.value)}/></label>
       <label className="text-sm">Counted by (team member)<Input required maxLength={120} placeholder="Enter team member name" value={countedBy} onChange={e => setCountedBy(e.target.value)}/></label>
     </div>
