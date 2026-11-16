@@ -28,14 +28,17 @@ BEGIN
     (v_business_id,new_owner,'admin','active'),
     (v_business_id,master_owner,'admin','active');
 
+  -- Check the private rank helper as the disposable database owner.
+  -- Do not grant authenticated users EXECUTE merely for this test assertion.
+  ASSERT public.business_role_rank(v_business_id,master_owner)=100,
+    'Master Owner retains global rank 100 for business oversight';
+
   SET LOCAL ROLE authenticated;
   PERFORM set_config('request.jwt.claims',json_build_object('sub',business_owner,'role','authenticated')::text,true);
 
   -- Master Owner has global rank 100, but that rank must not authorize a
   -- business-level ownership transfer.
   PERFORM set_config('request.jwt.claims',json_build_object('sub',master_owner,'role','authenticated')::text,true);
-  ASSERT public.business_role_rank(v_business_id,master_owner)=100,
-    'Master Owner retains global rank 100 for business oversight';
   rejected := false;
   BEGIN
     PERFORM public.transfer_business_ownership(v_business_id,new_owner);
