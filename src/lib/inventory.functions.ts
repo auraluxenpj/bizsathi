@@ -136,6 +136,34 @@ export const submitInventoryCountSession = createServerFn({method:'POST'}).middl
   return {ok:true};
 });
 
+
+const countAdjustmentInput = z.object({ sessionId: z.string().uuid() });
+const confirmCountAdjustmentInput = z.object({
+  sessionId: z.string().uuid(),
+  reason: z.string().trim().min(1).max(500),
+});
+
+export const readInventoryCountAdjustment = createServerFn({method:'GET'}).middleware([requireSupabaseAuth]).inputValidator(countAdjustmentInput).handler(async ({data,context}) => {
+  const {data:adjustment,error} = await context.supabase.rpc('read_inventory_count_adjustment',{_session_id:data.sessionId});
+  if(error) throw new Error('Stock adjustment proposal could not be loaded.');
+  return adjustment;
+});
+
+export const prepareInventoryCountAdjustment = createServerFn({method:'POST'}).middleware([requireSupabaseAuth]).inputValidator(countAdjustmentInput).handler(async ({data,context}) => {
+  const {data:adjustment,error} = await context.supabase.rpc('prepare_inventory_count_adjustment',{_session_id:data.sessionId});
+  if(error || !adjustment) throw new Error('Stock adjustment proposal could not be prepared. Confirm the count is approved and you have administrator access.');
+  return adjustment;
+});
+
+export const confirmInventoryCountAdjustment = createServerFn({method:'POST'}).middleware([requireSupabaseAuth]).inputValidator(confirmCountAdjustmentInput).handler(async ({data,context}) => {
+  const {data:adjustment,error} = await context.supabase.rpc('confirm_inventory_count_adjustment',{
+    _session_id:data.sessionId,
+    _reason:data.reason,
+  });
+  if(error || !adjustment) throw new Error('Stock adjustment was not posted. Stock may have changed; refresh the proposal and check its status.');
+  return adjustment;
+});
+
 export const reviewInventoryCountSession = createServerFn({method:'POST'}).middleware([requireSupabaseAuth]).inputValidator(reviewCountSessionInput).handler(async ({data,context}) => {
   const {data:reviewed,error} = await context.supabase.rpc('review_inventory_count_session',{
     _session_id:data.sessionId,
