@@ -58,7 +58,7 @@ export function ManualInventoryCountSheet({ variants, branches, movements, busin
   const balances = useMemo(() => stockBalances(movements), [movements]);
   const rows = variants.filter(v => sessionVariantIds ? sessionVariantIds.includes(v.id) : v.is_active && v.products?.is_active !== false).map(v => {
     const key = `${selectedBranch?.id ?? ''}:${v.id}`;
-    const draft = drafts[key] ?? { physical: '', cost: canViewPurchasePrice ? String(Number(v.purchase_price ?? 0) || '') : '' };
+    const draft = drafts[key] ?? { physical: '', cost: canViewPurchasePrice ? String(Number(v.purchase_price ?? 0)) : '' };
     const system = draft.system ?? balances.get(key) ?? 0;
     const counted = draft.physical.trim() === '' ? null : Number(draft.physical);
     const cost = draft.cost.trim() === '' ? null : Number(draft.cost);
@@ -130,7 +130,7 @@ export function ManualInventoryCountSheet({ variants, branches, movements, busin
       setActiveSessionStatus(detail.session.status);
       setDrafts(Object.fromEntries(detail.lines.map(line => [`${detail.session.branch_id}:${line.variant_id}`, {
         physical: line.physical_quantity === null ? '' : String(line.physical_quantity),
-        cost: line.cost_price === null ? (canViewPurchasePrice ? String(Number(variants.find(v => v.id === line.variant_id)?.purchase_price ?? 0) || '') : '') : String(line.cost_price),
+        cost: line.cost_price === null ? (canViewPurchasePrice ? String(Number(variants.find(v => v.id === line.variant_id)?.purchase_price ?? 0)) : '') : String(line.cost_price),
         system: Number(line.system_quantity), sku: line.sku, product: line.product, variant: line.variant, unit: line.unit,
       }])));
       setStatus('Saved count opened.');
@@ -155,7 +155,7 @@ export function ManualInventoryCountSheet({ variants, branches, movements, busin
     const currentQuantity = currentValue.trim() === '' ? 0 : Number(currentValue);
     if (!Number.isFinite(currentQuantity) || currentQuantity < 0) { setScanFeedback(`Correct the physical quantity for ${match.sku} before scanning it again.`); return; }
     const nextQuantity = currentQuantity + 1;
-    setDrafts(current => ({ ...current, [key]: { ...(current[key] ?? { physical: '', cost: canViewPurchasePrice ? String(Number(match.purchase_price ?? 0) || '') : '' }), physical: String(nextQuantity) } }));
+    setDrafts(current => ({ ...current, [key]: { ...(current[key] ?? { physical: '', cost: canViewPurchasePrice ? String(Number(match.purchase_price ?? 0)) : '' }), physical: String(nextQuantity) } }));
     setSessionVariantIds(current => current ? (current.includes(match.id) ? current : [...current, match.id]) : null);
     setScanFeedback(`Added ${match.products?.name ?? match.name} · ${match.name} (${match.sku}) — physical count: ${nextQuantity} ${match.unit}.`);
     setStatus('');
