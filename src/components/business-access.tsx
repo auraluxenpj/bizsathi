@@ -11,8 +11,8 @@ import { RolePermissions } from './role-permissions';
 import { PermissionChecklist } from './permission-checklist';
 import { TeamAccessPanel } from './team-access-panel';
 import { jobTitles, jobTitleCodes, type JobTitle } from '@/lib/job-titles';
-type BusinessRole = 'admin' | 'accountant' | 'staff' | 'viewer';
 import { branchInput } from '@/lib/business-schemas';
+type BusinessRole = 'admin' | 'accountant' | 'staff' | 'viewer';
 
 const roleCards: Record<string, { name: string; about: string }> = {
   admin: { name: 'Administrator', about: 'Manage staff, items, parties and settings.' },
