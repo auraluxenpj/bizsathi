@@ -20,6 +20,7 @@ vi.mock('@tanstack/react-start', async (importOriginal) => ({
 }));
 vi.mock('@/lib/business.functions', () => ({
   getRoleTemplates: async () => ({ templates: { sales_person: { denied: [], customized: false } } }),
+  getMemberPermissions: async () => ({ userId: MANAGER, denials: [{ user_id: MANAGER, permission: 'settings.edit' }], roleDenials: [] }),
   saveRoleTemplate: vi.fn(),
   resetRoleTemplate: vi.fn(),
 }));
@@ -45,17 +46,19 @@ import { TeamAccessPanel } from '@/components/team-access-panel';
 describe('Team Access hierarchy panel', () => {
   beforeEach(() => createInvite.mockClear());
 
-  it('shows the approved seven-role hierarchy and rank ceilings', () => {
+  it('shows the approved role hierarchy and rank ceilings', () => {
     render(<QueryClientProvider client={new QueryClient()}>
       <TeamAccessPanel businessId={BUSINESS} branches={[{ id: BRANCH, name: 'Nepalgunj', code: 'NP', is_active: true }]} members={[]} branchAccess={[]} userId={MANAGER} isAdmin={false} isOwner={false} />
     </QueryClientProvider>);
-    for (const role of ['CEO / Platform Owner', 'Administrator / Partner', 'Store Manager', 'Accountant', 'Inventory Manager', 'Cashier / POS', 'Store Team']) {
+    for (const role of ['Master Owner', 'Business Owner', 'Administrator', 'Branch Manager', 'Accountant', 'Inventory Manager', 'Cashier / POS', 'Store Team', 'Viewer']) {
       expect(screen.getAllByText(role).length).toBeGreaterThan(0);
     }
-    expect(screen.getByText(/Rank\s*100/)).toBeInTheDocument();
+    expect(screen.getAllByText(/Rank\s*100/)).toHaveLength(2);
     expect(screen.getByText(/Rank\s*80/)).toBeInTheDocument();
-    expect(screen.getAllByText(/Rank\s*60/)).toHaveLength(2);
+    expect(screen.getAllByText(/Rank\s*60/)).toHaveLength(1);
+    expect(screen.getAllByText(/Rank\s*50/)).toHaveLength(1);
     expect(screen.getAllByText(/Rank\s*40/)).toHaveLength(3);
+    expect(screen.getAllByText(/Rank\s*20/)).toHaveLength(1);
   });
 
   it('keeps all five major Team Access areas collapsed until selected', () => {
@@ -115,6 +118,20 @@ describe('Team Access hierarchy panel', () => {
     expect(revoke).toHaveBeenCalledWith('ffffffff-ffff-4fff-8fff-ffffffffffff');
   });
 
+
+  it('lets an Administrator invite a distinct Branch Manager', async () => {
+    render(<QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
+      <TeamAccessPanel businessId={BUSINESS} branches={[{ id: BRANCH, name: 'Nepalgunj', code: 'NP', is_active: true }]} members={[]} branchAccess={[]} userId={MANAGER} isAdmin={true} isOwner={false} />
+    </QueryClientProvider>);
+
+    fireEvent.click(screen.getByText('Invite team member'));
+    const role = screen.getByRole('combobox', { name: 'Role' }) as HTMLSelectElement;
+    expect([...role.options].map((o) => o.value)).toContain('branch_manager');
+    fireEvent.change(role, { target: { value: 'branch_manager' } });
+    expect(screen.getByRole('combobox', { name: 'Position' })).toHaveValue('branch_manager');
+    expect(screen.getAllByRole('option', { name: 'Branch Manager' }).length).toBeGreaterThan(0);
+  });
+
   it('limits a branch manager to delegated roles, branch scope and expiry limits', async () => {
     render(<QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
       <TeamAccessPanel businessId={BUSINESS} branches={[{ id: BRANCH, name: 'Nepalgunj', code: 'NP', is_active: true }]} members={[]} branchAccess={[]} userId={MANAGER} isAdmin={false} isOwner={false} />
@@ -135,6 +152,7 @@ describe('Team Access hierarchy panel', () => {
       role: 'staff',
       inviteeEmail: 'staff@example.com',
       inviteeMobile: '9812345678',
+      deniedPermissions: expect.arrayContaining(['settings.edit', 'other.purchase_price', 'purchases.view']),
       expiresInHours: 48,
       maxUses: 1,
     }) });

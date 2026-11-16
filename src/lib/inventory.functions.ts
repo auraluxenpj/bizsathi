@@ -151,7 +151,7 @@ export const readInventoryCountAdjustment = createServerFn({method:'GET'}).middl
 
 export const prepareInventoryCountAdjustment = createServerFn({method:'POST'}).middleware([requireSupabaseAuth]).inputValidator(countAdjustmentInput).handler(async ({data,context}) => {
   const {data:adjustment,error} = await context.supabase.rpc('prepare_inventory_count_adjustment',{_session_id:data.sessionId});
-  if(error || !adjustment) throw new Error('Stock adjustment proposal could not be prepared. Confirm the count is approved and you have administrator access.');
+  if(error || !adjustment) throw new Error('Stock adjustment proposal could not be prepared. Confirm the count is approved and you have Branch Manager or Administrator approval access.');
   return adjustment;
 });
 
@@ -170,6 +170,6 @@ export const reviewInventoryCountSession = createServerFn({method:'POST'}).middl
     _decision:data.decision,
     _note:data.note,
   });
-  if(error || reviewed !== true) throw new Error('Inventory count review could not be saved. The reviewer must be a different business administrator.');
+  if(error || reviewed !== true) throw new Error('Inventory count review could not be saved. The reviewer must be a different authorized Branch Manager or Administrator.');
   return {ok:true};
 });

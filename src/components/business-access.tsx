@@ -12,10 +12,11 @@ import { PermissionChecklist } from './permission-checklist';
 import { TeamAccessPanel } from './team-access-panel';
 import { jobTitles, jobTitleCodes, type JobTitle } from '@/lib/job-titles';
 import { branchInput } from '@/lib/business-schemas';
-type BusinessRole = 'admin' | 'accountant' | 'staff' | 'viewer';
+type BusinessRole = 'admin' | 'branch_manager' | 'accountant' | 'staff' | 'viewer';
 
 const roleCards: Record<string, { name: string; about: string }> = {
   admin: { name: 'Administrator', about: 'Manage staff, items, parties and settings.' },
+  branch_manager: { name: 'Branch Manager', about: 'Manage only assigned branches, delegated team and branch approvals.' },
   accountant: { name: 'Accountant', about: 'Financial periods, vouchers and reports.' },
   staff: { name: 'Staff', about: 'Day-to-day selling, payments and stock.' },
   viewer: { name: 'Viewer', about: 'View only. Cannot change anything.' },

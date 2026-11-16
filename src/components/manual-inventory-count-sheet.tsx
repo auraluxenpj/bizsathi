@@ -17,7 +17,7 @@ type Branch = { id: string; name: string; is_active: boolean };
 type Movement = { variant_id: string; branch_id: string; quantity: number };
 const formatQuantity = (value: number) => Number.isInteger(value) ? String(value) : String(Number(value.toFixed(3)));
 
-type Props = { variants: Variant[]; branches: Branch[]; movements: Movement[]; businessId: string; manager: boolean; currentUserId?: string; canViewPurchasePrice: boolean };
+type Props = { variants: Variant[]; branches: Branch[]; movements: Movement[]; businessId: string; canApprove: boolean; currentUserId?: string; canViewPurchasePrice: boolean };
 
 type DraftRow = { physical: string; cost: string; system?: number; sku?: string; product?: string; variant?: string; unit?: string };
 type SessionSummary = { id: string; branch_id: string; branch_name: string; count_date: string; counted_by: string; status: 'draft'|'submitted'|'approved'|'rejected'; created_by: string; created_at: string; submitted_at: string | null; reviewed_by: string | null; reviewed_at: string | null; review_note: string | null; line_count: number; counted_line_count: number };
@@ -25,7 +25,7 @@ type CountAdjustmentLine = { id: string; variant_id: string; sku: string; produc
 type CountAdjustmentDetail = { batch: { id: string; status: 'pending'|'posted'|'stale'|'no_adjustments'; prepared_by: string; prepared_at: string; confirmed_by: string | null; confirmed_at: string | null; confirmation_reason: string | null; stale_at: string | null }; lines: CountAdjustmentLine[] };
 type SavedCountDetail = { session: { id: string; branch_id: string; count_date: string; counted_by: string; status: SessionSummary['status'] }; lines: { variant_id: string; sku: string; product: string; variant: string; unit: string; system_quantity: number; physical_quantity: number | null; cost_price: number | null; note: string | null }[] };
 
-export function ManualInventoryCountSheet({ variants, branches, movements, businessId, manager, currentUserId, canViewPurchasePrice }: Props) {
+export function ManualInventoryCountSheet({ variants, branches, movements, businessId, canApprove, currentUserId, canViewPurchasePrice }: Props) {
   const [branchId, setBranchId] = useState('');
   const [countedBy, setCountedBy] = useState('');
   const [countDate, setCountDate] = useState(() => new Date().toISOString().slice(0, 10));
@@ -51,7 +51,7 @@ export function ManualInventoryCountSheet({ variants, branches, movements, busin
   const adjustmentQuery = useQuery({
     queryKey: ['inventory-count-adjustment', activeSessionId],
     queryFn: async () => (await readAdjustment({ data: { sessionId: activeSessionId! } })) as unknown as CountAdjustmentDetail | null,
-    enabled: !!activeSessionId && activeSessionStatus === 'approved' && manager,
+    enabled: !!activeSessionId && activeSessionStatus === 'approved' && canApprove,
   });
   const prepareAdjustmentMutation = useMutation({
     mutationFn: async () => prepareAdjustment({ data: { sessionId: activeSessionId! } }),
@@ -139,7 +139,7 @@ export function ManualInventoryCountSheet({ variants, branches, movements, busin
     onSuccess: async sessionId => {
       setActiveSessionId(sessionId);
       setActiveSessionStatus('submitted');
-      setStatus('Count submitted for administrator review. It will not change stock.');
+      setStatus('Count submitted for Branch Manager or Administrator review. It will not change stock.');
       await queryClient.invalidateQueries({ queryKey: ['inventory-count-sessions', businessId] });
     },
     onError: e => setStatus(e instanceof Error ? e.message : 'Count could not be submitted.'),
@@ -229,12 +229,12 @@ export function ManualInventoryCountSheet({ variants, branches, movements, busin
       {sessionsQuery.isPending ? <p className="py-3 text-sm text-muted-foreground">Loading count history…</p> : sessionsQuery.error ? <p className="py-3 text-sm text-destructive">Count history could not be loaded.</p> : !sessionsQuery.data?.length ? <p className="py-3 text-sm text-muted-foreground">No saved inventory counts yet.</p> : <div className="mt-2 divide-y">{sessionsQuery.data.map(session => <article key={session.id} className="flex flex-wrap items-center justify-between gap-3 py-3 text-sm">
         <button type="button" className="min-w-0 text-left hover:underline" onClick={() => void openSavedSession(session.id)}><span className="font-medium">{session.branch_name} · {session.count_date}</span><span className="block text-xs text-muted-foreground">{session.counted_by} · {session.counted_line_count}/{session.line_count} counted · {session.status}</span></button>
         <div className="flex flex-wrap items-center gap-2">
-          {manager && session.status === 'submitted' && session.created_by !== currentUserId && <><Button size="sm" disabled={reviewMutation.isPending} onClick={() => reviewMutation.mutate({sessionId:session.id,decision:'approved'})}>Approve</Button><Button size="sm" variant="outline" disabled={reviewMutation.isPending} onClick={() => { const note = window.prompt('Reason for rejecting this count (required):'); if (note?.trim()) reviewMutation.mutate({sessionId:session.id,decision:'rejected',note}); }}>Reject</Button></>}
+          {canApprove && session.status === 'submitted' && session.created_by !== currentUserId && <><Button size="sm" disabled={reviewMutation.isPending} onClick={() => reviewMutation.mutate({sessionId:session.id,decision:'approved'})}>Approve</Button><Button size="sm" variant="outline" disabled={reviewMutation.isPending} onClick={() => { const note = window.prompt('Reason for rejecting this count (required):'); if (note?.trim()) reviewMutation.mutate({sessionId:session.id,decision:'rejected',note}); }}>Reject</Button></>}
           <span className="rounded-full bg-muted px-2 py-1 text-xs capitalize">{session.status}</span>
         </div>
       </article>)}</div>}
     </div>
-    {manager && activeSessionId && activeSessionStatus === 'approved' && <section className="mt-5 rounded-lg border border-primary/30 p-4">
+    {canApprove && activeSessionId && activeSessionStatus === 'approved' && <section className="mt-5 rounded-lg border border-primary/30 p-4">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div><h3 className="font-semibold">Stock adjustment proposal</h3><p className="mt-1 text-sm text-muted-foreground">Approval did not change stock. Review the proposed differences, then confirm separately to post them to the existing stock ledger.</p></div>
         <Button type="button" variant="outline" size="sm" onClick={() => adjustmentQuery.refetch()} disabled={adjustmentQuery.isFetching}>Refresh proposal</Button>
@@ -252,7 +252,7 @@ export function ManualInventoryCountSheet({ variants, branches, movements, busin
         </>}
         {adjustmentQuery.data.batch.status === 'stale' && <p role="alert" className="rounded-md bg-destructive/5 p-3 text-sm text-destructive">Stock changed after the physical count. No adjustments were posted. Start a fresh physical count before trying again.</p>}
         {adjustmentQuery.data.batch.status === 'no_adjustments' && <p className="rounded-md bg-muted p-3 text-sm">No stock adjustments are required. All counted quantities match the approved system quantities.</p>}
-        {adjustmentQuery.data.batch.status === 'posted' && <div className="rounded-md bg-muted p-3 text-sm"><p className="font-medium">All proposed adjustments were posted successfully.</p><p className="mt-1 text-xs text-muted-foreground">Confirmed {adjustmentQuery.data.batch.confirmed_at ? new Date(adjustmentQuery.data.batch.confirmed_at).toLocaleString() : ''} · by {adjustmentQuery.data.batch.confirmed_by?.slice(0,8) ?? 'administrator'}</p><p className="mt-1">Reason: {adjustmentQuery.data.batch.confirmation_reason}</p></div>}
+        {adjustmentQuery.data.batch.status === 'posted' && <div className="rounded-md bg-muted p-3 text-sm"><p className="font-medium">All proposed adjustments were posted successfully.</p><p className="mt-1 text-xs text-muted-foreground">Confirmed {adjustmentQuery.data.batch.confirmed_at ? new Date(adjustmentQuery.data.batch.confirmed_at).toLocaleString() : ''} · by {adjustmentQuery.data.batch.confirmed_by?.slice(0,8) ?? 'authorized approver'}</p><p className="mt-1">Reason: {adjustmentQuery.data.batch.confirmation_reason}</p></div>}
       </div>}
     </section>}
     {!canViewPurchasePrice && <p role="status" className="mt-4 rounded-md border border-amber-500/40 bg-amber-500/5 p-3 text-sm">Purchase price access is currently restricted. Ask the business owner to open Team → Users → Edit permissions and keep “See Purchase Price” enabled for this team member. Cost and stock values will appear after access is enabled and the inventory is refreshed.</p>}
@@ -278,6 +278,6 @@ export function ManualInventoryCountSheet({ variants, branches, movements, busin
     </div>
     {!activeBranches.length ? <p className="py-8 text-sm text-muted-foreground">No active branches are available for counting.</p> : <div className="mt-5 overflow-x-auto"><table className="w-full min-w-[1120px] text-left text-sm"><thead><tr>{['Product / SKU','System qty','Physical qty (enter)','Variance','Cost price / unit (read-only)','System value','Physical value','Difference (value)'].map(h => <th key={h} className="border-b px-2 py-3 font-medium text-muted-foreground">{h}</th>)}</tr></thead><tbody>{rows.map(r => <tr key={r.key} className="border-b last:border-0"><td className="px-2 py-3"><p className="font-medium">{r.product}</p><p className="text-xs text-muted-foreground">{r.variant} · {r.sku}</p></td><td className="px-2 py-3 tabular-nums">{formatQuantity(r.system)} {r.unit}</td><td className="w-36 px-2 py-3"><Input aria-label={`Physical quantity for ${r.sku}`} type="number" min="0" step="1" value={drafts[r.key]?.physical ?? ''} placeholder="Enter count" disabled={activeSessionStatus !== null && activeSessionStatus !== 'draft'} onChange={e => update(r.key, 'physical', e.target.value)}/></td><td className={`px-2 py-3 tabular-nums ${r.difference !== null && r.difference !== 0 ? 'font-semibold text-destructive' : ''}`}>{r.difference === null ? '—' : formatQuantity(r.difference)}</td><td className="px-2 py-3 tabular-nums">{r.cost === null ? '—' : r.cost.toFixed(2)}</td><td className="px-2 py-3 tabular-nums">{r.systemValue === null ? '—' : r.systemValue.toFixed(2)}</td><td className="px-2 py-3 tabular-nums">{r.physicalValue === null ? '—' : r.physicalValue.toFixed(2)}</td><td className={`px-2 py-3 tabular-nums ${r.valueDifference !== null && r.valueDifference !== 0 ? 'font-semibold' : ''}`}>{r.valueDifference === null ? '—' : r.valueDifference.toFixed(2)}</td></tr>)}</tbody><tfoot><tr className="bg-muted/40 font-semibold"><td className="px-2 py-3">Total</td><td className="px-2 py-3 tabular-nums">{formatQuantity(rows.reduce((s,r)=>s+r.system,0))}</td><td className="px-2 py-3 tabular-nums">{formatQuantity(enteredRows.reduce((s,r)=>s+(r.physical??0),0))}</td><td className="px-2 py-3 tabular-nums">{formatQuantity(totalDifference)}</td><td className="px-2 py-3">—</td><td className="px-2 py-3 tabular-nums">{totalSystemValue === null ? '—' : totalSystemValue.toFixed(2)}</td><td className="px-2 py-3 tabular-nums">{totalPhysicalValue === null ? '—' : totalPhysicalValue.toFixed(2)}</td><td className="px-2 py-3 tabular-nums">{totalValueDifference === null ? '—' : totalValueDifference.toFixed(2)}</td></tr></tfoot></table></div>}
     {status && <p role="status" className="mt-4 text-sm text-primary">{status}</p>}
-    <p className="mt-4 text-xs text-muted-foreground">Cost price is read-only and sourced from the product's saved purchase price (or the saved count snapshot when reopening a count). {canViewPurchasePrice ? 'System and physical stock values use this same cost basis.' : 'Purchase-price access is restricted for this account. Ask the business owner to enable “See Purchase Price” in this team member’s permissions. Valuation fields are shown as unavailable, not zero.'} Difference (value) is calculated as physical quantity minus system quantity, multiplied by cost price; shortages are negative and surpluses are positive. Saved drafts persist across refreshes; submitted counts are locked for review. Blank physical quantities are not treated as zero. Approval records the review only. Stock adjustments require a separate administrator proposal review and explicit confirmation.</p>
+    <p className="mt-4 text-xs text-muted-foreground">Cost price is read-only and sourced from the product's saved purchase price (or the saved count snapshot when reopening a count). {canViewPurchasePrice ? 'System and physical stock values use this same cost basis.' : 'Purchase-price access is restricted for this account. Ask the business owner to enable “See Purchase Price” in this team member’s permissions. Valuation fields are shown as unavailable, not zero.'} Difference (value) is calculated as physical quantity minus system quantity, multiplied by cost price; shortages are negative and surpluses are positive. Saved drafts persist across refreshes; submitted counts are locked for review. Blank physical quantities are not treated as zero. Approval records the review only. Stock adjustments require a separate authorized Branch Manager or Administrator proposal review and explicit confirmation.</p>
   </section>;
 }
