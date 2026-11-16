@@ -134,6 +134,9 @@ BEGIN
   END;
   ASSERT ok, 'Branch Manager cannot appoint another Branch Manager';
 
+  -- Inspect the static role template as the database owner; this table is intentionally
+  -- not directly readable by ordinary authenticated members.
+  RESET ROLE;
   ASSERT EXISTS (
     SELECT 1 FROM public.job_title_denials
     WHERE job_title='branch_manager' AND permission='other.purchase_price'
@@ -147,6 +150,9 @@ BEGIN
     WHERE job_title='branch_manager' AND permission='settings.edit'
   ), 'Branch Manager business settings are denied by default';
 
+  -- Restore the Branch Manager actor before testing prohibited delegation changes.
+  SET LOCAL ROLE authenticated;
+  PERFORM set_config('request.jwt.claims',json_build_object('sub',manager_id,'role','authenticated')::text,true);
   ok := false;
   BEGIN
     PERFORM public.grant_branch_delegation(
