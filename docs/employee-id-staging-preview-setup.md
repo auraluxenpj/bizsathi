@@ -40,7 +40,7 @@ GitHub Actions CI uses placeholder Supabase values only. A passing CI run valida
 1. Confirm the test deployment is unpublished and has a separate preview hostname.
 2. Confirm all five runtime variables above belong to the Tokyo staging project. Never share the service-role key in chat or commit it.
 3. Open browser DevTools > Network on the preview and inspect a Supabase request. Its hostname and `sb-project-ref` response header must identify `efcxhbyaazfvpbaxyvpu`.
-4. Confirm the public production website still reports `glulsxmkkdeaenoovovgsm`.
+4. Confirm the public production website still reports `glulsxmkkdeaenoovgsm`.
 5. Only then run controlled staging-only invitation, OTP verification, Employee ID display and Employee ID login tests using test accounts.
 6. Check staging records after testing and clean up only the test records created for that run.
 
