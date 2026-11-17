@@ -29,7 +29,8 @@ export const getHrmWorkspace = createServerFn({ method: 'GET' })
       client.from('hr_shift_assignments').select('*').eq('business_id', data.businessId).order('shift_date', { ascending: false }).limit(150),
       client.from('hr_salary_structures').select('*').eq('business_id', data.businessId).order('effective_from', { ascending: false }).limit(200),
       client.from('hr_payroll_runs').select('*').eq('business_id', data.businessId).order('period_start', { ascending: false }).limit(36),
-      client.from('hr_payroll_items').select('*').eq('business_id', data.businessId).order('period_start', { ascending: false }).limit(200),\n      client.from('hr_attendance_policies').select('*').eq('business_id', data.businessId).maybeSingle(),
+      client.from('hr_payroll_items').select('*').eq('business_id', data.businessId).order('period_start', { ascending: false }).limit(200),
+      client.from('hr_attendance_policies').select('*').eq('business_id', data.businessId).maybeSingle(),
     ]);
     const errors = [branches, members, employees, attendance, leaveTypes, leaveRequests, shifts, assignments, salaries, payrollRuns, payrollItems, attendancePolicy].filter(x => x.error);
     if (membership.error || !membership.data || admin.error || payroll.error || errors.length) throw new Error('HR workspace could not be loaded. Check that the HRM migration has been applied and your business access is active.');
