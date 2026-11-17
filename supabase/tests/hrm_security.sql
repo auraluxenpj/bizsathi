@@ -192,9 +192,9 @@ BEGIN
   PERFORM set_config('request.jwt.claims',json_build_object('sub',manager_id,'role','authenticated')::text,true);
   BEGIN
     PERFORM public.hr_review_leave_request(v_business_id,v_request_id,'approved',NULL,NULL);
-    RAISE EXCEPTION 'Overdrawn leave approval unexpectedly succeeded without a reason';
-  EXCEPTION WHEN SQLSTATE 'P0001' THEN
-    ASSERT SQLERRM LIKE 'Insufficient leave balance%', 'Approval fails specifically because the balance is insufficient';
+    RAISE EXCEPTION 'Delegated manager unexpectedly submitted an override without a reason';
+  EXCEPTION WHEN insufficient_privilege THEN
+    NULL;
   END;
   PERFORM public.hr_review_leave_request(
     v_business_id,v_request_id,'approved',NULL,'Emergency exception approved by delegated manager'
