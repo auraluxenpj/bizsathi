@@ -203,15 +203,20 @@ GRANT EXECUTE ON FUNCTION public.review_sale_return_request(uuid,text,text,uuid,
 -- Every posted sale return must consume a pending request approved by a different authorized manager.
 CREATE OR REPLACE FUNCTION public.guard_sale_return_request_posting()
 RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER SET search_path=public AS $function$
+DECLARE approved_request public.sale_return_requests;
 BEGIN
-  IF NEW.kind='sale_return' AND NOT EXISTS (
-    SELECT 1 FROM public.sale_return_requests r
-    WHERE r.business_id=NEW.business_id
-      AND r.reserved_document_id=NEW.id
-      AND r.status='approved' AND r.reviewed_by IS NOT NULL
-  ) THEN
-    RAISE EXCEPTION 'A manager-approved sale return request is required before posting'
-      USING ERRCODE='42501';
+  IF NEW.kind='sale_return' THEN
+    SELECT * INTO approved_request FROM public.sale_return_requests r
+    WHERE r.reserved_document_id=NEW.id;
+    IF NOT FOUND OR approved_request.business_id IS DISTINCT FROM NEW.business_id
+       OR approved_request.status IS DISTINCT FROM 'approved'
+       OR approved_request.reviewed_by IS NULL THEN
+      RAISE EXCEPTION 'Sale return approval mismatch: document %, business %, request key %, matched request %, request business %, reserved document %, status %, reviewer %',
+        NEW.id,NEW.business_id,NEW.request->>'returnRequestId',approved_request.id,
+        approved_request.business_id,approved_request.reserved_document_id,
+        approved_request.status,approved_request.reviewed_by
+        USING ERRCODE='42501';
+    END IF;
   END IF;
   RETURN NEW;
 END
