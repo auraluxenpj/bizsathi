@@ -40,7 +40,7 @@ export function BusinessAccess() {
  const member = useMutation({ mutationFn: (data: Parameters<typeof memberFn>[0]['data']) => memberFn({ data }), onSuccess: () => { setMessage('Staff access updated.'); refresh(); }, onError: e => setMessage(e.message) });
  const grant = useMutation({ mutationFn: (data: Parameters<typeof grantFn>[0]['data']) => grantFn({ data }), onSuccess: () => { setMessage('Branch access updated.'); refresh(); }, onError: e => setMessage(e.message) });
  const revoke = useMutation({ mutationFn: (invitationId: string) => revokeFn({ data: { businessId, invitationId } }), onSuccess: () => { setMessage('Invitation revoked.'); setLegacyInviteLink(''); refresh(); }, onError: e => setMessage(e.message) });
- const titles = jobTitleCodes.filter(t => business?.role === 'owner' || jobTitles[t].base !== 'admin');
+ const titles = jobTitleCodes.filter(t => (business?.effectiveRank ?? 0) >= 100 || jobTitles[t].base !== 'admin');
  return <main className="mx-auto max-w-6xl px-5 py-8 md:px-10">
   <header className="flex flex-wrap items-center justify-between gap-3 border-b pb-5"><h1 className="brand text-3xl">BizSathi Nepal</h1><div className="flex gap-2"><Button asChild variant="outline"><Link to="/security"><ShieldCheck />Security desk</Link></Button><Button asChild variant="ghost" size="icon" title="Profile"><Link to="/profile"><UserRound /></Link></Button></div></header>
   <div className="my-8 flex flex-wrap items-center justify-between gap-4"><div><p className="text-xs font-semibold text-primary">BUSINESS ACCESS</p><h2 className="brand mt-2 text-2xl">{view.panel==='roles'?'Roles & permissions':view.panel==='users'?'Employees & branch access':'AURALUXE workspace & staff'}</h2></div></div>
