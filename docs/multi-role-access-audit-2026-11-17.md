@@ -148,7 +148,7 @@ The implementation now prepared in this branch includes:
 
 ### Staging validation
 
-Migrations 0074–0085 were applied to the separate staging Supabase project. A transactional SQL regression script passed there, covering:
+Migrations 0074–0086 were applied to the separate staging Supabase project. A transactional SQL regression script passed there, covering:
 - Default role backfill and custom role creation/editing.
 - Multiple role assignment and union of permissions.
 - Explicit denial precedence.
@@ -168,3 +168,5 @@ The PR must pass the repository's unit/component tests, ESLint, production build
 ### Additional compatibility validation
 
 The existing Branch Manager authority and HRM security SQL tests also passed on staging after the invitation and cashier guards were moved to access-role checks. A transactional owner/customer fixture confirmed the legacy `parties` table now maps to the canonical `customers.create` permission. The full sale-return approval suite is being re-run in repository CI against the complete migration chain.
+
+- The Branch Manager default permission preset was aligned with the existing application preset: CRM customer create/edit remain available, while delete and unrelated sensitive permissions remain restricted.
