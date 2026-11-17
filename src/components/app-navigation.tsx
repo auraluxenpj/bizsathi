@@ -23,21 +23,29 @@ export function AppNavigation({ children, pathname }: { children: ReactNode; pat
  const [person, setPerson] = useState(''); const [avatar, setAvatar] = useState(''); const [compact, setCompact] = useState(false); const [mobileOpen, setMobileOpen] = useState(false);
  const businesses = useQuery({ queryKey: ['businesses'], queryFn: () => load() });
  const businessId = businesses.data?.[0]?.id ?? '';
+ // listBusinesses verifies platform ownership server-side. The Master Owner must never be
+ // filtered by employee/business role permissions or hidden route catalogue entries.
+ const platformOwner = businesses.data?.some(b => b.isPlatformOwner) ?? false;
  const permissionsQuery = usePermissionDenials(businessId);
  const permissionsReady = permissionsQuery.isSuccess;
  const can = useCan(businessId);
- const admin = businesses.data?.some(b => (b.effectiveRank ?? (b.role === 'owner' || b.role === 'admin' ? 100 : 0)) >= 80);
+ const admin = platformOwner || businesses.data?.some(b => (b.effectiveRank ?? (b.role === 'owner' || b.role === 'admin' ? 100 : 0)) >= 80);
  const billingStaff = isBillingStaff(can);
  const kind = dashboardKind(can);
- const permitted = (to?: string, routeSearch?: Record<string, unknown>) => { const permission = to ? permissionForRoute(to, routeSearch ?? search) : undefined; return !permission || can(permission); };
- // POS-only employees see only the terminal. Supporting lookups are available inside POS, not as separate modules.
+ const permitted = (to?: string, routeSearch?: Record<string, unknown>) => {
+  if (platformOwner) return true;
+  const permission = to ? permissionForRoute(to, routeSearch ?? search) : undefined;
+  return !permission || can(permission);
+ };
+ // POS-only employees see only the terminal. Platform Owner bypasses all employee route filters.
  const visible = (to?: string, routeSearch?: Record<string, unknown>) => {
+  if (platformOwner) return true;
   if (billingStaff && to !== '/pos') return false;
   return permitted(to, routeSearch) && (!['/security', '/security-history'].includes(to ?? '') || !!admin);
  };
  const activeRoutePermission = permissionForRoute(pathname, search);
  const adminOnlyRoute = ['/security','/security-history'].some(route => pathname === route || pathname.startsWith(`${route}/`));
- const deniedPage = permissionsQuery.isPending || permissionsQuery.isError || (permissionsReady && ((billingStaff && pathname !== '/pos') || (adminOnlyRoute && !admin) || (!!activeRoutePermission && !can(activeRoutePermission))));
+ const deniedPage = !platformOwner && (permissionsQuery.isPending || permissionsQuery.isError || (permissionsReady && ((billingStaff && pathname !== '/pos') || (adminOnlyRoute && !admin) || (!!activeRoutePermission && !can(activeRoutePermission)))));
  const businessName = businesses.data?.[0]?.name ?? 'BizSathi';
  const current = workspaceGroups.flatMap(g => g.items).find(i => workspaceItemActive(i, pathname, search));
  const title = pathname === '/dashboard' ? 'Dashboard' : current?.name ?? pathname.slice(1).replaceAll('-', ' ').replace(/^./, c => c.toUpperCase());
