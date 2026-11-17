@@ -45,7 +45,7 @@ BEGIN
 
   -- Legacy role grants preserve the existing role preset ceilings.
   FOR v_item IN
-    SELECT bv_item.id, br.code,
+    SELECT br.id, br.code,
       CASE br.code
         WHEN 'legacy_owner' THEN ARRAY[]::text[]
         WHEN 'legacy_admin' THEN ARRAY['settings.delete_business']::text[]
@@ -72,7 +72,7 @@ BEGIN
   -- Position roles inherit the business-specific template when present; otherwise
   -- they inherit the existing global job-title denial template.
   FOR v_item IN
-    SELECT bv_item.id, substring(br.code from 10) AS job_title,
+    SELECT br.id, substring(br.code from 10) AS job_title,
       COALESCE(t.denied_permissions,
         ARRAY(SELECT d.permission FROM public.job_title_denials d WHERE d.job_title=substring(br.code from 10))
       ) AS denied
