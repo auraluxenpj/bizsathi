@@ -310,9 +310,10 @@ BEGIN
   WHERE NOT (p.permission=ANY(COALESCE(v_denied,ARRAY[]::text[])))
   ON CONFLICT DO NOTHING;
 
-  RETURN COALESCE(NEW,OLD);
+  IF TG_OP='DELETE' THEN RETURN OLD; END IF;
+  RETURN NEW;
 END;
-$;
+$refresh_position_access_role_permissions$;
 REVOKE ALL ON FUNCTION public.refresh_position_access_role_permissions() FROM PUBLIC,anon,authenticated;
 DROP TRIGGER IF EXISTS refresh_position_access_role_permissions ON public.business_role_templates;
 CREATE TRIGGER refresh_position_access_role_permissions
