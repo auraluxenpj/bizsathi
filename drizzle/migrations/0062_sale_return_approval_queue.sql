@@ -186,7 +186,7 @@ BEGIN
   posting:=jsonb_build_object('id',req.return_document_id,'businessId',req.business_id,'branchId',req.branch_id,
     'periodId',_period_id,'date',_date,'kind','sale_return','status','confirmed','sourceId',req.source_sale_id,
     'partyId',source.party_id,'reference',ref,'lines',posting_lines,'payments','[]'::jsonb,
-    'returnRequestId',req.id);
+    'returnRequestId',req.id,'returnRequesterId',req.requested_by);
   -- Mark approved inside this transaction before inserting the immutable return document.
   -- The deferred FK and posting guard ensure only this approval RPC can post the reserved document.
   UPDATE public.sale_return_requests SET status='approved',reviewed_by=actor,reviewed_at=now(),
@@ -236,6 +236,12 @@ BEGIN
   body:=replace(body,
     'IF NOT public.has_business_role(b,''accountant'') AND NOT (public.has_business_role(b,''staff'') AND d.kind=''sale'' AND d.actor_id=auth.uid()) THEN',
     'IF NOT public.has_business_role(b,''accountant'') AND NOT (public.has_business_role(b,''staff'') AND d.kind=''sale'' AND d.actor_id=auth.uid()) AND NOT (d.kind=''sale_return'' AND public.can_approve_inventory_count(b,d.branch_id)) THEN');
+  IF position('IF session IS NULL OR NOT EXISTS(SELECT 1 FROM public.cash_counter_events WHERE session_id=session AND business_id=b AND branch_id=d.branch_id AND kind=''open'' AND actor_id=auth.uid()) OR EXISTS(SELECT 1 FROM public.cash_counter_events WHERE session_id=session AND kind=''close'') THEN' IN body)=0 THEN
+    RAISE EXCEPTION 'Could not locate cash session authorization in post_commerce_payment';
+  END IF;
+  body:=replace(body,
+    'IF session IS NULL OR NOT EXISTS(SELECT 1 FROM public.cash_counter_events WHERE session_id=session AND business_id=b AND branch_id=d.branch_id AND kind=''open'' AND actor_id=auth.uid()) OR EXISTS(SELECT 1 FROM public.cash_counter_events WHERE session_id=session AND kind=''close'') THEN',
+    'IF session IS NULL OR NOT EXISTS(SELECT 1 FROM public.cash_counter_events opening WHERE opening.session_id=session AND opening.business_id=b AND opening.branch_id=d.branch_id AND opening.kind=''open'' AND (opening.actor_id=auth.uid() OR (d.kind=''sale_return'' AND public.can_approve_inventory_count(b,d.branch_id) AND EXISTS(SELECT 1 FROM public.sale_return_requests rr WHERE rr.business_id=b AND rr.return_document_id=d.id AND rr.requested_by=opening.actor_id)))) OR EXISTS(SELECT 1 FROM public.cash_counter_events WHERE session_id=session AND kind=''close'') THEN');
   body:=replace(body,
     'IF d.kind IN (''sale_return'',''purchase_return'') AND NOT public.has_business_role(b,''admin'') THEN',
     'IF (d.kind=''purchase_return'' AND NOT public.has_business_role(b,''admin'')) OR (d.kind=''sale_return'' AND NOT public.can_approve_inventory_count(b,d.branch_id)) THEN');
