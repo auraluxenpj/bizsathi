@@ -1,4 +1,4 @@
--- Run only in the isolated SQL security workflow after migrations through 0064.
+-- Run only in the isolated SQL security workflow after migrations through 0069.
 -- Covers branch-scoped requests, quantity reservation, self-approval denial,
 -- atomic posting, retry safety, rejection and manager refunds.
 BEGIN;
