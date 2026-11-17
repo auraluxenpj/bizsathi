@@ -12,6 +12,7 @@ describe('workspace navigation preserves existing workflows', () => {
   expect(shouldRedirectBillingStaff('/pos')).toBe(false);
   expect(shouldRedirectBillingStaff('/cash-counters')).toBe(false);
   expect(shouldRedirectBillingStaff('/sales')).toBe(false);
+  expect(shouldRedirectBillingStaff('/hrm')).toBe(false);
   expect(shouldRedirectBillingStaff('/purchases')).toBe(true);
   expect(shouldRedirectBillingStaff('/dashboard')).toBe(true);
  });

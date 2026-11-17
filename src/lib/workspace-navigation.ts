@@ -6,13 +6,16 @@ export type WorkspaceGroup = { name: string; icon: LucideIcon; items: WorkspaceI
 const report = (name: string, view: string, icon: LucideIcon, focus?: string): WorkspaceItem => ({ name, to: '/accounting', icon, search: { view, ...(focus ? { focus } : {}) } });
 export function isBillingStaff(role: string | undefined, jobTitle: string | null | undefined) { return role === 'staff' && jobTitle === 'sales_person'; }
 /** Billing staff can move between the sale terminal and their own cash drawer only. */
-export function shouldRedirectBillingStaff(pathname: string) { return pathname !== '/pos' && pathname !== '/cash-counters' && pathname !== '/sales'; }
+export function shouldRedirectBillingStaff(pathname: string) { return pathname !== '/pos' && pathname !== '/cash-counters' && pathname !== '/sales' && pathname !== '/hrm'; }
 export const dashboardItem: WorkspaceItem = { name: 'Dashboard', to: '/dashboard', icon: LayoutDashboard };
 export const workspaceGroups: WorkspaceGroup[] = [
  { name: 'Items & Masters', icon: Boxes, items: [
   { name: 'Products', to: '/products', icon: Package }, { name: 'Categories', to: '/categories', icon: FolderTree },
   { name: 'Brands', icon: Tag, unavailable: true }, { name: 'Suppliers', to: '/contacts', search: { kind: 'supplier' }, icon: Truck },
   { name: 'Customer Contacts', to: '/contacts', search: { kind: 'customer' }, icon: Users }, { name: 'Barcode Studio', to: '/products', search: { tool: 'barcode' }, icon: ScanBarcode },
+ ] },
+ { name: 'People & HR', icon: UserCog, items: [
+  { name: 'HR & People Management', to: '/hrm', icon: UserCog, note: 'Employee records, attendance, leave, shifts and payroll' },
  ] },
  { name: 'CRM', icon: Users, items: [
   { name: 'Customers', to: '/parties', icon: Users }, { name: 'Membership & Loyalty', to: '/membership', icon: Award },
