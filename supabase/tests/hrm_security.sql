@@ -214,6 +214,31 @@ BEGIN
   ASSERT v_balance=-6,'Overridden leave is still posted to the append-only balance ledger';
   RESET ROLE;
 
+  -- A delegate cannot use an override reason to approve a request within balance.
+  INSERT INTO public.hr_leave_requests(
+    business_id,user_id,leave_type_id,start_date,end_date,days,request_status
+  ) VALUES (
+    v_business_id,employee_id,v_leave_type,current_date+8,current_date+8,1,'pending'
+  ) RETURNING id INTO v_request_id;
+
+  SET LOCAL ROLE authenticated;
+  PERFORM set_config('request.jwt.claims',json_build_object('sub',manager_id,'role','authenticated')::text,true);
+  BEGIN
+    PERFORM public.hr_review_leave_request(
+      v_business_id,v_request_id,'approved',NULL,'This is not a balance override'
+    );
+    RAISE EXCEPTION 'Delegated manager unexpectedly approved an in-balance request';
+  EXCEPTION WHEN insufficient_privilege THEN
+    NULL;
+  END;
+  SELECT count(*) INTO v_count FROM public.hr_leave_requests
+   WHERE business_id=v_business_id AND id=v_request_id AND request_status='pending';
+  ASSERT v_count=1,'In-balance request remains pending after a delegated approval attempt';
+  SELECT count(*) INTO v_count FROM public.hr_leave_balance_overrides
+   WHERE business_id=v_business_id AND request_id=v_request_id;
+  ASSERT v_count=0,'No override audit is created for an in-balance request';
+  RESET ROLE;
+
   -- Ordinary HR manager approval remains valid for a request within balance.
   RAISE NOTICE 'HRM_SECURITY_TESTS_PASSED';
 END;
