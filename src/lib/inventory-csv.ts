@@ -15,7 +15,7 @@ const headerAliases: Record<string, string[]> = {
  mrp: ['mrp', 'MRP', 'M.R.P', 'Maximum Retail Price'],
  wholesale_price: ['wholesale_price', 'Wholesale Price', 'Wholesale Rate'],
  purchase_price: ['purchase_price', 'Purchase Price', 'Cost Price'],
- // qty is the exported name; on import it is the quantity to open as stock for new items (same as the older opening_stock column).
+ // qty is the target on-hand quantity for the selected branch; opening_stock remains a supported legacy alias.
  opening_stock: ['opening_stock', 'Opening Stock', 'Opening Qty', 'qty', 'Qty', 'Quantity', 'Stock', 'Current Stock'],
  description: ['description', 'Description'],
  reorder_level: ['reorder_level', 'Reorder Level', 'Low Stock', 'Low Stock Threshold'],
@@ -68,19 +68,18 @@ export function makeCatalogueCsv(rows: Record<string, unknown>[], canViewPurchas
 }
 
 type SheetRow = { product_name: string; variant_name: string; sku: string; barcode: string };
-export type CatalogueProblems = { duplicateSkus: { sku: string; count: number }[]; existingSkus: string[]; duplicateBarcodes: string[]; any: boolean };
+export type CatalogueProblems = { duplicateSkus: { sku: string; count: number }[]; duplicateBarcodes: string[]; any: boolean };
 
-/** Finds what would make the all-or-nothing import fail, before anything is sent: SKUs repeated in the file, SKUs already in use, repeated barcodes. */
-export function catalogueProblems(rows: SheetRow[], existingSkus: Set<string>): CatalogueProblems {
+/** Existing SKUs are valid update targets; only ambiguous duplicate rows/barcodes block an import. */
+export function catalogueProblems(rows: SheetRow[]): CatalogueProblems {
   const seen = new Map<string, number>(); const barcodes = new Map<string, number>();
   for (const r of rows) {
     seen.set(r.sku, (seen.get(r.sku) ?? 0) + 1);
     if (r.barcode) barcodes.set(r.barcode, (barcodes.get(r.barcode) ?? 0) + 1);
   }
   const duplicateSkus = [...seen].filter(([, n]) => n > 1).map(([sku, count]) => ({ sku, count }));
-  const existing = [...seen.keys()].filter((sku) => existingSkus.has(sku));
   const duplicateBarcodes = [...barcodes].filter(([, n]) => n > 1).map(([b]) => b);
-  return { duplicateSkus, existingSkus: existing, duplicateBarcodes, any: duplicateSkus.length + existing.length + duplicateBarcodes.length > 0 };
+  return { duplicateSkus, duplicateBarcodes, any: duplicateSkus.length + duplicateBarcodes.length > 0 };
 }
 
 const suffixOf = (variant: string) => variant.trim().toUpperCase().replace(/[^A-Z0-9]+/g, '-').replace(/^-+|-+$/g, '');
