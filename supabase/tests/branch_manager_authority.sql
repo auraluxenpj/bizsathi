@@ -1,4 +1,4 @@
--- Run only in an isolated database with project migrations through 0059 applied.
+-- Run only in an isolated database with all project migrations applied.
 -- Verifies the distinct Branch Manager rank, branch boundary, delegation ceiling and approval helper.
 BEGIN;
 DO $tests$
