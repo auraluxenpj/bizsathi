@@ -25,7 +25,8 @@ export const hrmAttendanceInput = tenantInput.extend({
   notes: z.string().trim().max(500).optional(),
 });
 export const hrmLeaveTypeInput = tenantInput.extend({
-  name: z.string().trim().min(2).max(80), annualQuota: z.number().min(0).max(366), isPaid: z.boolean(),\n  accrualMethod: z.enum(['front_loaded','monthly']).default('front_loaded'),
+  name: z.string().trim().min(2).max(80), annualQuota: z.number().min(0).max(366), isPaid: z.boolean(),
+  accrualMethod: z.enum(['front_loaded','monthly']).default('front_loaded'),
 });
 export const hrmAttendancePolicyInput = tenantInput.extend({
   workdayMinutes: z.number().int().min(60).max(1440),
