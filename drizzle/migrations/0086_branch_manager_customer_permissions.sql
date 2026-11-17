@@ -1,6 +1,6 @@
 -- 0086: align Branch Manager default role permissions with the approved role preset.
 DELETE FROM public.job_title_denials
-WHERE job_title='branch_manager' AND permission IN ('customers.create','customers.edit');
+WHERE job_title='branch_manager' AND permission IN ('customers.create','customers.edit','sales.create');
 
 DELETE FROM public.business_access_role_permissions rp
 USING public.business_access_roles r
