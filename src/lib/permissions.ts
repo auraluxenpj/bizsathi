@@ -24,7 +24,7 @@ export const permissionInput=z.object({businessId:z.string().uuid(),userId:z.str
 /** The checklist only restricts: a permission is allowed when the role already allows it and it is not unticked. */
 export function isAllowed(roleAllows:boolean,denied:readonly string[],permission:string){return roleAllows&&!denied.includes(permission);}
 /** Route paths hidden when the matching view permission is unticked. */
-export const routePermission:Record<string,string>={'/reports':'reports.view','/accounting':'accounts.view','/businesses':'staff.view','/sales':'sales.view','/quotations':'sales.view','/purchases':'purchases.view','/purchase-orders':'purchases.view','/expenses':'expenses.view','/products':'inventory.view','/categories':'categories.view','/cash-bank':'accounts.view','/parties':'customers.view'};
+export const routePermission:Record<string,string>={'/reports':'reports.view','/accounting':'accounts.view','/businesses':'staff.view','/sales':'sales.view','/quotations':'sales.view','/purchases':'purchases.view','/purchase-orders':'purchases.view','/expenses':'expenses.view','/products':'inventory.view','/categories':'categories.view','/cash-bank':'accounts.view','/parties':'customers.view','/hrm':'hr.self.view'};
 
 /** Default permissions for each role. A preset lists what the role may do; everything else is stored as "denied". */
 const not=(...rx:RegExp[])=>allPermissions.filter(p=>!rx.some(r=>r.test(p)));
