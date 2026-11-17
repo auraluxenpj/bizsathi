@@ -5,7 +5,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import {
   hrmWorkspaceInput, hrmEmployeeInput, hrmEmployeeUpdateInput, hrmAttendanceInput, hrmClockInput, hrmLeaveTypeInput, hrmAttendancePolicyInput,
   hrmLeaveRequestInput, hrmLeaveReviewInput, hrmLeaveBalanceAdjustmentInput, hrmShiftInput, hrmShiftAssignmentInput,
-  hrmSalaryInput, hrmPayrollGenerateInput, hrmPayrollActionInput,
+  hrmSalaryInput, hrmPayrollGenerateInput, hrmPayrollActionInput, hrmReportInput,
 } from './hrm-schemas';
 
 // The generated Supabase type file is intentionally not edited for feature-only tables.
@@ -62,6 +62,99 @@ export const getHrmWorkspace = createServerFn({ method: 'GET' })
       assignments: enrich(assignments.data ?? []), salaries: salaries.data ?? [],
       payrollRuns: payrollRuns.data ?? [], payrollItems: enrich(payrollItems.data ?? []), attendancePolicy: attendancePolicy.data ?? null,
       leaveBalanceEntries: leaveBalanceEntries.data ?? [],
+    };
+  });
+
+export const getHrmReports = createServerFn({ method: 'GET' })
+  .middleware([requireSupabaseAuth]).inputValidator(hrmReportInput)
+  .handler(async ({ data, context }) => {
+    const client = db(context.supabase);
+    const [membership, admin, payroll, branchResult] = await Promise.all([
+      client.rpc('is_business_member', { _business_id: data.businessId }),
+      client.rpc('has_business_role', { _business_id: data.businessId, _min_role: 'admin' }),
+      client.rpc('has_business_role', { _business_id: data.businessId, _min_role: 'accountant' }),
+      client.from('branches').select('id,name,code').eq('business_id', data.businessId).order('name'),
+    ]);
+    if (membership.error || !membership.data || admin.error || payroll.error || branchResult.error) {
+      throw new Error('HR reports could not be loaded. Check business access and HRM setup.');
+    }
+    const isAdmin = Boolean(admin.data);
+    const canPayroll = Boolean(payroll.data);
+    if (!isAdmin && !canPayroll) throw new Error('HR reports require administrator or payroll access.');
+
+    let employeeRows: any[] = [];
+    if (isAdmin) {
+      const { data: rows, error } = await client.from('hr_employee_records')
+        .select('user_id,employee_number,branch_id,department,designation,employment_status')
+        .eq('business_id', data.businessId);
+      if (error) throw new Error('Employee reporting list could not be loaded.');
+      employeeRows = rows ?? [];
+      const ids = employeeRows.map(row => row.user_id);
+      if (ids.length) {
+        const { data: profiles, error: profileError } = await client.from('profiles').select('id,full_name').in('id', ids);
+        if (profileError) throw new Error('Employee report names could not be loaded.');
+        const names = new Map((profiles ?? []).map((profile: any) => [profile.id, profile.full_name ?? 'Employee']));
+        employeeRows = employeeRows.map(row => ({ ...row, full_name: names.get(row.user_id) ?? 'Employee' }));
+      }
+    } else if (canPayroll) {
+      const { data: rows, error } = await client.rpc('hr_list_payroll_employees', { _business_id: data.businessId });
+      if (error) throw new Error('Payroll employee reporting list could not be loaded.');
+      employeeRows = rows ?? [];
+    }
+
+    const scopedEmployees = employeeRows.filter(row => !data.branchId || row.branch_id === data.branchId);
+    const scopedUserIds = scopedEmployees.map(row => row.user_id);
+    const paged = async (makeQuery: () => any) => {
+      const allRows: any[] = [];
+      for (let offset = 0; offset < 10000; offset += 1000) {
+        const { data: page, error } = await makeQuery().range(offset, offset + 999);
+        if (error) throw new Error('A report dataset could not be loaded. Try a shorter date range.');
+        allRows.push(...(page ?? []));
+        if (!page || page.length < 1000) break;
+      }
+      return allRows;
+    };
+
+    let attendance: any[] = [];
+    let leaveRequests: any[] = [];
+    let leaveTypes: any[] = [];
+    if (isAdmin && scopedUserIds.length) {
+      [attendance, leaveRequests, leaveTypes] = await Promise.all([
+        paged(() => {
+          let query = client.from('hr_attendance').select('*').eq('business_id', data.businessId)
+            .gte('attendance_date', data.from).lte('attendance_date', data.to).order('attendance_date', { ascending: false });
+          if (data.branchId) query = query.eq('branch_id', data.branchId);
+          return query;
+        }),
+        paged(() => client.from('hr_leave_requests').select('*').eq('business_id', data.businessId)
+          .lte('start_date', data.to).gte('end_date', data.from).in('user_id', scopedUserIds)
+          .order('start_date', { ascending: false })),
+        (async () => {
+          const { data: rows, error } = await client.from('hr_leave_types').select('id,name,is_paid')
+            .eq('business_id', data.businessId);
+          if (error) throw new Error('Leave type labels could not be loaded.');
+          return rows ?? [];
+        })(),
+      ]);
+    }
+
+    let payrollItems: any[] = [];
+    let payrollRuns: any[] = [];
+    if (canPayroll && scopedUserIds.length) {
+      [payrollItems, payrollRuns] = await Promise.all([
+        paged(() => client.from('hr_payroll_items').select('*').eq('business_id', data.businessId)
+          .lte('period_start', data.to).gte('period_end', data.from).in('user_id', scopedUserIds)
+          .order('period_start', { ascending: false })),
+        paged(() => client.from('hr_payroll_runs').select('id,period_start,period_end,period_label,run_status,employee_count,gross_total,deduction_total,net_total')
+          .eq('business_id', data.businessId).lte('period_start', data.to).gte('period_end', data.from)
+          .order('period_start', { ascending: false })),
+      ]);
+    }
+
+    return {
+      from: data.from, to: data.to, branchId: data.branchId ?? null,
+      isAdmin, canPayroll, branches: branchResult.data ?? [], employees: scopedEmployees,
+      attendance, leaveRequests, leaveTypes, payrollItems, payrollRuns,
     };
   });
 
