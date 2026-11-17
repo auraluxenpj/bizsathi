@@ -1,4 +1,4 @@
--- Run on an isolated staging database after migration 0079.
+-- Run on an isolated database after all project migrations are applied.
 -- All fixture writes are rolled back; validates multi-role permission and branch behavior.
 BEGIN;
 DO $tests$
