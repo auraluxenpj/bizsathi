@@ -1,8 +1,9 @@
--- Run only in the isolated SQL security workflow after migrations through 0061.
+-- Run only in the isolated SQL security workflow after migrations through 0062.
 -- Covers branch-scoped requests, quantity reservation, self-approval denial,
 -- atomic posting, retry safety, rejection and manager refunds.
 BEGIN;
 DO $tests$
+<<tests>>
 DECLARE
   owner_id uuid:=gen_random_uuid(); manager_id uuid:=gen_random_uuid(); cashier_id uuid:=gen_random_uuid();
   business_id uuid; branch_a uuid; branch_b uuid; period_id uuid; variant_id uuid; customer_id uuid;
@@ -26,7 +27,7 @@ BEGIN
   INSERT INTO public.financial_periods(business_id,name,start_date,end_date)
   VALUES(business_id,'Open FY','2026-01-01','2026-12-31') RETURNING id INTO period_id;
   PERFORM public.save_catalogue_variant(business_id,'[{"product_name":"Dress","sku":"RET-DRESS","selling_price":100}]');
-  SELECT id INTO variant_id FROM public.product_variants WHERE business_id=business_id AND sku='RET-DRESS';
+  SELECT pv.id INTO variant_id FROM public.product_variants pv WHERE pv.business_id=$tests$.business_id AND pv.sku='RET-DRESS';
   INSERT INTO public.parties(business_id,kind,name) VALUES(business_id,'customer','Return customer') RETURNING id INTO customer_id;
   PERFORM public.post_stock_operation(business_id,gen_random_uuid(),variant_id,branch_a,NULL,'opening',10,'OPEN','Opening stock');
   PERFORM public.post_stock_operation(business_id,gen_random_uuid(),variant_id,branch_b,NULL,'opening',10,'OPEN-B','Opening stock');
@@ -39,7 +40,7 @@ BEGIN
   req:=jsonb_set(req,'{id}',to_jsonb(sale_b));req:=jsonb_set(req,'{branchId}',to_jsonb(branch_b));req:=jsonb_set(req,'{reference}',to_jsonb('INV-RET-B'));
   PERFORM public.post_commerce_document(req);
 
-  SELECT coalesce(sum(quantity),0) INTO stock_before FROM public.commerce_stock_movements WHERE business_id=business_id AND branch_id=branch_a AND variant_id=variant_id;
+  SELECT coalesce(sum(quantity),0) INTO stock_before FROM public.commerce_stock_movements m WHERE m.business_id=$tests$.business_id AND m.branch_id=$tests$.branch_a AND m.variant_id=$tests$.variant_id;
 
   -- A cashier can submit a request, but it does not create a return document or restock inventory.
   SET LOCAL ROLE authenticated;
@@ -47,7 +48,7 @@ BEGIN
   request_id:=public.request_sale_return(business_id,sale_a,jsonb_build_array(jsonb_build_object('variantId',variant_id,'quantity',2)),'Customer changed their mind');
   ASSERT (SELECT status='pending' FROM public.sale_return_requests WHERE id=request_id),'Cashier request starts pending';
   ASSERT NOT EXISTS(SELECT 1 FROM public.commerce_documents WHERE kind='sale_return' AND source_id=sale_a),'Request does not post a return';
-  SELECT coalesce(sum(quantity),0) INTO stock_after FROM public.commerce_stock_movements WHERE business_id=business_id AND branch_id=branch_a AND variant_id=variant_id;
+  SELECT coalesce(sum(quantity),0) INTO stock_after FROM public.commerce_stock_movements WHERE m.business_id=$tests$.business_id AND m.branch_id=$tests$.branch_a AND m.variant_id=$tests$.variant_id;
   ASSERT stock_after=stock_before,'Pending request does not change stock';
 
   -- A manager cannot review their own request.
@@ -67,7 +68,7 @@ BEGIN
   ASSERT (SELECT kind='sale_return' AND status='confirmed' AND source_id=sale_a AND total=200 FROM public.commerce_documents WHERE id=return_id),'Approved request posts a confirmed source-linked return at original prices';
   ASSERT (SELECT count(*)=1 FROM public.commerce_documents WHERE id=return_id),'Approval creates exactly one return document';
   ASSERT public.review_sale_return_request(request_id,'approve',NULL,period_id,'2026-11-17')=return_id,'Approval retry returns the same document';
-  SELECT coalesce(sum(quantity),0) INTO stock_after FROM public.commerce_stock_movements WHERE business_id=business_id AND branch_id=branch_a AND variant_id=variant_id;
+  SELECT coalesce(sum(quantity),0) INTO stock_after FROM public.commerce_stock_movements WHERE m.business_id=$tests$.business_id AND m.branch_id=$tests$.branch_a AND m.variant_id=$tests$.variant_id;
   ASSERT stock_after=stock_before+2,'Approval restocks exactly the approved quantity';
 
   -- Branch Manager may record the refund for the approved sale return, but not purchase refunds.
@@ -88,7 +89,7 @@ BEGIN
   PERFORM set_config('request.jwt.claims',json_build_object('sub',manager_id,'role','authenticated')::text,true);
   PERFORM public.review_sale_return_request(rejected_request,'reject','Inspection failed; item not returned',NULL,'2026-11-17');
   ASSERT (SELECT status='rejected' AND decision_reason='Inspection failed; item not returned' FROM public.sale_return_requests WHERE id=rejected_request),'Rejection reason is retained';
-  SELECT coalesce(sum(quantity),0) INTO stock_after FROM public.commerce_stock_movements WHERE business_id=business_id AND branch_id=branch_a AND variant_id=variant_id;
+  SELECT coalesce(sum(quantity),0) INTO stock_after FROM public.commerce_stock_movements WHERE m.business_id=$tests$.business_id AND m.branch_id=$tests$.branch_a AND m.variant_id=$tests$.variant_id;
   ASSERT stock_after=stock_before+2,'Rejected request does not change stock';
 
   -- Direct sale-return posting without a matching approved request is blocked even for an owner.
