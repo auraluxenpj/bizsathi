@@ -140,7 +140,7 @@ The implementation now prepared in this branch includes:
 - Effective permission resolution as the union of assigned role grants, with explicit employee denials taking precedence.
 - Business authority rank derived from the maximum of the existing membership rank and assigned built-in role ranks.
 - Position changes separated from access-role changes, including invitation creation and acceptance.
-- Cashier, cash-counter, loyalty and Branch Manager authorization now use assigned access roles rather than HR job-title strings.
+- Cashier, cash-counter, loyalty, sale-return request and Branch Manager authorization now use assigned access roles rather than HR job-title strings.
 - Built-in authority roles (for example Accountant and Branch Manager) can raise an employee's authority; position templates and custom permission bundles cannot.
 - Branch access continues to require an explicit branch membership. The Branch Manager count-approval guard now checks assigned access roles rather than relying on the HR title.
 - An admin UI for custom roles, permission selection and multiple role assignments per employee.
@@ -148,7 +148,7 @@ The implementation now prepared in this branch includes:
 
 ### Staging validation
 
-Migrations 0074–0086 were applied to the separate staging Supabase project. A transactional SQL regression script passed there, covering:
+Migrations 0074–0087 were applied to the separate staging Supabase project. A transactional SQL regression script passed there, covering:
 - Default role backfill and custom role creation/editing.
 - Multiple role assignment and union of permissions.
 - Explicit denial precedence.
