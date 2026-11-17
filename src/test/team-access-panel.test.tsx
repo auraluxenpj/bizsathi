@@ -2,11 +2,12 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const { BUSINESS, BRANCH, MANAGER, createInvite, setBranchAccess } = vi.hoisted(() => ({
+const { BUSINESS, BRANCH, MANAGER, createInvite, setBranchAccess, updateMember } = vi.hoisted(() => ({
   BUSINESS: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
   BRANCH: 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',
   MANAGER: 'cccccccc-cccc-4ccc-8ccc-cccccccccccc',
   setBranchAccess: vi.fn(async (_: unknown) => ({ ok: true })),
+  updateMember: vi.fn(async (_: unknown) => ({ ok: true })),
   createInvite: vi.fn(async (_: unknown) => ({
   invitationId: 'dddddddd-dddd-4ddd-8ddd-dddddddddddd',
   token: 'a'.repeat(64),
@@ -25,6 +26,7 @@ vi.mock('@/lib/business.functions', () => ({
   saveRoleTemplate: vi.fn(),
   resetRoleTemplate: vi.fn(),
   setBranchAccess,
+  updateMember,
 }));
 vi.mock('@/lib/team-access.functions', () => ({
   listTeamInvitations: async () => ({ invitations: [], members: [] }),
@@ -176,6 +178,30 @@ describe('Team Access hierarchy panel', () => {
       userId: 'dddddddd-dddd-4ddd-8ddd-dddddddddddd',
       branchId: 'ffffffff-ffff-4fff-8fff-ffffffffffff',
       allowed: true,
+    } }));
+  });
+
+  it('lets an administrator change an employee position without exposing a role selector', async () => {
+    updateMember.mockClear();
+    render(<QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
+      <TeamAccessPanel
+        businessId={BUSINESS}
+        branches={[{ id: BRANCH, name: 'Nepalgunj', code: 'NP', is_active: true }]}
+        members={[{ user_id: 'dddddddd-dddd-4ddd-8ddd-dddddddddddd', role_code: 'staff', job_title: 'sales_person', status: 'active', profiles: { full_name: 'Test Employee' } }]}
+        branchAccess={[{ user_id: 'dddddddd-dddd-4ddd-8ddd-dddddddddddd', branch_id: BRANCH }]}
+        userId={MANAGER}
+        isAdmin={true}
+        isOwner={false}
+      />
+    </QueryClientProvider>);
+    const position = screen.getByRole('combobox', { name: 'Position for Test Employee' });
+    fireEvent.change(position, { target: { value: 'stock_manager' } });
+    await waitFor(() => expect(updateMember).toHaveBeenCalledWith({ data: {
+      businessId: BUSINESS,
+      userId: 'dddddddd-dddd-4ddd-8ddd-dddddddddddd',
+      role: 'staff',
+      status: 'active',
+      jobTitle: 'stock_manager',
     } }));
   });
 
