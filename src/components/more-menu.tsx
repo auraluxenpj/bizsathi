@@ -45,7 +45,7 @@ export function MoreMenu() {
   const admin = businesses.data?.some(b => b.role === 'owner' || b.role === 'admin');
   async function signOut() { await client.cancelQueries(); client.clear(); await supabase.auth.signOut(); await navigate({ to: '/auth', replace: true }); }
   return <main className="mx-auto max-w-3xl px-4 py-5 md:px-8 md:py-7">
-    <div className="flex items-center gap-4"><span className="flex size-14 items-center justify-center rounded-full bg-primary/10 text-primary"><Building2 className="size-7" /></span><div className="min-w-0"><h1 className="truncate text-xl font-bold">{business?.name ?? 'BizSathi'}</h1><p className="text-sm capitalize text-muted-foreground">{business?.role ?? ''}</p></div></div>
+    <div className="flex items-center gap-4"><span className="flex size-14 items-center justify-center rounded-full bg-primary/10 text-primary"><Building2 className="size-7" /></span><div className="min-w-0"><h1 className="truncate text-xl font-bold">{business?.name ?? 'Auraluxe'}</h1><p className="text-sm capitalize text-muted-foreground">{business?.role ?? ''}</p></div></div>
     <Group items={main} />
     <Group title="Utilities" items={[...utilities, ...(admin ? adminOnly : [])]} />
     {business && <FiscalYearClose businessId={business.id} businessName={business.name} role={business.role} />}
