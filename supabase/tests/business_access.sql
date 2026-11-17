@@ -25,7 +25,7 @@ BEGIN
  PERFORM set_config('request.jwt.claims',json_build_object('sub',outsider,'role','authenticated')::text,true);
  rejected:=false; BEGIN PERFORM public.remove_business_member(ba,staff); EXCEPTION WHEN insufficient_privilege THEN rejected:=true; END; ASSERT rejected,'NULL caller rank cannot remove another user';
  PERFORM set_config('request.jwt.claims',json_build_object('sub',a,'role','authenticated')::text,true);
- UPDATE public.business_memberships SET job_title='sales_person' WHERE business_id=ba AND user_id=staff;
+ PERFORM public.set_member_job_title(ba,staff,'manager');
  PERFORM set_config('request.jwt.claims',json_build_object('sub',staff,'role','authenticated')::text,true);
  ASSERT 'sales.create'=ANY(ARRAY(SELECT permission FROM public.get_my_business_permissions(ba))),'POS role can create sales';
  ASSERT 'inventory.view'=ANY(ARRAY(SELECT permission FROM public.get_my_business_permissions(ba))),'POS role can read products for checkout';
