@@ -55,6 +55,8 @@ BEGIN
   -- A manager cannot review their own request.
   RESET ROLE;
   PERFORM set_config('request.jwt.claims',json_build_object('sub',manager_id,'role','authenticated')::text,true);
+  ASSERT public.has_permission(business_id,'customers.create'),'Branch Manager can create CRM customers';
+  ASSERT public.has_permission(business_id,'customers.edit'),'Branch Manager can edit CRM customers';
   own_request:=public.request_sale_return(business_id,sale_a,jsonb_build_array(jsonb_build_object('variantId',variant_id,'quantity',1)),'Manager own request');
   SET LOCAL ROLE authenticated;
   failed:=false;
