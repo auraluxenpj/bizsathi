@@ -263,7 +263,7 @@ export function TeamAccessPanel({
           </label>
           <label className="mb-3 block text-sm">Base access role
             <select className="mt-1 h-10 w-full rounded-md border bg-background px-3" value={inviteRole} onChange={(e) => setInviteRole(e.target.value)}>
-              {allowedInviteRoles.map((role) => <option key={role} value={role}>{role.replaceAll('_',' ').replace(/\b\w/g,(v) => v.toUpperCase())}</option>)}
+              {allowedInviteRoles.map((role) => <option key={role} value={role}>{role === 'staff' ? 'Staff · POS only' : role.replaceAll('_',' ').replace(/\b\w/g,(v) => v.toUpperCase())}</option>)}
             </select>
           </label>
           {availableTitles.length > 0 && <label className="mb-3 block text-sm">HR position
@@ -271,7 +271,7 @@ export function TeamAccessPanel({
               {availableTitles.map((t) => <option key={t} value={t}>{titleLabel[t]}</option>)}
             </select>
           </label>}
-          <p className="mb-4 text-xs text-muted-foreground">Base access sets the employee’s initial authority. HR position is separate; additional operational roles can be assigned after the invitation is accepted.</p>
+          <p className="mb-4 text-xs text-muted-foreground">Staff is the restricted POS-only base role. Base access controls application permissions; HR position is only the job designation. Assign extra operational roles after the invitation is accepted when the employee needs more screens.</p>
           <label className="mb-3 block text-sm">Invitee email address
             <input className="mt-1 h-10 w-full rounded-md border bg-background px-3" type="email" autoComplete="email" maxLength={254} placeholder="staff@example.com" value={inviteeEmail} onChange={(e) => setInviteeEmail(e.target.value)} />
           </label>
