@@ -213,7 +213,7 @@ export function TeamAccessPanel({
               <option value="accountant">Accountant</option>
               <option value="staff">Staff · POS only</option>
               <option value="viewer">Viewer</option>
-              {m.role_code === 'branch_manager' && <option value="branch_manager">Branch Manager</option>}
+              {m.role_code === 'branch_manager' && <option value="branch_manager" disabled>Branch Manager</option>}
             </select> : ({staff:'Staff · POS only',viewer:'Viewer',accountant:'Accountant',branch_manager:'Branch Manager',admin:'Administrator',owner:'Owner'} as Record<string,string>)[m.role_code] ?? m.role_code}</td>
             <td className="py-3 pr-4">{isAdmin && !protectedMember ? <select aria-label={`Position for ${employeeName}`} className="h-9 max-w-48 rounded-md border bg-background px-2" value={m.job_title ?? ''} disabled={positionMutation.isPending} onChange={(e) => positionMutation.mutate({ userId: m.user_id, jobTitle: e.target.value as JobTitle, status: m.status })}>
               <option value="" disabled>Select position</option>
