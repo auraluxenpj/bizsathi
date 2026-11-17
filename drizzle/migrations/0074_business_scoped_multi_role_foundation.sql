@@ -674,7 +674,7 @@ BEGIN
     RAISE EXCEPTION 'Administrator access is required' USING ERRCODE='42501';
   END IF;
   SELECT COALESCE(jsonb_agg(jsonb_build_object(
-    'userId',a.user_id,'roleId',r.id,'roleCode',r.code,'roleName',r.name,
+    'userId',a.user_id,'roleId',r.id,'roleCode',r.code,'roleName',r.name,'authorityRank',r.authority_rank,
     'isDefault',a.is_default,'assignedAt',a.assigned_at
   ) ORDER BY a.user_id,r.name),'[]'::jsonb)
   INTO result
