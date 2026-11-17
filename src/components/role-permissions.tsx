@@ -18,12 +18,12 @@ export function RolePermissions({ businessId, isOwner }: { businessId: string; i
   const current = q.data?.templates?.[title];
   useEffect(() => { if (current) { setDenied(current.denied); setMessage(''); } }, [current, title]);
   const done = async (text: string) => { setMessage(text); await client.invalidateQueries({ queryKey: ['role-templates', businessId] }); await client.invalidateQueries({ queryKey: ['permissions', businessId] }); };
-  const saveMut = useMutation({ mutationFn: () => save({ data: { businessId, jobTitle: title, denied } }), onSuccess: () => done('Saved. Everyone with this position now has this access.'), onError: e => setMessage(e.message) });
+  const saveMut = useMutation({ mutationFn: () => save({ data: { businessId, jobTitle: title, denied } }), onSuccess: () => done('Saved. The default access-role template for this position has been updated.'), onError: e => setMessage(e.message) });
   const resetMut = useMutation({ mutationFn: () => reset({ data: { businessId, jobTitle: title } }), onSuccess: () => done('Back to the standard access for this position.'), onError: e => setMessage(e.message) });
   const toggle = (p: string) => isOwner && (title !== 'branch_manager' || jobTitles.branch_manager.allowed.includes(p)) && setDenied(d => d.includes(p) ? d.filter(x => x !== p) : [...d, p]);
   return <section className="border-b py-7">
-    <h3 className="brand text-xl">Position permissions</h3>
-    <p className="mt-1 text-sm text-muted-foreground">{isOwner ? 'Choose what each position can do. Branch Manager permissions have a fixed branch-only ceiling; you can restrict them further but cannot grant business-wide access.' : 'What each position can do. Only the owner can change this.'}</p>
+    <h3 className="brand text-xl">Position-based default permissions</h3>
+    <p className="mt-1 text-sm text-muted-foreground">{isOwner ? 'Configure the default permission bundle for each position. New employees receive this bundle initially; later designation changes do not silently change assigned access roles. Branch Manager permissions retain a fixed branch-only ceiling.' : 'What each position can do. Only the owner can change this.'}</p>
     <div className="my-4 flex flex-wrap gap-2" role="tablist" aria-label="Position">{jobTitleCodes.map(t => <button key={t} type="button" role="tab" aria-selected={title === t} onClick={() => setTitle(t)} className={`rounded-full border px-4 py-2 text-sm ${title === t ? 'border-primary bg-primary/10 text-primary' : 'bg-card'}`}>{jobTitles[t].label}</button>)}</div>
     {q.isPending && <p role="status" className="text-sm">Loading…</p>}
     {q.error && <p role="alert" className="text-sm text-destructive">Position permissions are not available yet. Run the latest database update first.</p>}
