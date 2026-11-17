@@ -11,6 +11,7 @@ DECLARE
   v_run uuid;
   v_count integer;
   v_net numeric(14,2);
+  v_balance numeric(8,2);
 BEGIN
   INSERT INTO auth.users(id,email,email_confirmed_at,raw_user_meta_data,created_at,updated_at)
   SELECT u,'hrm-test+'||u||'@example.invalid',now(),'{}'::jsonb,now(),now()
@@ -65,6 +66,10 @@ BEGIN
 
   SELECT count(*) INTO v_count FROM public.hr_salary_structures WHERE business_id=v_business_id;
   ASSERT v_count=0,'Employee cannot read salary structures';
+  SELECT count(*),sum(delta_days) INTO v_count,v_balance
+  FROM public.hr_leave_balance_entries
+  WHERE business_id=v_business_id AND user_id=employee_id AND leave_year=2026;
+  ASSERT v_count=1 AND v_balance=-2,'Approved leave is automatically posted to the employee leave ledger';
   SELECT count(*) INTO v_count FROM public.hr_attendance_policies WHERE business_id=v_business_id;
   ASSERT v_count=1,'Employee can read attendance rules';
   UPDATE public.hr_attendance_policies SET grace_minutes=99 WHERE business_id=v_business_id;
@@ -101,6 +106,7 @@ BEGIN
   UPDATE public.hr_attendance_policies SET grace_minutes=12,updated_by=owner_id WHERE business_id=v_business_id;
   GET DIAGNOSTICS v_count = ROW_COUNT;
   ASSERT v_count=1,'Business owner can update attendance policy';
+  PERFORM public.hr_adjust_leave_balance(v_business_id,employee_id,v_leave_type,2026,'opening_balance',3,'Imported opening balance');
   RESET ROLE;
 
   SET LOCAL ROLE authenticated;
@@ -109,6 +115,9 @@ BEGIN
   FROM public.hr_payroll_items WHERE business_id=v_business_id;
   ASSERT v_count=1,'Employee can read their own payslip after approval';
   ASSERT v_net=53000,'Payroll prorates two unpaid leave days and applies fixed deductions';
+  SELECT sum(delta_days) INTO v_balance FROM public.hr_leave_balance_entries
+    WHERE business_id=v_business_id AND user_id=employee_id AND leave_year=2026;
+  ASSERT v_balance=1,'Employee sees opening balance plus approved leave consumption';
   RESET ROLE;
 
   RAISE NOTICE 'HRM_SECURITY_TESTS_PASSED';
