@@ -7,6 +7,33 @@ import { pageHead } from '@/lib/head';
 type Language = 'en' | 'hi' | 'ne';
 type GuideSection = { title: string; intro: string; steps: string[]; tips: string[] };
 
+const featureOverview = {
+ en: { title: 'What is included in Sutra today', intro: 'Use this overview to understand the modules currently available in the application. Individual screens and actions depend on your role, permissions and branch assignment.', groups: [
+  { title: 'Business overview', items: ['Dashboard and daily business summaries', 'Business-wide navigation and page search'] },
+  { title: 'Products, stock and barcodes', items: ['Products, categories, supplier and customer contact records', 'Barcode Studio and barcode label printing for up to 2,000 labels per print job', 'Physical inventory count sheets with barcode scanning, manual quantities, draft saving and approval', 'Stock on hand, stock ledger, authorized stock adjustments and disposal'] },
+  { title: 'Sales, purchases and customer management', items: ['Barcode POS, sales invoices and receipts', 'Purchase invoices and purchase orders', 'Sale returns and purchase returns', 'Customer records, membership and loyalty points'] },
+  { title: 'Finance and reports', items: ['Customer and supplier ledgers, payment vouchers and transactions', 'Cash drawer / cash counters, financial accounts and operating expenses', 'Double-entry / general ledger, profit and loss, cost of sale, sales and purchase detail reports', 'Current stock, low-stock / reorder and stock-adjustment reports; CSV/PDF export where offered'] },
+  { title: 'People, administration and security', items: ['HR and People Management: employee records, attendance, leave, shifts and payroll', 'Employee invitations, positions, branch access, role creation and permission assignment', 'Business and app settings, security findings and review history'] },
+  { title: 'Additional tools', items: ['Quotations / estimates, all reports, stock ledger and credit reminders', 'Calculators, notebook, bill gallery and receipt scanning', 'My account, profile and secure sign-out'] },
+ ], unavailableTitle: 'Not available yet', unavailable: ['Brands catalogue page', 'Batch & Expiry tracking', 'Stocktake Sessions', 'Quarantine workflow (the disposal action is available; quarantine is not)'] },
+ hi: { title: 'Sutra में अभी कौन-कौन सी सुविधाएँ हैं', intro: 'यह सूची ऐप में उपलब्ध मॉड्यूल का सारांश है। किसी स्क्रीन या कार्रवाई का एक्सेस आपकी भूमिका, अनुमति और शाखा पर निर्भर करता है।', groups: [
+  { title: 'बिज़नेस डैशबोर्ड', items: ['Dashboard और दैनिक व्यवसाय सारांश', 'मुख्य नेविगेशन और पेज खोज'] },
+  { title: 'प्रोडक्ट, स्टॉक और बारकोड', items: ['Products, Categories, Suppliers और Customer Contacts', 'Barcode Studio — एक प्रिंट जॉब में अधिकतम 2,000 लेबल', 'बारकोड स्कैनिंग, मैनुअल मात्रा, ड्राफ्ट और अप्रूवल सहित Physical Inventory Count', 'Stock on Hand, Stock Ledger, अधिकृत Stock Adjustments और Disposal'] },
+  { title: 'सेल्स, खरीद और ग्राहक', items: ['Barcode POS, Sales Invoices और Receipts', 'Purchase Invoices और Purchase Orders', 'Sale Returns और Purchase Returns', 'Customers, Membership और Loyalty Points'] },
+  { title: 'फाइनेंस और रिपोर्ट', items: ['Customer/Supplier Ledgers, Payment Vouchers और Transactions', 'Cash Drawer/Counters, Financial Accounts और Operating Expenses', 'Double-entry / General Ledger, Profit & Loss, Cost of Sale तथा बिक्री/खरीद विवरण रिपोर्ट', 'Current Stock, Low Stock/Reorder और Stock Adjustment रिपोर्ट; उपलब्ध होने पर CSV/PDF Export'] },
+  { title: 'HR, एडमिन और सुरक्षा', items: ['HR & People Management: कर्मचारी रिकॉर्ड, Attendance, Leave, Shifts और Payroll', 'Employee invitations, positions, branch access, roles और permissions', 'Business/App Settings, Security Findings और Review History'] },
+  { title: 'अन्य टूल', items: ['Quotations, Reports, Stock Ledger और Credit Reminders', 'Calculators, Notebook, Bill Gallery और Receipt Scanning', 'My Account, Profile और सुरक्षित Sign out'] },
+ ], unavailableTitle: 'अभी उपलब्ध नहीं', unavailable: ['Brands catalogue page', 'Batch & Expiry tracking', 'Stocktake Sessions', 'Quarantine workflow (Disposal उपलब्ध है, Quarantine नहीं)'] },
+ ne: { title: 'Sutra मा अहिले उपलब्ध सुविधाहरू', intro: 'यो सूची एपमा हाल उपलब्ध मोड्युलहरूको सारांश हो। स्क्रिन र काम गर्ने अधिकार तपाईंको भूमिका, अनुमति र शाखा पहुँचमा निर्भर हुन्छ।', groups: [
+  { title: 'व्यवसाय ड्यासबोर्ड', items: ['Dashboard र दैनिक व्यवसाय सारांश', 'मुख्य नेभिगेसन र पृष्ठ खोज'] },
+  { title: 'उत्पादन, स्टक र बारकोड', items: ['Products, Categories, Suppliers र Customer Contacts', 'Barcode Studio — एक प्रिन्ट काममा अधिकतम २,००० लेबल', 'बारकोड स्क्यान, हातैले परिमाण, ड्राफ्ट र स्वीकृतिसहित Physical Inventory Count', 'Stock on Hand, Stock Ledger, अधिकृत Stock Adjustments र Disposal'] },
+  { title: 'बिक्री, खरिद र ग्राहक', items: ['Barcode POS, Sales Invoices र Receipts', 'Purchase Invoices र Purchase Orders', 'Sale Returns र Purchase Returns', 'Customers, Membership र Loyalty Points'] },
+  { title: 'वित्त र रिपोर्ट', items: ['Customer/Supplier Ledgers, Payment Vouchers र Transactions', 'Cash Drawer/Counters, Financial Accounts र Operating Expenses', 'Double-entry / General Ledger, Profit & Loss, Cost of Sale तथा बिक्री/खरिद विवरण रिपोर्ट', 'Current Stock, Low Stock/Reorder र Stock Adjustment रिपोर्ट; उपलब्ध भए CSV/PDF Export'] },
+  { title: 'HR, प्रशासन र सुरक्षा', items: ['HR & People Management: कर्मचारी विवरण, Attendance, Leave, Shifts र Payroll', 'Employee invitations, positions, branch access, roles र permissions', 'Business/App Settings, Security Findings र Review History'] },
+  { title: 'थप उपकरण', items: ['Quotations, Reports, Stock Ledger र Credit Reminders', 'Calculators, Notebook, Bill Gallery र Receipt Scanning', 'My Account, Profile र सुरक्षित Sign out'] },
+ ], unavailableTitle: 'अहिलेसम्म उपलब्ध छैन', unavailable: ['Brands catalogue page', 'Batch & Expiry tracking', 'Stocktake Sessions', 'Quarantine workflow (Disposal उपलब्ध छ, Quarantine उपलब्ध छैन)'] },
+} as const;
+
 const guide: Record<Language, { title: string; subtitle: string; contents: string; print: string; note: string; sections: GuideSection[] }> = {
  en: {
   title: 'Sutra by Auraluxe — User Guide',
@@ -94,6 +121,20 @@ function UserGuide() {
    </div>
   </div>
   <p className="text-sm text-muted-foreground print:hidden">{copy.note}</p>
+  <section className="rounded-2xl border bg-card p-5 sm:p-6">
+   <h2 className="text-xl font-bold">{featureOverview[language].title}</h2>
+   <p className="mt-2 text-sm leading-6 text-muted-foreground">{featureOverview[language].intro}</p>
+   <div className="mt-5 grid gap-4 md:grid-cols-2">
+    {featureOverview[language].groups.map(group => <div key={group.title} className="rounded-xl bg-muted/40 p-4">
+     <h3 className="text-sm font-semibold">{group.title}</h3>
+     <ul className="mt-2 list-disc space-y-1.5 pl-5 text-sm leading-6 text-muted-foreground">{group.items.map(item => <li key={item}>{item}</li>)}</ul>
+    </div>)}
+   </div>
+   <div className="mt-5 rounded-xl border border-dashed p-4">
+    <h3 className="text-sm font-semibold">{featureOverview[language].unavailableTitle}</h3>
+    <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-muted-foreground">{featureOverview[language].unavailable.map(item => <li key={item}>{item}</li>)}</ul>
+   </div>
+  </section>
   <header className="rounded-2xl border bg-card p-5 sm:p-8">
    <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary">Sutra by Auraluxe · User Manual</p>
    <h2 className="mt-3 text-2xl font-bold sm:text-3xl">{copy.title}</h2>
