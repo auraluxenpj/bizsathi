@@ -108,7 +108,7 @@ describe('Team Access hierarchy panel', () => {
 
     expect(await screen.findByText('Earlier invitations')).toBeInTheDocument();
     expect(screen.getByText(/Sales Person · Pending/)).toBeInTheDocument();
-    fireEvent.change(screen.getByLabelText('Change invited role for 9616595288'), { target: { value: 'stock_manager' } });
+    fireEvent.change(screen.getByLabelText('Change invited position for 9616595288'), { target: { value: 'stock_manager' } });
     expect(changeRole).toHaveBeenCalledWith('ffffffff-ffff-4fff-8fff-ffffffffffff', 'stock_manager');
     fireEvent.click(screen.getByRole('button', { name: 'New link' }));
     expect(reissue).toHaveBeenCalledWith('ffffffff-ffff-4fff-8fff-ffffffffffff', '9616595288');
