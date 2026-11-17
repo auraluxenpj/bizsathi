@@ -62,7 +62,12 @@ export const hrmLeaveRequestInput = tenantInput.extend({
   reason: z.string().trim().max(1000).optional(),
 });
 export const hrmLeaveReviewInput = z.object({
-  businessId: uuid, requestId: uuid, decision: z.enum(['approved','rejected']), reviewNote: z.string().trim().max(500).optional(),
+  businessId: uuid, requestId: uuid, decision: z.enum(['approved','rejected']),
+  reviewNote: z.string().trim().max(500).optional(), overrideReason: z.string().trim().min(1).max(500).optional(),
+}).superRefine((value, ctx) => {
+  if (value.overrideReason && value.decision !== 'approved') {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['overrideReason'], message: 'An override is only available when approving leave' });
+  }
 });
 export const hrmShiftInput = tenantInput.extend({
   name: z.string().trim().min(2).max(80), startTime: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/),
