@@ -3,7 +3,7 @@
 
 -- Branch Managers may use POS and review/create authorized sale returns in assigned branches.
 DELETE FROM public.job_title_denials
-WHERE job_title = 'branch_manager' AND permission = 'sales.create';
+WHERE job_title = 'branch_manager' AND permission IN ('sales.create','customers.create','customers.edit');
 
 -- Cashiers retain the minimum product/category/customer read access needed by POS and CRM.
 -- They do not receive stock management, expense entry, general reporting or notebook tools.
@@ -64,7 +64,8 @@ AS $function$
       OR _perm = ANY (ARRAY[
         'sales.create','sales.view','expenses.view','inventory.view','categories.view',
         'stock.create','stock.edit','customers.view','suppliers.view','staff.view',
-        'reports.view','reports.home_stats','reports.expenses','reports.items','reports.parties','reports.transactions'
+        'reports.view','reports.home_stats','reports.expenses','reports.items','reports.parties','reports.transactions',
+        'customers.create','customers.edit'
       ]::text[])
     )
     AND NOT EXISTS (
