@@ -2,7 +2,6 @@ import {createServerFn} from '@tanstack/react-start';
 import {requireSupabaseAuth} from '@/integrations/supabase/auth-middleware';
 import {z} from 'zod';
 import type {SupabaseClient} from '@supabase/supabase-js';
-import type {Database} from '@/integrations/supabase/types';
 // The migration is additive; generated Supabase table/RPC types are refreshed separately.
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const db=(client:unknown)=>client as SupabaseClient<any,'public',any>;
