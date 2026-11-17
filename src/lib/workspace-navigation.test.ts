@@ -8,6 +8,7 @@ describe('workspace navigation preserves existing workflows', () => {
   const stockManager = (p: string) => ['inventory.view','inventory.edit','stock.edit'].includes(p);
   const accountant = (p: string) => ['sales.create','purchases.view','accounts.view','reports.view'].includes(p);
   expect(isBillingStaff(cashier)).toBe(true);
+  expect(isBillingStaff(p => cashier(p) || p === 'expenses.view')).toBe(false);
   expect(isBillingStaff(stockManager)).toBe(false);
   expect(isBillingStaff(accountant)).toBe(false);
  });
