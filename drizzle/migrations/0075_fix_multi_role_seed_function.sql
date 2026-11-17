@@ -73,12 +73,8 @@ BEGIN
   -- they inherit the existing global job-title denial template.
   FOR v_item IN
     SELECT br.id, substring(br.code from 10) AS job_title,
-      COALESCE(t.denied_permissions,
-        ARRAY(SELECT d.permission FROM public.job_title_denials d WHERE d.job_title=substring(br.code from 10))
-      ) AS denied
+      ARRAY(SELECT d.permission FROM public.role_template_denials(_business_id, substring(br.code from 10)) AS d(permission)) AS denied
     FROM public.business_access_roles br
-    LEFT JOIN public.business_role_templates t
-      ON t.business_id=br.business_id AND t.job_title=substring(br.code from 10)
     WHERE br.business_id=_business_id AND br.code LIKE 'position_%'
   LOOP
     INSERT INTO public.business_access_role_permissions(business_id,role_id,permission)
