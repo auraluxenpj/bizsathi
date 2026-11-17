@@ -9,7 +9,7 @@ import { dashboardItem, workspaceGroups, workspaceItemActive, workspaceItemSearc
 export function WorkspaceSidebar({ pathname, search, compact = false, visible, onNavigate }: { pathname: string; search: Record<string, unknown>; compact?: boolean; visible: (to?: string, routeSearch?: Record<string, unknown>) => boolean; onNavigate?: () => void }) {
  const [filter, setFilter] = useState('');
  const [expanded, setExpanded] = useState<Record<string, boolean>>({});
- const groups = workspaceGroups.map(g => ({ ...g, items: g.items.filter(i => visible(i.to)).filter(i => !filter || `${g.name} ${i.name}`.toLowerCase().includes(filter.toLowerCase())) })).filter(g => g.items.length);
+ const groups = workspaceGroups.map(g => ({ ...g, items: g.items.filter(i => visible(i.to, i.search)).filter(i => !filter || `${g.name} ${i.name}`.toLowerCase().includes(filter.toLowerCase())) })).filter(g => g.items.length);
  const allOpen = groups.every(g => expanded[g.name]);
  const toggleAll = () => setExpanded(Object.fromEntries(groups.map(g => [g.name, !allOpen])));
  function itemRow(item: WorkspaceItem) {
