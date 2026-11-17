@@ -50,13 +50,13 @@ import { TeamAccessPanel } from '@/components/team-access-panel';
 describe('Team Access hierarchy panel', () => {
   beforeEach(() => createInvite.mockClear());
 
-  it('shows employee branch access without a separate role hierarchy', () => {
+  it('shows employee branch access with position and role scopes separated', () => {
     render(<QueryClientProvider client={new QueryClient()}>
       <TeamAccessPanel businessId={BUSINESS} branches={[{ id: BRANCH, name: 'Nepalgunj', code: 'NP', is_active: true }]} members={[]} branchAccess={[]} userId={MANAGER} isAdmin={false} isOwner={false} />
     </QueryClientProvider>);
     expect(screen.getByText('Employees & branch access')).toBeInTheDocument();
     expect(screen.queryByText('Role hierarchy')).not.toBeInTheDocument();
-    expect(screen.getByText(/position controls permissions in every assigned branch/i)).toBeInTheDocument();
+    expect(screen.getByText(/assigned access roles control what they can do; branch membership controls where they can do it/i)).toBeInTheDocument();
   });
 
   it('keeps invitation and position-permission sections collapsed until selected', () => {
@@ -123,7 +123,7 @@ describe('Team Access hierarchy panel', () => {
     </QueryClientProvider>);
 
     fireEvent.click(screen.getByText('Invite team member'));
-    const position = screen.getByRole('combobox', { name: 'Position' }) as HTMLSelectElement;
+    const position = screen.getByRole('combobox', { name: 'HR position' }) as HTMLSelectElement;
     expect([...position.options].map((o) => o.value)).toContain('branch_manager');
     fireEvent.change(position, { target: { value: 'branch_manager' } });
     expect(position).toHaveValue('branch_manager');
