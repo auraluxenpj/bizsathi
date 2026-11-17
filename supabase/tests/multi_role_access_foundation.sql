@@ -14,6 +14,8 @@ DECLARE
   owner_default text;
   staff_default text;
   assignments integer;
+  role_list jsonb;
+  assignment_list jsonb;
 BEGIN
   INSERT INTO auth.users(id,email,email_confirmed_at)
   VALUES
@@ -64,7 +66,18 @@ BEGIN
   custom_role_id := public.create_business_access_role(
     v_business_id,'Stock + Purchase','Custom combined duties',1::smallint,ARRAY['purchases.view','inventory.view']
   );
+  PERFORM public.update_business_access_role(v_business_id,custom_role_id,'Stock + Purchase Revised','Updated custom role',ARRAY['purchases.view','inventory.view']);
   PERFORM public.assign_business_access_role(v_business_id,staff_id,custom_role_id);
+  role_list := public.get_business_access_roles(v_business_id);
+  assignment_list := public.get_business_member_access_roles(v_business_id);
+  ASSERT role_list @> jsonb_build_array(jsonb_build_object('id',custom_role_id,'name','Stock + Purchase Revised')),
+    'Administrator can list custom role definitions';
+  ASSERT assignment_list @> jsonb_build_array(jsonb_build_object('userId',staff_id,'roleId',custom_role_id)),
+    'Administrator can list employee role assignments';
+  ASSERT NOT EXISTS (
+    SELECT 1 FROM public.member_role_denials(v_business_id) d
+    WHERE d.user_id=staff_id AND d.permission='purchases.view'
+  ),'Role denials reflect the union of assigned permission bundles';
   RESET ROLE;
 
   SELECT count(*) INTO assignments FROM public.business_member_access_roles
