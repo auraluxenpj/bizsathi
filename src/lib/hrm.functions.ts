@@ -51,7 +51,7 @@ export const getHrmWorkspace = createServerFn({ method: 'GET' })
       );
       if (schemaFailures.length) {
         const missing = schemaFailures.map(([name]) => name).join(', ');
-        throw new Error(`HRM database setup is incomplete (${missing}). Apply and verify BizSathi HRM migrations 0061–0064 before opening this workspace.`);
+        throw new Error(`HRM database setup is incomplete (${missing}). Apply and verify Sutra HRM migrations 0061–0064 before opening this workspace.`);
       }
       const names = failed.map(([name]) => name).join(', ');
       throw new Error(`HRM data access failed for: ${names}. Ask the business owner to verify the HRM database permissions and your delegated access.`);
