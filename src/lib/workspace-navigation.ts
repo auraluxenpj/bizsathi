@@ -1,4 +1,4 @@
-import { Award, Boxes, Receipt, RotateCcw, Warehouse, Landmark, BarChart3, Settings, LayoutDashboard, Package, FolderTree, Tag, Truck, Users, ScanBarcode, ShoppingCart, ClipboardList, Clock, SlidersHorizontal, ClipboardCheck, ShieldAlert, BookOpen, Wallet, Banknote, Building2, Calculator, TrendingUp, FileText, ListFilter, UserCog, ShieldCheck, type LucideIcon } from 'lucide-react';
+import { Award, Boxes, Receipt, RotateCcw, Warehouse, BarChart3, Settings, LayoutDashboard, Package, FolderTree, Tag, Truck, Users, ScanBarcode, ShoppingCart, ClipboardList, Clock, SlidersHorizontal, ClipboardCheck, ShieldAlert, Wallet, Banknote, Building2, Calculator, TrendingUp, FileText, ListFilter, UserCog, ShieldCheck, type LucideIcon } from 'lucide-react';
 import { validateReportSearch } from './report-filters';
 
 export type WorkspaceItem = { name: string; to?: string; icon: LucideIcon; search?: Record<string, string>; unavailable?: boolean; note?: string };
