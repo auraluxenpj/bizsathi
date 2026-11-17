@@ -32,8 +32,11 @@ BEGIN
     v_business_id,employee_id,'HRM-TEST-01','Sales Associate','2026-01-01','active',owner_id
   );
 
-  INSERT INTO public.hr_leave_types(business_id,name,annual_quota,is_paid)
-  VALUES (v_business_id,'Unpaid Leave',0,false) RETURNING id INTO v_leave_type;
+  INSERT INTO public.hr_leave_types(business_id,name,annual_quota,is_paid,accrual_method)
+  VALUES (v_business_id,'Unpaid Leave',0,false,'monthly') RETURNING id INTO v_leave_type;
+
+  INSERT INTO public.hr_attendance_policies(business_id,workday_minutes,unpaid_break_minutes,grace_minutes,overtime_after_minutes,overtime_multiplier,updated_by)
+  VALUES (v_business_id,480,60,10,0,1.5,owner_id);
 
   INSERT INTO public.hr_leave_requests(
     business_id,user_id,leave_type_id,start_date,end_date,days,request_status,reviewed_by,reviewed_at
@@ -62,6 +65,11 @@ BEGIN
 
   SELECT count(*) INTO v_count FROM public.hr_salary_structures WHERE business_id=v_business_id;
   ASSERT v_count=0,'Employee cannot read salary structures';
+  SELECT count(*) INTO v_count FROM public.hr_attendance_policies WHERE business_id=v_business_id;
+  ASSERT v_count=1,'Employee can read attendance rules';
+  UPDATE public.hr_attendance_policies SET grace_minutes=99 WHERE business_id=v_business_id;
+  GET DIAGNOSTICS v_count = ROW_COUNT;
+  ASSERT v_count=0,'Employee cannot change attendance policy';
   RESET ROLE;
 
   -- Accountant can access the payroll workflow and generate the monthly snapshot.
@@ -83,6 +91,16 @@ BEGIN
   SET LOCAL ROLE authenticated;
   PERFORM set_config('request.jwt.claims',json_build_object('sub',accountant_id,'role','authenticated')::text,true);
   PERFORM public.hr_approve_payroll(v_run);
+  UPDATE public.hr_attendance_policies SET grace_minutes=12,updated_by=accountant_id WHERE business_id=v_business_id;
+  GET DIAGNOSTICS v_count = ROW_COUNT;
+  ASSERT v_count=0,'Accountant cannot change attendance policy';
+  RESET ROLE;
+
+  SET LOCAL ROLE authenticated;
+  PERFORM set_config('request.jwt.claims',json_build_object('sub',owner_id,'role','authenticated')::text,true);
+  UPDATE public.hr_attendance_policies SET grace_minutes=12,updated_by=owner_id WHERE business_id=v_business_id;
+  GET DIAGNOSTICS v_count = ROW_COUNT;
+  ASSERT v_count=1,'Business owner can update attendance policy';
   RESET ROLE;
 
   SET LOCAL ROLE authenticated;
