@@ -1,26 +1,23 @@
--- 0090: resolve the signed-in member's effective permissions for fail-closed navigation
--- and make the Sales Person / Cashier position a POS-focused permission set.
+-- 0090: resolve the signed-in member's effective permissions for fail-closed navigation.
+-- The permission catalogue is non-sensitive metadata; authenticated users can read it.
+GRANT SELECT ON public.business_permission_catalog TO authenticated;
+DROP POLICY IF EXISTS business_permission_catalog_read ON public.business_permission_catalog;
+CREATE POLICY business_permission_catalog_read ON public.business_permission_catalog
+FOR SELECT TO authenticated USING (true);
+
 CREATE OR REPLACE FUNCTION public.get_my_business_permissions(_business uuid)
 RETURNS TABLE(permission text)
-LANGUAGE plpgsql
+LANGUAGE sql
 STABLE
-SECURITY DEFINER
+SECURITY INVOKER
 SET search_path = ''
 AS $function$
-BEGIN
-  IF auth.uid() IS NULL THEN
-    RAISE EXCEPTION 'Authentication required' USING ERRCODE = '42501';
-  END IF;
-  IF COALESCE(public.business_role_rank(_business, auth.uid()), 0) <= 0 THEN
-    RETURN;
-  END IF;
-
-  RETURN QUERY
   SELECT c.permission
   FROM public.business_permission_catalog c
-  WHERE public.has_permission(_business, c.permission)
+  WHERE auth.uid() IS NOT NULL
+    AND COALESCE(public.business_role_rank(_business, auth.uid()), 0) > 0
+    AND public.has_permission(_business, c.permission)
   ORDER BY c.permission;
-END;
 $function$;
 
 REVOKE ALL ON FUNCTION public.get_my_business_permissions(uuid) FROM PUBLIC, anon;
