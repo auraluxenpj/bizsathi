@@ -17,23 +17,22 @@ import { supabase } from '@/integrations/supabase/client';
 import { useCan } from './permission-checklist';
 import { routePermission } from '@/lib/permissions';
 import { KarobarHome } from './karobar-home';
+import { StatCard, type DashboardAction } from './dashboard-widgets';
+import { CashierDashboard, EntryDashboard, LimitedDashboard, StockDashboard } from './role-dashboards';
+import { dashboardKind } from '@/lib/dashboard-profile';
 
-function StatCard({ label, value, icon: Icon, tone, to, subtitle }: { label: string; value: string; icon: LucideIcon; tone: string; to?: string | undefined; subtitle: string }) {
- const content = <><div className="flex items-center justify-between gap-2"><span className={`flex size-9 items-center justify-center rounded-md ${tone}`}><Icon className="size-4" /></span><ArrowUpRight className="size-3.5 text-muted-foreground" /></div><p className="stat-label mt-4 text-xs font-semibold text-muted-foreground">{label}</p><p className="mt-1 break-words text-xl font-semibold tabular-nums">{value}</p><p className="mt-3 text-[11px] text-muted-foreground">{subtitle}</p></>;
- const cls = 'dashboard-stat-card group block min-w-0 rounded-2xl border bg-card p-5 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-md';
- return to ? <Link to={to} className={cls}>{content}</Link> : <article className={cls}>{content}</article>;
-}
-export function Dashboard() {
+function BusinessDashboard() {
  const list = useServerFn(listBusinesses); const getAccess = useServerFn(getBusinessAccess); const loadCommerce = useServerFn(getCommerce);
  const businesses = useQuery({ queryKey: ['businesses'], queryFn: () => list() });
  const [selected, setSelected] = useState(''); const [branch, setBranch] = useState(''); const [privacy, setPrivacy] = useState(false); const [person, setPerson] = useState(''); const [period, setPeriod] = useState('month');
  useEffect(() => { supabase.auth.getUser().then(({ data }) => { const u = data.user; setPerson((u?.user_metadata?.['full_name'] as string | undefined) || u?.email?.split('@')[0] || ''); }); }, []);
  const businessId = authorizedSelection(businesses.data ?? [], selected);
  const can = useCan(businessId);
+ const statsAllowed = can('reports.home_stats');
  const visible = (to: string) => { const p = routePermission[to]; return !p || can(p); };
  const access = useQuery({ queryKey: ['business-access', businessId], queryFn: () => getAccess({ data: { businessId } }), enabled: Boolean(businessId) });
  const branches = access.data?.branches.filter(b => b.is_active) ?? []; const branchId = branches.some(b => b.id === branch) ? branch : '';
- const commerce = useQuery({ queryKey: ['commerce', businessId], queryFn: () => loadCommerce({ data: { businessId } }), enabled: Boolean(businessId) });
+ const commerce = useQuery({ queryKey: ['commerce', businessId], queryFn: () => loadCommerce({ data: { businessId } }), enabled: Boolean(businessId) && statsAllowed });
  const business = businesses.data?.find(b => b.id === businessId);
  const today = todayAd(); const month = bsMonthInfo(today);
  const from = period === 'today' ? today : period === 'week' ? addDaysAd(today, -6) : period === '30' ? addDaysAd(today, -29) : month?.fromAd ?? today;
@@ -44,6 +43,7 @@ export function Dashboard() {
  const recent = d?.documents.filter(x => x.status === 'confirmed' && (!branchId || x.branch_id === branchId)).sort((a, b) => b.document_date.localeCompare(a.document_date)).slice(0, 6) ?? [];
  const money = (v: number | null | undefined) => privacy ? 'Rs. ••••' : formatNPR(v);
  const actions = [{ to: '/pos', label: 'Barcode POS', icon: Zap }, { to: '/sales', label: 'Sale invoice', icon: Receipt }, { to: '/purchases', label: 'Purchase invoice', icon: ShoppingCart }, { to: '/products', label: 'Products', icon: Package }, { to: '/expenses', label: 'Operating expenses', icon: Wallet }, { to: '/reports', label: 'Reports', icon: BarChart3 }];
+ if (!statsAllowed) return <LimitedDashboard businessName={business?.name ?? 'Auraluxe'} actions={actions.filter(a => visible(a.to)).map((a): DashboardAction => ({ ...a, ...(a.to === '/sales' || a.to === '/purchases' ? { search: { new: '1' } } : {}) }))} />;
  return <><div className="lg:hidden"><KarobarHome businessName={business?.name ?? 'Auraluxe'} periodName={periodName} period={period} onPeriodChange={setPeriod} privacy={privacy} onPrivacy={setPrivacy} money={money} visible={visible} receive={allTime?.receivables} give={allTime?.payables} sales={totals?.sales} purchases={totals?.purchases} expenses={expenses} cashBank={allTime ? new Decimal(allTime.cash).plus(allTime.bank).toNumber() : null} recent={recent} /></div>
  <main className="dashboard-shell mx-auto hidden max-w-[1600px] px-4 py-6 sm:px-6 lg:block lg:px-8 xl:px-10">
   <header className="dashboard-header flex flex-wrap items-center justify-between gap-4 rounded-2xl border bg-card px-5 py-5 shadow-sm sm:px-6"><div><div className="flex items-center gap-3"><span className="flex size-10 items-center justify-center rounded-lg bg-primary/10 text-primary"><BarChart3 className="size-5" /></span><h1 className="brand text-2xl font-bold tracking-tight sm:text-3xl">Business overview</h1></div><p className="mt-2 text-xs text-muted-foreground">{business?.name ?? 'Auraluxe'} · {formatBsAd(today)}{person ? ` · ${person}` : ''}</p></div><div className="flex items-center gap-3"><label className="flex items-center gap-2 text-xs text-muted-foreground"><Eye className="size-4" />Privacy<Switch checked={privacy} onCheckedChange={setPrivacy} aria-label="Privacy mode" /></label><Button variant="outline" size="icon" title="Refresh dashboard" aria-label="Refresh dashboard" disabled={commerce.isFetching} onClick={() => { void commerce.refetch(); }}><RefreshCw className={`size-4 ${commerce.isFetching ? 'animate-spin motion-reduce:animate-none' : ''}`} /></Button></div></header>
@@ -67,4 +67,16 @@ export function Dashboard() {
   </div>
   <div className="dashboard-secondary-grid mt-5"><section aria-label="Recent activities" className="dashboard-panel rounded-2xl border bg-card p-5 shadow-sm sm:p-6"><div className="flex items-center justify-between gap-3"><h2 className="text-base font-semibold">Recent activities</h2><Button asChild variant="ghost" size="sm"><Link to="/transactions">View all<ArrowUpRight className="size-3.5" /></Link></Button></div><div className="mt-3 divide-y">{recent.map(x => <div key={x.id} className="flex min-w-0 items-center gap-3 py-3"><span className="flex size-8 shrink-0 items-center justify-center rounded-md bg-muted text-muted-foreground"><Receipt className="size-4" /></span><span className="min-w-0 flex-1"><span className="block break-words text-sm font-medium">{x.reference}</span><span className="block text-[11px] capitalize text-muted-foreground">{x.kind.replaceAll('_', ' ')} · {formatBsAd(x.document_date)}</span></span><span className="shrink-0 text-sm font-medium tabular-nums">{money(x.total)}</span></div>)}{!recent.length && <p className="py-8 text-sm text-muted-foreground">{d ? 'No confirmed activity recorded.' : 'Activity unavailable until records load.'}</p>}</div></section></div>
  </main></>;
+}
+
+/** Each role gets its own dashboard; owners, administrators and finance roles keep the full business overview. */
+export function Dashboard() {
+ const list = useServerFn(listBusinesses);
+ const businesses = useQuery({ queryKey: ['businesses'], queryFn: () => list() });
+ const member = businesses.data?.[0];
+ const kind = dashboardKind(member?.role, member?.jobTitle);
+ if (member && kind === 'cashier') return <CashierDashboard businessId={member.id} businessName={member.name} />;
+ if (member && kind === 'stock') return <StockDashboard businessId={member.id} businessName={member.name} />;
+ if (member && kind === 'entry') return <EntryDashboard businessId={member.id} businessName={member.name} />;
+ return <BusinessDashboard />;
 }

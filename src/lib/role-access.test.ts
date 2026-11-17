@@ -37,11 +37,11 @@ describe('cashier and Branch Manager workspace access', () => {
     expect(routePermission['/membership']).toBe('customers.view');
   });
 
-  it('keeps cashier navigation in POS, sales, CRM, loyalty and HR self-service', () => {
-    for (const path of ['/pos', '/cash-counters', '/sales', '/parties', '/membership', '/hrm']) {
+  it('keeps cashier navigation in their dashboard, POS, sales, CRM, loyalty and HR self-service', () => {
+    for (const path of ['/dashboard', '/pos', '/cash-counters', '/sales', '/parties', '/membership', '/hrm']) {
       expect(shouldRedirectBillingStaff(path)).toBe(false);
     }
     expect(shouldRedirectBillingStaff('/purchases')).toBe(true);
-    expect(shouldRedirectBillingStaff('/dashboard')).toBe(true);
+    expect(shouldRedirectBillingStaff('/inventory')).toBe(true);
   });
 });
