@@ -189,9 +189,11 @@ BEGIN
     'periodId',_period_id,'date',_date,'kind','sale_return','status','confirmed','sourceId',req.source_sale_id,
     'partyId',source.party_id,'reference',ref,'lines',posting_lines,'payments','[]'::jsonb,
     'returnRequestId',req.id);
+  -- Mark approved inside this transaction before inserting the immutable return document.
+  -- The deferred FK and posting guard ensure only this approval RPC can post the reserved document.
+  UPDATE public.sale_return_requests SET status='approved',reviewed_by=actor,reviewed_at=now(),
+    return_document_id=req.reserved_document_id WHERE id=req.id;
   posted:=public.post_commerce_document(posting);
-  UPDATE public.sale_return_requests SET status='approved',reviewed_by=actor,reviewed_at=now(),return_document_id=posted
-  WHERE id=req.id;
   PERFORM public.write_audit(req.business_id,'sale_return.approve','sale_return_requests',req.id::text,
     jsonb_build_object('status','pending'),jsonb_build_object('status','approved','return_document_id',posted));
   RETURN posted;
@@ -199,6 +201,28 @@ END
 $$;
 REVOKE ALL ON FUNCTION public.review_sale_return_request(uuid,text,text,uuid,date) FROM PUBLIC,anon;
 GRANT EXECUTE ON FUNCTION public.review_sale_return_request(uuid,text,text,uuid,date) TO authenticated;
+
+-- Every posted sale return must consume a pending request approved by a different authorized manager.
+CREATE OR REPLACE FUNCTION public.guard_sale_return_request_posting()
+RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER SET search_path=public AS $
+BEGIN
+  IF NEW.kind='sale_return' AND NOT EXISTS (
+    SELECT 1 FROM public.sale_return_requests r
+    WHERE r.business_id=NEW.business_id AND r.branch_id=NEW.branch_id
+      AND r.source_sale_id=NEW.source_id AND r.reserved_document_id=NEW.id
+      AND r.status='approved' AND r.reviewed_by=auth.uid()
+      AND r.return_document_id=NEW.id
+  ) THEN
+    RAISE EXCEPTION 'A manager-approved sale return request is required before posting'
+      USING ERRCODE='42501';
+  END IF;
+  RETURN NEW;
+END
+$;
+REVOKE ALL ON FUNCTION public.guard_sale_return_request_posting() FROM PUBLIC,anon,authenticated;
+CREATE TRIGGER sale_return_request_posting_guard
+BEFORE INSERT ON public.commerce_documents
+FOR EACH ROW EXECUTE FUNCTION public.guard_sale_return_request_posting();
 
 -- Branch Managers can post refunds only for approved sale returns in branches they can access.
 DO $patch_refund$
