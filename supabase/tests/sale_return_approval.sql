@@ -8,7 +8,7 @@ DECLARE
   owner_id uuid:=gen_random_uuid(); manager_id uuid:=gen_random_uuid(); cashier_id uuid:=gen_random_uuid();
   business_id uuid; branch_a uuid; branch_b uuid; period_id uuid; variant_id uuid; customer_id uuid;
   sale_a uuid:=gen_random_uuid(); sale_b uuid:=gen_random_uuid(); request_id uuid; own_request uuid;
-  rejected_request uuid; return_id uuid; req jsonb; failed boolean; stock_before numeric; stock_after numeric;
+  rejected_request uuid; return_id uuid; cashier_session uuid:=gen_random_uuid(); req jsonb; failed boolean; stock_before numeric; stock_after numeric;
 BEGIN
   INSERT INTO auth.users(id,email,email_confirmed_at)
   VALUES(owner_id,'return-owner@example.invalid',now()),
@@ -45,6 +45,7 @@ BEGIN
   -- A cashier can submit a request, but it does not create a return document or restock inventory.
   SET LOCAL ROLE authenticated;
   PERFORM set_config('request.jwt.claims',json_build_object('sub',cashier_id,'role','authenticated')::text,true);
+  PERFORM public.post_cash_counter_event(jsonb_build_object('businessId',business_id,'id',gen_random_uuid(),'branchId',branch_a,'periodId',period_id,'sessionId',cashier_session,'kind','open','amount',500,'date','2026-11-17','reference','Cashier opening float'));
   request_id:=public.request_sale_return(business_id,sale_a,jsonb_build_array(jsonb_build_object('variantId',variant_id,'quantity',2)),'Customer changed their mind');
   ASSERT (SELECT status='pending' FROM public.sale_return_requests WHERE id=request_id),'Cashier request starts pending';
   ASSERT NOT EXISTS(SELECT 1 FROM public.commerce_documents WHERE kind='sale_return' AND source_id=sale_a),'Request does not post a return';
@@ -73,7 +74,7 @@ BEGIN
 
   -- Branch Manager may record the refund for the approved sale return, but not purchase refunds.
   PERFORM public.post_commerce_payment(jsonb_build_object('businessId',business_id,'id',gen_random_uuid(),
-    'documentId',return_id,'periodId',period_id,'date','2026-11-17','method','bank','amount',200,'reference','Approved return refund'));
+    'documentId',return_id,'periodId',period_id,'date','2026-11-17','method','cash','amount',200,'sessionId',cashier_session,'reference','Approved return refund'));
   ASSERT (SELECT coalesce(sum(amount),0)=200 FROM public.commerce_payments WHERE document_id=return_id),'Approved return refund is recorded once';
 
   -- A return in a branch not assigned to this manager is inaccessible.
