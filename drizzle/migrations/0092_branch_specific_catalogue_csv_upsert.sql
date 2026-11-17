@@ -37,7 +37,7 @@ BEGIN
      ) THEN
     RAISE EXCEPTION 'You do not have access to the selected active branch';
   END IF;
-  IF jsonb_typeof(_rows)<>'array' OR jsonb_array_length(_rows) NOT BETWEEN 1 AND 5000 THEN
+  IF _rows IS NULL OR jsonb_typeof(_rows) IS DISTINCT FROM 'array' OR jsonb_array_length(_rows) NOT BETWEEN 1 AND 5000 THEN
     RAISE EXCEPTION 'Expected 1 to 5000 rows';
   END IF;
 
@@ -46,8 +46,8 @@ BEGIN
 
   IF EXISTS (
     SELECT 1
-    FROM jsonb_array_elements(_rows) item
-    GROUP BY btrim(item->>'sku')
+    FROM jsonb_array_elements(_rows) AS items(value)
+    GROUP BY btrim(value->>'sku')
     HAVING count(*)>1
   ) THEN
     RAISE EXCEPTION 'The CSV contains duplicate SKUs. Each variant must have one unique SKU.';
