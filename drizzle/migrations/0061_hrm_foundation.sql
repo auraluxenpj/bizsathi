@@ -32,6 +32,21 @@ FROM (VALUES ('branch_manager'),('sales_person'),('stock_manager'),('entry_perso
 CROSS JOIN (VALUES ('hr.employees.view'),('hr.payroll.view'),('hr.payroll.manage'),('hr.payroll.approve')) AS p(permission)
 ON CONFLICT DO NOTHING;
 
+-- Widen the existing denial-key constraint after registering the new HR keys.
+DO $
+DECLARE cdef text; keys text;
+BEGIN
+  SELECT pg_get_constraintdef(oid) INTO cdef FROM pg_constraint
+   WHERE conname = 'member_permission_denials_permission_check'
+     AND conrelid = 'public.member_permission_denials'::regclass;
+  SELECT string_agg(DISTINCT quote_literal(k), ',') INTO keys FROM (
+    SELECT (regexp_matches(COALESCE(cdef, ''), '''([a-z_.]+)''', 'g'))[1] AS k
+    UNION SELECT permission FROM public.job_title_denials
+  ) s;
+  ALTER TABLE public.member_permission_denials DROP CONSTRAINT IF EXISTS member_permission_denials_permission_check;
+  EXECUTE 'ALTER TABLE public.member_permission_denials ADD CONSTRAINT member_permission_denials_permission_check CHECK (permission IN (' || keys || '))';
+END $;
+
 CREATE TABLE public.hr_employee_records (
   business_id uuid NOT NULL REFERENCES public.businesses(id) ON DELETE RESTRICT,
   user_id uuid NOT NULL,
