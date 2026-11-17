@@ -15,6 +15,7 @@ BEGIN
         (manager_id,'return-manager@example.invalid',now()),
         (cashier_id,'return-cashier@example.invalid',now());
   INSERT INTO public.businesses(name,created_by) VALUES('Return Approval Test',owner_id) RETURNING id INTO business_id;
+  INSERT INTO public.business_settings(business_id) VALUES(business_id);
   INSERT INTO public.branches(business_id,code,name) VALUES(business_id,'A','Assigned') RETURNING id INTO branch_a;
   INSERT INTO public.branches(business_id,code,name) VALUES(business_id,'B','Unassigned') RETURNING id INTO branch_b;
   INSERT INTO public.business_memberships(business_id,user_id,role_code)
