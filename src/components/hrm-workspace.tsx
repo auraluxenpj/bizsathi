@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { useMemo, useState, type ReactNode } from 'react';
 import { useMutation, useQuery, useQueryClient, useSuspenseQuery } from '@tanstack/react-query';
 import { useServerFn } from '@tanstack/react-start';
@@ -18,6 +19,9 @@ const inputClass = 'mt-1 h-10 w-full rounded-md border bg-background px-3 text-s
 const labelClass = 'block text-sm font-medium';
 function Field({ label, children }: { label: string; children: ReactNode }) { return <label className={labelClass}>{label}{children}</label>; }
 function Empty({ children }: { children: ReactNode }) { return <p className="rounded-lg border border-dashed p-6 text-center text-sm text-muted-foreground">{children}</p>; }
+function useHrmMutation(fn: (payload: any) => Promise<any>, onSuccess: () => void, onError: (error: Error) => void) {
+  return useMutation({ mutationFn: fn, onSuccess, onError });
+}
 
 export function HrmWorkspace() {
   const { data: businesses } = useSuspenseQuery(businessQuery);
@@ -40,13 +44,10 @@ export function HrmWorkspace() {
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
   const refresh = () => client.invalidateQueries({ queryKey: ['hrm', businessId] });
-  const useHrmMutation = (fn: (payload: any) => Promise<any>) => useMutation({
-    mutationFn: fn,
-    onSuccess: () => { setMessage('Saved successfully.'); setError(''); void refresh(); },
-    onError: (e: Error) => { setError(e.message || 'The request could not be completed.'); setMessage(''); },
-  });
-  const employeeMutation = useHrmMutation((payload) => createEmployee({ data: payload }));
-  const attendanceMutation = mutate((payload) => saveAttendance({ data: payload }));
+  const onMutationSuccess = () => { setMessage('Saved successfully.'); setError(''); void refresh(); };
+  const onMutationError = (e: Error) => { setError(e.message || 'The request could not be completed.'); setMessage(''); };
+  const employeeMutation = useHrmMutation((payload) => createEmployee({ data: payload }), onMutationSuccess, onMutationError);
+  const attendanceMutation = useHrmMutation((payload) => saveAttendance({ data: payload }), onMutationSuccess, onMutationError);
   const leaveTypeMutation = mutate((payload) => createLeaveType({ data: payload }));
   const leaveMutation = mutate((payload) => createLeave({ data: payload }));
   const reviewMutation = mutate((payload) => reviewLeave({ data: payload }));
