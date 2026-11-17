@@ -33,22 +33,28 @@ export const getHrmWorkspace = createServerFn({ method: 'GET' })
     ]);
     const errors = [branches, members, employees, attendance, leaveTypes, leaveRequests, shifts, assignments, salaries, payrollRuns, payrollItems].filter(x => x.error);
     if (membership.error || !membership.data || admin.error || payroll.error || errors.length) throw new Error('HR workspace could not be loaded. Check that the HRM migration has been applied and your business access is active.');
+    let employeeRows = employees.data ?? [];
+    if (payroll.data && !admin.data) {
+      const { data: limitedEmployees, error: employeeListError } = await client.rpc('hr_list_payroll_employees', { _business_id: data.businessId });
+      if (employeeListError) throw new Error('Payroll employee list could not be loaded.');
+      employeeRows = limitedEmployees ?? [];
+    }
     const peopleIds = [...new Set([
       ...(members.data ?? []).map((x: any) => x.user_id),
-      ...(employees.data ?? []).map((x: any) => x.user_id),
+      ...employeeRows.map((x: any) => x.user_id),
       ...(attendance.data ?? []).map((x: any) => x.user_id),
       ...(leaveRequests.data ?? []).map((x: any) => x.user_id),
       ...(assignments.data ?? []).map((x: any) => x.user_id),
     ])];
     const { data: profiles, error: profileError } = peopleIds.length
-      ? await client.from('profiles').select('id,full_name,phone').in('id', peopleIds)
+      ? await client.from('profiles').select('id,full_name').in('id', peopleIds)
       : { data: [], error: null };
     if (profileError) throw new Error('Employee names could not be loaded.');
-    const names = Object.fromEntries((profiles ?? []).map((p: any) => [p.id, { fullName: p.full_name ?? 'Employee', phone: p.phone ?? null }]));
+    const names = Object.fromEntries((profiles ?? []).map((p: any) => [p.id, { fullName: p.full_name ?? 'Employee' }]));
     const enrich = (rows: any[]) => (rows ?? []).map(row => ({ ...row, employee: names[row.user_id] ?? { fullName: 'Employee', phone: null } }));
     return {
       userId: context.userId, isAdmin: Boolean(admin.data), canPayroll: Boolean(payroll.data),
-      branches: branches.data ?? [], members: enrich(members.data ?? []), employees: enrich(employees.data ?? []),
+      branches: branches.data ?? [], members: enrich(members.data ?? []), employees: enrich(employeeRows),
       attendance: enrich(attendance.data ?? []), leaveTypes: leaveTypes.data ?? [],
       leaveRequests: enrich(leaveRequests.data ?? []), shifts: shifts.data ?? [],
       assignments: enrich(assignments.data ?? []), salaries: salaries.data ?? [],
