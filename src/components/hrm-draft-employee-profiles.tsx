@@ -1,0 +1,49 @@
+import { useState } from 'react';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useServerFn } from '@tanstack/react-start';
+import { Button } from '@/components/ui/button';
+import { createHrmDraftEmployee, getHrmDraftEmployees } from '@/lib/hrm-draft-employees.functions';
+
+const field = 'mt-1 h-10 w-full rounded-md border bg-background px-3 text-sm';
+export function HrmDraftEmployeeProfiles({ businessId, branches, isAdmin }: { businessId: string; branches: any[]; isAdmin: boolean }) {
+  const client = useQueryClient();
+  const load = useServerFn(getHrmDraftEmployees);
+  const save = useServerFn(createHrmDraftEmployee);
+  const [error, setError] = useState('');
+  const [message, setMessage] = useState('');
+  const query = useQuery({ queryKey: ['hrm-draft-employees', businessId], queryFn: () => load({ data: { businessId } }), enabled: Boolean(businessId && isAdmin) });
+  const mutation = useMutation({
+    mutationFn: (payload: any) => save({ data: payload }),
+    onSuccess: () => { setError(''); setMessage('Draft employee profile saved. No login or staff account was created.'); void client.invalidateQueries({ queryKey: ['hrm-draft-employees', businessId] }); },
+    onError: (e: Error) => { setMessage(''); setError(e.message); },
+  });
+  if (!isAdmin) return null;
+  return <section className="rounded-xl border p-4 md:p-5 space-y-4">
+    <div><h2 className="font-semibold">Pre-onboarding employee profiles</h2><p className="mt-1 text-sm text-muted-foreground">For staff who do not have a BizSathi login yet. These draft profiles stay outside attendance, leave and payroll until linked to a real member account.</p></div>
+    {message && <p role="status" className="text-sm text-green-700">{message}</p>}
+    {error && <p role="alert" className="text-sm text-destructive">{error}</p>}
+    <form className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3" onSubmit={event => {
+      event.preventDefault();
+      const fd = new FormData(event.currentTarget);
+      mutation.mutate({
+        businessId, fullName: String(fd.get('fullName')), employeeNumber: String(fd.get('employeeNumber')),
+        branchId: String(fd.get('branchId') || '') || null, designation: String(fd.get('designation') || ''),
+        department: String(fd.get('department') || ''), joiningDate: String(fd.get('joiningDate') || '') || null,
+        email: String(fd.get('email') || ''), phone: String(fd.get('phone') || ''),
+      });
+    }}>
+      <label className="text-sm font-medium">Full name<input required name="fullName" defaultValue="Rajan Gupta" className={field}/></label>
+      <label className="text-sm font-medium">Employee number<input required name="employeeNumber" defaultValue="AL-NPJ-001" className={field}/></label>
+      <label className="text-sm font-medium">Branch<select name="branchId" defaultValue={branches.find(b => b.code === 'NPJG')?.id ?? ''} className={field}><option value="">Unassigned</option>{branches.map(b=><option key={b.id} value={b.id}>{b.name}</option>)}</select></label>
+      <label className="text-sm font-medium">Designation<input name="designation" defaultValue="Store Manager" className={field}/></label>
+      <label className="text-sm font-medium">Department<input name="department" defaultValue="Store Operations" className={field}/></label>
+      <label className="text-sm font-medium">Joining date (optional)<input type="date" name="joiningDate" className={field}/></label>
+      <label className="text-sm font-medium">Email (optional)<input type="email" name="email" placeholder="Not provided" className={field}/></label>
+      <label className="text-sm font-medium">Mobile (optional)<input name="phone" placeholder="Not provided" className={field}/></label>
+      <div className="flex items-end"><Button type="submit" disabled={mutation.isPending}>{mutation.isPending ? 'Saving…' : 'Save draft profile'}</Button></div>
+    </form>
+    <div className="border-t pt-4"><h3 className="text-sm font-semibold">Draft employee list</h3>
+      {query.isPending ? <p className="py-4 text-sm text-muted-foreground">Loading draft profiles…</p> : query.error ? <p role="alert" className="py-3 text-sm text-destructive">{(query.error as Error).message}</p> : query.data?.length ? <div className="mt-2 overflow-x-auto"><table className="w-full min-w-[650px] text-left text-sm"><thead className="bg-muted/50 text-xs text-muted-foreground"><tr>{['Name','Employee ID','Designation','Department','Branch','Status'].map(x=><th key={x} className="px-3 py-2 font-medium">{x}</th>)}</tr></thead><tbody className="divide-y">{query.data.map((row:any)=><tr key={row.id}><td className="px-3 py-3 font-medium">{row.full_name}</td><td className="px-3 py-3 font-mono text-xs">{row.employee_number}</td><td className="px-3 py-3">{row.designation || '—'}</td><td className="px-3 py-3">{row.department || '—'}</td><td className="px-3 py-3">{branches.find(b=>b.id===row.branch_id)?.name || '—'}</td><td className="px-3 py-3 capitalize">{row.profile_status.replace('_',' ')}</td></tr>)}</tbody></table></div> : <p className="py-3 text-sm text-muted-foreground">No draft employee profiles yet.</p>}
+    </div>
+  </section>;
+}
