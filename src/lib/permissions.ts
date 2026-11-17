@@ -39,7 +39,10 @@ export function permissionForRoute(pathname:string,search:Record<string,unknown>
  if(pathname==='/contacts') return search.kind==='supplier'?'suppliers.view':'customers.view';
  if(pathname==='/parties' && search.kind==='supplier') return 'suppliers.view';
  if(pathname==='/accounting' && search.view && search.view!=='accounts') return 'reports.view';
- return routePermission[pathname];
+ const exact = routePermission[pathname];
+ if (exact) return exact;
+ const nested = Object.keys(routePermission).sort((a,b)=>b.length-a.length).find(route=>pathname.startsWith(`${route}/`));
+ return nested ? routePermission[nested] : undefined;
 }
 
 /** Fail-closed membership test used by navigation and direct-route guards. */
