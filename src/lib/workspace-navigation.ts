@@ -5,8 +5,8 @@ export type WorkspaceItem = { name: string; to?: string; icon: LucideIcon; searc
 export type WorkspaceGroup = { name: string; icon: LucideIcon; items: WorkspaceItem[] };
 const report = (name: string, view: string, icon: LucideIcon, focus?: string): WorkspaceItem => ({ name, to: '/accounting', icon, search: { view, ...(focus ? { focus } : {}) } });
 export function isBillingStaff(can: (permission: string) => boolean) { return can('sales.create') && !can('purchases.create') && !can('purchases.view') && !can('stock.edit') && !can('accounts.view') && !can('reports.view') && !can('staff.view') && !can('settings.edit') && !can('hr.employees.view'); }
-/** Billing staff can move between their cashier dashboard, the sale terminal and their own cash drawer only. */
-export function shouldRedirectBillingStaff(pathname: string) { return !['/dashboard','/pos','/cash-counters','/sales','/parties','/membership','/hrm'].includes(pathname); }
+/** POS-only employees are confined to the terminal; profile and sign-out remain in the account menu. */
+export function shouldRedirectBillingStaff(pathname: string) { return pathname !== '/pos'; }
 export const dashboardItem: WorkspaceItem = { name: 'Dashboard', to: '/dashboard', icon: LayoutDashboard };
 export const workspaceGroups: WorkspaceGroup[] = [
  { name: 'Stock & Inventory', icon: Warehouse, items: [
