@@ -68,7 +68,7 @@ BEGIN
   ASSERT (SELECT kind='sale_return' AND status='confirmed' AND source_id=sale_a AND total=200 FROM public.commerce_documents WHERE id=return_id),'Approved request posts a confirmed source-linked return at original prices';
   ASSERT (SELECT count(*)=1 FROM public.commerce_documents WHERE id=return_id),'Approval creates exactly one return document';
   ASSERT public.review_sale_return_request(request_id,'approve',NULL,period_id,'2026-11-17')=return_id,'Approval retry returns the same document';
-  SELECT coalesce(sum(quantity),0) INTO stock_after FROM public.commerce_stock_movements WHERE m.business_id=tests.business_id AND m.branch_id=tests.branch_a AND m.variant_id=tests.variant_id;
+  SELECT coalesce(sum(quantity),0) INTO stock_after FROM public.commerce_stock_movements m WHERE m.business_id=tests.business_id AND m.branch_id=tests.branch_a AND m.variant_id=tests.variant_id;
   ASSERT stock_after=stock_before+2,'Approval restocks exactly the approved quantity';
 
   -- Branch Manager may record the refund for the approved sale return, but not purchase refunds.
@@ -89,7 +89,7 @@ BEGIN
   PERFORM set_config('request.jwt.claims',json_build_object('sub',manager_id,'role','authenticated')::text,true);
   PERFORM public.review_sale_return_request(rejected_request,'reject','Inspection failed; item not returned',NULL,'2026-11-17');
   ASSERT (SELECT status='rejected' AND decision_reason='Inspection failed; item not returned' FROM public.sale_return_requests WHERE id=rejected_request),'Rejection reason is retained';
-  SELECT coalesce(sum(quantity),0) INTO stock_after FROM public.commerce_stock_movements WHERE m.business_id=tests.business_id AND m.branch_id=tests.branch_a AND m.variant_id=tests.variant_id;
+  SELECT coalesce(sum(quantity),0) INTO stock_after FROM public.commerce_stock_movements m WHERE m.business_id=tests.business_id AND m.branch_id=tests.branch_a AND m.variant_id=tests.variant_id;
   ASSERT stock_after=stock_before+2,'Rejected request does not change stock';
 
   -- Direct sale-return posting without a matching approved request is blocked even for an owner.
