@@ -31,14 +31,15 @@ export const getBusinessAccess = createServerFn({ method: 'GET' }).middleware([r
   const { data: manager } = await context.supabase.rpc('has_business_role', { _business_id: data.businessId, _min_role: 'admin' });
   const { data: branches, error: branchError } = await context.supabase.from('branches').select('id,name,code,is_active,address').eq('business_id', data.businessId).order('name');
   if (branchError) throw new Error('Branches could not be loaded.');
-  if (!manager) return { manager: false, userId: context.userId, branches: branches ?? [], members: [], invitations: [], grants: [] };
-  const [members, invitations, grants] = await Promise.all([
+  if (!manager) return { manager: false, userId: context.userId, branches: branches ?? [], members: [], invitations: [], grants: [], memberRoles: [] };
+  const [members, invitations, grants, memberRoles] = await Promise.all([
     context.supabase.from('business_memberships').select('user_id,role_code,job_title,status,profiles!business_memberships_user_id_fkey(full_name,phone)').eq('business_id', data.businessId),
     context.supabase.from('business_invitations').select('id,email,mobile,invitee_name,job_title,role_code,expires_at,accepted_at,revoked_at,created_at').eq('business_id', data.businessId).order('created_at', { ascending: false }),
     context.supabase.from('branch_memberships').select('user_id,branch_id').eq('business_id', data.businessId),
+    anyDb(context.supabase).rpc('get_business_member_access_roles', { _business: data.businessId }),
   ]);
-  if (members.error || invitations.error || grants.error) throw new Error('Staff access could not be loaded.');
-  return { manager: true, userId: context.userId, branches: branches ?? [], members: members.data ?? [], invitations: invitations.data ?? [], grants: grants.data ?? [] };
+  if (members.error || invitations.error || grants.error || memberRoles.error) throw new Error('Staff access could not be loaded.');
+  return { manager: true, userId: context.userId, branches: branches ?? [], members: members.data ?? [], invitations: invitations.data ?? [], grants: grants.data ?? [], memberRoles: memberRoles.data ?? [] };
 });
 
 export const createInvitation = createServerFn({ method: 'POST' }).middleware([requireSupabaseAuth]).inputValidator(inviteInput).handler(async ({ data, context }) => {
