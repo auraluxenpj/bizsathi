@@ -119,6 +119,48 @@ END;
 $sync_default_access_role$;
 REVOKE ALL ON FUNCTION public.sync_default_business_access_role() FROM PUBLIC,anon,authenticated;
 
+-- Normalize existing default assignments to the invitation's base access role.
+-- Preserve every additional (non-default) access role assigned by an administrator.
+DO $align_existing_base_roles$
+DECLARE
+  a record;
+  target_role uuid;
+BEGIN
+  FOR a IN
+    SELECT assignment.business_id, assignment.user_id, assignment.role_id,
+           assignment.assigned_by, membership.role_code
+    FROM public.business_member_access_roles assignment
+    JOIN public.business_access_roles current_role
+      ON current_role.business_id=assignment.business_id
+     AND current_role.id=assignment.role_id
+    JOIN public.business_memberships membership
+      ON membership.business_id=assignment.business_id
+     AND membership.user_id=assignment.user_id
+     AND membership.status='active'
+    WHERE assignment.is_default AND current_role.code LIKE 'position_%'
+  LOOP
+    SELECT id INTO target_role
+    FROM public.business_access_roles
+    WHERE business_id=a.business_id
+      AND code='legacy_'||a.role_code
+      AND is_active;
+
+    IF target_role IS NULL THEN
+      RAISE EXCEPTION 'Missing base access role legacy_% for business %',a.role_code,a.business_id;
+    END IF;
+
+    DELETE FROM public.business_member_access_roles
+    WHERE business_id=a.business_id AND user_id=a.user_id AND role_id=a.role_id;
+
+    INSERT INTO public.business_member_access_roles
+      (business_id,user_id,role_id,assigned_by,is_default)
+    VALUES (a.business_id,a.user_id,target_role,a.assigned_by,true)
+    ON CONFLICT (business_id,user_id,role_id)
+    DO UPDATE SET is_default=true,assigned_at=now();
+  END LOOP;
+END;
+$align_existing_base_roles$;
+
 -- Ensure invitation status reads inherit the underlying team_invitations RLS policy.
 CREATE OR REPLACE VIEW public.team_invitations_status
 WITH (security_invoker = true)
