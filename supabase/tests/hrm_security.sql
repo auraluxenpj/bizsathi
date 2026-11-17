@@ -214,7 +214,51 @@ BEGIN
   ASSERT v_balance=-6,'Overridden leave is still posted to the append-only balance ledger';
   RESET ROLE;
 
-  -- Ordinary HR manager approval remains valid for a request within balance.
+  -- A delegated branch manager cannot use an override reason to approve an in-balance request.
+  INSERT INTO public.hr_leave_requests(
+    business_id,user_id,leave_type_id,start_date,end_date,days,request_status
+  ) VALUES (
+    v_business_id,employee_id,v_leave_type,current_date+8,current_date+8,1,'pending'
+  ) RETURNING id INTO v_request_id;
+
+  SET LOCAL ROLE authenticated;
+  PERFORM set_config('request.jwt.claims',json_build_object('sub',manager_id,'role','authenticated')::text,true);
+  PERFORM public.hr_adjust_leave_balance(
+    v_business_id,employee_id,v_leave_type,extract(year FROM current_date)::integer,
+    'opening_balance',1000,'Test balance for in-balance approval guard'
+  );
+  BEGIN
+    PERFORM public.hr_review_leave_request(
+      v_business_id,v_request_id,'approved',NULL,'This is not a balance override'
+    );
+    RAISE EXCEPTION 'Delegated manager unexpectedly approved an in-balance request';
+  EXCEPTION WHEN insufficient_privilege THEN
+    NULL;
+  END;
+  -- Inspect persisted state as the test database owner; the delegate's RLS
+  -- visibility is intentionally narrower than the leave-review RPC authority.
+  RESET ROLE;
+  SELECT count(*) INTO v_count FROM public.hr_leave_requests
+   WHERE business_id=v_business_id AND id=v_request_id AND request_status='pending';
+  ASSERT v_count=1,'In-balance request remains pending after a delegated approval attempt';
+  SELECT count(*) INTO v_count FROM public.hr_leave_balance_overrides
+   WHERE business_id=v_business_id AND request_id=v_request_id;
+  ASSERT v_count=0,'No override audit is created for an in-balance request';
+  RESET ROLE;
+
+  -- An ordinary HR manager can still approve that same in-balance request.
+  SET LOCAL ROLE authenticated;
+  PERFORM set_config('request.jwt.claims',json_build_object('sub',owner_id,'role','authenticated')::text,true);
+  PERFORM public.hr_review_leave_request(v_business_id,v_request_id,'approved',NULL,NULL);
+  RESET ROLE;
+  SELECT count(*) INTO v_count FROM public.hr_leave_requests
+   WHERE business_id=v_business_id AND id=v_request_id AND request_status='approved';
+  ASSERT v_count=1,'Ordinary HR manager approval remains valid after a delegate denial';
+  SELECT count(*) INTO v_count FROM public.hr_leave_balance_overrides
+   WHERE business_id=v_business_id AND request_id=v_request_id;
+  ASSERT v_count=0,'Ordinary in-balance HR approval creates no override audit';
+  RESET ROLE;
+
   RAISE NOTICE 'HRM_SECURITY_TESTS_PASSED';
 END;
 $tests$;
