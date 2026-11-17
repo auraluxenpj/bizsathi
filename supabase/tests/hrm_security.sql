@@ -235,6 +235,9 @@ BEGIN
   EXCEPTION WHEN insufficient_privilege THEN
     NULL;
   END;
+  -- Inspect persisted state as the test database owner; the delegate's RLS
+  -- visibility is intentionally narrower than the leave-review RPC authority.
+  RESET ROLE;
   SELECT count(*) INTO v_count FROM public.hr_leave_requests
    WHERE business_id=v_business_id AND id=v_request_id AND request_status='pending';
   ASSERT v_count=1,'In-balance request remains pending after a delegated approval attempt';
@@ -247,6 +250,7 @@ BEGIN
   SET LOCAL ROLE authenticated;
   PERFORM set_config('request.jwt.claims',json_build_object('sub',owner_id,'role','authenticated')::text,true);
   PERFORM public.hr_review_leave_request(v_business_id,v_request_id,'approved',NULL,NULL);
+  RESET ROLE;
   SELECT count(*) INTO v_count FROM public.hr_leave_requests
    WHERE business_id=v_business_id AND id=v_request_id AND request_status='approved';
   ASSERT v_count=1,'Ordinary HR manager approval remains valid after a delegate denial';
