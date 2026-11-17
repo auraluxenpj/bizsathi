@@ -21,16 +21,6 @@ type Member = {
   status: string;
   profiles?: { full_name: string | null } | null;
 };
-type AccessRole = {
-  id: string;
-  code: string;
-  name: string;
-  description: string | null;
-  authorityRank: number;
-  isSystem: boolean;
-  isActive: boolean;
-  permissions: string[];
-};
 type Assignment = {
   userId: string;
   roleId: string;
@@ -71,7 +61,6 @@ export function BusinessAccessRolesPanel({ businessId, members }: { businessId: 
   const [message, setMessage] = useState('');
 
   const editingRole = roles.find((r) => r.id === editingRoleId);
-  const selectedMember = members.find((m) => m.user_id === selectedUserId);
   const availableRoles = useMemo(() => roles.filter((r) =>
     r.isActive && !r.code.startsWith('legacy_') && !assignments.some((a) => a.userId === selectedUserId && a.roleId === r.id)
   ), [roles, assignments, selectedUserId]);
@@ -82,7 +71,7 @@ export function BusinessAccessRolesPanel({ businessId, members }: { businessId: 
       setDescription(editingRole.description ?? '');
       setPermissions(editingRole.permissions);
     }
-  }, [editingRoleId, editingRole?.id]);
+  }, [editingRole]);
 
   useEffect(() => {
     if (!selectedUserId && members.length) setSelectedUserId(members.find((m) => m.status === 'active')?.user_id ?? '');
