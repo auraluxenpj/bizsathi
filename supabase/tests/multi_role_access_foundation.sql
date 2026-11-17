@@ -11,6 +11,7 @@ DECLARE
   custom_role_id uuid;
   branch_manager_role_id uuid;
   accountant_role_id uuid;
+  invitation_id uuid;
   owner_default text;
   staff_default text;
   assignments integer;
@@ -60,6 +61,18 @@ BEGIN
   ),'Sales Person default does not grant destructive business settings';
   ASSERT (SELECT count(*) FROM public.business_permission_catalog)>=77,
     'Canonical permission catalogue includes application permissions';
+
+  SET LOCAL ROLE authenticated;
+  PERFORM set_config('request.jwt.claims',json_build_object('sub',owner_id,'role','authenticated')::text,true);
+  invitation_id := public.create_team_invitation(
+    v_business_id,branch_a,'staff','accountant',ARRAY[]::text[],
+    'newhire@example.invalid','9800000000',repeat('a',64),now()+interval '7 days',1,'Role and position separation test'
+  );
+  ASSERT EXISTS (
+    SELECT 1 FROM public.team_invitations
+    WHERE id=invitation_id AND role_code='staff' AND job_title='accountant'
+  ),'Invitation authority role and HR position can be selected independently';
+  RESET ROLE;
 
   SET LOCAL ROLE authenticated;
   PERFORM set_config('request.jwt.claims',json_build_object('sub',owner_id,'role','authenticated')::text,true);
