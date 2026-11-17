@@ -222,6 +222,22 @@ CREATE TRIGGER sale_return_request_posting_guard
 BEFORE INSERT ON public.commerce_documents
 FOR EACH ROW EXECUTE FUNCTION public.guard_sale_return_request_posting();
 
+-- The approved return is posted by its reviewing Branch Manager; allow the same
+-- branch-scoped approval capability through the loyalty trigger (not general admin access).
+DO $patch_loyalty_return$
+DECLARE body text;
+BEGIN
+  SELECT pg_get_functiondef('public.post_document_loyalty()'::regprocedure) INTO body;
+  IF position('NOT public.has_business_role(NEW.business_id,CASE WHEN NEW.kind=''sale'' THEN ''staff'' ELSE ''admin'' END)' IN body)=0 THEN
+    RAISE EXCEPTION 'Could not locate loyalty posting role gate';
+  END IF;
+  body:=replace(body,
+    'NOT public.has_business_role(NEW.business_id,CASE WHEN NEW.kind=''sale'' THEN ''staff'' ELSE ''admin'' END)',
+    'NOT (public.has_business_role(NEW.business_id,CASE WHEN NEW.kind=''sale'' THEN ''staff'' ELSE ''admin'' END) OR (NEW.kind=''sale_return'' AND public.can_approve_inventory_count(NEW.business_id,NEW.branch_id)))');
+  EXECUTE body;
+END
+$patch_loyalty_return$;
+
 -- Branch Managers can post refunds only for approved sale returns in branches they can access.
 DO $patch_refund$
 DECLARE body text;
