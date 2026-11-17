@@ -18,7 +18,7 @@ import {
 } from '@/lib/team-access.functions';
 
 type Branch = { id: string; name: string; code: string; is_active: boolean };
-type Member = { user_id: string; role_code: string; job_title: string | null; status: 'active' | 'suspended'; profiles?: { full_name: string | null } | null };
+type Member = { user_id: string; role_code: string; job_title: string | null; status: string; profiles?: { full_name: string | null } | null };
 type BranchAccess = { user_id: string; branch_id: string };
 type LegacyInvitation = { id: string; email: string | null; mobile: string | null; invitee_name: string | null; job_title: string | null; role_code: string; expires_at: string; accepted_at: string | null; revoked_at: string | null; created_at: string };
 
@@ -161,7 +161,7 @@ export function TeamAccessPanel({
   });
   const positionMutation = useMutation({
     mutationFn: (v: { userId: string; jobTitle: JobTitle; status: string }) => updateMemberFn({ data: {
-      businessId, userId: v.userId, role: jobTitles[v.jobTitle].base, status: v.status, jobTitle: v.jobTitle,
+      businessId, userId: v.userId, role: jobTitles[v.jobTitle].base, status: v.status === 'suspended' ? 'suspended' : 'active', jobTitle: v.jobTitle,
     } }),
     onSuccess: () => { setMessage('Employee position updated.'); void client.invalidateQueries({ queryKey: ['business-access', businessId] }); void client.invalidateQueries({ queryKey: ['permissions', businessId] }); },
     onError: (error) => setMessage(error instanceof Error ? error.message : 'Employee position could not be changed.'),
