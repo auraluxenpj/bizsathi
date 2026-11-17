@@ -130,3 +130,40 @@ BEGIN
   RETURN v_run;
 END; $function$
 
+
+
+-- Record the actual payroll payment date (Nepal local time) instead of silently using today's date.
+DROP FUNCTION IF EXISTS public.hr_mark_payroll_paid(uuid);
+CREATE OR REPLACE FUNCTION public.hr_mark_payroll_paid(_run_id uuid, _paid_date date DEFAULT current_date)
+RETURNS void
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE v_business uuid;
+BEGIN
+  SELECT business_id INTO v_business
+  FROM public.hr_payroll_runs
+  WHERE id = _run_id
+  FOR UPDATE;
+
+  IF v_business IS NULL OR NOT public.hr_is_manager(v_business) THEN
+    RAISE EXCEPTION 'Only a business administrator may mark payroll paid' USING ERRCODE = '42501';
+  END IF;
+  IF _paid_date IS NULL OR _paid_date > current_date THEN
+    RAISE EXCEPTION 'Payment date must be today or earlier';
+  END IF;
+
+  UPDATE public.hr_payroll_runs
+  SET run_status = 'paid',
+      paid_by = auth.uid(),
+      paid_at = ((_paid_date::timestamp + time '12:00:00') AT TIME ZONE 'Asia/Kathmandu')
+  WHERE id = _run_id AND run_status = 'approved';
+
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'Only approved payroll can be marked paid';
+  END IF;
+END;
+$$;
+REVOKE ALL ON FUNCTION public.hr_mark_payroll_paid(uuid, date) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.hr_mark_payroll_paid(uuid, date) TO authenticated;
