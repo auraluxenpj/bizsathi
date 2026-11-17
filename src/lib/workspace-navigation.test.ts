@@ -37,4 +37,13 @@ describe('workspace navigation preserves existing workflows', () => {
   const rows = dashboardTrends({ documents: [doc, { ...doc, kind: 'sale_return', total: 20.05 }, { ...doc, status: 'draft', total: 900 }, { ...doc, branch_id: 'two', total: 800 }], journals: [journal, { ...journal, debit: 0.2 }, { ...journal, branch_id: 'two', debit: 99 }] }, 'one', '2026-11-13', '2026-11-14');
   expect(rows).toEqual([{ date: '2026-11-13', revenue: 0, expense: 0 }, { date: '2026-11-14', revenue: 80.05, expense: 0.3 }]);
  });
+ it('groups master data under Stock & Inventory and sales workflows under CRM', () => {
+  expect(workspaceGroups.map(group => group.name)).toEqual(['Stock & Inventory', 'CRM', 'Reporting', 'System & Settings']);
+  const items = (group: string) => workspaceGroups.find(entry => entry.name === group)?.items ?? [];
+  expect(items('Stock & Inventory').map(item => item.name)).toEqual(expect.arrayContaining(['Products', 'Categories', 'Suppliers', 'Customer Contacts', 'Barcode Studio', 'Stock Adjustments']));
+  expect(items('CRM').map(item => item.name)).toEqual(expect.arrayContaining(['Customers', 'Barcode POS', 'Sale Invoices', 'Purchase Invoices', 'Purchase Orders', 'Sale Returns', 'Purchase Returns']));
+  expect(items('Reporting').map(item => item.name)).toEqual(expect.arrayContaining(['Customer Ledger', 'Supplier Ledger', 'Payment Vouchers', 'Net Profit P&L', 'Current Stock']));
+  expect(items('System & Settings').map(item => item.name)).toEqual(expect.arrayContaining(['HR & People Management', 'Settings', 'Users', 'Roles']));
+ });
+
 });
