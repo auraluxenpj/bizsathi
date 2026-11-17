@@ -84,6 +84,14 @@ BEGIN
   ASSERT v_count=0,'Accountant cannot directly read private employee HR records';
   SELECT count(*) INTO v_count FROM public.hr_list_payroll_employees(v_business_id);
   ASSERT v_count=1,'Payroll-authorized accountant can resolve limited employee fields';
+  SELECT count(*) INTO v_count FROM public.hr_leave_balance_entries WHERE business_id=v_business_id;
+  ASSERT v_count=0,'Accountant cannot read private employee leave balances';
+  BEGIN
+    PERFORM public.hr_adjust_leave_balance(v_business_id,employee_id,v_leave_type,2026,'adjustment',1,'Unauthorized adjustment');
+    RAISE EXCEPTION 'Accountant unexpectedly changed a leave balance';
+  EXCEPTION WHEN insufficient_privilege THEN
+    NULL;
+  END;
   v_run := public.hr_generate_payroll(v_business_id,'2026-11-01','2026-11-30','November 2026');
   RESET ROLE;
 
