@@ -56,7 +56,7 @@ describe('Team Access hierarchy panel', () => {
     </QueryClientProvider>);
     expect(screen.getByText('Employees & branch access')).toBeInTheDocument();
     expect(screen.queryByText('Role hierarchy')).not.toBeInTheDocument();
-    expect(screen.getByText(/assigned access roles control what they can do; branch membership controls where they can do it/i)).toBeInTheDocument();
+    expect(screen.getByText(/base access controls which application screens an employee can use/i)).toBeInTheDocument();
   });
 
   it('keeps invitation and position-permission sections collapsed until selected', () => {
@@ -181,7 +181,7 @@ describe('Team Access hierarchy panel', () => {
     } }));
   });
 
-  it('lets an administrator change an employee position without exposing a role selector', async () => {
+  it('keeps HR position separate from the base access role', async () => {
     updateMember.mockClear();
     render(<QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
       <TeamAccessPanel
@@ -195,6 +195,7 @@ describe('Team Access hierarchy panel', () => {
       />
     </QueryClientProvider>);
     const position = screen.getByRole('combobox', { name: 'Position for Test Employee' });
+    const baseAccess = screen.getByRole('combobox', { name: 'Base access role for Test Employee' });
     fireEvent.change(position, { target: { value: 'stock_manager' } });
     await waitFor(() => expect(updateMember).toHaveBeenCalledWith({ data: {
       businessId: BUSINESS,
@@ -202,6 +203,31 @@ describe('Team Access hierarchy panel', () => {
       role: 'staff',
       status: 'active',
       jobTitle: 'stock_manager',
+    } }));
+    expect(baseAccess).toHaveValue('staff');
+  });
+
+  it('lets an administrator switch an existing employee to POS-only Staff access', async () => {
+    updateMember.mockClear();
+    render(<QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
+      <TeamAccessPanel
+        businessId={BUSINESS}
+        branches={[{ id: BRANCH, name: 'Nepalgunj', code: 'NP', is_active: true }]}
+        members={[{ user_id: 'dddddddd-dddd-4ddd-8ddd-dddddddddddd', role_code: 'accountant', job_title: 'manager', status: 'active', profiles: { full_name: 'Test Employee' } }]}
+        branchAccess={[]}
+        userId={MANAGER}
+        isAdmin={true}
+        isOwner={false}
+      />
+    </QueryClientProvider>);
+    const baseAccess = screen.getByRole('combobox', { name: 'Base access role for Test Employee' });
+    expect(baseAccess).toHaveValue('accountant');
+    fireEvent.change(baseAccess, { target: { value: 'staff' } });
+    await waitFor(() => expect(updateMember).toHaveBeenCalledWith({ data: {
+      businessId: BUSINESS,
+      userId: 'dddddddd-dddd-4ddd-8ddd-dddddddddddd',
+      role: 'staff',
+      status: 'active',
     } }));
   });
 
