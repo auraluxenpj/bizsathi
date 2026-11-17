@@ -1,4 +1,4 @@
-import { Award, Boxes, Receipt, RotateCcw, Warehouse, BarChart3, Settings, LayoutDashboard, Package, FolderTree, Tag, Truck, Users, ScanBarcode, ShoppingCart, ClipboardList, Clock, SlidersHorizontal, ClipboardCheck, ShieldAlert, Wallet, Banknote, Building2, Calculator, TrendingUp, FileText, ListFilter, UserCog, ShieldCheck, type LucideIcon } from 'lucide-react';
+import { Award, Boxes, Receipt, RotateCcw, Warehouse, BarChart3, Settings, LayoutDashboard, Package, FolderTree, Tag, Truck, Users, ScanBarcode, ShoppingCart, ClipboardList, Clock, SlidersHorizontal, ClipboardCheck, ShieldAlert, Wallet, Banknote, Building2, Calculator, TrendingUp, FileText, ListFilter, UserCog, ShieldCheck, LockKeyhole, type LucideIcon } from 'lucide-react';
 import { validateReportSearch } from './report-filters';
 
 export type WorkspaceItem = { name: string; to?: string; icon: LucideIcon; search?: Record<string, string>; unavailable?: boolean; note?: string };
@@ -30,10 +30,17 @@ export const workspaceGroups: WorkspaceGroup[] = [
   report('Net Profit P&L', 'profit', TrendingUp), report('Cost of Sale', 'sales', Calculator, 'cost'), report('Sale Detail', 'sales', Receipt),
   report('Purchase Detail', 'purchases', ShoppingCart), report('Current Stock', 'valuation', Boxes), report('Low Stock & Reorder', 'lowstock', ListFilter), report('Stock Adjustment', 'stock', SlidersHorizontal),
  ] },
- { name: 'System & Settings', icon: Settings, items: [
+ { name: 'HR & People Management', icon: UserCog, items: [
   { name: 'HR & People Management', to: '/hrm', icon: UserCog, note: 'Employee records, attendance, leave, shifts and payroll' },
-  { name: 'Settings', to: '/sales', search: { panel: 'settings' }, icon: Settings },
-  { name: 'Users', to: '/businesses', search: { panel: 'users' }, icon: UserCog }, { name: 'Roles', to: '/businesses', search: { panel: 'roles' }, icon: ShieldCheck },
+  { name: 'Users', to: '/businesses', search: { panel: 'users' }, icon: Users },
+  { name: 'Roles', to: '/businesses', search: { panel: 'roles' }, icon: ShieldCheck },
+ ] },
+ { name: 'Settings', icon: Settings, items: [
+  { name: 'Business & App Settings', to: '/sales', search: { panel: 'settings' }, icon: Settings },
+ ] },
+ { name: 'Security', icon: LockKeyhole, items: [
+  { name: 'Security Findings', to: '/security', icon: ShieldAlert },
+  { name: 'Review History', to: '/security-history', icon: ClipboardList },
  ] },
 ];
 const selectors = ['view', 'focus', 'kind', 'tool', 'panel'];
