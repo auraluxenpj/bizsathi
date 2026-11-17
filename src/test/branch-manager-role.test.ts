@@ -6,7 +6,7 @@ describe('Branch Manager role boundary', () => {
   it('is a distinct lower-ranked security role, not the Accountant title', () => {
     expect(jobTitles.branch_manager.base).toBe('branch_manager');
     expect(jobTitles.accountant.base).toBe('accountant');
-    expect(rolePresets.branch_manager.label).toBe('Branch Manager');
+    expect(rolePresets['branch_manager']?.label).toBe('Branch Manager');
   });
 
   it('keeps branch operations while denying business-wide finance and administration', () => {

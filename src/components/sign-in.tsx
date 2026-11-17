@@ -8,13 +8,15 @@ import { supabase } from '@/integrations/supabase/client';
 import '@lovable.dev/cloud-auth-js/styles.css';
 import { Input } from '@/components/ui/input';
 import { signInWithEmployeeId, signInWithMobile } from '@/lib/mobile-login.functions';
-import { classifyLoginIdentifier, isEmailLoginIdentifier, normalizeLoginMobile } from '@/lib/login-identifier';
+import { classifyLoginIdentifier, isEmailLoginIdentifier } from '@/lib/login-identifier';
+import { validateSignup } from '@/lib/signup-validation';
 
 export function SignIn() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
+  const [pendingEmail, setPendingEmail] = useState('');
   const [signedIn, setSignedIn] = useState(false);
   const [mode, setMode] = useState<'login'|'signup'|'recovery'>('login'); const [hasInvite, setHasInvite] = useState(false);
   const [email, setEmail] = useState(''); const [mobile, setMobile] = useState(''); const [fullName, setFullName] = useState(''); const [identifier, setIdentifier] = useState(''); const [password, setPassword] = useState(''); const [confirmPassword, setConfirmPassword] = useState(''); const [message, setMessage] = useState('');
@@ -41,13 +43,14 @@ export function SignIn() {
       } else {
         if (mode === 'signup') {
           if (!hasInvite) throw new Error('invitation required');
-          const normalizedMobile = normalizeLoginMobile(mobile);
-          if (!fullName.trim() || fullName.trim().length > 120 || !isEmailLoginIdentifier(email) || !normalizedMobile || password.length < 8 || password !== confirmPassword) throw new Error('invalid');
+          const values = validateSignup({ fullName, email, mobile, password, confirmPassword });
           const teamToken = sessionStorage.getItem('bizsathi-team-token');
-          const emailRedirectTo = teamToken ? `${window.location.origin}/join#token=${teamToken}` : `${window.location.origin}/auth`;
-          const { data, error } = await supabase.auth.signUp({ email: email.trim().toLowerCase(), password, options: { data: { full_name: fullName.trim(), mobile: normalizedMobile }, emailRedirectTo } });
+          const emailRedirectTo = teamToken ? `${window.location.origin}/join#token=${encodeURIComponent(teamToken)}` : `${window.location.origin}/auth`;
+          const { error } = await supabase.auth.signUp({ email: values.email, password, options: { data: { full_name: values.full_name, mobile: values.mobile }, emailRedirectTo } });
           if (error) throw error;
-          if (!data.session) { setMessage('Account created. Check your email and confirm it before returning to your invitation.'); return; }
+          setPendingEmail(values.email); setPassword(''); setConfirmPassword('');
+          setMessage('Check your email and confirm it, then sign in to verify your mobile number and accept your invitation.');
+          return;
         } else {
           const parsed = classifyLoginIdentifier(identifier);
           if (!parsed || password.length < 8) throw new Error('invalid');
@@ -66,7 +69,7 @@ export function SignIn() {
         }
         await navigate({ to: sessionStorage.getItem('bizsathi-team-token') ? '/join' : sessionStorage.getItem('bizsathi-invite') ? '/invite' : '/dashboard' });
       }
-    } catch { setError('This request could not be completed. Check your details and try again.'); }
+    } catch (e) { setError(mode === 'signup' && e instanceof Error && !(e as { status?: number }).status ? e.message : 'This request could not be completed. Check your details and try again.'); }
     finally { setBusy(false); }
   }
   const title = mode === 'recovery' ? 'Recover account' : mode === 'signup' ? 'Create account' : 'Sign in';
@@ -80,7 +83,7 @@ export function SignIn() {
           <Button variant="outline" className="w-full" onClick={async () => { await queryClient.cancelQueries(); queryClient.clear(); await supabase.auth.signOut(); setSignedIn(false); await navigate({ to: '/auth', replace: true }); }}>Sign out</Button>
         </div> : <>
           <h1 className="brand text-xl font-semibold">{title}</h1>
-          <form className="mt-5 space-y-4" onSubmit={e => { e.preventDefault(); emailLogin(); }}>
+          {pendingEmail ? <div className="mt-5 space-y-4"><p className="text-sm">Confirmation email requested for {pendingEmail}.</p><Button className="w-full" disabled={busy} onClick={async () => { setBusy(true); setError(''); try { const token = sessionStorage.getItem('bizsathi-team-token'); const { error } = await supabase.auth.resend({ type: 'signup', email: pendingEmail, options: { emailRedirectTo: token ? `${window.location.origin}/join#token=${encodeURIComponent(token)}` : `${window.location.origin}/auth` } }); if(error) throw error; setMessage('Confirmation email requested again. Check your inbox and spam folder.'); } catch { setError('Could not resend the confirmation email. Please wait before trying again.'); } finally { setBusy(false); } }}>Resend confirmation email</Button><Button variant="outline" className="w-full" onClick={() => { setIdentifier(pendingEmail); setPendingEmail(''); setMode('login'); setMessage(''); }}>Back to sign-in</Button></div> : <form className="mt-5 space-y-4" onSubmit={e => { e.preventDefault(); emailLogin(); }}>
             {mode === 'signup' ? <>
               <label className="block text-sm">Full name<Input className="mt-1 h-11" type="text" autoComplete="name" required minLength={2} maxLength={120} value={fullName} onChange={e => setFullName(e.target.value)} /></label>
               <label className="block text-sm">Email<Input className="mt-1 h-11" type="email" autoComplete="email" required maxLength={254} value={email} onChange={e => setEmail(e.target.value)} /></label>
@@ -91,11 +94,11 @@ export function SignIn() {
             {mode === 'signup' && password && confirmPassword && password !== confirmPassword && <p className="text-sm text-destructive">Passwords do not match.</p>}
             <Button className="h-11 w-full" disabled={busy}>{busy ? 'Please wait…' : mode === 'recovery' ? 'Send recovery link' : mode === 'signup' ? 'Create account' : 'Sign in'}</Button>
             <div className="flex flex-wrap justify-between gap-2 text-sm">
-              {(hasInvite || mode === 'signup') && <button type="button" className="text-primary hover:underline" onClick={() => { setMode(mode === 'signup' ? 'login' : 'signup'); setError(''); setMessage(''); }}>{mode === 'signup' ? 'Already have an account?' : 'Create account'}</button>}
-              <button type="button" className="text-muted-foreground hover:underline" onClick={() => { setMode(mode === 'recovery' ? 'login' : 'recovery'); setError(''); setMessage(''); }}>{mode === 'recovery' ? 'Back to sign-in' : 'Forgot password?'}</button>
+              {(hasInvite || mode === 'signup') && <Button type="button" variant="link" className="h-auto p-0" onClick={() => { setMode(mode === 'signup' ? 'login' : 'signup'); setError(''); setMessage(''); }}>{mode === 'signup' ? 'Already have an account?' : 'Create account'}</Button>}
+              <Button type="button" variant="link" className="h-auto p-0" onClick={() => { setMode(mode === 'recovery' ? 'login' : 'recovery'); setError(''); setMessage(''); }}>{mode === 'recovery' ? 'Back to sign-in' : 'Forgot password?'}</Button>
             </div>
-          </form>
-          {mode !== 'recovery' && <>
+          </form>}
+          {mode !== 'recovery' && !pendingEmail && <>
             <div className="my-5 flex items-center gap-3 text-xs text-muted-foreground"><span className="h-px flex-1 bg-border" />or<span className="h-px flex-1 bg-border" /></div>
             <div className="grid gap-2">
               <Button variant="outline" className="h-11" disabled={busy} onClick={() => login('google')}>Continue with Google</Button>

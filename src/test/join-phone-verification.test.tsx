@@ -48,6 +48,13 @@ describe('team invitation phone verification', () => {
     mocks.navigate.mockClear();
     mocks.updateUser.mockClear();
     mocks.verifyOtp.mockClear();
+    mocks.verifyOtp.mockImplementation(async () => {
+      mocks.getUser.mockResolvedValue({ data: { user: {
+        id: 'user-1', email: 'staff@example.com', email_confirmed_at: '2026-11-16T00:00:00.000Z',
+        phone: '+9779812345678', phone_confirmed_at: '2026-11-17T00:00:00.000Z',
+      } } });
+      return { error: null };
+    });
     mocks.accept.mockClear();
     mocks.getUser.mockResolvedValue({ data: { user: {
       id: 'user-1', email: 'staff@example.com',
@@ -57,7 +64,7 @@ describe('team invitation phone verification', () => {
     mocks.preview.mockResolvedValue({ invitation: {
       businessName: 'Auraluxe', branchName: 'Nepalgunj', roleName: 'Store Team',
       jobTitle: 'entry_person', inviterName: 'Store Manager', expiresAt: '2026-11-23T00:00:00.000Z',
-      seatsLeft: 1, inviteeMobileMasked: '••••5678',
+      seatsLeft: 1, inviteeMobileMasked: '••••5678', inviteeEmailMasked: 's***@example.com',
     } });
   });
 
