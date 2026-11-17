@@ -31,18 +31,19 @@ export const routePermission:Record<string,string>={
  '/categories':'categories.view','/contacts':'customers.view','/cash-bank':'accounts.view','/parties':'customers.view',
  '/hrm':'hr.self.view','/pos':'sales.create','/cash-counters':'sales.create','/membership':'customers.view',
  '/credit-reminder':'customers.view','/calculators':'accounts.view','/notebook':'notebook.view',
- '/transactions':'reports.view','/bill-gallery':'features.business_cards',
+ '/transactions':'reports.view','/bill-gallery':'features.business_cards','/more':'staff.view',
 };
 
 /** Resolve route-specific permissions for pages whose data scope is selected by search params. */
 export function permissionForRoute(pathname:string,search:Record<string,unknown>={}):string|undefined {
- if(pathname==='/contacts') return search.kind==='supplier'?'suppliers.view':'customers.view';
- if(pathname==='/parties' && search.kind==='supplier') return 'suppliers.view';
- if(pathname==='/accounting' && search.view && search.view!=='accounts') return 'reports.view';
+ if(['/dashboard','/profile','/help'].includes(pathname)) return undefined;
+ if(pathname==='/contacts' || pathname.startsWith('/contacts/')) return search.kind==='supplier'?'suppliers.view':'customers.view';
+ if((pathname==='/parties' || pathname.startsWith('/parties/')) && search.kind==='supplier') return 'suppliers.view';
+ if((pathname==='/accounting' || pathname.startsWith('/accounting/')) && search.view && search.view!=='accounts') return 'reports.view';
  const exact = routePermission[pathname];
  if (exact) return exact;
  const nested = Object.keys(routePermission).sort((a,b)=>b.length-a.length).find(route=>pathname.startsWith(`${route}/`));
- return nested ? routePermission[nested] : undefined;
+ return nested ? routePermission[nested] : '__route_not_configured__';
 }
 
 /** Fail-closed membership test used by navigation and direct-route guards. */
