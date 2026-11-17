@@ -20,6 +20,7 @@ import {
 type Branch = { id: string; name: string; code: string; is_active: boolean };
 type Member = { user_id: string; role_code: string; job_title: string | null; status: string; profiles?: { full_name: string | null } | null };
 type BranchAccess = { user_id: string; branch_id: string };
+type MemberRole = { userId: string; roleId: string; roleCode: string; roleName: string; isDefault: boolean; assignedAt: string };
 type LegacyInvitation = { id: string; email: string | null; mobile: string | null; invitee_name: string | null; job_title: string | null; role_code: string; expires_at: string; accepted_at: string | null; revoked_at: string | null; created_at: string };
 
 
@@ -42,7 +43,7 @@ const titleLabel: Record<JobTitle, string> = {
 const roleRank: Record<string, number> = { owner: 100, admin: 80, accountant: 60, branch_manager: 50, staff: 40, viewer: 20 };
 
 export function TeamAccessPanel({
-  businessId, branches, members, branchAccess, userId, isAdmin, isOwner,
+  businessId, branches, members, branchAccess, memberRoles = [], userId, isAdmin, isOwner,
   legacyInvitations = [], legacyTitles = [], onLegacyReissue, onLegacyChangeRole, onLegacyRevoke,
   legacyActionsPending = false, legacyInviteLink = '', viewMode = 'all',
 }: {
@@ -50,6 +51,7 @@ export function TeamAccessPanel({
   branches: Branch[];
   members: Member[];
   branchAccess: BranchAccess[];
+  memberRoles?: MemberRole[];
   userId: string;
   isAdmin: boolean;
   isOwner: boolean;
@@ -112,7 +114,7 @@ export function TeamAccessPanel({
   const inviteMobileValid = Boolean(normalizeVerifiedNepalMobile(inviteeMobile));
   const availableTitles = allowedInviteRoles.flatMap((role) => titleByRole[role] ?? []);
   const eligibleManagers = members.filter((m) =>
-    m.status === 'active' && (m.job_title === 'branch_manager' || m.job_title === 'manager') &&
+    m.status === 'active' && memberRoles.some((r) => r.userId === m.user_id && ['position_branch_manager','legacy_branch_manager'].includes(r.roleCode)) &&
     branchAccess.some((g) => g.user_id === m.user_id && g.branch_id === selectedBranchId));
   const selectedManager = eligibleManagers.find((m) => m.user_id === managerUserId);
 
