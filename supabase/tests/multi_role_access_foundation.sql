@@ -62,18 +62,21 @@ BEGIN
   SET LOCAL ROLE authenticated;
   PERFORM set_config('request.jwt.claims',json_build_object('sub',owner_id,'role','authenticated')::text,true);
   PERFORM public.update_business_member(v_business_id,staff_id,'viewer','active');
+  RESET ROLE;
   SELECT r.code INTO staff_default
   FROM public.business_member_access_roles a
   JOIN public.business_access_roles r ON r.business_id=a.business_id AND r.id=a.role_id
   WHERE a.business_id=v_business_id AND a.user_id=staff_id AND a.is_default;
   ASSERT staff_default='legacy_viewer','Changing base access updates the default permission bundle';
+  SET LOCAL ROLE authenticated;
+  PERFORM set_config('request.jwt.claims',json_build_object('sub',owner_id,'role','authenticated')::text,true);
   PERFORM public.update_business_member(v_business_id,staff_id,'staff','active');
+  RESET ROLE;
   SELECT r.code INTO staff_default
   FROM public.business_member_access_roles a
   JOIN public.business_access_roles r ON r.business_id=a.business_id AND r.id=a.role_id
   WHERE a.business_id=v_business_id AND a.user_id=staff_id AND a.is_default;
   ASSERT staff_default='legacy_staff','Restoring Staff restores the POS-only permission bundle';
-  RESET ROLE;
 
   ASSERT (SELECT count(*) FROM public.business_permission_catalog)>=77,
     'Canonical permission catalogue includes application permissions';
