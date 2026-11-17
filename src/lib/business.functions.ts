@@ -1,7 +1,7 @@
 import { createServerFn } from '@tanstack/react-start';
 import { requireSupabaseAuth } from '@/integrations/supabase/auth-middleware';
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { acceptInput, branchGrantInput, branchInput, inviteInput, invitationRoleInput, memberInput, mobileInviteInput, registrationInput, removeMemberInput, revokeInviteInput, roleTemplateInput, roleTemplateResetInput, tenantInput } from './business-schemas';
+import { accessRoleAssignmentInput, accessRoleCreateInput, accessRoleUpdateInput, acceptInput, branchGrantInput, branchInput, inviteInput, invitationRoleInput, memberInput, mobileInviteInput, registrationInput, removeMemberInput, revokeInviteInput, roleTemplateInput, roleTemplateResetInput, tenantInput } from './business-schemas';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const anyDb = (client: unknown) => client as SupabaseClient<any, 'public', any>;
