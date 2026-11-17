@@ -1,7 +1,7 @@
 import {validateReportSearch} from '@/lib/report-filters';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { RouterProvider, createMemoryHistory, createRootRoute, createRouter,createRoute,Outlet } from '@tanstack/react-router';
-import { fireEvent, render, screen, within } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import type { ReactNode } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 
@@ -29,7 +29,7 @@ vi.mock('@/lib/inventory.functions', () => ({ getInventory: async () => ({ movem
 ] }) }));
 vi.mock('@/lib/inventory-queries', () => ({ businessQuery: { queryKey: ['businesses'], queryFn: async () => [{ id: ID.biz, name: 'Auraluxe', role: 'owner' }] } }));
 vi.mock('@/components/trading-settings', () => ({ TradingSettings: () => null }));
-vi.mock('@/integrations/supabase/client', () => ({ supabase: { auth: { getUser: async () => ({ data: { user: { email: 'v@example.com', user_metadata: { full_name: 'Vikky' } } } }), signOut: vi.fn() } } }));
+vi.mock('@/integrations/supabase/client', () => ({ supabase: { auth: { getUser: async () => ({ data: { user: { email: 'v@example.com', user_metadata: { full_name: 'Vikky' } } } }), signOut: vi.fn() } }));
 
 import { ReportsHub } from '@/components/reports-hub';
 import { Transactions } from '@/components/transactions';
@@ -49,14 +49,17 @@ function mount(ui: ReactNode,path='/') {
 }
 
 describe('Karobar-style screens', () => {
-  it('View Reports opens the existing reports', async () => {
+  it('View Reports opens categorized reports and preserves existing destinations', async () => {
     mount(<ReportsHub />,'/reports');
-    expect(await screen.findByText('Popular Reports')).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: 'Reports' })).toBeInTheDocument();
+    for (const heading of ['Transaction Reports', 'Party Reports', 'Inventory Reports', 'Income & Expense Reports', 'Business Status Reports']) {
+      expect(screen.getByRole('heading', { name: heading })).toBeInTheDocument();
+    }
     expect(screen.getByRole('link', { name: /Sales Report/ })).toHaveAttribute('href', '/accounting?view=sales');
-    expect(screen.getByRole('link', { name: /Profit & Loss Report/ })).toHaveAttribute('href', '/accounting?view=profit');
+    expect(screen.getByRole('link', { name: /Profit & Loss/ })).toHaveAttribute('href', '/accounting?view=profit');
     expect(screen.getByRole('link', { name: /Party Statement/ })).toHaveAttribute('href', '/accounting?view=statement');
-    expect(screen.getByRole('link', { name: /All Transactions Report/ })).toHaveAttribute('href', '/transactions');
-    expect(screen.getByText('Business Status Report')).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /All Transactions/ })).toHaveAttribute('href', '/transactions');
+    expect(screen.getByRole('link', { name: /Cash in Hand/ })).toHaveAttribute('href', '/accounting?view=cash');
   });
 
   it('Transactions lists sales and payments and filters them', async () => {
