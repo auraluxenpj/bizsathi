@@ -68,7 +68,9 @@ BEGIN
   SET LOCAL ROLE authenticated;
   PERFORM set_config('request.jwt.claims',json_build_object('sub',accountant_id,'role','authenticated')::text,true);
   SELECT count(*) INTO v_count FROM public.hr_employee_records WHERE business_id=v_business_id;
-  ASSERT v_count=1,'Payroll-authorized accountant can resolve employees for payroll';
+  ASSERT v_count=0,'Accountant cannot directly read private employee HR records';
+  SELECT count(*) INTO v_count FROM public.hr_list_payroll_employees(v_business_id);
+  ASSERT v_count=1,'Payroll-authorized accountant can resolve limited employee fields';
   v_run := public.hr_generate_payroll(v_business_id,'2026-11-01','2026-11-30','November 2026');
   RESET ROLE;
 
