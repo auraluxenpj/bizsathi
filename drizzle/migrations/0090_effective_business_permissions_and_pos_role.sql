@@ -157,6 +157,13 @@ BEGIN
     VALUES (a.business_id,a.user_id,target_role,a.assigned_by,true)
     ON CONFLICT (business_id,user_id,role_id)
     DO UPDATE SET is_default=true,assigned_at=now();
+
+    INSERT INTO public.audit_logs
+      (business_id,actor_id,action,entity_table,entity_id,old_data,new_data)
+    VALUES
+      (a.business_id,NULL,'access_role.base_alignment','business_member_access_roles',a.user_id::text,
+       jsonb_build_object('role_id',a.role_id,'source','position_default'),
+       jsonb_build_object('role_id',target_role,'source','base_access_role','base_role_code',a.role_code));
   END LOOP;
 END;
 $align_existing_base_roles$;
