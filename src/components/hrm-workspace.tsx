@@ -8,7 +8,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { businessQuery } from '@/lib/inventory-queries';
 import { authorizedSelection } from '@/lib/dashboard-data';
 import {
-  getHrmWorkspace, createHrmEmployee, saveHrmAttendance, createHrmLeaveType, createHrmLeaveRequest,
+  getHrmWorkspace, createHrmEmployee, saveHrmAttendance, clockHrmAttendance, createHrmLeaveType, createHrmLeaveRequest,
   reviewHrmLeaveRequest, createHrmShift, assignHrmShift, saveHrmSalaryStructure,
   generateHrmPayroll, approveHrmPayroll, markHrmPayrollPaid,
 } from '@/lib/hrm.functions';
@@ -32,6 +32,7 @@ export function HrmWorkspace() {
   const data = useQuery({ queryKey: ['hrm', businessId], queryFn: () => load({ data: { businessId } }), enabled: Boolean(businessId) });
   const createEmployee = useServerFn(createHrmEmployee);
   const saveAttendance = useServerFn(saveHrmAttendance);
+  const clockAttendance = useServerFn(clockHrmAttendance);
   const createLeaveType = useServerFn(createHrmLeaveType);
   const createLeave = useServerFn(createHrmLeaveRequest);
   const reviewLeave = useServerFn(reviewHrmLeaveRequest);
@@ -48,6 +49,7 @@ export function HrmWorkspace() {
   const onMutationError = (e: Error) => { setError(e.message || 'The request could not be completed.'); setMessage(''); };
   const employeeMutation = useHrmMutation((payload) => createEmployee({ data: payload }), onMutationSuccess, onMutationError);
   const attendanceMutation = useHrmMutation((payload) => saveAttendance({ data: payload }), onMutationSuccess, onMutationError);
+  const clockMutation = useHrmMutation((payload) => clockAttendance({ data: payload }), onMutationSuccess, onMutationError);
   const leaveTypeMutation = useHrmMutation((payload) => createLeaveType({ data: payload }), onMutationSuccess, onMutationError);
   const leaveMutation = useHrmMutation((payload) => createLeave({ data: payload }), onMutationSuccess, onMutationError);
   const reviewMutation = useHrmMutation((payload) => reviewLeave({ data: payload }), onMutationSuccess, onMutationError);
@@ -62,6 +64,7 @@ export function HrmWorkspace() {
   const candidates = members.filter((m: any) => !employees.some((e: any) => e.user_id === m.user_id));
   const isAdmin = data.data?.isAdmin ?? false;
   const canPayroll = data.data?.canPayroll ?? false;
+  const todayAttendance = (data.data?.attendance ?? []).find((a: any) => a.user_id === data.data?.userId && a.attendance_date === today());
   const totals = useMemo(() => ({
     employees: employees.filter((e: any) => e.employment_status === 'active').length,
     pending: (data.data?.leaveRequests ?? []).filter((x: any) => x.request_status === 'pending').length,
@@ -77,7 +80,7 @@ export function HrmWorkspace() {
     form.reset();
   }
   const number = (v: unknown) => Number(v || 0);
-  const actionBusy = [employeeMutation,attendanceMutation,leaveTypeMutation,leaveMutation,reviewMutation,shiftMutation,assignMutation,salaryMutation,payrollMutation,approveMutation,paidMutation].some(m => m.isPending);
+  const actionBusy = [employeeMutation,attendanceMutation,clockMutation,leaveTypeMutation,leaveMutation,reviewMutation,shiftMutation,assignMutation,salaryMutation,payrollMutation,approveMutation,paidMutation].some(m => m.isPending);
 
   if (!businessId) return <main className="mx-auto max-w-6xl px-5 py-8"><h1 className="brand text-2xl">HR & People Management</h1><Empty>Link the AURALUXE business workspace to use HRM.</Empty></main>;
   return <main className="mx-auto max-w-7xl px-4 py-6 md:px-8">
@@ -120,6 +123,14 @@ export function HrmWorkspace() {
           </section>
         </TabsContent>
         <TabsContent value="attendance" className="space-y-5">
+          {employees.some((e:any)=>e.user_id===data.data.userId) && <section className="flex flex-wrap items-center justify-between gap-4 rounded-xl border p-4">
+            <div><h2 className="font-semibold">My attendance clock</h2><p className="mt-1 text-sm text-muted-foreground">{todayAttendance?.check_in ? `Checked in at ${new Date(todayAttendance.check_in).toLocaleTimeString()}` : 'You have not checked in today.'}{todayAttendance?.check_out ? ` · Checked out at ${new Date(todayAttendance.check_out).toLocaleTimeString()}` : ''}</p></div>
+            {!todayAttendance?.check_in
+              ? <Button disabled={actionBusy} onClick={()=>clockMutation.mutate({businessId,attendanceDate:today(),direction:'check_in'})}>Check in</Button>
+              : !todayAttendance.check_out
+                ? <Button disabled={actionBusy} onClick={()=>clockMutation.mutate({businessId,attendanceDate:today(),direction:'check_out'})}>Check out</Button>
+                : <span className="rounded-full bg-muted px-3 py-2 text-sm font-medium">Attendance completed</span>}
+          </section>}
           {isAdmin && employees.length>0 && <section className="rounded-xl border p-4"><h2 className="font-semibold">Record attendance</h2><form className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4" onSubmit={e=>{e.preventDefault();const fd=new FormData(e.currentTarget);attendanceMutation.mutate({businessId,userId:String(fd.get('userId')),branchId:String(fd.get('branchId')||'')||null,attendanceDate:String(fd.get('attendanceDate')),attendanceStatus:String(fd.get('attendanceStatus')),checkIn:fd.get('checkIn')?new Date(`${fd.get('attendanceDate')}T${fd.get('checkIn')}:00`).toISOString():null,checkOut:fd.get('checkOut')?new Date(`${fd.get('attendanceDate')}T${fd.get('checkOut')}:00`).toISOString():null,notes:String(fd.get('notes')||'')});e.currentTarget.reset();}}>
             <Field label="Employee"><select required name="userId" className={inputClass}><option value="">Select employee</option>{employeeOptions}</select></Field>
             <Field label="Date"><input required type="date" name="attendanceDate" defaultValue={today()} className={inputClass}/></Field>
