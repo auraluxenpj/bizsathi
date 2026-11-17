@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
-  hrmEmployeeInput, hrmAttendanceInput, hrmShiftInput, hrmSalaryInput, hrmPayrollGenerateInput,
+  hrmEmployeeInput, hrmAttendancePolicyInput, hrmLeaveTypeInput, hrmAttendanceInput, hrmShiftInput, hrmSalaryInput, hrmPayrollGenerateInput,
 } from './hrm-schemas';
 import { rolePresets } from './permissions';
 import { jobTitles } from './job-titles';
@@ -29,7 +29,7 @@ describe('BizSathi HRM validation and access defaults', () => {
     expect(hrmAttendanceInput.safeParse({ ...base, attendanceStatus: 'remote' }).success).toBe(false);
   });
 
-  it('validates shift clock values and non-negative compensation', () => {
+  it('supports front-loaded and monthly leave accrual settings', () => {\n    const base = { businessId, name: 'Annual Leave', annualQuota: 12, isPaid: true };\n    expect(hrmLeaveTypeInput.safeParse({ ...base, accrualMethod: 'monthly' }).success).toBe(true);\n    expect(hrmLeaveTypeInput.safeParse({ ...base, accrualMethod: 'unknown' }).success).toBe(false);\n  });\n\n  it('validates bounded attendance and overtime policy values', () => {\n    expect(hrmAttendancePolicyInput.safeParse({ businessId, workdayMinutes: 480, unpaidBreakMinutes: 60, graceMinutes: 10, overtimeAfterMinutes: 0, overtimeMultiplier: 1.5 }).success).toBe(true);\n    expect(hrmAttendancePolicyInput.safeParse({ businessId, workdayMinutes: 20, unpaidBreakMinutes: 60, graceMinutes: 10, overtimeAfterMinutes: 0, overtimeMultiplier: 1.5 }).success).toBe(false);\n  });\n\n  it('validates shift clock values and non-negative compensation', () => {
     expect(hrmShiftInput.safeParse({ businessId, name: 'Morning', startTime: '09:00', endTime: '18:00', breakMinutes: 60 }).success).toBe(true);
     expect(hrmShiftInput.safeParse({ businessId, name: 'Morning', startTime: '9am', endTime: '18:00', breakMinutes: 60 }).success).toBe(false);
     expect(hrmSalaryInput.safeParse({
