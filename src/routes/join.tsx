@@ -7,6 +7,8 @@ import { acceptTeamInvitation, previewTeamInvitation } from '@/lib/team-access.f
 import { normalizeLoginMobile, normalizeVerifiedNepalMobile } from '@/lib/login-identifier';
 import { supabase } from '@/integrations/supabase/client';
 import { pageHead } from '@/lib/head';
+import { verifiedContact } from '@/lib/signup-validation';
+import { Input } from '@/components/ui/input';
 
 export const Route = createFileRoute('/join')({
   head: () => pageHead('Join team', 'Accept your BizSathi Nepal team invitation.'),
@@ -20,6 +22,7 @@ export function Join() {
 
   const [token, setToken] = useState('');
   const [signedIn, setSignedIn] = useState(false);
+  const [userId, setUserId] = useState('');
   const [emailConfirmed, setEmailConfirmed] = useState(false);
   const [currentPhone, setCurrentPhone] = useState('');
   const [currentPhoneConfirmed, setCurrentPhoneConfirmed] = useState(false);
@@ -64,6 +67,7 @@ export function Join() {
 
     supabase.auth.getUser().then(({ data }) => {
       const user = data.user;
+      setUserId(user?.id ?? '');
       setSignedIn(Boolean(user));
       setEmailConfirmed(Boolean(user?.email_confirmed_at));
       setCurrentPhone(user?.phone ?? '');
@@ -91,6 +95,8 @@ export function Join() {
         return;
       }
       const e164 = `+977${normalizedMobile}`;
+      const { data: auth } = await supabase.auth.getUser();
+      if (!auth.user || auth.user.id !== userId || !auth.user.email_confirmed_at) throw new Error('Verification required');
       const { error } = await supabase.auth.updateUser({ phone: e164 });
       if (error) throw error;
       setPendingPhone(e164);
@@ -112,13 +118,16 @@ export function Join() {
     setBusy(true);
     setMessage('');
     try {
+      const requestedPhone = pendingPhone;
       const { error } = await supabase.auth.verifyOtp({
         phone: pendingPhone,
         token: otp.trim(),
         type: 'phone_change',
       });
       if (error) throw error;
-      setCurrentPhone(pendingPhone);
+      const { data: auth } = await supabase.auth.getUser();
+      if (!verifiedContact(auth.user, userId, requestedPhone)) throw new Error('Contact not verified');
+      setCurrentPhone(requestedPhone);
       setCurrentPhoneConfirmed(true);
       setPhoneVerified(true);
       setPendingPhone('');
@@ -135,14 +144,18 @@ export function Join() {
     setBusy(true);
     setMessage('');
     try {
+      const { data: auth } = await supabase.auth.getUser();
+      if (!verifiedContact(auth.user, userId, mobile)) { setPhoneVerified(false); throw new Error('Confirm your email and invited mobile number before accepting.'); }
       await acceptFn({ data: { token } });
       sessionStorage.removeItem('bizsathi-team-token');
+      setToken('');
       const { data: authData } = await supabase.auth.getUser();
       if (authData.user) {
         const { data: profile } = await supabase.from('profiles').select('employee_id').eq('id', authData.user.id).maybeSingle();
         if (profile?.employee_id) setAssignedEmployeeId(profile.employee_id);
       }
       setMessage('Invitation accepted! Your Employee ID is shown below.');
+      if (!assignedEmployeeId) await navigate({ to: '/dashboard' });
 
     } catch (e) {
       setMessage(e instanceof Error ? e.message : 'Invitation could not be accepted. Confirm the invited mobile number matches this account.');
@@ -185,14 +198,15 @@ export function Join() {
           ) : (
             <>
               <label className="block text-sm">Invited Nepal mobile number
-                <input
+                <Input
                   className="mt-1 h-10 w-full rounded-md border bg-background px-3"
                   type="tel"
                   inputMode="tel"
                   autoComplete="tel"
                   placeholder="98XXXXXXXX"
                   value={mobile}
-                  onChange={(e) => { setMobile(e.target.value); setPhoneVerified(false); }}
+                  disabled={busy}
+                  onChange={(e) => { setMobile(e.target.value); setPhoneVerified(false); setPendingPhone(''); setOtp(''); }}
                 />
               </label>
               {!phoneVerified && !pendingPhone && (
@@ -203,7 +217,7 @@ export function Join() {
               {pendingPhone && (
                 <>
                   <label className="block text-sm">SMS verification code
-                    <input
+                    <Input
                       className="mt-1 h-10 w-full rounded-md border bg-background px-3"
                       inputMode="numeric"
                       autoComplete="one-time-code"
@@ -215,6 +229,7 @@ export function Join() {
                   <Button className="w-full" disabled={busy || !otp.trim()} onClick={verifyPhoneCode}>
                     {busy ? 'Verifying…' : 'Verify mobile number'}
                   </Button>
+                  <Button variant="outline" className="w-full" disabled={busy} onClick={sendPhoneCode}>Resend mobile verification code</Button>
                 </>
               )}
               {phoneVerified && (

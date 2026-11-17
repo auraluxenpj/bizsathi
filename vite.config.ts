@@ -9,9 +9,9 @@ export default (env: ConfigEnv) => {
   const publicEnv = loadEnv(env.mode, process.cwd(), "VITE_");
   const withFallback = {
     ...publicEnv,
-    VITE_SUPABASE_URL: publicEnv.VITE_SUPABASE_URL || FALLBACK_SUPABASE_URL,
+    VITE_SUPABASE_URL: publicEnv['VITE_SUPABASE_URL'] || FALLBACK_SUPABASE_URL,
     VITE_SUPABASE_PUBLISHABLE_KEY:
-      publicEnv.VITE_SUPABASE_PUBLISHABLE_KEY || FALLBACK_SUPABASE_PUBLISHABLE_KEY,
+      publicEnv['VITE_SUPABASE_PUBLISHABLE_KEY'] || FALLBACK_SUPABASE_PUBLISHABLE_KEY,
   };
 
   return defineConfig({

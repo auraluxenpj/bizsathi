@@ -1828,7 +1828,6 @@ export type Database = {
         Row: {
           avatar_url: string | null
           created_at: string
-          employee_id: string | null
           full_name: string | null
           id: string
           phone: string | null
@@ -1837,7 +1836,6 @@ export type Database = {
         Insert: {
           avatar_url?: string | null
           created_at?: string
-          employee_id?: string | null
           full_name?: string | null
           id: string
           phone?: string | null
@@ -1846,7 +1844,6 @@ export type Database = {
         Update: {
           avatar_url?: string | null
           created_at?: string
-          employee_id?: string | null
           full_name?: string | null
           id?: string
           phone?: string | null
@@ -2529,58 +2526,6 @@ export type Database = {
       }
     }
     Functions: {
-      create_inventory_count_session: {
-        Args: { _business_id: string; _branch_id: string; _count_date: string; _counted_by: string; _lines: Json }
-        Returns: string
-      }
-      update_inventory_count_session: {
-        Args: { _session_id: string; _count_date: string; _counted_by: string; _lines: Json }
-        Returns: boolean
-      }
-      list_inventory_count_sessions: {
-        Args: { _business_id: string }
-        Returns: {
-          id: string
-          branch_id: string
-          branch_name: string
-          count_date: string
-          counted_by: string
-          status: string
-          created_by: string
-          created_at: string
-          submitted_at: string | null
-          reviewed_by: string | null
-          reviewed_at: string | null
-          review_note: string | null
-          line_count: number
-          counted_line_count: number
-        }[]
-      }
-      read_inventory_count_session: {
-        Args: { _session_id: string }
-        Returns: Json
-      }
-      submit_inventory_count_session: {
-        Args: { _session_id: string }
-        Returns: boolean
-      }
-      read_inventory_count_adjustment: {
-        Args: { _session_id: string }
-        Returns: Json
-      }
-      prepare_inventory_count_adjustment: {
-        Args: { _session_id: string }
-        Returns: Json
-      }
-      confirm_inventory_count_adjustment: {
-        Args: { _session_id: string; _reason: string }
-        Returns: Json
-      }
-      review_inventory_count_session: {
-        Args: { _session_id: string; _decision: string; _note?: string }
-        Returns: boolean
-      }
-
       accept_business_invitation: {
         Args: { _token_hash: string }
         Returns: string
@@ -2593,22 +2538,6 @@ export type Database = {
       }
       adjust_payment_account: { Args: { _request: Json }; Returns: string }
       archive_business: { Args: { _business_id: string }; Returns: undefined }
-      request_business_archive: { Args: { _business_id: string; _reason: string }; Returns: string }
-      list_business_archive_requests: {
-        Args: { _business_id: string }
-        Returns: {
-          id: string
-          business_id: string
-          requested_by: string
-          request_reason: string
-          status: string
-          reviewed_by: string | null
-          review_note: string | null
-          created_at: string
-          reviewed_at: string | null
-        }[]
-      }
-      review_business_archive_request: { Args: { _request_id: string; _approve: boolean; _review_note?: string | null }; Returns: undefined }
       begin_website_stock_sync: {
         Args: { _branch_id: string; _business_id: string; _lease_id: string }
         Returns: undefined
