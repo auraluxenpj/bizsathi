@@ -1340,3 +1340,257 @@ button[data-variant="default"], .bg-primary { background-color: var(--primary); 
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { scroll-behavior: auto !important; transition-duration: .01ms !important; animation-duration: .01ms !important; }
 }
+
+
+/* Approved minimal premium dashboard — consistent across phone, tablet and desktop.
+   Visual-only: preserve all routes, data, permissions, actions and print styles. */
+:root {
+  --background: #F5F6F8;
+  --workspace: #F5F6F8;
+  --foreground: #172B4D;
+  --card: #FFFFFF;
+  --card-foreground: #172B4D;
+  --primary: #244A80;
+  --primary-foreground: #FFFFFF;
+  --secondary: #F1F3F5;
+  --secondary-foreground: #344054;
+  --muted: #F1F3F5;
+  --muted-foreground: #667085;
+  --accent: #F1F3F5;
+  --accent-foreground: #172B4D;
+  --border: #E5E7EB;
+  --input: #D0D5DD;
+  --ring: #7890B0;
+  --sidebar: #FFFFFF;
+  --sidebar-foreground: #172B4D;
+  --sidebar-primary: #244A80;
+  --sidebar-primary-foreground: #FFFFFF;
+  --sidebar-accent: #F1F3F5;
+  --sidebar-accent-foreground: #172B4D;
+  --sidebar-border: #E5E7EB;
+}
+.dark {
+  --background: #111827;
+  --workspace: #111827;
+  --foreground: #F2F4F7;
+  --card: #1D2939;
+  --card-foreground: #F2F4F7;
+  --primary: #9CB5D5;
+  --primary-foreground: #172B4D;
+  --secondary: #293548;
+  --secondary-foreground: #E4E7EC;
+  --muted: #293548;
+  --muted-foreground: #98A2B3;
+  --accent: #293548;
+  --accent-foreground: #F2F4F7;
+  --border: #344054;
+  --input: #475467;
+  --sidebar: #1D2939;
+  --sidebar-foreground: #F2F4F7;
+  --sidebar-primary: #9CB5D5;
+  --sidebar-primary-foreground: #172B4D;
+  --sidebar-accent: #293548;
+  --sidebar-accent-foreground: #F2F4F7;
+  --sidebar-border: #344054;
+}
+html, body, button, input, select, textarea {
+  font-family: 'DM Sans', 'Noto Sans Devanagari', sans-serif;
+  font-variant-numeric: tabular-nums lining-nums;
+}
+body { background: var(--background); color: var(--foreground); }
+.app-workspace { background: var(--workspace) !important; }
+.app-topbar {
+  min-height: 56px !important;
+  height: 56px;
+  flex-wrap: nowrap !important;
+  padding: 0 16px !important;
+  gap: 8px !important;
+  background: var(--card) !important;
+  border-color: var(--border) !important;
+  box-shadow: 0 1px 2px rgb(16 24 40 / 3%);
+  backdrop-filter: none !important;
+}
+.app-topbar > span { font-size: 1rem !important; font-weight: 650 !important; }
+.app-sidebar { background: var(--sidebar) !important; border-color: var(--sidebar-border) !important; box-shadow: 1px 0 4px rgb(16 24 40 / 3%) !important; }
+.app-sidebar-brand { border-color: var(--sidebar-border) !important; }
+.app-sidebar-brand > span:first-child { border-radius: 10px !important; }
+.app-sidebar a[aria-current="page"] { background: var(--secondary) !important; color: var(--primary) !important; box-shadow: none !important; }
+.mobile-tab-bar, nav[aria-label="Mobile navigation"] {
+  background: var(--card) !important;
+  border-color: var(--border) !important;
+  box-shadow: 0 -2px 10px rgb(16 24 40 / 4%) !important;
+  backdrop-filter: none !important;
+}
+.mobile-tab-bar a[aria-current="page"], nav[aria-label="Mobile navigation"] a[aria-current="page"] { color: var(--primary) !important; }
+.mobile-tab-bar a[aria-current="page"]::before { background: var(--primary) !important; }
+
+/* Compact mobile/tablet home dashboard. */
+.karobar {
+  background: var(--workspace) !important;
+  color: var(--foreground) !important;
+  padding-top: .75rem !important;
+  font-family: 'DM Sans', 'Noto Sans Devanagari', sans-serif !important;
+}
+.karobar > header {
+  min-height: 52px;
+  gap: 12px;
+  padding: 0 2px 10px;
+  border-bottom: 1px solid var(--border);
+}
+.karobar > header > span:first-child {
+  width: 40px !important;
+  height: 40px !important;
+  background: var(--muted) !important;
+  color: var(--primary) !important;
+}
+.karobar > header > a { color: var(--foreground) !important; }
+.karobar > header > a span { font-size: 1rem !important; font-weight: 700 !important; }
+.karobar > header > a svg, .karobar > header > a:last-child svg { color: var(--primary) !important; }
+.karobar > label {
+  min-height: 52px;
+  margin-top: 10px !important;
+  padding: 10px 14px !important;
+  border: 1px solid var(--border);
+  border-radius: 12px !important;
+  background: var(--card) !important;
+  color: var(--foreground) !important;
+}
+.karobar > label > svg { color: var(--muted-foreground) !important; }
+.karobar section[aria-label="Dashboard period"] { gap: 8px !important; margin-top: 12px !important; }
+.karobar section[aria-label="Dashboard period"] button {
+  min-height: 38px !important;
+  padding: 7px 14px !important;
+  border: 1px solid var(--border) !important;
+  border-radius: 999px !important;
+  background: var(--card) !important;
+  color: var(--muted-foreground) !important;
+  font-weight: 600 !important;
+}
+.karobar section[aria-label="Dashboard period"] button[aria-pressed="true"] {
+  border-color: var(--primary) !important;
+  background: var(--secondary) !important;
+  color: var(--primary) !important;
+}
+.karobar .biz-sales-hero {
+  border: 1px solid var(--border) !important;
+  border-radius: 16px !important;
+  background: var(--card) !important;
+  color: var(--foreground) !important;
+  box-shadow: 0 2px 8px rgb(16 24 40 / 4%) !important;
+  padding: 18px !important;
+}
+.karobar .biz-sales-hero :where(p, span, a) { color: inherit; }
+.karobar .biz-hero-label { color: var(--muted-foreground) !important; font-weight: 600 !important; }
+.karobar .biz-hero-value {
+  color: var(--foreground) !important;
+  font-size: clamp(2rem, 6vw, 2.5rem) !important;
+  font-weight: 750 !important;
+  letter-spacing: -.045em !important;
+}
+.karobar .biz-sales-hero > div:first-child > span {
+  background: var(--secondary) !important;
+  color: var(--primary) !important;
+  border: 1px solid var(--border);
+}
+.karobar .biz-sales-hero > div:last-child {
+  border-color: var(--border) !important;
+}
+.karobar .biz-sales-hero > div:last-child a {
+  background: var(--muted) !important;
+  color: var(--foreground) !important;
+  border: 1px solid var(--border);
+  border-radius: 10px !important;
+}
+.karobar .biz-sales-hero > div:last-child a span:first-child { color: var(--muted-foreground) !important; }
+.karobar .biz-quick-actions { gap: 10px !important; }
+.karobar .biz-quick-action {
+  min-height: 76px !important;
+  border: 1px solid var(--border) !important;
+  border-radius: 12px !important;
+  padding: 12px 8px !important;
+  background: var(--card) !important;
+  color: var(--foreground) !important;
+  box-shadow: 0 1px 3px rgb(16 24 40 / 3%) !important;
+  font-size: .9rem;
+  font-weight: 650 !important;
+}
+.karobar .biz-quick-action svg { color: var(--primary) !important; }
+.karobar .biz-surface, .karobar section[aria-label="Other balances"] > a, .karobar section[aria-label="Other balances"] > div {
+  border: 1px solid var(--border) !important;
+  border-radius: 12px !important;
+  background: var(--card) !important;
+  color: var(--foreground) !important;
+  box-shadow: 0 1px 3px rgb(16 24 40 / 3%) !important;
+}
+.karobar .biz-surface { padding: 14px !important; }
+.karobar .biz-section-title, .karobar h2 { color: var(--foreground) !important; }
+.karobar section[aria-label="Other balances"] > * { min-width: 0; }
+.karobar section[aria-label="Other balances"] > * p:first-child { color: var(--foreground) !important; }
+.karobar section[aria-label="Other balances"] > * p:last-of-type { color: var(--muted-foreground) !important; }
+.karobar section[aria-label="Explore App"] a, .karobar .biz-surface a { color: var(--foreground) !important; }
+.karobar section[aria-label="Explore App"] svg { color: var(--primary) !important; }
+
+/* Desktop dashboard: neutral KPI cards, restrained actions and compact page header. */
+.dashboard-shell { color: var(--foreground) !important; padding-top: 18px !important; }
+.dashboard-header, .dashboard-toolbar, .dashboard-panel, .dashboard-quick-actions, .dashboard-stat-card {
+  border-color: var(--border) !important;
+  border-radius: 14px !important;
+  background: var(--card) !important;
+  box-shadow: 0 1px 3px rgb(16 24 40 / 4%) !important;
+}
+.dashboard-header { min-height: 0 !important; padding: 14px 18px !important; }
+.dashboard-header h1, .dashboard-shell h1, .dashboard-shell h2 { color: var(--foreground) !important; }
+.dashboard-header > div > div > span { background: var(--muted) !important; color: var(--primary) !important; }
+.dashboard-toolbar { padding: 12px 16px !important; }
+.dashboard-toolbar button { border-radius: 9px !important; }
+.dashboard-toolbar button[aria-pressed="true"] { background: var(--secondary) !important; color: var(--primary) !important; }
+.dashboard-summary > * {
+  border: 1px solid var(--border) !important;
+  border-radius: 13px !important;
+  background: var(--card) !important;
+  box-shadow: 0 1px 3px rgb(16 24 40 / 4%) !important;
+}
+.dashboard-summary > * :where([class*="bg-revenue"], [class*="bg-expense"], [class*="bg-purchase"]) {
+  background: var(--muted) !important;
+  color: var(--primary) !important;
+}
+.dashboard-quick-actions { padding: 12px 16px !important; }
+.dashboard-quick-actions button {
+  border-color: var(--border) !important;
+  border-radius: 9px !important;
+  background: var(--card) !important;
+  color: var(--foreground) !important;
+  box-shadow: none !important;
+}
+.dashboard-panel { padding: 18px !important; }
+.dashboard-shell .text-revenue { color: #16835D !important; }
+.dashboard-shell .text-expense { color: #C24141 !important; }
+.dashboard-shell .bg-revenue\/10, .dashboard-shell .bg-expense\/10, .dashboard-shell .bg-purchase\/10 { background: var(--muted) !important; }
+.dashboard-shell .bg-revenue, .dashboard-shell .bg-expense { opacity: .85; }
+@media (min-width: 1024px) {
+  .dashboard-shell { max-width: 1560px; }
+  .dashboard-summary { gap: 14px !important; }
+  .dashboard-primary-grid, .dashboard-secondary-grid { gap: 16px !important; }
+}
+@media (min-width: 640px) and (max-width: 1023px) {
+  .karobar { padding-inline: 22px !important; }
+  .karobar > header { min-height: 56px; }
+  .karobar .biz-sales-hero { padding: 22px !important; }
+  .karobar .biz-quick-actions { gap: 14px !important; }
+  .karobar .biz-quick-action { min-height: 88px !important; }
+  .karobar section[aria-label="Other balances"] { gap: 14px !important; }
+  .app-topbar { padding-inline: 20px !important; }
+}
+@media (max-width: 639px) {
+  .app-topbar { min-height: 54px !important; height: 54px; padding-inline: 10px !important; }
+  .app-topbar > span { font-size: .95rem !important; }
+  .karobar { padding-inline: 14px !important; padding-bottom: 6.5rem !important; }
+  .karobar .biz-quick-actions { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .karobar .biz-quick-action { min-height: 72px !important; gap: 6px !important; font-size: .78rem; }
+  .karobar .biz-quick-action svg { width: 21px; height: 21px; }
+  .karobar section[aria-label="Other balances"] { gap: 10px !important; }
+  .karobar section[aria-label="Other balances"] > * { padding: 12px !important; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .karobar *, .dashboard-shell * { transition-duration: .01ms !important; animation-duration: .01ms !important; }
+}
