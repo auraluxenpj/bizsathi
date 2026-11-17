@@ -52,7 +52,7 @@ export function AppNavigation({ children, pathname }: { children: ReactNode; pat
   const businesses = useQuery({ queryKey: ['businesses'], queryFn: () => load() });
   // Same rule as before: administrator-only links appear for owners and admins.
   const admin = businesses.data?.some(b => b.role === 'owner' || b.role === 'admin');
-  const businessName = businesses.data?.[0]?.name ?? 'BizSathi';
+  const businessName = businesses.data?.[0]?.name ?? 'Auraluxe';
   useEffect(() => { supabase.auth.getUser().then(({ data }) => { const u = data.user; setPerson((u?.user_metadata?.['full_name'] as string | undefined) || u?.email?.split('@')[0] || ''); }); }, []);
   const management: Entry[] = [
     { name: 'Reports', icon: BarChart3, to: '/accounting' },
@@ -66,7 +66,7 @@ export function AppNavigation({ children, pathname }: { children: ReactNode; pat
   return (
     <div className="min-h-screen bg-background lg:pl-64">
       <aside className="fixed inset-y-0 left-0 z-30 hidden w-64 flex-col border-r border-sidebar-border bg-sidebar text-sidebar-foreground lg:flex">
-        <div className="p-4"><div className="flex items-center gap-3 rounded-xl border border-sidebar-border bg-sidebar-accent/40 px-3 py-2.5"><span className="flex size-9 items-center justify-center rounded-lg bg-sidebar-primary/15 text-sidebar-primary"><Building2 className="size-5" /></span><span className="min-w-0 flex-1 truncate text-sm font-semibold">{businessName}</span></div></div>
+        <div className="space-y-3 p-4"><Link to="/dashboard" aria-label="Sutra by Auraluxe home" className="flex items-center px-1 py-1"><img src="/brand/sutra-logo.svg" alt="Sutra by Auraluxe" className="h-9 w-auto max-w-full" /></Link><div className="flex items-center gap-3 rounded-xl border border-sidebar-border bg-sidebar-accent/40 px-3 py-2.5"><span className="flex size-9 items-center justify-center rounded-lg bg-sidebar-primary/15 text-sidebar-primary"><Building2 className="size-5" /></span><span className="min-w-0 flex-1 truncate text-sm font-semibold">{businessName}</span></div></div>
         <nav aria-label="Main navigation" className="flex-1 space-y-1 overflow-y-auto px-3 pb-4">
           <p className="px-3 pb-1 pt-2 text-[11px] font-semibold uppercase tracking-wider text-sidebar-foreground/55">Business</p>
           {business.map(e => <Row key={e.name} entry={e} pathname={pathname} />)}
@@ -84,7 +84,7 @@ export function AppNavigation({ children, pathname }: { children: ReactNode; pat
       </header>
 
       <header className="sticky top-0 z-20 flex items-center justify-between border-b bg-card px-4 py-3 lg:hidden">
-        <Link to="/dashboard" className="brand truncate text-lg font-semibold">{businessName}</Link>
+        <Link to="/dashboard" aria-label="Sutra by Auraluxe home" className="shrink-0"><img src="/brand/sutra-logo.svg" alt="Sutra by Auraluxe" className="h-8 w-auto max-w-[132px]" /></Link>
         <div className="flex items-center gap-1"><CommandPalette variant="icon" shortcut={false} /><Button variant="ghost" size="icon" aria-label="Open menu" title="Menu" onClick={() => setMore(true)}><Menu /></Button></div>
       </header>
 
