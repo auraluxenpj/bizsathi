@@ -5,11 +5,11 @@ import {Check,Pencil} from 'lucide-react';
 import {Button} from '@/components/ui/button';
 import {Dialog,DialogContent,DialogHeader,DialogTitle,DialogFooter} from '@/components/ui/dialog';
 import {getMemberPermissions,saveMemberPermissions} from '@/lib/business.functions';
-import {permissionGroups,rolePresets,deniedForRole} from '@/lib/permissions';
+import {permissionGroups,rolePresets,deniedForRole,hasEffectivePermission} from '@/lib/permissions';
 import {jobTitles,deniedForTitle,type JobTitle} from '@/lib/job-titles';
 export function usePermissionDenials(businessId:string){const fn=useServerFn(getMemberPermissions);return useQuery({queryKey:['permissions',businessId],queryFn:()=>fn({data:{businessId}}),enabled:!!businessId});}
 /** True unless the signed-in member's checklist removed this permission. */
-export function useCan(businessId:string){const q=usePermissionDenials(businessId);return (p:string)=>!q.data?.denials.some(d=>d.user_id===q.data?.userId&&d.permission===p);}
+export function useCan(businessId:string){const q=usePermissionDenials(businessId);return (p:string)=>q.isSuccess&&hasEffectivePermission(q.data?.permissions,p);}
 export function PermissionChecklist({businessId,userId,name,role}:{businessId:string;userId:string;name:string;role?:string}){
  const q=usePermissionDenials(businessId);const save=useServerFn(saveMemberPermissions);const client=useQueryClient();
  const [open,setOpen]=useState(false),[denied,setDenied]=useState<string[]>([]),[busy,setBusy]=useState(false),[error,setError]=useState('');
