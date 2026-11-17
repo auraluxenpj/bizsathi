@@ -48,7 +48,7 @@ BEGIN
   request_id:=public.request_sale_return(business_id,sale_a,jsonb_build_array(jsonb_build_object('variantId',variant_id,'quantity',2)),'Customer changed their mind');
   ASSERT (SELECT status='pending' FROM public.sale_return_requests WHERE id=request_id),'Cashier request starts pending';
   ASSERT NOT EXISTS(SELECT 1 FROM public.commerce_documents WHERE kind='sale_return' AND source_id=sale_a),'Request does not post a return';
-  SELECT coalesce(sum(quantity),0) INTO stock_after FROM public.commerce_stock_movements WHERE m.business_id=tests.business_id AND m.branch_id=tests.branch_a AND m.variant_id=tests.variant_id;
+  SELECT coalesce(sum(quantity),0) INTO stock_after FROM public.commerce_stock_movements m WHERE m.business_id=tests.business_id AND m.branch_id=tests.branch_a AND m.variant_id=tests.variant_id;
   ASSERT stock_after=stock_before,'Pending request does not change stock';
 
   -- A manager cannot review their own request.
