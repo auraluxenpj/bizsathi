@@ -409,12 +409,12 @@ BEGIN
     RAISE EXCEPTION 'Administrator access is required' USING ERRCODE='42501';
   END IF;
   SELECT COALESCE(jsonb_agg(jsonb_build_object(
-    'id',v_item.id,'code',r.code,'name',r.name,'description',r.description,
+    'id',r.id,'code',r.code,'name',r.name,'description',r.description,
     'authorityRank',r.authority_rank,'isSystem',r.is_system,'isActive',r.is_active,
     'permissions',COALESCE((
       SELECT jsonb_agg(rp.permission ORDER BY rp.permission)
       FROM public.business_access_role_permissions rp
-      WHERE rp.business_id=r.business_id AND rp.role_id=v_item.id
+      WHERE rp.business_id=r.business_id AND rp.role_id=r.id
     ),'[]'::jsonb)
   ) ORDER BY r.is_system DESC,r.name),'[]'::jsonb)
   INTO result
