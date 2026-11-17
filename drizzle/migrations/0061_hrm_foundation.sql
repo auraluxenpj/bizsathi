@@ -45,7 +45,7 @@ ALTER TABLE public.hr_employee_records ENABLE ROW LEVEL SECURITY;
 REVOKE ALL ON public.hr_employee_records FROM anon;
 GRANT SELECT, INSERT, UPDATE ON public.hr_employee_records TO authenticated;
 CREATE POLICY hr_employee_read ON public.hr_employee_records FOR SELECT TO authenticated
-  USING (public.hr_is_manager(business_id) OR user_id = auth.uid());
+  USING (public.hr_is_manager(business_id) OR public.hr_can_manage_payroll(business_id) OR user_id = auth.uid());
 CREATE POLICY hr_employee_insert ON public.hr_employee_records FOR INSERT TO authenticated
   WITH CHECK (public.hr_is_manager(business_id) AND created_by = auth.uid() AND public.is_business_member(business_id));
 CREATE POLICY hr_employee_update ON public.hr_employee_records FOR UPDATE TO authenticated
@@ -277,8 +277,17 @@ CREATE INDEX hr_payroll_items_employee_idx ON public.hr_payroll_items(business_i
 ALTER TABLE public.hr_payroll_items ENABLE ROW LEVEL SECURITY;
 REVOKE ALL ON public.hr_payroll_items FROM anon;
 GRANT SELECT ON public.hr_payroll_items TO authenticated;
+CREATE OR REPLACE FUNCTION public.hr_can_read_own_payslip(_business_id uuid, _run_id uuid)
+RETURNS boolean LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public AS $
+  SELECT EXISTS (SELECT 1 FROM public.hr_payroll_runs r
+    JOIN public.hr_payroll_items i ON i.business_id=r.business_id AND i.payroll_run_id=r.id
+    WHERE r.business_id=_business_id AND r.id=_run_id AND i.user_id=auth.uid()
+      AND r.run_status IN ('approved','paid'))
+$;
+REVOKE ALL ON FUNCTION public.hr_can_read_own_payslip(uuid,uuid) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.hr_can_read_own_payslip(uuid,uuid) TO authenticated;
 CREATE POLICY hr_payroll_items_read ON public.hr_payroll_items FOR SELECT TO authenticated
-  USING (public.hr_can_manage_payroll(business_id) OR user_id = auth.uid());
+  USING (public.hr_can_manage_payroll(business_id) OR public.hr_can_read_own_payslip(business_id,payroll_run_id));
 
 CREATE OR REPLACE FUNCTION public.hr_generate_payroll(_business_id uuid, _period_start date, _period_end date, _period_label text)
 RETURNS uuid LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
