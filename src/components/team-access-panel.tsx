@@ -44,7 +44,7 @@ const roleRank: Record<string, number> = { owner: 100, admin: 80, accountant: 60
 export function TeamAccessPanel({
   businessId, branches, members, branchAccess, userId, isAdmin, isOwner,
   legacyInvitations = [], legacyTitles = [], onLegacyReissue, onLegacyChangeRole, onLegacyRevoke,
-  legacyActionsPending = false, legacyInviteLink = '',
+  legacyActionsPending = false, legacyInviteLink = '', viewMode = 'all',
 }: {
   businessId: string;
   branches: Branch[];
@@ -60,6 +60,7 @@ export function TeamAccessPanel({
   onLegacyRevoke?: (invitationId: string) => void;
   legacyActionsPending?: boolean;
   legacyInviteLink?: string;
+  viewMode?: 'employees' | 'positions' | 'all';
 }) {
   const client = useQueryClient();
   const listInvitesFn = useServerFn(listTeamInvitations);
@@ -173,6 +174,7 @@ export function TeamAccessPanel({
 
   return (
     <section className="space-y-7 border-b py-7" aria-labelledby="team-access-heading">
+      {viewMode !== 'positions' && <>
       <section className="rounded-xl border p-4 md:p-5">
         <div className="mb-3 flex items-center gap-2"><Users className="size-4 text-primary" /><h3 className="font-semibold">Employees & branch access</h3></div>
         <p className="mb-4 text-sm text-muted-foreground">Assign each employee to one or more branches. Their position controls permissions in every assigned branch.</p>
@@ -323,11 +325,11 @@ export function TeamAccessPanel({
         </div>
         </div>
       </details>
-      <details name="team-access-sections" className="rounded-xl border p-4 md:p-5">
+      </>}
+      {viewMode !== 'employees' && <details name="team-access-sections" className="rounded-xl border p-4 md:p-5">
         <summary className="flex cursor-pointer list-none items-center justify-between gap-3 font-semibold [&::-webkit-details-marker]:hidden"><span className="flex items-center gap-2"><ShieldCheck className="size-4 text-primary" />Position permissions</span><span className="text-xs font-normal text-muted-foreground">Configure the standard access for each position</span></summary>
         <div className="mt-4"><RolePermissions businessId={businessId} isOwner={isOwner} /></div>
-      </details>
-      <div className="flex items-start gap-2 text-xs text-muted-foreground"><ShieldCheck className="mt-0.5 size-4 shrink-0" /><p>Each employee receives permissions from their position and data access from assigned branches. Security authority remains enforced by the database.</p></div>
+      </details>}
     </section>
   );
 }
