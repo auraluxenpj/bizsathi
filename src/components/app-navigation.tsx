@@ -16,6 +16,7 @@ import { useCan } from './permission-checklist';
 import { routePermission } from '@/lib/permissions';
 import { shouldRedirectBillingStaff, workspaceGroups, workspaceItemActive } from '@/lib/workspace-navigation';
 import { validateReportSearch } from '@/lib/report-filters';
+import { dashboardKind } from '@/lib/dashboard-profile';
 
 export function AppNavigation({ children, pathname }: { children: ReactNode; pathname: string }) {
  useApplyAppearance(); const load = useServerFn(listBusinesses); const client = useQueryClient(); const navigate = useNavigate(); const search = useSearch({ strict: false });
@@ -23,9 +24,12 @@ export function AppNavigation({ children, pathname }: { children: ReactNode; pat
  const businesses = useQuery({ queryKey: ['businesses'], queryFn: () => load() });
  const admin = businesses.data?.some(b => b.role === 'owner' || b.role === 'admin');
  const billingStaff = businesses.data?.[0]?.role === 'staff' && businesses.data?.[0]?.jobTitle === 'sales_person';
+ const kind = dashboardKind(businesses.data?.[0]?.role, businesses.data?.[0]?.jobTitle);
  const can = useCan(businesses.data?.[0]?.id ?? '');
- const visible = (to?: string) => { const permission = to ? routePermission[to] : undefined; return !permission || can(permission); };
- const deniedPage = Object.keys(routePermission).some(r => (pathname === r || pathname.startsWith(`${r}/`)) && !visible(r));
+ const permitted = (to?: string) => { const permission = to ? routePermission[to] : undefined; return !permission || can(permission); };
+ // Billing staff only have the cashier workspace, so links they would be sent back from are not shown to them.
+ const visible = (to?: string) => permitted(to) && (!billingStaff || (!!to && !shouldRedirectBillingStaff(to)));
+ const deniedPage = Object.keys(routePermission).some(r => (pathname === r || pathname.startsWith(`${r}/`)) && !permitted(r));
  const businessName = businesses.data?.[0]?.name ?? 'BizSathi';
  const current = workspaceGroups.flatMap(g => g.items).find(i => workspaceItemActive(i, pathname, search));
  const title = pathname === '/dashboard' ? 'Dashboard' : current?.name ?? pathname.slice(1).replaceAll('-', ' ').replace(/^./, c => c.toUpperCase());
@@ -43,7 +47,8 @@ export function AppNavigation({ children, pathname }: { children: ReactNode; pat
   { name: 'Calculators', to: '/calculators' }, { name: 'Notebook', to: '/notebook' }, { name: 'Bill gallery', to: '/bill-gallery' }, { name: 'Scan receipts', to: '/expense-receipts' },
   ...(admin ? [{ name: 'Security findings', to: '/security' }, { name: 'Review history', to: '/security-history' }] : []), { name: 'How to use BizSathi', to: '/help' }, { name: 'My account', to: '/profile' }, { name: 'More tools', to: '/more' },
  ];
- const workspaceMenu = <DropdownMenu><DropdownMenuTrigger asChild><Button variant="ghost" size="icon" aria-label="More workspace pages" title="More workspace pages" className="size-10 shrink-0"><MoreHorizontal className="size-5" /></Button></DropdownMenuTrigger><DropdownMenuContent align="end" className="max-h-[70dvh] overflow-y-auto">{extras.filter(i => visible(i.to)).map(i => <DropdownMenuItem key={i.to} asChild><Link to={i.to} search={['/reports', '/transactions'].includes(i.to) ? validateReportSearch(search) : {}}>{i.name}</Link></DropdownMenuItem>)}</DropdownMenuContent></DropdownMenu>;
+ const menuItems = extras.filter(i => visible(i.to));
+ const workspaceMenu = !menuItems.length ? null : <DropdownMenu><DropdownMenuTrigger asChild><Button variant="ghost" size="icon" aria-label="More workspace pages" title="More workspace pages" className="size-10 shrink-0"><MoreHorizontal className="size-5" /></Button></DropdownMenuTrigger><DropdownMenuContent align="end" className="max-h-[70dvh] overflow-y-auto">{menuItems.map(i => <DropdownMenuItem key={i.to} asChild><Link to={i.to} search={['/reports', '/transactions'].includes(i.to) ? validateReportSearch(search) : {}}>{i.name}</Link></DropdownMenuItem>)}</DropdownMenuContent></DropdownMenu>;
  return <div data-sidebar-compact={compact ? 'true' : 'false'} className={`app-workspace min-h-screen bg-workspace ${compact ? 'lg:pl-[76px]' : 'lg:pl-[280px]'}`}>
   <aside className={`app-sidebar fixed inset-y-0 left-0 z-30 hidden flex-col border-r border-sidebar-border bg-sidebar lg:flex ${compact ? 'w-[76px]' : 'w-[280px]'}`}>
    <Link to="/dashboard" title={businessName} className={`app-sidebar-brand flex h-[84px] shrink-0 items-center gap-3 border-b border-sidebar-border ${compact ? 'justify-center px-3' : 'px-5'}`}><span className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-primary text-primary-foreground"><Building2 className="size-5" /></span>{!compact && <span className="min-w-0"><span className="block truncate text-sm font-bold text-sidebar-foreground">{businessName}</span><span className="mt-0.5 block text-[11px] text-muted-foreground">BizSathi Nepal</span></span>}</Link>
@@ -56,14 +61,14 @@ export function AppNavigation({ children, pathname }: { children: ReactNode; pat
    <div className="ml-auto flex min-w-0 flex-wrap items-center justify-end gap-2">
     <div className="hidden min-w-0 xl:block"><CommandPalette className="w-64 max-w-full" visible={visible} can={can} businessId={businesses.data?.[0]?.id ?? ''} /></div>
     <div className="xl:hidden"><CommandPalette variant="icon" shortcut={false} visible={visible} can={can} /></div>
-    {!billingStaff && <><Button asChild variant="outline" className="hidden h-10 shrink-0 sm:inline-flex"><Link to="/purchases" search={{ new: '1' }}><Plus className="size-4" />Purchase</Link></Button>
-    <Button asChild className="hidden h-10 shrink-0 sm:inline-flex"><Link to="/sales" search={{ new: '1' }}><Plus className="size-4" />Sale</Link></Button></>}
+    {!billingStaff && <>{can('purchases.create') && <Button asChild variant="outline" className="hidden h-10 shrink-0 sm:inline-flex"><Link to="/purchases" search={{ new: '1' }}><Plus className="size-4" />Purchase</Link></Button>}
+    {can('sales.create') && <Button asChild className="hidden h-10 shrink-0 sm:inline-flex"><Link to="/sales" search={{ new: '1' }}><Plus className="size-4" />Sale</Link></Button>}</>}
     {workspaceMenu}
     <DropdownMenu><DropdownMenuTrigger asChild><Button variant="ghost" className="h-10 min-h-10 shrink-0 gap-2 px-1 sm:px-2" aria-label="Account menu"><span className="flex size-8 items-center justify-center rounded-full bg-primary/10 text-xs font-semibold uppercase text-primary">{person.slice(0, 1) || 'A'}</span><span className="hidden max-w-24 truncate text-xs font-medium md:block">{person}</span><ChevronDown className="hidden size-3 md:block" /></Button></DropdownMenuTrigger><DropdownMenuContent align="end"><DropdownMenuItem asChild><Link to="/profile">My account</Link></DropdownMenuItem><DropdownMenuItem onSelect={signOut}><LogOut className="size-4" />Sign out</DropdownMenuItem></DropdownMenuContent></DropdownMenu>
    </div>
   </header>
   <Sheet open={mobileOpen} onOpenChange={setMobileOpen}><SheetContent side="left" className="flex w-[min(320px,90vw)] flex-col bg-sidebar p-0"><div className="px-5 pb-5 pt-7"><SheetTitle>{businessName}</SheetTitle><SheetDescription>BizSathi Nepal</SheetDescription></div><WorkspaceSidebar pathname={pathname} search={search} visible={visible} onNavigate={() => setMobileOpen(false)} /></SheetContent></Sheet>
   <div className="min-w-0">{deniedPage ? <main className="mx-auto max-w-xl px-5 py-16 text-center"><h1 className="brand text-2xl">No access</h1><p className="mt-3 text-sm text-muted-foreground">Your administrator has turned off access to this page.</p></main> : children}</div>
-  <MobileTabBar pathname={pathname} />
+  <MobileTabBar pathname={pathname} kind={kind} can={can} />
  </div>;
 }

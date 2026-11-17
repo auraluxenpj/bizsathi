@@ -8,13 +8,15 @@ describe('workspace navigation preserves existing workflows', () => {
   expect(isBillingStaff('staff', 'stock_manager')).toBe(false);
   expect(isBillingStaff('accountant', 'sales_person')).toBe(false);
  });
- it('keeps billing staff inside POS and their own cash drawer', () => {
+ it('keeps billing staff inside their dashboard, POS and their own cash drawer', () => {
   expect(shouldRedirectBillingStaff('/pos')).toBe(false);
   expect(shouldRedirectBillingStaff('/cash-counters')).toBe(false);
   expect(shouldRedirectBillingStaff('/sales')).toBe(false);
   expect(shouldRedirectBillingStaff('/hrm')).toBe(false);
+  expect(shouldRedirectBillingStaff('/dashboard')).toBe(false);
   expect(shouldRedirectBillingStaff('/purchases')).toBe(true);
-  expect(shouldRedirectBillingStaff('/dashboard')).toBe(true);
+  expect(shouldRedirectBillingStaff('/products')).toBe(true);
+  expect(shouldRedirectBillingStaff('/reports')).toBe(true);
  });
  it('selects each report destination independently and retains branch and dates', () => {
   const sales = workspaceGroups.flatMap(g => g.items).find(i => i.name === 'Sale Detail');
