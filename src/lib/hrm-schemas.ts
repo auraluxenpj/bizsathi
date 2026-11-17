@@ -5,6 +5,18 @@ const uuid = z.string().uuid();
 const date = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
 const money = z.number().finite().min(0).max(100000000);
 export const hrmWorkspaceInput = tenantInput;
+export const hrmReportInput = tenantInput.extend({
+  from: date, to: date, branchId: uuid.nullable().optional(),
+}).superRefine((value, ctx) => {
+  const start = Date.parse(value.from + 'T00:00:00Z');
+  const end = Date.parse(value.to + 'T00:00:00Z');
+  if (!Number.isFinite(start) || !Number.isFinite(end) || value.from > value.to) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['to'], message: 'Choose a valid date range' });
+  } else if ((end - start) / 86400000 > 366) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['to'], message: 'Reports are limited to 367 days per export' });
+  }
+});
+
 export const hrmEmployeeInput = tenantInput.extend({
   userId: uuid, branchId: uuid.nullable().optional(),
   employeeNumber: z.string().trim().toUpperCase().regex(/^[A-Z0-9_-]{3,24}$/),
