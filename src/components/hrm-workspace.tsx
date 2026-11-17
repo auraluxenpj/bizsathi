@@ -9,7 +9,7 @@ import { businessQuery } from '@/lib/inventory-queries';
 import { authorizedSelection } from '@/lib/dashboard-data';
 import {
   getHrmWorkspace, createHrmEmployee, updateHrmEmployee, saveHrmAttendance, saveHrmAttendancePolicy, clockHrmAttendance, createHrmLeaveType, createHrmLeaveRequest,
-  reviewHrmLeaveRequest, createHrmShift, assignHrmShift, saveHrmSalaryStructure,
+  reviewHrmLeaveRequest, saveHrmLeaveBalanceEntry, createHrmShift, assignHrmShift, saveHrmSalaryStructure,
   generateHrmPayroll, approveHrmPayroll, markHrmPayrollPaid,
 } from '@/lib/hrm.functions';
 
@@ -54,6 +54,7 @@ export function HrmWorkspace() {
   const createLeaveType = useServerFn(createHrmLeaveType);
   const createLeave = useServerFn(createHrmLeaveRequest);
   const reviewLeave = useServerFn(reviewHrmLeaveRequest);
+  const saveLeaveBalance = useServerFn(saveHrmLeaveBalanceEntry);
   const createShift = useServerFn(createHrmShift);
   const assignShift = useServerFn(assignHrmShift);
   const saveSalary = useServerFn(saveHrmSalaryStructure);
@@ -75,6 +76,7 @@ export function HrmWorkspace() {
   const leaveTypeMutation = useHrmMutation((payload) => createLeaveType({ data: payload }), onMutationSuccess, onMutationError);
   const leaveMutation = useHrmMutation((payload) => createLeave({ data: payload }), onMutationSuccess, onMutationError);
   const reviewMutation = useHrmMutation((payload) => reviewLeave({ data: payload }), onMutationSuccess, onMutationError);
+  const leaveBalanceMutation = useHrmMutation((payload) => saveLeaveBalance({ data: payload }), onMutationSuccess, onMutationError);
   const shiftMutation = useHrmMutation((payload) => createShift({ data: payload }), onMutationSuccess, onMutationError);
   const assignMutation = useHrmMutation((payload) => assignShift({ data: payload }), onMutationSuccess, onMutationError);
   const salaryMutation = useHrmMutation((payload) => saveSalary({ data: payload }), onMutationSuccess, onMutationError);
@@ -102,7 +104,7 @@ export function HrmWorkspace() {
     form.reset();
   }
   const number = (v: unknown) => Number(v || 0);
-  const actionBusy = [employeeMutation,employeeUpdateMutation,attendancePolicyMutation,attendanceMutation,clockMutation,leaveTypeMutation,leaveMutation,reviewMutation,shiftMutation,assignMutation,salaryMutation,payrollMutation,approveMutation,paidMutation].some(m => m.isPending);
+  const actionBusy = [employeeMutation,employeeUpdateMutation,attendancePolicyMutation,attendanceMutation,clockMutation,leaveTypeMutation,leaveMutation,reviewMutation,leaveBalanceMutation,shiftMutation,assignMutation,salaryMutation,payrollMutation,approveMutation,paidMutation].some(m => m.isPending);
   useEffect(() => { if (printPayslip) { window.print(); setPrintPayslip(null); } }, [printPayslip]);
   const attendancePolicy = data.data?.attendancePolicy ?? { workday_minutes:480, unpaid_break_minutes:60, grace_minutes:10, overtime_after_minutes:0, overtime_multiplier:1.5 };
   const overtimeFor = (record:any) => { if (!record.check_in || !record.check_out) return 0; const worked = Math.max(0, Math.floor((new Date(record.check_out).getTime()-new Date(record.check_in).getTime())/60000)-Number(attendancePolicy.unpaid_break_minutes||0)); return Math.max(0, worked-Number(attendancePolicy.workday_minutes||480)-Number(attendancePolicy.overtime_after_minutes||0)); };
@@ -198,16 +200,37 @@ export function HrmWorkspace() {
               <Field label="New leave type"><input required name="name" placeholder="e.g. Annual Leave" className={inputClass}/></Field><Field label="Annual quota (days)"><input required type="number" name="annualQuota" min="0" max="366" defaultValue="12" className={inputClass}/></Field><Field label="Accrual method"><select name="accrualMethod" className={inputClass}><option value="front_loaded">Front-loaded yearly</option><option value="monthly">Monthly accrual</option></select></Field><label className="flex h-10 items-center gap-2 text-sm"><input type="checkbox" name="isPaid" defaultChecked/>Paid leave</label><Button type="submit" variant="outline" disabled={actionBusy}>Add leave type</Button>
             </form>}
           </section>
+          {isAdmin && <section className="rounded-xl border p-4">
+            <h2 className="font-semibold">Opening balance, carry-forward & adjustments</h2>
+            <p className="mt-1 text-xs text-muted-foreground">Every entry is appended to an audit ledger. Historical entries cannot be edited or deleted. Use a positive number to add days and a negative number to reduce days.</p>
+            {employees.length > 0 && data.data.leaveTypes.length > 0 ? <form className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4" onSubmit={e=>{e.preventDefault();const fd=new FormData(e.currentTarget);leaveBalanceMutation.mutate({businessId,userId:String(fd.get('userId')),leaveTypeId:String(fd.get('leaveTypeId')),leaveYear:number(fd.get('leaveYear')),entryType:String(fd.get('entryType')),deltaDays:number(fd.get('deltaDays')),notes:String(fd.get('notes')||'')});e.currentTarget.reset();}}>
+              <Field label="Employee"><select required name="userId" className={inputClass}><option value="">Select employee</option>{employeeOptions}</select></Field>
+              <Field label="Leave type"><select required name="leaveTypeId" className={inputClass}><option value="">Select leave type</option>{data.data.leaveTypes.map((t:any)=><option key={t.id} value={t.id}>{t.name}</option>)}</select></Field>
+              <Field label="Leave year"><input required type="number" name="leaveYear" min="2000" max="2200" defaultValue={Number(today().slice(0,4))} className={inputClass}/></Field>
+              <Field label="Entry type"><select name="entryType" className={inputClass}><option value="opening_balance">Opening balance</option><option value="carry_forward">Carry-forward</option><option value="adjustment">Manual adjustment</option></select></Field>
+              <Field label="Days (+ add / − reduce)"><input required type="number" name="deltaDays" step="0.5" min="-3660" max="3660" className={inputClass}/></Field>
+              <Field label="Reason / reference"><input name="notes" maxLength={500} className={inputClass} placeholder="Required for manual adjustments"/></Field>
+              <div className="flex items-end"><Button type="submit" disabled={actionBusy}>Post balance entry</Button></div>
+            </form> : <Empty>Add an employee and an active leave type before posting balances.</Empty>}
+          </section>}
           {(isAdmin || employees.some((e:any)=>e.user_id===data.data.userId)) && <section className="rounded-xl border">
-            <div className="border-b p-4"><h2 className="font-semibold">Leave allowance overview · {today().slice(0,4)}</h2><p className="text-xs text-muted-foreground">Monthly accrual is calculated as annual quota ÷ 12 × elapsed calendar months; front-loaded leave uses the full quota. Employer policy and carry-forward adjustments must be confirmed.</p></div>
+            <div className="border-b p-4"><h2 className="font-semibold">Leave balance overview · {today().slice(0,4)}</h2><p className="text-xs text-muted-foreground">Accrued entitlement is calculated from the configured front-loaded or monthly policy. Opening balances, carry-forward, corrections and approved leave come from the append-only ledger.</p></div>
             {(() => {
+              const year = Number(today().slice(0,4));
+              const month = Number(today().slice(5,7));
               const visibleEmployees = employees.filter((e:any)=>isAdmin || e.user_id===data.data.userId);
               const rows = visibleEmployees.flatMap((e:any)=>data.data.leaveTypes.map((t:any)=>{
-                const used = data.data.leaveRequests.filter((l:any)=>l.user_id===e.user_id && l.leave_type_id===t.id && l.request_status==='approved' && l.start_date.startsWith(today().slice(0,4)) && l.end_date.startsWith(today().slice(0,4))).reduce((sum:number,l:any)=>sum+Number(l.days||0),0);
-                const annual=Number(t.annual_quota||0); const accrued=t.accrual_method==='monthly'?annual*Number(today().slice(5,7))/12:annual; return {employee:e.employee?.fullName||e.employee_number,type:t.name,quota:annual,accrued,used,remaining:Math.max(0,accrued-used),method:t.accrual_method||'front_loaded'};
+                const annual=Number(t.annual_quota||0);
+                const accrued=t.accrual_method==='monthly'?annual*month/12:annual;
+                const entries=(data.data.leaveBalanceEntries??[]).filter((entry:any)=>entry.user_id===e.user_id && entry.leave_type_id===t.id && Number(entry.leave_year)===year);
+                const ledgerDelta=entries.reduce((sum:number,entry:any)=>sum+Number(entry.delta_days||0),0);
+                const used=-entries.filter((entry:any)=>entry.entry_type==='leave_taken'||entry.entry_type==='leave_reversal').reduce((sum:number,entry:any)=>sum+Number(entry.delta_days||0),0);
+                const adjustments=entries.filter((entry:any)=>entry.entry_type!=='leave_taken'&&entry.entry_type!=='leave_reversal').reduce((sum:number,entry:any)=>sum+Number(entry.delta_days||0),0);
+                return {employee:e.employee?.fullName||e.employee_number,type:t.name,quota:annual,accrued,used,adjustments,remaining:accrued+ledgerDelta};
               }));
-              return rows.length ? <div className="overflow-x-auto"><table className="w-full min-w-[560px] text-left text-sm"><thead className="bg-muted/50 text-xs text-muted-foreground"><tr>{['Employee','Leave type','Annual quota','Accrued to date','Approved used','Remaining'].map(x=><th key={x} className="px-4 py-3 font-medium">{x}</th>)}</tr></thead><tbody className="divide-y">{rows.map((r:any,i:number)=><tr key={i}><td className="px-4 py-3 font-medium">{r.employee}</td><td className="px-4 py-3">{r.type}</td><td className="px-4 py-3">{r.quota}</td><td className="px-4 py-3">{r.accrued.toFixed(1)}</td><td className="px-4 py-3">{r.used}</td><td className="px-4 py-3 font-semibold">{r.remaining.toFixed(1)}</td></tr>)}</tbody></table></div> : <Empty>Add an employee and leave type to see the allowance overview.</Empty>;
+              return rows.length ? <div className="overflow-x-auto"><table className="w-full min-w-[700px] text-left text-sm"><thead className="bg-muted/50 text-xs text-muted-foreground"><tr>{['Employee','Leave type','Annual quota','Accrued to date','Ledger adjustments','Approved used','Available balance'].map(x=><th key={x} className="px-4 py-3 font-medium">{x}</th>)}</tr></thead><tbody className="divide-y">{rows.map((r:any,i:number)=><tr key={i}><td className="px-4 py-3 font-medium">{r.employee}</td><td className="px-4 py-3">{r.type}</td><td className="px-4 py-3">{r.quota.toFixed(1)}</td><td className="px-4 py-3">{r.accrued.toFixed(1)}</td><td className="px-4 py-3">{r.adjustments.toFixed(1)}</td><td className="px-4 py-3">{r.used.toFixed(1)}</td><td className="px-4 py-3 font-semibold">{r.remaining.toFixed(1)}</td></tr>)}</tbody></table></div> : <Empty>Add an employee and leave type to see the balance overview.</Empty>;
             })()}
+            <div className="border-t p-4"><h3 className="font-semibold text-sm">Recent ledger entries</h3>{(data.data.leaveBalanceEntries??[]).length ? <div className="mt-2 divide-y">{data.data.leaveBalanceEntries.slice(0,20).map((entry:any)=><div key={entry.id} className="flex flex-wrap justify-between gap-2 py-2 text-sm"><span>{employees.find((e:any)=>e.user_id===entry.user_id)?.employee?.fullName||'Employee'} · {data.data.leaveTypes.find((t:any)=>t.id===entry.leave_type_id)?.name||'Leave'} · <span className="capitalize">{entry.entry_type.replace('_',' ')}</span></span><span className="tabular-nums">{Number(entry.delta_days)>0?'+':''}{Number(entry.delta_days).toFixed(2)} days · {entry.leave_year}</span></div>)}</div> : <p className="mt-2 text-sm text-muted-foreground">No balance entries have been posted yet. Approved leave will appear here automatically.</p>}</div>
           </section>}
           <section className="rounded-xl border"><div className="border-b p-4"><h2 className="font-semibold">Leave requests</h2></div>
             {data.data.leaveRequests.length ? <div className="divide-y">{data.data.leaveRequests.map((l:any)=><article key={l.id} className="flex flex-wrap items-center justify-between gap-3 p-4"><div><p className="font-medium">{l.employee.fullName} · {data.data.leaveTypes.find((t:any)=>t.id===l.leave_type_id)?.name||'Leave'}</p><p className="text-sm text-muted-foreground">{l.start_date} to {l.end_date} · {l.days} day(s) · <span className="capitalize">{l.request_status}</span></p>{l.reason&&<p className="mt-1 text-sm">{l.reason}</p>}</div>{isAdmin&&l.request_status==='pending'&&<div className="flex gap-2"><Button size="sm" disabled={actionBusy} onClick={()=>reviewMutation.mutate({businessId,requestId:l.id,decision:'approved'})}>Approve</Button><Button size="sm" variant="outline" disabled={actionBusy} onClick={()=>reviewMutation.mutate({businessId,requestId:l.id,decision:'rejected'})}>Reject</Button></div>}</article>)}</div> : <Empty>No leave requests yet.</Empty>}
