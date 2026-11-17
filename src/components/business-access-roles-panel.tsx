@@ -73,7 +73,7 @@ export function BusinessAccessRolesPanel({ businessId, members }: { businessId: 
   const editingRole = roles.find((r) => r.id === editingRoleId);
   const selectedMember = members.find((m) => m.user_id === selectedUserId);
   const availableRoles = useMemo(() => roles.filter((r) =>
-    r.isActive && !assignments.some((a) => a.userId === selectedUserId && a.roleId === r.id)
+    r.isActive && !r.code.startsWith('legacy_') && !assignments.some((a) => a.userId === selectedUserId && a.roleId === r.id)
   ), [roles, assignments, selectedUserId]);
 
   useEffect(() => {
