@@ -23,7 +23,6 @@ DECLARE
   v_override_needed boolean := false;
   v_is_manager boolean;
   v_is_delegate boolean;
-  v_is_branch_manager boolean;
 BEGIN
   IF NEW.request_status <> 'approved'
      OR (TG_OP = 'UPDATE' AND OLD.request_status = 'approved') THEN
@@ -32,11 +31,6 @@ BEGIN
 
   v_is_manager := public.hr_is_manager(NEW.business_id);
   v_is_delegate := public.hr_is_leave_delegate(NEW.business_id, NEW.user_id);
-  SELECT EXISTS (
-    SELECT 1 FROM public.business_memberships
-    WHERE business_id=NEW.business_id AND user_id=auth.uid()
-      AND status='active' AND role_code='branch_manager'
-  ) INTO v_is_branch_manager;
   IF auth.uid() IS NULL OR NOT (v_is_manager OR v_is_delegate) THEN
     RAISE EXCEPTION 'Only an HR administrator or the delegated branch manager may approve this leave request'
       USING ERRCODE='42501';
@@ -103,9 +97,9 @@ BEGIN
     v_year := v_year+1;
   END LOOP;
 
-  -- A delegated member with the Branch Manager role has authority only for a real balance exception.
-  -- A supplied reason alone must never broaden ordinary leave-approval authority.
-  IF v_is_delegate AND v_is_branch_manager AND NOT v_override_needed THEN
+  -- Any approval using delegated authority must be a genuine balance exception.
+  -- This does not depend on role labels: delegation is the source of this approval path.
+  IF v_is_delegate AND NOT v_override_needed THEN
     RAISE EXCEPTION 'Delegated approval is limited to requests that exceed the available leave balance'
       USING ERRCODE='42501';
   END IF;
@@ -124,4 +118,4 @@ $$;
 REVOKE ALL ON FUNCTION public.hr_enforce_leave_balance_on_approval() FROM PUBLIC, anon, authenticated;
 
 COMMENT ON FUNCTION public.hr_enforce_leave_balance_on_approval() IS
-  'HR managers approve ordinary requests. Delegated members with the Branch Manager role may approve only a genuine over-balance request with a recorded reason.';
+  'HR managers approve ordinary requests. Delegated members may approve only a genuine over-balance request with a recorded reason.';
