@@ -35,6 +35,12 @@ describe('BizSathi HRM validation and access defaults', () => {
     expect(hrmLeaveTypeInput.safeParse({ ...base, accrualMethod: 'unknown' }).success).toBe(false);
   });
 
+  it('validates bounded date and branch filters for HR reports', () => {
+    expect(hrmReportInput.safeParse({ businessId, from: '2026-01-01', to: '2026-12-31', branchId: null }).success).toBe(true);
+    expect(hrmReportInput.safeParse({ businessId, from: '2026-11-30', to: '2026-11-01' }).success).toBe(false);
+    expect(hrmReportInput.safeParse({ businessId, from: '2025-01-01', to: '2026-12-31' }).success).toBe(false);
+  });
+
   it('validates opening balances, carry-forward and documented adjustments', () => {
     const base = { businessId, userId, leaveTypeId: '00000000-0000-4000-8000-000000000003', leaveYear: 2026, deltaDays: 5 };
     expect(hrmLeaveBalanceAdjustmentInput.safeParse({ ...base, entryType: 'opening_balance' }).success).toBe(true);
