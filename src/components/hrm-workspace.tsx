@@ -6,6 +6,7 @@ import { CalendarDays, Clock3, Users, Wallet } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { businessQuery } from '@/lib/inventory-queries';
+import { HrmDraftEmployeeProfiles } from '@/components/hrm-draft-employee-profiles';
 import { authorizedSelection } from '@/lib/dashboard-data';
 import {
   getHrmWorkspace, getHrmReports, createHrmEmployee, updateHrmEmployee, saveHrmAttendance, saveHrmAttendancePolicy, clockHrmAttendance, createHrmLeaveType, createHrmLeaveRequest,
@@ -133,6 +134,7 @@ export function HrmWorkspace() {
           <TabsTrigger value="employees">Employees</TabsTrigger><TabsTrigger value="attendance">Attendance</TabsTrigger><TabsTrigger value="leave">Leave</TabsTrigger><TabsTrigger value="shifts">Shifts</TabsTrigger>{(isAdmin||canPayroll)&&<TabsTrigger value="reports">Reports</TabsTrigger>}<TabsTrigger value="payroll">Payroll</TabsTrigger>
         </TabsList>
         <TabsContent value="employees" className="space-y-5">
+          <HrmDraftEmployeeProfiles businessId={businessId} branches={data.data.branches} isAdmin={isAdmin} />
           {isAdmin && <section className="rounded-xl border p-4 md:p-5"><h2 className="font-semibold">Create employee record</h2><p className="mt-1 text-sm text-muted-foreground">Select an existing active BizSathi member. HRM does not create a duplicate login or a second staff account.</p>
             {candidates.length ? <form className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3" onSubmit={e=>{e.preventDefault();const fd=new FormData(e.currentTarget);const employeeNumber=String(fd.get('employeeNumber')||'').trim()||`EMP-${crypto.randomUUID().slice(0,8).toUpperCase()}`;employeeMutation.mutate({businessId,userId:String(fd.get('userId')),branchId:String(fd.get('branchId')||'')||null,employeeNumber,designation:String(fd.get('designation')||''),department:String(fd.get('department')||''),employmentType:String(fd.get('employmentType')||'full_time'),joiningDate:String(fd.get('joiningDate')),employmentStatus:'active'});e.currentTarget.reset();}}>
               <Field label="Existing team member"><select required name="userId" className={inputClass}><option value="">Select member</option>{memberOptions(candidates)}</select></Field>
