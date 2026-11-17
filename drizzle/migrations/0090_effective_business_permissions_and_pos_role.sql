@@ -118,3 +118,28 @@ BEGIN
 END;
 $sync_default_access_role$;
 REVOKE ALL ON FUNCTION public.sync_default_business_access_role() FROM PUBLIC,anon,authenticated;
+
+-- Ensure invitation status reads inherit the underlying team_invitations RLS policy.
+CREATE OR REPLACE VIEW public.team_invitations_status
+WITH (security_invoker = true)
+AS
+SELECT id,
+       business_id,
+       branch_id,
+       role_code,
+       job_title,
+       label,
+       invited_by,
+       expires_at,
+       max_uses,
+       use_count,
+       revoked_at,
+       created_at,
+       CASE
+         WHEN revoked_at IS NOT NULL THEN 'revoked'::text
+         WHEN use_count >= max_uses THEN 'accepted'::text
+         WHEN expires_at <= now() THEN 'expired'::text
+         WHEN use_count > 0 THEN 'partially_used'::text
+         ELSE 'pending'::text
+       END AS status
+FROM public.team_invitations;
