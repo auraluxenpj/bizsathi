@@ -207,10 +207,8 @@ BEGIN
   IF NEW.kind='sale_return' AND NOT EXISTS (
     SELECT 1 FROM public.sale_return_requests r
     WHERE r.business_id=NEW.business_id
-      AND r.id=(NEW.request->>'returnRequestId')::uuid
       AND r.reserved_document_id=NEW.id
       AND r.status='approved' AND r.reviewed_by IS NOT NULL
-      AND r.return_document_id=NEW.id
   ) THEN
     RAISE EXCEPTION 'A manager-approved sale return request is required before posting'
       USING ERRCODE='42501';
