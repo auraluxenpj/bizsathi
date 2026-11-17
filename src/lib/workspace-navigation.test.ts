@@ -3,10 +3,13 @@ import { isBillingStaff, shouldRedirectBillingStaff, workspaceGroups, workspaceI
 import { documentInSelectedView } from './workspace-views';
 import { dashboardTrends } from './dashboard-trends';
 describe('workspace navigation preserves existing workflows', () => {
- it('identifies only sales-person staff as dedicated billing users', () => {
-  expect(isBillingStaff('staff', 'sales_person')).toBe(true);
-  expect(isBillingStaff('staff', 'stock_manager')).toBe(false);
-  expect(isBillingStaff('accountant', 'sales_person')).toBe(false);
+ it('identifies permission-limited sales users as dedicated billing users', () => {
+  const cashier = (p: string) => ['sales.create','sales.view','customers.create','customers.view','inventory.view','categories.view'].includes(p);
+  const stockManager = (p: string) => ['inventory.view','inventory.edit','stock.edit'].includes(p);
+  const accountant = (p: string) => ['sales.create','purchases.view','accounts.view','reports.view'].includes(p);
+  expect(isBillingStaff(cashier)).toBe(true);
+  expect(isBillingStaff(stockManager)).toBe(false);
+  expect(isBillingStaff(accountant)).toBe(false);
  });
  it('keeps billing staff inside their dashboard, POS and their own cash drawer', () => {
   expect(shouldRedirectBillingStaff('/pos')).toBe(false);
