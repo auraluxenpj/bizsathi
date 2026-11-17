@@ -206,8 +206,8 @@ BEGIN
   END LOOP;
 
   -- Legacy role grants preserve the existing role preset ceilings.
-  FOR r IN
-    SELECT br.id, br.code,
+  FOR v_item IN
+    SELECT bv_item.id, br.code,
       CASE br.code
         WHEN 'legacy_owner' THEN ARRAY[]::text[]
         WHEN 'legacy_admin' THEN ARRAY['settings.delete_business']::text[]
@@ -233,8 +233,8 @@ BEGIN
 
   -- Position roles inherit the business-specific template when present; otherwise
   -- they inherit the existing global job-title denial template.
-  FOR r IN
-    SELECT br.id, substring(br.code from 10) AS job_title,
+  FOR v_item IN
+    SELECT bv_item.id, substring(br.code from 10) AS job_title,
       COALESCE(t.denied_permissions,
         ARRAY(SELECT d.permission FROM public.job_title_denials d WHERE d.job_title=substring(br.code from 10))
       ) AS denied
@@ -244,9 +244,9 @@ BEGIN
     WHERE br.business_id=_business_id AND br.code LIKE 'position_%'
   LOOP
     INSERT INTO public.business_access_role_permissions(business_id,role_id,permission)
-    SELECT _business_id,r.id,p.permission
+    SELECT _business_id,v_item.id,p.permission
     FROM public.business_permission_catalog p
-    WHERE NOT (p.permission = ANY(r.denied))
+    WHERE NOT (p.permission = ANY(v_item.denied))
     ON CONFLICT DO NOTHING;
   END LOOP;
 END;
@@ -381,7 +381,7 @@ FOR EACH ROW EXECUTE FUNCTION public.sync_default_business_access_role();
 -- legacy authorization resolver or grant new permissions during this foundation phase.
 INSERT INTO public.business_member_access_roles
   (business_id,user_id,role_id,assigned_by,is_default)
-SELECT m.business_id,m.user_id,br.id,m.invited_by,true
+SELECT m.business_id,m.user_id,bv_item.id,m.invited_by,true
 FROM public.business_memberships m
 JOIN public.business_access_roles br
   ON br.business_id=m.business_id
@@ -401,12 +401,12 @@ BEGIN
     RAISE EXCEPTION 'Administrator access is required' USING ERRCODE='42501';
   END IF;
   SELECT COALESCE(jsonb_agg(jsonb_build_object(
-    'id',r.id,'code',r.code,'name',r.name,'description',r.description,
+    'id',v_item.id,'code',r.code,'name',r.name,'description',r.description,
     'authorityRank',r.authority_rank,'isSystem',r.is_system,'isActive',r.is_active,
     'permissions',COALESCE((
       SELECT jsonb_agg(rp.permission ORDER BY rp.permission)
       FROM public.business_access_role_permissions rp
-      WHERE rp.business_id=r.business_id AND rp.role_id=r.id
+      WHERE rp.business_id=r.business_id AND rp.role_id=v_item.id
     ),'[]'::jsonb)
   ) ORDER BY r.is_system DESC,r.name),'[]'::jsonb)
   INTO result
