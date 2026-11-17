@@ -9,7 +9,7 @@ import {permissionGroups,rolePresets,deniedForRole,allPermissions} from '@/lib/p
 import {jobTitles} from '@/lib/job-titles';
 export function usePermissionDenials(businessId:string){const fn=useServerFn(getMemberPermissions);return useQuery({queryKey:['permissions',businessId],queryFn:()=>fn({data:{businessId}}),enabled:!!businessId});}
 /** True unless the signed-in member's checklist removed this permission. */
-export function useCan(businessId:string){const q=usePermissionDenials(businessId);return (p:string)=>!q.data?.denials.some(d=>d.user_id===q.data?.userId&&d.permission===p)&&!q.data?.roleDenials?.some(d=>d.user_id===q.data?.userId&&d.permission===p);}
+export function useCan(businessId:string){const q=usePermissionDenials(businessId);return (p:string)=>q.isSuccess&&!!q.data&&!q.data.denials.some(d=>d.user_id===q.data.userId&&d.permission===p)&&!q.data.roleDenials?.some(d=>d.user_id===q.data.userId&&d.permission===p);}
 export function PermissionChecklist({businessId,userId,name,role}:{businessId:string;userId:string;name:string;role?:string}){
  const q=usePermissionDenials(businessId);const save=useServerFn(saveMemberPermissions);const client=useQueryClient();
  const [open,setOpen]=useState(false),[denied,setDenied]=useState<string[]>([]),[busy,setBusy]=useState(false),[error,setError]=useState('');
