@@ -161,7 +161,7 @@ export const getBusinessAccessRoles = createServerFn({ method: 'GET' }).middlewa
 export const getBusinessMemberAccessRoles = createServerFn({ method: 'GET' }).middleware([requireSupabaseAuth]).inputValidator(tenantInput).handler(async ({ data, context }) => {
   const { data: assignments, error } = await anyDb(context.supabase).rpc('get_business_member_access_roles', { _business: data.businessId });
   if (error) throw new Error('Employee role assignments could not be loaded.');
-  return { assignments: (assignments ?? []) as { userId: string; roleId: string; roleCode: string; roleName: string; isDefault: boolean; assignedAt: string }[] };
+  return { assignments: (assignments ?? []) as { userId: string; roleId: string; roleCode: string; roleName: string; authorityRank: number; isDefault: boolean; assignedAt: string }[] };
 });
 
 export const createBusinessAccessRole = createServerFn({ method: 'POST' }).middleware([requireSupabaseAuth]).inputValidator(accessRoleCreateInput).handler(async ({ data, context }) => {
