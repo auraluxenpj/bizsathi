@@ -5,15 +5,15 @@ const row = (product_name: string, variant_name: string, sku: string, barcode = 
 const sheet = ['M', 'L', 'XL', '2XL', '3XL'].map((v) => row('ANUSHREE01', v, 'AL-KURTI-001')).concat(['M', 'L'].map((v) => row('ANUSHREE03', v, 'AL-KURTI-003')));
 describe('Catalogue import problems', () => {
   it('flags a SKU repeated across sizes, with its row count', () => {
-    const p = catalogueProblems(sheet, new Set());
+    const p = catalogueProblems(sheet);
     expect(p.any).toBe(true); expect(p.duplicateSkus).toEqual([{ sku: 'AL-KURTI-001', count: 5 }, { sku: 'AL-KURTI-003', count: 2 }]);
   });
-  it('flags SKUs that already exist in the business', () => {
-    const p = catalogueProblems([row('A', 'M', 'AL-1'), row('B', 'M', 'AL-2')], new Set(['AL-2']));
-    expect(p.existingSkus).toEqual(['AL-2']); expect(p.any).toBe(true);
+  it('allows existing SKUs so matching variants can be updated', () => {
+    const p = catalogueProblems([row('A', 'M', 'AL-1'), row('B', 'M', 'AL-2')]);
+    expect(p.any).toBe(false);
   });
   it('flags repeated barcodes but ignores blank ones', () => {
-    const p = catalogueProblems([row('A', 'M', 'S1', '123'), row('A', 'L', 'S2', '123'), row('B', 'M', 'S3'), row('B', 'L', 'S4')], new Set());
+    const p = catalogueProblems([row('A', 'M', 'S1', '123'), row('A', 'L', 'S2', '123'), row('B', 'M', 'S3'), row('B', 'L', 'S4')]);
     expect(p.duplicateBarcodes).toEqual(['123']);
   });
   it('reports no problems for a clean sheet', () => expect(catalogueProblems([row('A', 'M', 'S1'), row('A', 'L', 'S2')], new Set()).any).toBe(false));
@@ -23,7 +23,7 @@ describe('Making repeated SKUs unique', () => {
     const { rows, changed } = makeSkusUnique(sheet);
     expect(changed).toBe(7);
     expect(rows.slice(0, 5).map((r) => r.sku)).toEqual(['AL-KURTI-001-M', 'AL-KURTI-001-L', 'AL-KURTI-001-XL', 'AL-KURTI-001-2XL', 'AL-KURTI-001-3XL']);
-    expect(catalogueProblems(rows, new Set()).any).toBe(false);
+    expect(catalogueProblems(rows).any).toBe(false);
   });
   it('leaves rows with a unique SKU untouched', () => {
     const rows = [row('A', 'M', 'S1'), row('A', 'L', 'S1'), row('B', 'M', 'S9')];
@@ -32,7 +32,7 @@ describe('Making repeated SKUs unique', () => {
   });
   it('cannot fix rows that repeat the same size, so they stay flagged', () => {
     const r = makeSkusUnique([row('A', 'M', 'S1'), row('A', 'M', 'S1')]).rows;
-    expect(catalogueProblems(r, new Set()).duplicateSkus).toEqual([{ sku: 'S1-M', count: 2 }]);
+    expect(catalogueProblems(r).duplicateSkus).toEqual([{ sku: 'S1-M', count: 2 }]);
   });
   it('does not change rows when a size name is blank', () => {
     const r = makeSkusUnique([row('A', '', 'S1'), row('A', ' ', 'S1')]).rows;
