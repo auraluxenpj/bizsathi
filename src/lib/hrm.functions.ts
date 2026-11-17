@@ -3,7 +3,7 @@ import { createServerFn } from '@tanstack/react-start';
 import { requireSupabaseAuth } from '@/integrations/supabase/auth-middleware';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import {
-  hrmWorkspaceInput, hrmEmployeeInput, hrmAttendanceInput, hrmLeaveTypeInput,
+  hrmWorkspaceInput, hrmEmployeeInput, hrmAttendanceInput, hrmClockInput, hrmLeaveTypeInput,
   hrmLeaveRequestInput, hrmLeaveReviewInput, hrmShiftInput, hrmShiftAssignmentInput,
   hrmSalaryInput, hrmPayrollGenerateInput, hrmPayrollActionInput,
 } from './hrm-schemas';
@@ -73,6 +73,16 @@ export const createHrmEmployee = createServerFn({ method: 'POST' })
     }).select('user_id').single();
     if (error || !row) throw new Error('Employee record could not be created. The member may already have an HR record.');
     return { userId: row.user_id as string };
+  });
+
+export const clockHrmAttendance = createServerFn({ method: 'POST' })
+  .middleware([requireSupabaseAuth]).inputValidator(hrmClockInput)
+  .handler(async ({ data, context }) => {
+    const { data: stamp, error } = await db(context.supabase).rpc('hr_clock_attendance', {
+      _business_id: data.businessId, _attendance_date: data.attendanceDate, _direction: data.direction,
+    });
+    if (error || !stamp) throw new Error('Attendance could not be recorded. Check your employee status and whether you have already clocked this action.');
+    return { stamp: stamp as string };
   });
 
 export const saveHrmAttendance = createServerFn({ method: 'POST' })
