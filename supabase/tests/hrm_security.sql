@@ -53,6 +53,13 @@ BEGIN
   PERFORM set_config('request.jwt.claims',json_build_object('sub',employee_id,'role','authenticated')::text,true);
   SELECT count(*) INTO v_count FROM public.hr_employee_records WHERE business_id=v_business_id;
   ASSERT v_count=1,'Employee can read their own HR profile';
+  PERFORM public.hr_clock_attendance(v_business_id,current_date,'check_in');
+  PERFORM public.hr_clock_attendance(v_business_id,current_date,'check_out');
+  SELECT count(*) INTO v_count FROM public.hr_attendance
+    WHERE business_id=v_business_id AND user_id=employee_id AND attendance_date=current_date
+      AND check_in IS NOT NULL AND check_out IS NOT NULL;
+  ASSERT v_count=1,'Employee can only clock their own attendance in and out';
+
   SELECT count(*) INTO v_count FROM public.hr_salary_structures WHERE business_id=v_business_id;
   ASSERT v_count=0,'Employee cannot read salary structures';
   RESET ROLE;
