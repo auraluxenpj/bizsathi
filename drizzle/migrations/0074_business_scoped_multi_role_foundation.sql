@@ -207,7 +207,7 @@ BEGIN
 
   -- Legacy role grants preserve the existing role preset ceilings.
   FOR v_item IN
-    SELECT bv_item.id, br.code,
+    SELECT br.id, br.code,
       CASE br.code
         WHEN 'legacy_owner' THEN ARRAY[]::text[]
         WHEN 'legacy_admin' THEN ARRAY['settings.delete_business']::text[]
@@ -234,7 +234,7 @@ BEGIN
   -- Position roles inherit the business-specific template when present; otherwise
   -- they inherit the existing global job-title denial template.
   FOR v_item IN
-    SELECT bv_item.id, substring(br.code from 10) AS job_title,
+    SELECT br.id, substring(br.code from 10) AS job_title,
       COALESCE(t.denied_permissions,
         ARRAY(SELECT d.permission FROM public.job_title_denials d WHERE d.job_title=substring(br.code from 10))
       ) AS denied
@@ -381,7 +381,7 @@ FOR EACH ROW EXECUTE FUNCTION public.sync_default_business_access_role();
 -- legacy authorization resolver or grant new permissions during this foundation phase.
 INSERT INTO public.business_member_access_roles
   (business_id,user_id,role_id,assigned_by,is_default)
-SELECT m.business_id,m.user_id,bv_item.id,m.invited_by,true
+SELECT m.business_id,m.user_id,br.id,m.invited_by,true
 FROM public.business_memberships m
 JOIN public.business_access_roles br
   ON br.business_id=m.business_id
