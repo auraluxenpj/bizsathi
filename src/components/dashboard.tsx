@@ -15,7 +15,7 @@ import { dashboardTrends } from '@/lib/dashboard-trends';
 import { addDaysAd, bsMonthInfo, bsShort, compactNPR, formatBsAd, formatNPR, todayAd } from '@/lib/format';
 import { supabase } from '@/integrations/supabase/client';
 import { useCan } from './permission-checklist';
-import { routePermission } from '@/lib/permissions';
+import { permissionForRoute } from '@/lib/permissions';
 import { KarobarHome } from './karobar-home';
 import { StatCard, type DashboardAction } from './dashboard-widgets';
 import { CashierDashboard, EntryDashboard, LimitedDashboard, StockDashboard } from './role-dashboards';
@@ -29,7 +29,7 @@ function BusinessDashboard() {
  const businessId = authorizedSelection(businesses.data ?? [], selected);
  const can = useCan(businessId);
  const statsAllowed = can('reports.home_stats');
- const visible = (to: string) => { const p = routePermission[to]; return !p || can(p); };
+ const visible = (to: string) => { const p = permissionForRoute(to); return !p || can(p); };
  const access = useQuery({ queryKey: ['business-access', businessId], queryFn: () => getAccess({ data: { businessId } }), enabled: Boolean(businessId) });
  const branches = access.data?.branches.filter(b => b.is_active) ?? []; const branchId = branches.some(b => b.id === branch) ? branch : '';
  const commerce = useQuery({ queryKey: ['commerce', businessId], queryFn: () => loadCommerce({ data: { businessId } }), enabled: Boolean(businessId) && statsAllowed });

@@ -24,7 +24,15 @@ BEGIN
  rejected:=false; BEGIN PERFORM public.accept_business_invitation(repeat('a',64)); EXCEPTION WHEN insufficient_privilege THEN rejected:=true; END; ASSERT rejected,'invitation email mismatch denied';
  PERFORM set_config('request.jwt.claims',json_build_object('sub',outsider,'role','authenticated')::text,true);
  rejected:=false; BEGIN PERFORM public.remove_business_member(ba,staff); EXCEPTION WHEN insufficient_privilege THEN rejected:=true; END; ASSERT rejected,'NULL caller rank cannot remove another user';
+ PERFORM set_config('request.jwt.claims',json_build_object('sub',a,'role','authenticated')::text,true);
+ PERFORM public.set_member_job_title(ba,staff,'manager');
  PERFORM set_config('request.jwt.claims',json_build_object('sub',staff,'role','authenticated')::text,true);
+ ASSERT 'sales.create'=ANY(ARRAY(SELECT permission FROM public.get_my_business_permissions(ba))),'POS role can create sales';
+ ASSERT 'inventory.view'=ANY(ARRAY(SELECT permission FROM public.get_my_business_permissions(ba))),'POS role can read products for checkout';
+ ASSERT 'customers.view'=ANY(ARRAY(SELECT permission FROM public.get_my_business_permissions(ba))),'POS role can look up customers in checkout';
+ ASSERT NOT ('purchases.create'=ANY(ARRAY(SELECT permission FROM public.get_my_business_permissions(ba)))),'POS role cannot create purchases';
+ ASSERT NOT ('inventory.edit'=ANY(ARRAY(SELECT permission FROM public.get_my_business_permissions(ba)))),'POS role cannot edit inventory';
+ ASSERT NOT ('hr.employees.view'=ANY(ARRAY(SELECT permission FROM public.get_my_business_permissions(ba)))),'POS role cannot open employee management';
  ASSERT (SELECT count(*) FROM public.branches WHERE business_id=ba)=0,'staff has no implicit branch access';
  ASSERT (SELECT count(*) FROM public.security_review_events WHERE business_id=ba)=0,'staff cannot read security history';
  rejected:=false; BEGIN INSERT INTO public.security_review_events(business_id,kind,title,details) VALUES(ba,'approval','Bad','Bad'); EXCEPTION WHEN insufficient_privilege THEN rejected:=true; END; ASSERT rejected,'staff cannot append approvals';

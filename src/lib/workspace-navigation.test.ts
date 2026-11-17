@@ -8,18 +8,15 @@ describe('workspace navigation preserves existing workflows', () => {
   const stockManager = (p: string) => ['inventory.view','inventory.edit','stock.edit'].includes(p);
   const accountant = (p: string) => ['sales.create','purchases.view','accounts.view','reports.view'].includes(p);
   expect(isBillingStaff(cashier)).toBe(true);
+  expect(isBillingStaff(p => cashier(p) || p === 'expenses.view')).toBe(false);
   expect(isBillingStaff(stockManager)).toBe(false);
   expect(isBillingStaff(accountant)).toBe(false);
  });
- it('keeps billing staff inside their dashboard, POS and their own cash drawer', () => {
+ it('confines POS-only billing staff to the POS terminal', () => {
   expect(shouldRedirectBillingStaff('/pos')).toBe(false);
-  expect(shouldRedirectBillingStaff('/cash-counters')).toBe(false);
-  expect(shouldRedirectBillingStaff('/sales')).toBe(false);
-  expect(shouldRedirectBillingStaff('/hrm')).toBe(false);
-  expect(shouldRedirectBillingStaff('/dashboard')).toBe(false);
-  expect(shouldRedirectBillingStaff('/purchases')).toBe(true);
-  expect(shouldRedirectBillingStaff('/products')).toBe(true);
-  expect(shouldRedirectBillingStaff('/reports')).toBe(true);
+  for (const path of ['/dashboard','/cash-counters','/sales','/parties','/membership','/hrm','/purchases','/products','/reports','/businesses']) {
+   expect(shouldRedirectBillingStaff(path)).toBe(true);
+  }
  });
  it('selects each report destination independently and retains branch and dates', () => {
   const sales = workspaceGroups.flatMap(g => g.items).find(i => i.name === 'Sale Detail');

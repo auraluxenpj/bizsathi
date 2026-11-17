@@ -8,7 +8,7 @@ import { getBusinessAccess } from '@/lib/business.functions';
 import { getCommerce } from '@/lib/commerce.functions';
 import { allowedActions, countOnDay, entryDayCounts, localDay, openDrawer, saleDayTotals } from '@/lib/dashboard-profile';
 import { formatBsAd, formatNPR, todayAd } from '@/lib/format';
-import { routePermission } from '@/lib/permissions';
+import { permissionForRoute } from '@/lib/permissions';
 import { useCan, usePermissionDenials } from './permission-checklist';
 import { LowStockSummary, useLowStock } from './low-stock-summary';
 import { ActionGrid, DashboardShell, Notice, Panel, StatCard, usePersonName, type DashboardAction } from './dashboard-widgets';
@@ -23,7 +23,7 @@ function useRoleAccess(businessId: string) {
   const can = useCan(businessId);
   const ready = usePermissionDenials(businessId).isSuccess;
   const allowed = (permission: string) => ready && can(permission);
-  const routeVisible = (to: string) => { const permission = routePermission[to]; return !permission || allowed(permission); };
+  const routeVisible = (to: string) => { const permission = permissionForRoute(to); return !permission || allowed(permission); };
   return { ready, allowed, routeVisible };
 }
 

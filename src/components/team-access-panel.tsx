@@ -180,6 +180,14 @@ export function TeamAccessPanel({
     onSuccess: () => { setMessage('Employee position updated.'); void client.invalidateQueries({ queryKey: ['business-access', businessId] }); void client.invalidateQueries({ queryKey: ['permissions', businessId] }); },
     onError: (error) => setMessage(error instanceof Error ? error.message : 'Employee position could not be changed.'),
   });
+  const baseRoleMutation = useMutation({
+    mutationFn: (v: { userId: string; role: 'admin' | 'accountant' | 'staff' | 'viewer' }) => {
+      const member = members.find((m) => m.user_id === v.userId);
+      return updateMemberFn({ data: { businessId, userId: v.userId, role: v.role, status: member?.status === 'suspended' ? 'suspended' : 'active' } });
+    },
+    onSuccess: () => { setMessage('Employee base access role updated.'); void client.invalidateQueries({ queryKey: ['business-access', businessId] }); void client.invalidateQueries({ queryKey: ['permissions', businessId] }); },
+    onError: (error) => setMessage(error instanceof Error ? error.message : 'Employee base access could not be changed.'),
+  });
   const revokeInvite = useMutation({
     mutationFn: (invitationId: string) => revokeInviteFn({ data: { invitationId } }),
     onSuccess: () => { setMessage('Invitation revoked.'); setInviteLink(''); refresh(); },
@@ -191,8 +199,8 @@ export function TeamAccessPanel({
       {viewMode !== 'positions' && <>
       <section className="rounded-xl border p-4 md:p-5">
         <div className="mb-3 flex items-center gap-2"><Users className="size-4 text-primary" /><h3 className="font-semibold">Employees & branch access</h3></div>
-        <p className="mb-4 text-sm text-muted-foreground">Assign each employee to one or more branches. Assigned access roles control what they can do; branch membership controls where they can do it. Position is an HR designation.</p>
-        {members.length ? <div className="overflow-x-auto"><table className="w-full min-w-[640px] text-left text-sm"><thead><tr className="border-b text-xs text-muted-foreground"><th className="py-2 pr-4 font-medium">Employee</th><th className="py-2 pr-4 font-medium">Position</th>{branches.map((b) => <th key={b.id} className="px-3 py-2 text-center font-medium">{b.name}</th>)}</tr></thead><tbody className="divide-y">{members.map((m) => {
+        <p className="mb-4 text-sm text-muted-foreground">Base access controls which application screens an employee can use; Staff · POS only is the restricted cashier role. HR position is a separate job designation. Branch membership controls where the employee can work.</p>
+        {members.length ? <div className="overflow-x-auto"><table className="w-full min-w-[820px] text-left text-sm"><thead><tr className="border-b text-xs text-muted-foreground"><th className="py-2 pr-4 font-medium">Employee</th><th className="py-2 pr-4 font-medium">Base access</th><th className="py-2 pr-4 font-medium">HR position</th>{branches.map((b) => <th key={b.id} className="px-3 py-2 text-center font-medium">{b.name}</th>)}</tr></thead><tbody className="divide-y">{members.map((m) => {
           const assignedAuthority = memberRoles.filter((r) => r.userId === m.user_id).reduce((rank, r) => Math.max(rank, r.authorityRank), 0);
           const effectiveAuthority = Math.max(roleRank[m.role_code] ?? 0, assignedAuthority);
           const protectedMember = m.user_id === userId || effectiveAuthority >= (isOwner ? 100 : 80);
@@ -200,6 +208,13 @@ export function TeamAccessPanel({
           const permittedPositions = jobTitleCodes.filter((title) => isOwner || title !== 'partner');
           return <tr key={m.user_id}>
             <td className="py-3 pr-4 font-medium">{employeeName}</td>
+            <td className="py-3 pr-4">{isAdmin && !protectedMember ? <select aria-label={`Base access role for ${employeeName}`} className="h-9 max-w-48 rounded-md border bg-background px-2" value={m.role_code} disabled={baseRoleMutation.isPending} onChange={(e) => baseRoleMutation.mutate({ userId: m.user_id, role: e.target.value as 'admin' | 'accountant' | 'staff' | 'viewer' })}>
+              {isOwner && <option value="admin">Administrator</option>}
+              <option value="accountant">Accountant</option>
+              <option value="staff">Staff · POS only</option>
+              <option value="viewer">Viewer</option>
+              {m.role_code === 'branch_manager' && <option value="branch_manager" disabled>Branch Manager</option>}
+            </select> : ({staff:'Staff · POS only',viewer:'Viewer',accountant:'Accountant',branch_manager:'Branch Manager',admin:'Administrator',owner:'Owner'} as Record<string,string>)[m.role_code] ?? m.role_code}</td>
             <td className="py-3 pr-4">{isAdmin && !protectedMember ? <select aria-label={`Position for ${employeeName}`} className="h-9 max-w-48 rounded-md border bg-background px-2" value={m.job_title ?? ''} disabled={positionMutation.isPending} onChange={(e) => positionMutation.mutate({ userId: m.user_id, jobTitle: e.target.value as JobTitle, status: m.status })}>
               <option value="" disabled>Select position</option>
               {permittedPositions.map((title) => <option key={title} value={title}>{jobTitles[title].label}</option>)}
@@ -263,7 +278,7 @@ export function TeamAccessPanel({
           </label>
           <label className="mb-3 block text-sm">Base access role
             <select className="mt-1 h-10 w-full rounded-md border bg-background px-3" value={inviteRole} onChange={(e) => setInviteRole(e.target.value)}>
-              {allowedInviteRoles.map((role) => <option key={role} value={role}>{role.replaceAll('_',' ').replace(/\b\w/g,(v) => v.toUpperCase())}</option>)}
+              {allowedInviteRoles.map((role) => <option key={role} value={role}>{role === 'staff' ? 'Staff · POS only' : role.replaceAll('_',' ').replace(/\b\w/g,(v) => v.toUpperCase())}</option>)}
             </select>
           </label>
           {availableTitles.length > 0 && <label className="mb-3 block text-sm">HR position
@@ -271,7 +286,7 @@ export function TeamAccessPanel({
               {availableTitles.map((t) => <option key={t} value={t}>{titleLabel[t]}</option>)}
             </select>
           </label>}
-          <p className="mb-4 text-xs text-muted-foreground">Base access sets the employee’s initial authority. HR position is separate; additional operational roles can be assigned after the invitation is accepted.</p>
+          <p className="mb-4 text-xs text-muted-foreground">Staff is the restricted POS-only base role. Base access controls application permissions; HR position is only the job designation. Assign extra operational roles after the invitation is accepted when the employee needs more screens.</p>
           <label className="mb-3 block text-sm">Invitee email address
             <input className="mt-1 h-10 w-full rounded-md border bg-background px-3" type="email" autoComplete="email" maxLength={254} placeholder="staff@example.com" value={inviteeEmail} onChange={(e) => setInviteeEmail(e.target.value)} />
           </label>

@@ -6,10 +6,10 @@ import { Input } from './ui/input';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from './ui/tooltip';
 import { dashboardItem, workspaceGroups, workspaceItemActive, workspaceItemSearch, type WorkspaceItem } from '@/lib/workspace-navigation';
 
-export function WorkspaceSidebar({ pathname, search, compact = false, visible, onNavigate }: { pathname: string; search: Record<string, unknown>; compact?: boolean; visible: (to?: string) => boolean; onNavigate?: () => void }) {
+export function WorkspaceSidebar({ pathname, search, compact = false, visible, onNavigate }: { pathname: string; search: Record<string, unknown>; compact?: boolean; visible: (to?: string, routeSearch?: Record<string, unknown>) => boolean; onNavigate?: () => void }) {
  const [filter, setFilter] = useState('');
  const [expanded, setExpanded] = useState<Record<string, boolean>>({});
- const groups = workspaceGroups.map(g => ({ ...g, items: g.items.filter(i => visible(i.to)).filter(i => !filter || `${g.name} ${i.name}`.toLowerCase().includes(filter.toLowerCase())) })).filter(g => g.items.length);
+ const groups = workspaceGroups.map(g => ({ ...g, items: g.items.filter(i => visible(i.to, i.search)).filter(i => !filter || `${g.name} ${i.name}`.toLowerCase().includes(filter.toLowerCase())) })).filter(g => g.items.length);
  const allOpen = groups.every(g => expanded[g.name]);
  const toggleAll = () => setExpanded(Object.fromEntries(groups.map(g => [g.name, !allOpen])));
  function itemRow(item: WorkspaceItem) {
@@ -23,7 +23,7 @@ export function WorkspaceSidebar({ pathname, search, compact = false, visible, o
  return <TooltipProvider delayDuration={150}>
   {!compact && <div className="flex gap-1.5 px-3 pb-4"><div className="relative min-w-0 flex-1"><Search className="pointer-events-none absolute left-2.5 top-2.5 size-3.5 text-muted-foreground" /><Input aria-label="Filter navigation menu" placeholder="Filter menu…" value={filter} onChange={e => setFilter(e.target.value)} className="h-9 bg-sidebar-accent/40 pl-8 text-xs" /></div><Button size="icon" variant="outline" className="size-9 shrink-0" aria-label={allOpen ? 'Collapse all sections' : 'Expand all sections'} title={allOpen ? 'Collapse all sections' : 'Expand all sections'} onClick={toggleAll}><ChevronsUpDown className="size-4" /></Button></div>}
   <nav aria-label="Main navigation" className={`workspace-navigation min-h-0 flex-1 overflow-y-auto pb-6 ${compact ? 'space-y-3 px-3' : 'space-y-4 px-3'}`}>
-   {compact ? compactLink(dashboardItem, dashboardItem.icon) : itemRow(dashboardItem)}
+   {visible(dashboardItem.to) && (compact ? compactLink(dashboardItem, dashboardItem.icon) : itemRow(dashboardItem))}
    {groups.map(group => {
     if (compact) { const first = group.items.find(i => i.to); return first ? compactLink({ ...first, name: group.name }, group.icon) : null; }
     const active = group.items.some(i => workspaceItemActive(i, pathname, search));
