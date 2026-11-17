@@ -199,7 +199,7 @@ BEGIN
     INSERT INTO public.business_access_roles(business_id,code,name,description,authority_rank,is_system)
     SELECT _business_id,'position_'||v_item.job_title,v_item.role_name,
            'Compatibility role seeded from the existing position permission template.',
-           gr.rank,true
+           1::smallint,true
     FROM public.roles gr
     WHERE gr.code=v_item.base_role
     ON CONFLICT (business_id,code) DO NOTHING;
