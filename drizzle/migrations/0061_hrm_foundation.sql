@@ -211,6 +211,9 @@ REVOKE ALL ON public.hr_salary_structures FROM anon;
 GRANT SELECT, INSERT, UPDATE ON public.hr_salary_structures TO authenticated;
 CREATE POLICY hr_salary_read ON public.hr_salary_structures FOR SELECT TO authenticated
   USING (public.hr_can_manage_payroll(business_id));
+CREATE POLICY hr_salary_manage ON public.hr_salary_structures FOR ALL TO authenticated
+  USING (public.hr_can_manage_payroll(business_id))
+  WITH CHECK (public.hr_can_manage_payroll(business_id) AND created_by = auth.uid());
 
 CREATE TABLE public.hr_payroll_runs (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -251,6 +254,9 @@ CREATE TABLE public.hr_payroll_items (
   basic_salary numeric(14,2) NOT NULL,
   allowances numeric(14,2) NOT NULL,
   gross_pay numeric(14,2) NOT NULL,
+  period_label text NOT NULL,
+  period_start date NOT NULL,
+  period_end date NOT NULL,
   tax_deduction numeric(14,2) NOT NULL,
   provident_fund numeric(14,2) NOT NULL,
   insurance_deduction numeric(14,2) NOT NULL,
@@ -288,22 +294,25 @@ BEGIN
   RETURNING id INTO v_run;
 
   INSERT INTO public.hr_payroll_items(
-    business_id,payroll_run_id,user_id,employee_number,employee_name,basic_salary,allowances,gross_pay,
+    business_id,payroll_run_id,user_id,employee_number,employee_name,basic_salary,allowances,gross_pay,period_label,period_start,period_end,
     tax_deduction,provident_fund,insurance_deduction,other_deduction,unpaid_leave_days,
     unpaid_leave_deduction,total_deductions,net_pay
   )
   SELECT
     e.business_id,v_run,e.user_id,e.employee_number,COALESCE(NULLIF(p.full_name,''),'Employee'),
     s.basic_salary,(s.house_allowance+s.transport_allowance+s.other_allowance),
-    round((s.basic_salary+s.house_allowance+s.transport_allowance+s.other_allowance) * (v_days - COALESCE(l.unpaid_days,0)) / v_days,2),
+    (s.basic_salary+s.house_allowance+s.transport_allowance+s.other_allowance),
+    _period_label,_period_start,_period_end,
     s.tax_deduction,s.provident_fund,s.insurance_deduction,s.other_deduction,
     COALESCE(l.unpaid_days,0),
     round((s.basic_salary+s.house_allowance+s.transport_allowance+s.other_allowance) * COALESCE(l.unpaid_days,0) / v_days,2),
-    s.tax_deduction+s.provident_fund+s.insurance_deduction+s.other_deduction+
-      round((s.basic_salary+s.house_allowance+s.transport_allowance+s.other_allowance) * COALESCE(l.unpaid_days,0) / v_days,2),
-    round((s.basic_salary+s.house_allowance+s.transport_allowance+s.other_allowance) * (v_days - COALESCE(l.unpaid_days,0)) / v_days,2)
-      - (s.tax_deduction+s.provident_fund+s.insurance_deduction+s.other_deduction+
-      round((s.basic_salary+s.house_allowance+s.transport_allowance+s.other_allowance) * COALESCE(l.unpaid_days,0) / v_days,2))
+    LEAST((s.basic_salary+s.house_allowance+s.transport_allowance+s.other_allowance),
+      s.tax_deduction+s.provident_fund+s.insurance_deduction+s.other_deduction+
+      round((s.basic_salary+s.house_allowance+s.transport_allowance+s.other_allowance) * COALESCE(l.unpaid_days,0) / v_days,2)),
+    GREATEST((s.basic_salary+s.house_allowance+s.transport_allowance+s.other_allowance) -
+      LEAST((s.basic_salary+s.house_allowance+s.transport_allowance+s.other_allowance),
+      s.tax_deduction+s.provident_fund+s.insurance_deduction+s.other_deduction+
+      round((s.basic_salary+s.house_allowance+s.transport_allowance+s.other_allowance) * COALESCE(l.unpaid_days,0) / v_days,2)),0)
   FROM public.hr_employee_records e
   JOIN public.profiles p ON p.id=e.user_id
   JOIN LATERAL (
@@ -385,13 +394,26 @@ FOR EACH ROW EXECUTE FUNCTION public.hr_guard_payroll_item_mutation();
 CREATE OR REPLACE FUNCTION public.hr_guard_payroll_run_mutation()
 RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
 BEGIN
-  IF OLD.run_status <> 'draft' THEN
-    RAISE EXCEPTION 'Approved payroll runs are immutable' USING ERRCODE='42501';
+  IF OLD.run_status = 'draft' THEN
+    IF NEW.business_id IS DISTINCT FROM OLD.business_id OR NEW.period_start IS DISTINCT FROM OLD.period_start
+       OR NEW.period_end IS DISTINCT FROM OLD.period_end OR NEW.created_by IS DISTINCT FROM OLD.created_by THEN
+      RAISE EXCEPTION 'Payroll run identity cannot be changed' USING ERRCODE='42501';
+    END IF;
+    RETURN NEW;
   END IF;
-  IF NEW.business_id IS DISTINCT FROM OLD.business_id OR NEW.period_start IS DISTINCT FROM OLD.period_start
-     OR NEW.period_end IS DISTINCT FROM OLD.period_end OR NEW.created_by IS DISTINCT FROM OLD.created_by THEN
-    RAISE EXCEPTION 'Payroll run identity cannot be changed' USING ERRCODE='42501';
+  IF OLD.run_status = 'approved' AND NEW.run_status = 'paid'
+     AND NEW.business_id IS NOT DISTINCT FROM OLD.business_id
+     AND NEW.period_start IS NOT DISTINCT FROM OLD.period_start
+     AND NEW.period_end IS NOT DISTINCT FROM OLD.period_end
+     AND NEW.employee_count IS NOT DISTINCT FROM OLD.employee_count
+     AND NEW.gross_total IS NOT DISTINCT FROM OLD.gross_total
+     AND NEW.deduction_total IS NOT DISTINCT FROM OLD.deduction_total
+     AND NEW.net_total IS NOT DISTINCT FROM OLD.net_total
+     AND NEW.approved_by IS NOT DISTINCT FROM OLD.approved_by
+     AND NEW.approved_at IS NOT DISTINCT FROM OLD.approved_at THEN
+    RETURN NEW;
   END IF;
+  RAISE EXCEPTION 'Approved payroll runs are immutable' USING ERRCODE='42501';
   RETURN NEW;
 END $$;
 REVOKE ALL ON FUNCTION public.hr_guard_payroll_run_mutation() FROM PUBLIC, anon, authenticated;
