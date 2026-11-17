@@ -612,7 +612,7 @@ AS $multi_role_permission$
         OR COALESCE(public.business_role_rank(_business,auth.uid()),0)>50
         OR _perm = ANY (ARRAY[
           'sales.view','expenses.view','inventory.view','categories.view',
-          'stock.create','stock.edit','customers.view','suppliers.view','staff.view',
+          'stock.create','stock.edit','customers.create','customers.edit','customers.view','suppliers.view','staff.view',
           'reports.view','reports.home_stats','reports.expenses','reports.items','reports.parties','reports.transactions'
         ]::text[])
       )
