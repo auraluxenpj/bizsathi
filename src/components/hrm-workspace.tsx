@@ -1,7 +1,7 @@
 import { useMemo, useState, type ReactNode } from 'react';
 import { useMutation, useQuery, useQueryClient, useSuspenseQuery } from '@tanstack/react-query';
 import { useServerFn } from '@tanstack/react-start';
-import { CalendarDays, Clock3, Users, Wallet, BriefcaseBusiness, ClipboardCheck } from 'lucide-react';
+import { CalendarDays, Clock3, Users, Wallet } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { businessQuery } from '@/lib/inventory-queries';
@@ -17,7 +17,7 @@ const money = (value: number | string) => `Rs ${Number(value || 0).toLocaleStrin
 const inputClass = 'mt-1 h-10 w-full rounded-md border bg-background px-3 text-sm';
 const labelClass = 'block text-sm font-medium';
 function Field({ label, children }: { label: string; children: ReactNode }) { return <label className={labelClass}>{label}{children}</label>; }
-function Empty({ children }: { children: React.ReactNode }) { return <p className="rounded-lg border border-dashed p-6 text-center text-sm text-muted-foreground">{children}</p>; }
+function Empty({ children }: { children: ReactNode }) { return <p className="rounded-lg border border-dashed p-6 text-center text-sm text-muted-foreground">{children}</p>; }
 
 export function HrmWorkspace() {
   const { data: businesses } = useSuspenseQuery(businessQuery);
