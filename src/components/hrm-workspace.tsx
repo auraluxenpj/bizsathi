@@ -13,7 +13,7 @@ import {
   generateHrmPayroll, approveHrmPayroll, markHrmPayrollPaid,
 } from '@/lib/hrm.functions';
 
-const today = () => new Date().toISOString().slice(0, 10);
+const today = () => new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kathmandu' }).format(new Date());
 const money = (value: number | string) => `Rs ${Number(value || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 const inputClass = 'mt-1 h-10 w-full rounded-md border bg-background px-3 text-sm';
 const labelClass = 'block text-sm font-medium';
