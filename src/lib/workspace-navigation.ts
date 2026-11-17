@@ -14,6 +14,9 @@ export const workspaceGroups: WorkspaceGroup[] = [
   { name: 'Brands', icon: Tag, unavailable: true }, { name: 'Suppliers', to: '/contacts', search: { kind: 'supplier' }, icon: Truck },
   { name: 'Customer Contacts', to: '/contacts', search: { kind: 'customer' }, icon: Users }, { name: 'Barcode Studio', to: '/products', search: { tool: 'barcode' }, icon: ScanBarcode },
  ] },
+ { name: 'People & HR', icon: UserCog, items: [
+  { name: 'HR & People Management', to: '/hrm', icon: UserCog, note: 'Employee records, attendance, leave, shifts and payroll' },
+ ] },
  { name: 'CRM', icon: Users, items: [
   { name: 'Customers', to: '/parties', icon: Users }, { name: 'Membership & Loyalty', to: '/membership', icon: Award },
  ] },
