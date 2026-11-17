@@ -593,18 +593,16 @@ AS $multi_role_permission$
         WHERE a.business_id=_business AND a.user_id=auth.uid()
           AND rp.permission=_perm
       )
-      AND NOT EXISTS (
-        SELECT 1 FROM public.business_memberships m
-        WHERE m.business_id=_business AND m.user_id=auth.uid()
-          AND m.status='active' AND m.role_code='branch_manager'
-          AND m.job_title IS DISTINCT FROM 'branch_manager'
-      )
       AND (
         NOT EXISTS (
-          SELECT 1 FROM public.business_memberships m
-          WHERE m.business_id=_business AND m.user_id=auth.uid()
-            AND m.status='active' AND m.role_code='branch_manager'
+          SELECT 1
+          FROM public.business_member_access_roles a
+          JOIN public.business_access_roles r
+            ON r.business_id=a.business_id AND r.id=a.role_id AND r.is_active
+          WHERE a.business_id=_business AND a.user_id=auth.uid()
+            AND r.code IN ('position_branch_manager','legacy_branch_manager')
         )
+        OR COALESCE(public.business_role_rank(_business,auth.uid()),0)>50
         OR _perm = ANY (ARRAY[
           'sales.view','expenses.view','inventory.view','categories.view',
           'stock.create','stock.edit','customers.view','suppliers.view','staff.view',
