@@ -85,7 +85,7 @@ export const createHrmEmployee = createServerFn({ method: 'POST' })
 export const updateHrmEmployee = createServerFn({ method: 'POST' })
   .middleware([requireSupabaseAuth]).inputValidator(hrmEmployeeUpdateInput)
   .handler(async ({ data, context }) => {
-    const { error } = await db(context.supabase).from('hr_employee_records').update({
+    const { data: row, error } = await db(context.supabase).from('hr_employee_records').update({
       branch_id: data.branchId ?? null, employee_number: data.employeeNumber,
       department: data.department || null, designation: data.designation || null,
       employment_type: data.employmentType, joining_date: data.joiningDate,
@@ -94,7 +94,7 @@ export const updateHrmEmployee = createServerFn({ method: 'POST' })
       emergency_contact_phone: data.emergencyContactPhone || null,
       address: data.address || null, notes: data.notes || null, updated_at: new Date().toISOString(),
     }).eq('business_id', data.businessId).eq('user_id', data.userId).select('user_id').maybeSingle();
-    if (error) throw new Error('Employee record could not be updated. Check employee number and administrator access.');
+    if (error || !row) throw new Error('Employee record could not be updated. Check employee number and administrator access.');
     return { ok: true };
   });
 
