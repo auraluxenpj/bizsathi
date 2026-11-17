@@ -56,14 +56,17 @@ BEGIN
     v_business_id,'Stock + Sales','Custom combined duties',40::smallint,ARRAY['sales.create','inventory.view']
   );
   PERFORM public.assign_business_access_role(v_business_id,staff_id,custom_role_id);
+  RESET ROLE;
   SELECT count(*) INTO assignments FROM public.business_member_access_roles
   WHERE business_id=v_business_id AND user_id=staff_id;
   ASSERT assignments=2,'An employee can hold more than one business role';
+  SET LOCAL ROLE authenticated;
+  PERFORM set_config('request.jwt.claims',json_build_object('sub',owner_id,'role','authenticated')::text,true);
   PERFORM public.unassign_business_access_role(v_business_id,staff_id,custom_role_id);
+  RESET ROLE;
   SELECT count(*) INTO assignments FROM public.business_member_access_roles
   WHERE business_id=v_business_id AND user_id=staff_id;
   ASSERT assignments=1,'Removing an additional role preserves the default compatibility role';
-  RESET ROLE;
 
   ASSERT NOT EXISTS (
     SELECT 1 FROM public.branch_memberships WHERE business_id=v_business_id
