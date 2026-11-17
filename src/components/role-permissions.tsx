@@ -7,7 +7,7 @@ import { getRoleTemplates, resetRoleTemplate, saveRoleTemplate } from '@/lib/bus
 import { permissionGroups } from '@/lib/permissions';
 import { jobTitleCodes, jobTitles, type JobTitle } from '@/lib/job-titles';
 
-/** Karobar-style "<Role> Permissions" screen. The owner ticks what each role can do; everyone in that role gets it. */
+/** Position permission editor. The owner configures the standard access inherited by employees assigned to each position. */
 export function RolePermissions({ businessId, isOwner }: { businessId: string; isOwner: boolean }) {
   const client = useQueryClient();
   const load = useServerFn(getRoleTemplates), save = useServerFn(saveRoleTemplate), reset = useServerFn(resetRoleTemplate);
@@ -24,7 +24,7 @@ export function RolePermissions({ businessId, isOwner }: { businessId: string; i
   return <section className="border-b py-7">
     <h3 className="brand text-xl">Position permissions</h3>
     <p className="mt-1 text-sm text-muted-foreground">{isOwner ? 'Choose what each position can do. Branch Manager permissions have a fixed branch-only ceiling; you can restrict them further but cannot grant business-wide access.' : 'What each position can do. Only the owner can change this.'}</p>
-    <div className="my-4 flex flex-wrap gap-2" role="tablist" aria-label="Role">{jobTitleCodes.map(t => <button key={t} type="button" role="tab" aria-selected={title === t} onClick={() => setTitle(t)} className={`rounded-full border px-4 py-2 text-sm ${title === t ? 'border-primary bg-primary/10 text-primary' : 'bg-card'}`}>{jobTitles[t].label}</button>)}</div>
+    <div className="my-4 flex flex-wrap gap-2" role="tablist" aria-label="Position">{jobTitleCodes.map(t => <button key={t} type="button" role="tab" aria-selected={title === t} onClick={() => setTitle(t)} className={`rounded-full border px-4 py-2 text-sm ${title === t ? 'border-primary bg-primary/10 text-primary' : 'bg-card'}`}>{jobTitles[t].label}</button>)}</div>
     {q.isPending && <p role="status" className="text-sm">Loading…</p>}
     {q.error && <p role="alert" className="text-sm text-destructive">Position permissions are not available yet. Run the latest database update first.</p>}
     {current && <>
