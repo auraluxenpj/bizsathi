@@ -15,7 +15,8 @@ export const getHrmWorkspace = createServerFn({ method: 'GET' })
   .middleware([requireSupabaseAuth]).inputValidator(hrmWorkspaceInput)
   .handler(async ({ data, context }) => {
     const client = db(context.supabase);
-    const [membership, admin, payroll, branches, members, employees, attendance, leaveTypes, leaveRequests, shifts, assignments, salaries, payrollRuns, payrollItems] = await Promise.all([\n      client.rpc('is_business_member', { _business_id: data.businessId }),
+    const [membership, admin, payroll, branches, members, employees, attendance, leaveTypes, leaveRequests, shifts, assignments, salaries, payrollRuns, payrollItems] = await Promise.all([
+      client.rpc('is_business_member', { _business_id: data.businessId }),
       client.rpc('has_business_role', { _business_id: data.businessId, _min_role: 'admin' }),
       client.rpc('has_business_role', { _business_id: data.businessId, _min_role: 'accountant' }),
       client.from('branches').select('id,name,code,is_active').eq('business_id', data.businessId).eq('is_active', true).order('name'),
