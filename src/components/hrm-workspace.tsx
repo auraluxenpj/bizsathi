@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { useMemo, useState, type ReactNode } from 'react';
+import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { useMutation, useQuery, useQueryClient, useSuspenseQuery } from '@tanstack/react-query';
 import { useServerFn } from '@tanstack/react-start';
 import { CalendarDays, Clock3, Users, Wallet } from 'lucide-react';
@@ -8,7 +8,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { businessQuery } from '@/lib/inventory-queries';
 import { authorizedSelection } from '@/lib/dashboard-data';
 import {
-  getHrmWorkspace, createHrmEmployee, saveHrmAttendance, clockHrmAttendance, createHrmLeaveType, createHrmLeaveRequest,
+  getHrmWorkspace, createHrmEmployee, updateHrmEmployee, saveHrmAttendance, saveHrmAttendancePolicy, clockHrmAttendance, createHrmLeaveType, createHrmLeaveRequest,
   reviewHrmLeaveRequest, createHrmShift, assignHrmShift, saveHrmSalaryStructure,
   generateHrmPayroll, approveHrmPayroll, markHrmPayrollPaid,
 } from '@/lib/hrm.functions';
@@ -47,6 +47,8 @@ export function HrmWorkspace() {
   const load = useServerFn(getHrmWorkspace);
   const data = useQuery({ queryKey: ['hrm', businessId], queryFn: () => load({ data: { businessId } }), enabled: Boolean(businessId) });
   const createEmployee = useServerFn(createHrmEmployee);
+  const updateEmployee = useServerFn(updateHrmEmployee);
+  const saveAttendancePolicy = useServerFn(saveHrmAttendancePolicy);
   const saveAttendance = useServerFn(saveHrmAttendance);
   const clockAttendance = useServerFn(clockHrmAttendance);
   const createLeaveType = useServerFn(createHrmLeaveType);
@@ -60,10 +62,14 @@ export function HrmWorkspace() {
   const markPaid = useServerFn(markHrmPayrollPaid);
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
+  const [editingEmployee, setEditingEmployee] = useState<string | null>(null);
+  const [printPayslip, setPrintPayslip] = useState<any>(null);
   const refresh = () => client.invalidateQueries({ queryKey: ['hrm', businessId] });
   const onMutationSuccess = () => { setMessage('Saved successfully.'); setError(''); void refresh(); };
   const onMutationError = (e: Error) => { setError(e.message || 'The request could not be completed.'); setMessage(''); };
   const employeeMutation = useHrmMutation((payload) => createEmployee({ data: payload }), onMutationSuccess, onMutationError);
+  const employeeUpdateMutation = useHrmMutation((payload) => updateEmployee({ data: payload }), () => { setEditingEmployee(null); onMutationSuccess(); }, onMutationError);
+  const attendancePolicyMutation = useHrmMutation((payload) => saveAttendancePolicy({ data: payload }), onMutationSuccess, onMutationError);
   const attendanceMutation = useHrmMutation((payload) => saveAttendance({ data: payload }), onMutationSuccess, onMutationError);
   const clockMutation = useHrmMutation((payload) => clockAttendance({ data: payload }), onMutationSuccess, onMutationError);
   const leaveTypeMutation = useHrmMutation((payload) => createLeaveType({ data: payload }), onMutationSuccess, onMutationError);
@@ -96,7 +102,10 @@ export function HrmWorkspace() {
     form.reset();
   }
   const number = (v: unknown) => Number(v || 0);
-  const actionBusy = [employeeMutation,attendanceMutation,clockMutation,leaveTypeMutation,leaveMutation,reviewMutation,shiftMutation,assignMutation,salaryMutation,payrollMutation,approveMutation,paidMutation].some(m => m.isPending);
+  const actionBusy = [employeeMutation,employeeUpdateMutation,attendancePolicyMutation,attendanceMutation,clockMutation,leaveTypeMutation,leaveMutation,reviewMutation,shiftMutation,assignMutation,salaryMutation,payrollMutation,approveMutation,paidMutation].some(m => m.isPending);
+  useEffect(() => { if (printPayslip) { window.print(); setPrintPayslip(null); } }, [printPayslip]);
+  const attendancePolicy = data.data?.attendancePolicy ?? { workday_minutes:480, unpaid_break_minutes:60, grace_minutes:10, overtime_after_minutes:0, overtime_multiplier:1.5 };
+  const overtimeFor = (record:any) => { if (!record.check_in || !record.check_out) return 0; const worked = Math.max(0, Math.floor((new Date(record.check_out).getTime()-new Date(record.check_in).getTime())/60000)-Number(attendancePolicy.unpaid_break_minutes||0)); return Math.max(0, worked-Number(attendancePolicy.workday_minutes||480)-Number(attendancePolicy.overtime_after_minutes||0)); };
 
   if (!businessId) return <main className="mx-auto max-w-6xl px-5 py-8"><h1 className="brand text-2xl">HR & People Management</h1><Empty>Link the AURALUXE business workspace to use HRM.</Empty></main>;
   return <main className="mx-auto max-w-7xl px-4 py-6 md:px-8">
@@ -134,9 +143,25 @@ export function HrmWorkspace() {
               <div className="flex items-end"><Button type="submit" disabled={actionBusy}>Add employee record</Button></div>
             </form> : <Empty>All active team members already have an employee record, or no active members are available.</Empty>}
           </section>}
-          <section className="rounded-xl border"><div className="border-b p-4"><h2 className="font-semibold">Employee directory</h2><p className="text-xs text-muted-foreground">Personal HR records are visible to HR administrators and to the employee concerned.</p></div>
-            {employees.length ? <div className="overflow-x-auto"><table className="w-full min-w-[720px] text-left text-sm"><thead className="bg-muted/50 text-xs text-muted-foreground"><tr>{['Employee','Employee ID','Designation','Department','Branch','Joining date','Status'].map(x=><th key={x} className="px-4 py-3 font-medium">{x}</th>)}</tr></thead><tbody className="divide-y">{employees.map((e:any)=><tr key={e.user_id}><td className="px-4 py-3 font-medium">{e.employee?.fullName ?? 'Employee'}</td><td className="px-4 py-3 font-mono text-xs">{e.employee_number}</td><td className="px-4 py-3">{e.designation||'—'}</td><td className="px-4 py-3">{e.department||'—'}</td><td className="px-4 py-3">{data.data.branches.find((b:any)=>b.id===e.branch_id)?.name||'—'}</td><td className="px-4 py-3">{e.joining_date}</td><td className="px-4 py-3 capitalize">{e.employment_status.replace('_',' ')}</td></tr>)}</tbody></table></div> : <Empty>No employee records are available for this account.</Empty>}
+<section className="rounded-xl border"><div className="border-b p-4"><h2 className="font-semibold">Employee directory</h2><p className="text-xs text-muted-foreground">Personal HR records are visible to HR administrators and to the employee concerned.</p></div>
+            {employees.length ? <div className="overflow-x-auto"><table className="w-full min-w-[720px] text-left text-sm"><thead className="bg-muted/50 text-xs text-muted-foreground"><tr>{['Employee','Employee ID','Designation','Department','Branch','Joining date','Status',''].map(x=><th key={x} className="px-4 py-3 font-medium">{x}</th>)}</tr></thead><tbody className="divide-y">{employees.map((e:any)=><tr key={e.user_id}><td className="px-4 py-3 font-medium">{e.employee?.fullName ?? 'Employee'}</td><td className="px-4 py-3 font-mono text-xs">{e.employee_number}</td><td className="px-4 py-3">{e.designation||'—'}</td><td className="px-4 py-3">{e.department||'—'}</td><td className="px-4 py-3">{data.data.branches.find((b:any)=>b.id===e.branch_id)?.name||'—'}</td><td className="px-4 py-3">{e.joining_date}</td><td className="px-4 py-3 capitalize">{e.employment_status.replace('_',' ')}</td><td className="px-4 py-3">{isAdmin&&<Button size="sm" variant="outline" onClick={()=>setEditingEmployee(editingEmployee===e.user_id?null:e.user_id)}>Edit</Button>}</td></tr>)}</tbody></table></div> : <Empty>No employee records are available for this account.</Empty>}
           </section>
+          {isAdmin && editingEmployee && (() => { const e=employees.find((row:any)=>row.user_id===editingEmployee); if(!e) return null; return <section className="rounded-xl border p-4"><div className="flex items-center justify-between"><h2 className="font-semibold">Edit employee · {e.employee?.fullName}</h2><Button size="sm" variant="ghost" onClick={()=>setEditingEmployee(null)}>Cancel</Button></div>
+            <form className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3" onSubmit={event=>{event.preventDefault();const fd=new FormData(event.currentTarget);employeeUpdateMutation.mutate({businessId,userId:e.user_id,employeeNumber:String(fd.get('employeeNumber')),branchId:String(fd.get('branchId')||'')||null,designation:String(fd.get('designation')||''),department:String(fd.get('department')||''),employmentType:String(fd.get('employmentType')),joiningDate:String(fd.get('joiningDate')),confirmationDate:String(fd.get('confirmationDate')||'')||null,employmentStatus:String(fd.get('employmentStatus')),emergencyContactName:String(fd.get('emergencyContactName')||''),emergencyContactPhone:String(fd.get('emergencyContactPhone')||''),address:String(fd.get('address')||''),notes:String(fd.get('notes')||'')});}}>
+              <Field label="Employee number"><input required name="employeeNumber" defaultValue={e.employee_number} className={inputClass}/></Field>
+              <Field label="Branch"><select name="branchId" defaultValue={e.branch_id||''} className={inputClass}><option value="">Unassigned</option>{data.data.branches.map((b:any)=><option key={b.id} value={b.id}>{b.name}</option>)}</select></Field>
+              <Field label="Department"><input name="department" defaultValue={e.department||''} className={inputClass}/></Field>
+              <Field label="Designation"><input name="designation" defaultValue={e.designation||''} className={inputClass}/></Field>
+              <Field label="Employment type"><select name="employmentType" defaultValue={e.employment_type} className={inputClass}>{['full_time','part_time','contract','temporary','intern'].map(v=><option key={v} value={v}>{v.replace('_',' ')}</option>)}</select></Field>
+              <Field label="Employment status"><select name="employmentStatus" defaultValue={e.employment_status} className={inputClass}>{['active','on_leave','suspended','terminated'].map(v=><option key={v} value={v}>{v.replace('_',' ')}</option>)}</select></Field>
+              <Field label="Joining date"><input required type="date" name="joiningDate" defaultValue={e.joining_date} className={inputClass}/></Field>
+              <Field label="Confirmation date"><input type="date" name="confirmationDate" defaultValue={e.confirmation_date||''} className={inputClass}/></Field>
+              <Field label="Emergency contact name"><input name="emergencyContactName" defaultValue={e.emergency_contact_name||''} className={inputClass}/></Field>
+              <Field label="Emergency contact phone"><input name="emergencyContactPhone" defaultValue={e.emergency_contact_phone||''} className={inputClass}/></Field>
+              <Field label="Address"><input name="address" defaultValue={e.address||''} className={inputClass}/></Field>
+              <Field label="HR notes"><input name="notes" defaultValue={e.notes||''} className={inputClass}/></Field>
+              <div className="flex items-end"><Button type="submit" disabled={actionBusy}>Save employee changes</Button></div>
+            </form></section>; })()}
         </TabsContent>
         <TabsContent value="attendance" className="space-y-5">
           {employees.some((e:any)=>e.user_id===data.data.userId) && <section className="flex flex-wrap items-center justify-between gap-4 rounded-xl border p-4">
@@ -155,8 +180,9 @@ export function HrmWorkspace() {
             <Field label="Check in"><input type="time" name="checkIn" className={inputClass}/></Field><Field label="Check out"><input type="time" name="checkOut" className={inputClass}/></Field>
             <Field label="Notes"><input name="notes" className={inputClass} maxLength={500}/></Field><div className="flex items-end"><Button type="submit" disabled={actionBusy}>Save attendance</Button></div>
           </form></section>}
+          {isAdmin && <section className="rounded-xl border p-4"><h2 className="font-semibold">Attendance & overtime policy</h2><p className="mt-1 text-xs text-muted-foreground">Overtime is estimated for review only; it is not automatically added to payroll.</p><form className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-5" onSubmit={e=>{e.preventDefault();const fd=new FormData(e.currentTarget);attendancePolicyMutation.mutate({businessId,workdayMinutes:number(fd.get('workdayMinutes')),unpaidBreakMinutes:number(fd.get('unpaidBreakMinutes')),graceMinutes:number(fd.get('graceMinutes')),overtimeAfterMinutes:number(fd.get('overtimeAfterMinutes')),overtimeMultiplier:number(fd.get('overtimeMultiplier'))});}}><Field label="Workday minutes"><input type="number" min="60" max="1440" name="workdayMinutes" defaultValue={attendancePolicy.workday_minutes} className={inputClass}/></Field><Field label="Unpaid break minutes"><input type="number" min="0" max="480" name="unpaidBreakMinutes" defaultValue={attendancePolicy.unpaid_break_minutes} className={inputClass}/></Field><Field label="Late grace minutes"><input type="number" min="0" max="240" name="graceMinutes" defaultValue={attendancePolicy.grace_minutes} className={inputClass}/></Field><Field label="Overtime starts after extra minutes"><input type="number" min="0" max="720" name="overtimeAfterMinutes" defaultValue={attendancePolicy.overtime_after_minutes} className={inputClass}/></Field><Field label="Overtime multiplier (estimate)"><input type="number" min="1" max="3" step="0.1" name="overtimeMultiplier" defaultValue={attendancePolicy.overtime_multiplier} className={inputClass}/></Field><div className="flex items-end"><Button type="submit" disabled={actionBusy}>Save attendance policy</Button></div></form></section>}
           <section className="rounded-xl border"><div className="flex flex-wrap items-center justify-between gap-3 border-b p-4"><div><h2 className="font-semibold">Attendance register</h2><p className="text-xs text-muted-foreground">Latest 150 records · export the currently loaded register to CSV.</p></div><Button size="sm" variant="outline" disabled={!data.data.attendance.length} onClick={()=>exportCsv(`attendance-${today()}.csv`,data.data.attendance.map((a:any)=>({date:a.attendance_date,employee:a.employee?.fullName,status:a.attendance_status,check_in:a.check_in,check_out:a.check_out,notes:a.notes,branch_id:a.branch_id}))) }>Export CSV</Button></div>
-            {data.data.attendance.length ? <div className="overflow-x-auto"><table className="w-full min-w-[620px] text-left text-sm"><thead className="bg-muted/50 text-xs text-muted-foreground"><tr>{['Date','Employee','Status','Check in','Check out','Notes'].map(x=><th key={x} className="px-4 py-3 font-medium">{x}</th>)}</tr></thead><tbody className="divide-y">{data.data.attendance.map((a:any)=><tr key={a.id}><td className="px-4 py-3">{a.attendance_date}</td><td className="px-4 py-3">{a.employee.fullName}</td><td className="px-4 py-3 capitalize">{a.attendance_status.replace('_',' ')}</td><td className="px-4 py-3">{a.check_in?new Date(a.check_in).toLocaleTimeString():'—'}</td><td className="px-4 py-3">{a.check_out?new Date(a.check_out).toLocaleTimeString():'—'}</td><td className="px-4 py-3">{a.notes||'—'}</td></tr>)}</tbody></table></div> : <Empty>No attendance records yet.</Empty>}
+            {data.data.attendance.length ? <div className="overflow-x-auto"><table className="w-full min-w-[620px] text-left text-sm"><thead className="bg-muted/50 text-xs text-muted-foreground"><tr>{['Date','Employee','Status','Check in','Check out','Overtime (estimate)','Notes'].map(x=><th key={x} className="px-4 py-3 font-medium">{x}</th>)}</tr></thead><tbody className="divide-y">{data.data.attendance.map((a:any)=><tr key={a.id}><td className="px-4 py-3">{a.attendance_date}</td><td className="px-4 py-3">{a.employee.fullName}</td><td className="px-4 py-3 capitalize">{a.attendance_status.replace('_',' ')}</td><td className="px-4 py-3">{a.check_in?new Date(a.check_in).toLocaleTimeString():'—'}</td><td className="px-4 py-3">{a.check_out?new Date(a.check_out).toLocaleTimeString():'—'}</td><td className="px-4 py-3">{overtimeFor(a)>0?`${Math.floor(overtimeFor(a)/60)}h ${overtimeFor(a)%60}m`: '—'}</td><td className="px-4 py-3">{a.notes||'—'}</td></tr>)}</tbody></table></div> : <Empty>No attendance records yet.</Empty>}
           </section>
         </TabsContent>
         <TabsContent value="leave" className="space-y-5">
@@ -168,19 +194,19 @@ export function HrmWorkspace() {
               <Field label="Days"><input required type="number" name="days" min="0.5" step="0.5" defaultValue="1" className={inputClass}/></Field>
               <Field label="Reason"><input name="reason" maxLength={1000} className={inputClass}/></Field><div className="flex items-end"><Button type="submit" disabled={actionBusy||!data.data.leaveTypes.length}>Submit request</Button></div>
             </form>}
-            {isAdmin && <form className="mt-4 flex flex-wrap items-end gap-3 border-t pt-4" onSubmit={e=>{e.preventDefault();const fd=new FormData(e.currentTarget);leaveTypeMutation.mutate({businessId,name:String(fd.get('name')),annualQuota:number(fd.get('annualQuota')),isPaid:fd.get('isPaid')==='on'});e.currentTarget.reset();}}>
-              <Field label="New leave type"><input required name="name" placeholder="e.g. Annual Leave" className={inputClass}/></Field><Field label="Annual quota (days)"><input required type="number" name="annualQuota" min="0" max="366" defaultValue="12" className={inputClass}/></Field><label className="flex h-10 items-center gap-2 text-sm"><input type="checkbox" name="isPaid" defaultChecked/>Paid leave</label><Button type="submit" variant="outline" disabled={actionBusy}>Add leave type</Button>
+            {isAdmin && <form className="mt-4 flex flex-wrap items-end gap-3 border-t pt-4" onSubmit={e=>{e.preventDefault();const fd=new FormData(e.currentTarget);leaveTypeMutation.mutate({businessId,name:String(fd.get('name')),annualQuota:number(fd.get('annualQuota')),isPaid:fd.get('isPaid')==='on',accrualMethod:String(fd.get('accrualMethod')||'front_loaded')});e.currentTarget.reset();}}>
+              <Field label="New leave type"><input required name="name" placeholder="e.g. Annual Leave" className={inputClass}/></Field><Field label="Annual quota (days)"><input required type="number" name="annualQuota" min="0" max="366" defaultValue="12" className={inputClass}/></Field><Field label="Accrual method"><select name="accrualMethod" className={inputClass}><option value="front_loaded">Front-loaded yearly</option><option value="monthly">Monthly accrual</option></select></Field><label className="flex h-10 items-center gap-2 text-sm"><input type="checkbox" name="isPaid" defaultChecked/>Paid leave</label><Button type="submit" variant="outline" disabled={actionBusy}>Add leave type</Button>
             </form>}
           </section>
           {(isAdmin || employees.some((e:any)=>e.user_id===data.data.userId)) && <section className="rounded-xl border">
-            <div className="border-b p-4"><h2 className="font-semibold">Leave allowance overview · {today().slice(0,4)}</h2><p className="text-xs text-muted-foreground">Annual quota less approved requests wholly within this calendar year. This is a planning view, not an accrued or statutory entitlement calculation.</p></div>
+            <div className="border-b p-4"><h2 className="font-semibold">Leave allowance overview · {today().slice(0,4)}</h2><p className="text-xs text-muted-foreground">Monthly accrual is calculated as annual quota ÷ 12 × elapsed calendar months; front-loaded leave uses the full quota. Employer policy and carry-forward adjustments must be confirmed.</p></div>
             {(() => {
               const visibleEmployees = employees.filter((e:any)=>isAdmin || e.user_id===data.data.userId);
               const rows = visibleEmployees.flatMap((e:any)=>data.data.leaveTypes.map((t:any)=>{
                 const used = data.data.leaveRequests.filter((l:any)=>l.user_id===e.user_id && l.leave_type_id===t.id && l.request_status==='approved' && l.start_date.startsWith(today().slice(0,4)) && l.end_date.startsWith(today().slice(0,4))).reduce((sum:number,l:any)=>sum+Number(l.days||0),0);
-                return {employee:e.employee?.fullName||e.employee_number,type:t.name,quota:Number(t.annual_quota||0),used,remaining:Math.max(0,Number(t.annual_quota||0)-used)};
+                const annual=Number(t.annual_quota||0); const accrued=t.accrual_method==='monthly'?annual*Number(today().slice(5,7))/12:annual; return {employee:e.employee?.fullName||e.employee_number,type:t.name,quota:annual,accrued,used,remaining:Math.max(0,accrued-used),method:t.accrual_method||'front_loaded'};
               }));
-              return rows.length ? <div className="overflow-x-auto"><table className="w-full min-w-[560px] text-left text-sm"><thead className="bg-muted/50 text-xs text-muted-foreground"><tr>{['Employee','Leave type','Annual quota','Approved used','Remaining'].map(x=><th key={x} className="px-4 py-3 font-medium">{x}</th>)}</tr></thead><tbody className="divide-y">{rows.map((r:any,i:number)=><tr key={i}><td className="px-4 py-3 font-medium">{r.employee}</td><td className="px-4 py-3">{r.type}</td><td className="px-4 py-3">{r.quota}</td><td className="px-4 py-3">{r.used}</td><td className="px-4 py-3 font-semibold">{r.remaining}</td></tr>)}</tbody></table></div> : <Empty>Add an employee and leave type to see the allowance overview.</Empty>;
+              return rows.length ? <div className="overflow-x-auto"><table className="w-full min-w-[560px] text-left text-sm"><thead className="bg-muted/50 text-xs text-muted-foreground"><tr>{['Employee','Leave type','Annual quota','Accrued to date','Approved used','Remaining'].map(x=><th key={x} className="px-4 py-3 font-medium">{x}</th>)}</tr></thead><tbody className="divide-y">{rows.map((r:any,i:number)=><tr key={i}><td className="px-4 py-3 font-medium">{r.employee}</td><td className="px-4 py-3">{r.type}</td><td className="px-4 py-3">{r.quota}</td><td className="px-4 py-3">{r.accrued.toFixed(1)}</td><td className="px-4 py-3">{r.used}</td><td className="px-4 py-3 font-semibold">{r.remaining.toFixed(1)}</td></tr>)}</tbody></table></div> : <Empty>Add an employee and leave type to see the allowance overview.</Empty>;
             })()}
           </section>}
           <section className="rounded-xl border"><div className="border-b p-4"><h2 className="font-semibold">Leave requests</h2></div>
