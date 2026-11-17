@@ -45,7 +45,12 @@ export const getBusinessAccess = createServerFn({ method: 'GET' }).middleware([r
     console.error('Business access branch query failed', branchError.code, branchError.message);
     throw new Error('Branches could not be loaded.');
   }
-  if (!manager) return { manager: false, userId: context.userId, branches: branches ?? [], members: [], invitations: [], grants: [], memberRoles: [] };
+  // An employee's HR branch is their default workspace branch, but POS still
+  // validates it against the branches visible to this authenticated member.
+  const { data: employee } = await anyDb(context.supabase).from('hr_employee_records')
+    .select('branch_id').eq('business_id', data.businessId).eq('user_id', context.userId).maybeSingle();
+  const assignedBranchId = employee?.branch_id ?? null;
+  if (!manager) return { manager: false, userId: context.userId, branches: branches ?? [], assignedBranchId, members: [], invitations: [], grants: [], memberRoles: [] };
   const [members, invitations, grants, memberRoles] = await Promise.all([
     context.supabase.from('business_memberships').select('user_id,role_code,job_title,status,profiles!business_memberships_user_id_fkey(full_name,phone)').eq('business_id', data.businessId),
     context.supabase.from('business_invitations').select('id,email,mobile,invitee_name,job_title,role_code,expires_at,accepted_at,revoked_at,created_at').eq('business_id', data.businessId).order('created_at', { ascending: false }),
@@ -60,7 +65,7 @@ export const getBusinessAccess = createServerFn({ method: 'GET' }).middleware([r
     console.error('Business staff access query failed', failed[0], error.code, error.message);
     throw new Error(`Staff access could not be loaded (${failed[0]}).`);
   }
-  return { manager: true, userId: context.userId, branches: branches ?? [], members: members.data ?? [], invitations: invitations.data ?? [], grants: grants.data ?? [], memberRoles: memberRoles.data ?? [] };
+  return { manager: true, userId: context.userId, branches: branches ?? [], assignedBranchId, members: members.data ?? [], invitations: invitations.data ?? [], grants: grants.data ?? [], memberRoles: memberRoles.data ?? [] };
 });
 
 export const createInvitation = createServerFn({ method: 'POST' }).middleware([requireSupabaseAuth]).inputValidator(inviteInput).handler(async ({ data, context }) => {
