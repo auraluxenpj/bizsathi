@@ -335,7 +335,8 @@ BEGIN
   )
   SELECT
     e.business_id,v_run,e.user_id,e.employee_number,COALESCE(NULLIF(p.full_name,''),'Employee'),
-    s.basic_salary,(s.house_allowance+s.transport_allowance+s.other_allowance),
+    round(s.basic_salary * calc.eligible_days / v_days,2),
+    round((s.house_allowance+s.transport_allowance+s.other_allowance) * calc.eligible_days / v_days,2),
     round((s.basic_salary+s.house_allowance+s.transport_allowance+s.other_allowance) * calc.eligible_days / v_days,2),
     _period_label,_period_start,_period_end,
     round(s.tax_deduction * calc.eligible_days / v_days,2),
