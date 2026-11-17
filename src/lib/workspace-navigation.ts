@@ -1,10 +1,14 @@
 import { Award, Boxes, Receipt, RotateCcw, Warehouse, BarChart3, Settings, LayoutDashboard, Package, FolderTree, Tag, Truck, Users, ScanBarcode, ShoppingCart, ClipboardList, Clock, SlidersHorizontal, ClipboardCheck, ShieldAlert, Wallet, Banknote, Building2, Calculator, TrendingUp, FileText, ListFilter, UserCog, ShieldCheck, LockKeyhole, type LucideIcon } from 'lucide-react';
 import { validateReportSearch } from './report-filters';
+import { allPermissions } from './permissions';
 
 export type WorkspaceItem = { name: string; to?: string; icon: LucideIcon; search?: Record<string, string>; unavailable?: boolean; note?: string };
 export type WorkspaceGroup = { name: string; icon: LucideIcon; items: WorkspaceItem[] };
 const report = (name: string, view: string, icon: LucideIcon, focus?: string): WorkspaceItem => ({ name, to: '/accounting', icon, search: { view, ...(focus ? { focus } : {}) } });
-export function isBillingStaff(can: (permission: string) => boolean) { return can('sales.create') && !can('purchases.create') && !can('purchases.view') && !can('stock.edit') && !can('accounts.view') && !can('reports.view') && !can('staff.view') && !can('settings.edit') && !can('hr.employees.view'); }
+const posSupportPermissions = new Set(['sales.create','sales.view','inventory.view','categories.view','customers.view','customers.create']);
+export function isBillingStaff(can: (permission: string) => boolean) {
+ return can('sales.create') && allPermissions.every(permission => posSupportPermissions.has(permission) || !can(permission));
+}
 /** POS-only employees are confined to the terminal; profile and sign-out remain in the account menu. */
 export function shouldRedirectBillingStaff(pathname: string) { return pathname !== '/pos'; }
 export const dashboardItem: WorkspaceItem = { name: 'Dashboard', to: '/dashboard', icon: LayoutDashboard };
