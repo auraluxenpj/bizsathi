@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
-  hrmEmployeeInput, hrmAttendancePolicyInput, hrmLeaveTypeInput, hrmAttendanceInput, hrmShiftInput, hrmSalaryInput, hrmPayrollGenerateInput,
+  hrmEmployeeInput, hrmAttendancePolicyInput, hrmLeaveTypeInput, hrmLeaveBalanceAdjustmentInput, hrmAttendanceInput, hrmShiftInput, hrmSalaryInput, hrmPayrollGenerateInput,
 } from './hrm-schemas';
 import { rolePresets } from './permissions';
 import { jobTitles } from './job-titles';
@@ -33,6 +33,15 @@ describe('BizSathi HRM validation and access defaults', () => {
     const base = { businessId, name: 'Annual Leave', annualQuota: 12, isPaid: true };
     expect(hrmLeaveTypeInput.safeParse({ ...base, accrualMethod: 'monthly' }).success).toBe(true);
     expect(hrmLeaveTypeInput.safeParse({ ...base, accrualMethod: 'unknown' }).success).toBe(false);
+  });
+
+  it('validates opening balances, carry-forward and documented adjustments', () => {
+    const base = { businessId, userId, leaveTypeId: '00000000-0000-4000-8000-000000000003', leaveYear: 2026, deltaDays: 5 };
+    expect(hrmLeaveBalanceAdjustmentInput.safeParse({ ...base, entryType: 'opening_balance' }).success).toBe(true);
+    expect(hrmLeaveBalanceAdjustmentInput.safeParse({ ...base, entryType: 'carry_forward' }).success).toBe(true);
+    expect(hrmLeaveBalanceAdjustmentInput.safeParse({ ...base, entryType: 'adjustment', notes: 'Correct opening balance' }).success).toBe(true);
+    expect(hrmLeaveBalanceAdjustmentInput.safeParse({ ...base, entryType: 'adjustment' }).success).toBe(false);
+    expect(hrmLeaveBalanceAdjustmentInput.safeParse({ ...base, entryType: 'opening_balance', deltaDays: 0 }).success).toBe(false);
   });
 
   it('validates bounded attendance and overtime policy values', () => {
