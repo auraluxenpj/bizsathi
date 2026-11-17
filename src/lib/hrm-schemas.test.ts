@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
-  hrmEmployeeInput, hrmAttendancePolicyInput, hrmLeaveTypeInput, hrmLeaveBalanceAdjustmentInput, hrmAttendanceInput, hrmShiftInput, hrmSalaryInput, hrmPayrollGenerateInput,
+  hrmEmployeeInput, hrmAttendancePolicyInput, hrmLeaveTypeInput, hrmLeaveBalanceAdjustmentInput, hrmReportInput, hrmAttendanceInput, hrmShiftInput, hrmSalaryInput, hrmPayrollGenerateInput,
 } from './hrm-schemas';
 import { rolePresets } from './permissions';
 import { jobTitles } from './job-titles';
