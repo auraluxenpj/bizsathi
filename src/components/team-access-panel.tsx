@@ -20,7 +20,7 @@ import {
 type Branch = { id: string; name: string; code: string; is_active: boolean };
 type Member = { user_id: string; role_code: string; job_title: string | null; status: string; profiles?: { full_name: string | null } | null };
 type BranchAccess = { user_id: string; branch_id: string };
-type MemberRole = { userId: string; roleId: string; roleCode: string; roleName: string; isDefault: boolean; assignedAt: string };
+type MemberRole = { userId: string; roleId: string; roleCode: string; roleName: string; authorityRank: number; isDefault: boolean; assignedAt: string };
 type LegacyInvitation = { id: string; email: string | null; mobile: string | null; invitee_name: string | null; job_title: string | null; role_code: string; expires_at: string; accepted_at: string | null; revoked_at: string | null; created_at: string };
 
 
@@ -193,9 +193,11 @@ export function TeamAccessPanel({
         <div className="mb-3 flex items-center gap-2"><Users className="size-4 text-primary" /><h3 className="font-semibold">Employees & branch access</h3></div>
         <p className="mb-4 text-sm text-muted-foreground">Assign each employee to one or more branches. Assigned access roles control what they can do; branch membership controls where they can do it. Position is an HR designation.</p>
         {members.length ? <div className="overflow-x-auto"><table className="w-full min-w-[640px] text-left text-sm"><thead><tr className="border-b text-xs text-muted-foreground"><th className="py-2 pr-4 font-medium">Employee</th><th className="py-2 pr-4 font-medium">Position</th>{branches.map((b) => <th key={b.id} className="px-3 py-2 text-center font-medium">{b.name}</th>)}</tr></thead><tbody className="divide-y">{members.map((m) => {
-          const protectedMember = m.user_id === userId || (roleRank[m.role_code] ?? 100) >= (isOwner ? 100 : 80);
+          const assignedAuthority = memberRoles.filter((r) => r.userId === m.user_id).reduce((rank, r) => Math.max(rank, r.authorityRank), 0);
+          const effectiveAuthority = Math.max(roleRank[m.role_code] ?? 0, assignedAuthority);
+          const protectedMember = m.user_id === userId || effectiveAuthority >= (isOwner ? 100 : 80);
           const employeeName = m.profiles?.full_name || m.user_id.slice(0, 8);
-          const permittedPositions = jobTitleCodes.filter((title) => (roleRank[jobTitles[title].base] ?? 100) < (isOwner ? 100 : 80));
+          const permittedPositions = jobTitleCodes.filter((title) => isOwner || title !== 'partner');
           return <tr key={m.user_id}>
             <td className="py-3 pr-4 font-medium">{employeeName}</td>
             <td className="py-3 pr-4">{isAdmin && !protectedMember ? <select aria-label={`Position for ${employeeName}`} className="h-9 max-w-48 rounded-md border bg-background px-2" value={m.job_title ?? ''} disabled={positionMutation.isPending} onChange={(e) => positionMutation.mutate({ userId: m.user_id, jobTitle: e.target.value as JobTitle, status: m.status })}>
