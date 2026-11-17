@@ -183,7 +183,7 @@ BEGIN
     ));
   END LOOP;
   ref:='SRN-'||upper(substr(replace(req.id::text,'-',''),1,12));
-  posting:=jsonb_build_object('id',req.return_document_id,'businessId',req.business_id,'branchId',req.branch_id,
+  posting:=jsonb_build_object('id',req.reserved_document_id,'businessId',req.business_id,'branchId',req.branch_id,
     'periodId',_period_id,'date',_date,'kind','sale_return','status','confirmed','sourceId',req.source_sale_id,
     'partyId',source.party_id,'reference',ref,'lines',posting_lines,'payments','[]'::jsonb,
     'returnRequestId',req.id,'returnRequesterId',req.requested_by);
@@ -207,14 +207,10 @@ DECLARE approved_request public.sale_return_requests;
 BEGIN
   IF NEW.kind='sale_return' THEN
     SELECT * INTO approved_request FROM public.sale_return_requests r
-    WHERE r.reserved_document_id=NEW.id;
-    IF NOT FOUND OR approved_request.business_id IS DISTINCT FROM NEW.business_id
-       OR approved_request.status IS DISTINCT FROM 'approved'
+    WHERE r.business_id=NEW.business_id AND r.reserved_document_id=NEW.id;
+    IF NOT FOUND OR approved_request.status IS DISTINCT FROM 'approved'
        OR approved_request.reviewed_by IS NULL THEN
-      RAISE EXCEPTION 'Sale return approval mismatch: document %, business %, request key %, matched request %, request business %, reserved document %, status %, reviewer %',
-        NEW.id,NEW.business_id,NEW.request->>'returnRequestId',approved_request.id,
-        approved_request.business_id,approved_request.reserved_document_id,
-        approved_request.status,approved_request.reviewed_by
+      RAISE EXCEPTION 'A manager-approved sale return request is required before posting'
         USING ERRCODE='42501';
     END IF;
   END IF;
