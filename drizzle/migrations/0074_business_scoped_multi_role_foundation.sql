@@ -279,7 +279,7 @@ RETURNS trigger
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = public
-AS $
+AS $refresh_position_access_role_permissions$
 DECLARE
   v_business uuid := COALESCE(NEW.business_id,OLD.business_id);
   v_title text := COALESCE(NEW.job_title,OLD.job_title);
@@ -289,7 +289,10 @@ BEGIN
   SELECT id INTO v_role_id
   FROM public.business_access_roles
   WHERE business_id=v_business AND code='position_'||v_title;
-  IF v_role_id IS NULL THEN RETURN COALESCE(NEW,OLD); END IF;
+  IF v_role_id IS NULL THEN
+    IF TG_OP='DELETE' THEN RETURN OLD; END IF;
+    RETURN NEW;
+  END IF;
 
   IF TG_OP='DELETE' THEN
     SELECT COALESCE(array_agg(permission),ARRAY[]::text[]) INTO v_denied
