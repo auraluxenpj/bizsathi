@@ -15,7 +15,7 @@ const headerAliases: Record<string, string[]> = {
  mrp: ['mrp', 'MRP', 'M.R.P', 'Maximum Retail Price'],
  wholesale_price: ['wholesale_price', 'Wholesale Price', 'Wholesale Rate'],
  purchase_price: ['purchase_price', 'Purchase Price', 'Cost Price'],
- // qty is the exported name; on import it is the quantity to open as stock for new items (same as the older opening_stock column).
+ // qty is the target on-hand quantity for the selected branch; opening_stock remains a supported legacy alias.
  opening_stock: ['opening_stock', 'Opening Stock', 'Opening Qty', 'qty', 'Qty', 'Quantity', 'Stock', 'Current Stock'],
  description: ['description', 'Description'],
  reorder_level: ['reorder_level', 'Reorder Level', 'Low Stock', 'Low Stock Threshold'],
