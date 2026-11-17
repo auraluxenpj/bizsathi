@@ -23,8 +23,29 @@ export const allPermissions=permissionGroups.flatMap(g=>g.items.map(i=>i.code));
 export const permissionInput=z.object({businessId:z.string().uuid(),userId:z.string().uuid(),denied:z.array(z.string().refine(p=>allPermissions.includes(p),'Unknown permission')).max(allPermissions.length)});
 /** The checklist only restricts: a permission is allowed when the role already allows it and it is not unticked. */
 export function isAllowed(roleAllows:boolean,denied:readonly string[],permission:string){return roleAllows&&!denied.includes(permission);}
-/** Route paths hidden when the matching view permission is unticked. */
-export const routePermission:Record<string,string>={'/reports':'reports.view','/accounting':'accounts.view','/businesses':'staff.view','/sales':'sales.view','/quotations':'sales.view','/purchases':'purchases.view','/purchase-orders':'purchases.view','/expenses':'expenses.view','/products':'inventory.view','/categories':'categories.view','/cash-bank':'accounts.view','/parties':'customers.view','/hrm':'hr.self.view','/pos':'sales.create','/cash-counters':'sales.create','/membership':'customers.view'};
+/** Module routes require an explicit effective permission; profile/help remain available to every signed-in member. */
+export const routePermission:Record<string,string>={
+ '/reports':'reports.view','/accounting':'accounts.view','/businesses':'staff.view',
+ '/sales':'sales.view','/quotations':'sales.view','/purchases':'purchases.view','/purchase-orders':'purchases.view',
+ '/expenses':'expenses.view','/expense-receipts':'expenses.view','/products':'inventory.view','/inventory':'inventory.view',
+ '/categories':'categories.view','/contacts':'customers.view','/cash-bank':'accounts.view','/parties':'customers.view',
+ '/hrm':'hr.self.view','/pos':'sales.create','/cash-counters':'sales.create','/membership':'customers.view',
+ '/credit-reminder':'customers.view','/calculators':'accounts.view','/notebook':'notebook.view',
+ '/transactions':'reports.view','/bill-gallery':'features.business_cards',
+};
+
+/** Resolve route-specific permissions for pages whose data scope is selected by search params. */
+export function permissionForRoute(pathname:string,search:Record<string,unknown>={}):string|undefined {
+ if(pathname==='/contacts') return search.kind==='supplier'?'suppliers.view':'customers.view';
+ if(pathname==='/parties' && search.kind==='supplier') return 'suppliers.view';
+ if(pathname==='/accounting' && search.view && search.view!=='accounts') return 'reports.view';
+ return routePermission[pathname];
+}
+
+/** Fail-closed membership test used by navigation and direct-route guards. */
+export function hasEffectivePermission(permissions:readonly string[]|undefined,permission:string):boolean {
+ return !!permissions?.includes(permission);
+}
 
 /** Default permissions for each role. A preset lists what the role may do; everything else is stored as "denied". */
 const not=(...rx:RegExp[])=>allPermissions.filter(p=>!rx.some(r=>r.test(p)));
