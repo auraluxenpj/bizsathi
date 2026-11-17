@@ -223,6 +223,10 @@ BEGIN
 
   SET LOCAL ROLE authenticated;
   PERFORM set_config('request.jwt.claims',json_build_object('sub',manager_id,'role','authenticated')::text,true);
+  PERFORM public.hr_adjust_leave_balance(
+    v_business_id,employee_id,v_leave_type,extract(year FROM current_date)::integer,
+    'opening_balance',10,'Test balance for in-balance approval guard'
+  );
   BEGIN
     PERFORM public.hr_review_leave_request(
       v_business_id,v_request_id,'approved',NULL,'This is not a balance override'
