@@ -53,7 +53,7 @@ BEGIN
   SET LOCAL ROLE authenticated;
   PERFORM set_config('request.jwt.claims',json_build_object('sub',owner_id,'role','authenticated')::text,true);
   custom_role_id := public.create_business_access_role(
-    v_business_id,'Stock + Sales','Custom combined duties',40,ARRAY['sales.create','inventory.view']
+    v_business_id,'Stock + Sales','Custom combined duties',40::smallint,ARRAY['sales.create','inventory.view']
   );
   PERFORM public.assign_business_access_role(v_business_id,staff_id,custom_role_id);
   SELECT count(*) INTO assignments FROM public.business_member_access_roles
