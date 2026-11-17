@@ -177,7 +177,7 @@ export function TeamAccessPanel({
       {viewMode !== 'positions' && <>
       <section className="rounded-xl border p-4 md:p-5">
         <div className="mb-3 flex items-center gap-2"><Users className="size-4 text-primary" /><h3 className="font-semibold">Employees & branch access</h3></div>
-        <p className="mb-4 text-sm text-muted-foreground">Assign each employee to one or more branches. Their position controls permissions in every assigned branch.</p>
+        <p className="mb-4 text-sm text-muted-foreground">Assign each employee to one or more branches. Assigned access roles control what they can do; branch membership controls where they can do it. Position is an HR designation.</p>
         {members.length ? <div className="overflow-x-auto"><table className="w-full min-w-[640px] text-left text-sm"><thead><tr className="border-b text-xs text-muted-foreground"><th className="py-2 pr-4 font-medium">Employee</th><th className="py-2 pr-4 font-medium">Position</th>{branches.map((b) => <th key={b.id} className="px-3 py-2 text-center font-medium">{b.name}</th>)}</tr></thead><tbody className="divide-y">{members.map((m) => {
           const protectedMember = m.user_id === userId || (roleRank[m.role_code] ?? 100) >= (isOwner ? 100 : 80);
           const employeeName = m.profiles?.full_name || m.user_id.slice(0, 8);
