@@ -3,7 +3,7 @@ import { createServerFn } from '@tanstack/react-start';
 import { requireSupabaseAuth } from '@/integrations/supabase/auth-middleware';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import {
-  hrmWorkspaceInput, hrmEmployeeInput, hrmAttendanceInput, hrmClockInput, hrmLeaveTypeInput,
+  hrmWorkspaceInput, hrmEmployeeInput, hrmEmployeeUpdateInput, hrmAttendanceInput, hrmClockInput, hrmLeaveTypeInput, hrmAttendancePolicyInput,
   hrmLeaveRequestInput, hrmLeaveReviewInput, hrmShiftInput, hrmShiftAssignmentInput,
   hrmSalaryInput, hrmPayrollGenerateInput, hrmPayrollActionInput,
 } from './hrm-schemas';
@@ -15,7 +15,7 @@ export const getHrmWorkspace = createServerFn({ method: 'GET' })
   .middleware([requireSupabaseAuth]).inputValidator(hrmWorkspaceInput)
   .handler(async ({ data, context }) => {
     const client = db(context.supabase);
-    const [membership, admin, payroll, branches, members, employees, attendance, leaveTypes, leaveRequests, shifts, assignments, salaries, payrollRuns, payrollItems] = await Promise.all([
+    const [membership, admin, payroll, branches, members, employees, attendance, leaveTypes, leaveRequests, shifts, assignments, salaries, payrollRuns, payrollItems, attendancePolicy] = await Promise.all([
       client.rpc('is_business_member', { _business_id: data.businessId }),
       client.rpc('has_business_role', { _business_id: data.businessId, _min_role: 'admin' }),
       client.rpc('has_business_role', { _business_id: data.businessId, _min_role: 'accountant' }),
@@ -29,9 +29,9 @@ export const getHrmWorkspace = createServerFn({ method: 'GET' })
       client.from('hr_shift_assignments').select('*').eq('business_id', data.businessId).order('shift_date', { ascending: false }).limit(150),
       client.from('hr_salary_structures').select('*').eq('business_id', data.businessId).order('effective_from', { ascending: false }).limit(200),
       client.from('hr_payroll_runs').select('*').eq('business_id', data.businessId).order('period_start', { ascending: false }).limit(36),
-      client.from('hr_payroll_items').select('*').eq('business_id', data.businessId).order('period_start', { ascending: false }).limit(200),
+      client.from('hr_payroll_items').select('*').eq('business_id', data.businessId).order('period_start', { ascending: false }).limit(200),\n      client.from('hr_attendance_policies').select('*').eq('business_id', data.businessId).maybeSingle(),
     ]);
-    const errors = [branches, members, employees, attendance, leaveTypes, leaveRequests, shifts, assignments, salaries, payrollRuns, payrollItems].filter(x => x.error);
+    const errors = [branches, members, employees, attendance, leaveTypes, leaveRequests, shifts, assignments, salaries, payrollRuns, payrollItems, attendancePolicy].filter(x => x.error);
     if (membership.error || !membership.data || admin.error || payroll.error || errors.length) throw new Error('HR workspace could not be loaded. Check that the HRM migration has been applied and your business access is active.');
     let employeeRows = employees.data ?? [];
     if (payroll.data && !admin.data) {
@@ -58,7 +58,7 @@ export const getHrmWorkspace = createServerFn({ method: 'GET' })
       attendance: enrich(attendance.data ?? []), leaveTypes: leaveTypes.data ?? [],
       leaveRequests: enrich(leaveRequests.data ?? []), shifts: shifts.data ?? [],
       assignments: enrich(assignments.data ?? []), salaries: salaries.data ?? [],
-      payrollRuns: payrollRuns.data ?? [], payrollItems: enrich(payrollItems.data ?? []),
+      payrollRuns: payrollRuns.data ?? [], payrollItems: enrich(payrollItems.data ?? []), attendancePolicy: attendancePolicy.data ?? null,
     };
   });
 
@@ -79,6 +79,35 @@ export const createHrmEmployee = createServerFn({ method: 'POST' })
     }).select('user_id').single();
     if (error || !row) throw new Error('Employee record could not be created. The member may already have an HR record.');
     return { userId: row.user_id as string };
+  });
+
+export const updateHrmEmployee = createServerFn({ method: 'POST' })
+  .middleware([requireSupabaseAuth]).inputValidator(hrmEmployeeUpdateInput)
+  .handler(async ({ data, context }) => {
+    const { error } = await db(context.supabase).from('hr_employee_records').update({
+      branch_id: data.branchId ?? null, employee_number: data.employeeNumber,
+      department: data.department || null, designation: data.designation || null,
+      employment_type: data.employmentType, joining_date: data.joiningDate,
+      confirmation_date: data.confirmationDate ?? null, employment_status: data.employmentStatus,
+      emergency_contact_name: data.emergencyContactName || null,
+      emergency_contact_phone: data.emergencyContactPhone || null,
+      address: data.address || null, notes: data.notes || null, updated_at: new Date().toISOString(),
+    }).eq('business_id', data.businessId).eq('user_id', data.userId).select('user_id').maybeSingle();
+    if (error) throw new Error('Employee record could not be updated. Check employee number and administrator access.');
+    return { ok: true };
+  });
+
+export const saveHrmAttendancePolicy = createServerFn({ method: 'POST' })
+  .middleware([requireSupabaseAuth]).inputValidator(hrmAttendancePolicyInput)
+  .handler(async ({ data, context }) => {
+    const { error } = await db(context.supabase).from('hr_attendance_policies').upsert({
+      business_id: data.businessId, workday_minutes: data.workdayMinutes,
+      unpaid_break_minutes: data.unpaidBreakMinutes, grace_minutes: data.graceMinutes,
+      overtime_after_minutes: data.overtimeAfterMinutes, overtime_multiplier: data.overtimeMultiplier,
+      updated_by: context.userId, updated_at: new Date().toISOString(),
+    }, { onConflict: 'business_id' });
+    if (error) throw new Error('Attendance policy could not be saved. Check administrator access.');
+    return { ok: true };
   });
 
 export const clockHrmAttendance = createServerFn({ method: 'POST' })
@@ -108,7 +137,7 @@ export const createHrmLeaveType = createServerFn({ method: 'POST' })
   .middleware([requireSupabaseAuth]).inputValidator(hrmLeaveTypeInput)
   .handler(async ({ data, context }) => {
     const { error } = await db(context.supabase).from('hr_leave_types').insert({
-      business_id: data.businessId, name: data.name, annual_quota: data.annualQuota, is_paid: data.isPaid,
+      business_id: data.businessId, name: data.name, annual_quota: data.annualQuota, is_paid: data.isPaid, accrual_method: data.accrualMethod,
     });
     if (error) throw new Error('Leave type could not be created. A type with this name may already exist.');
     return { ok: true };
