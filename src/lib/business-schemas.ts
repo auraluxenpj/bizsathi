@@ -15,3 +15,15 @@ export const invitationRoleInput = tenantInput.extend({ invitationId: z.string()
 export const removeMemberInput = tenantInput.extend({ userId: z.string().uuid() });
 export const roleTemplateInput = tenantInput.extend({ jobTitle, denied: z.array(z.string().max(60)).max(200) });
 export const roleTemplateResetInput = tenantInput.extend({ jobTitle });
+
+export const accessRoleCreateInput = tenantInput.extend({
+  name: z.string().trim().min(2).max(80),
+  description: z.string().trim().max(500).optional(),
+  authorityRank: z.number().int().min(1).max(79),
+  permissions: z.array(z.string().min(1).max(80)).max(200),
+});
+export const accessRoleUpdateInput = accessRoleCreateInput.extend({ roleId: z.string().uuid() });
+export const accessRoleAssignmentInput = tenantInput.extend({
+  userId: z.string().uuid(),
+  roleId: z.string().uuid(),
+});
