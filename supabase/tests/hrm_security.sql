@@ -62,14 +62,20 @@ BEGIN
   INSERT INTO public.hr_attendance_policies(business_id,workday_minutes,unpaid_break_minutes,grace_minutes,overtime_after_minutes,overtime_multiplier,updated_by)
   VALUES (v_business_id,480,60,10,0,1.5,owner_id);
 
-  -- HR admin approves the initial request; ledger posting is automatic.
+  -- Employees submit pending requests; the HR review function approves them.
+  -- This exercises the same RLS-safe path used by the application.
+  SET LOCAL ROLE authenticated;
+  PERFORM set_config('request.jwt.claims',json_build_object('sub',employee_id,'role','authenticated')::text,true);
+  INSERT INTO public.hr_leave_requests(
+    business_id,user_id,leave_type_id,start_date,end_date,days,request_status
+  ) VALUES (
+    v_business_id,employee_id,v_leave_type,'2026-11-10','2026-11-11',2,'pending'
+  ) RETURNING id INTO v_request_id;
+  RESET ROLE;
+
   SET LOCAL ROLE authenticated;
   PERFORM set_config('request.jwt.claims',json_build_object('sub',owner_id,'role','authenticated')::text,true);
-  INSERT INTO public.hr_leave_requests(
-    business_id,user_id,leave_type_id,start_date,end_date,days,request_status,reviewed_by,reviewed_at
-  ) VALUES (
-    v_business_id,employee_id,v_leave_type,'2026-11-10','2026-11-11',2,'approved',owner_id,now()
-  );
+  PERFORM public.hr_review_leave_request(v_business_id,v_request_id,'approved',NULL,NULL);
   RESET ROLE;
 
   INSERT INTO public.hr_salary_structures(
