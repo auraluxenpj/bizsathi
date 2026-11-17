@@ -10,6 +10,7 @@ import { changeInvitationRole, createBranch, getBusinessAccess, listBusinesses, 
 import { RolePermissions } from './role-permissions';
 import { PermissionChecklist } from './permission-checklist';
 import { TeamAccessPanel } from './team-access-panel';
+import { BusinessAccessRolesPanel } from './business-access-roles-panel';
 import { jobTitles, jobTitleCodes, type JobTitle } from '@/lib/job-titles';
 import { branchInput } from '@/lib/business-schemas';
 type BusinessRole = 'admin' | 'branch_manager' | 'accountant' | 'staff' | 'viewer';
@@ -42,7 +43,7 @@ export function BusinessAccess() {
  const titles = jobTitleCodes.filter(t => business?.role === 'owner' || jobTitles[t].base !== 'admin');
  return <main className="mx-auto max-w-6xl px-5 py-8 md:px-10">
   <header className="flex flex-wrap items-center justify-between gap-3 border-b pb-5"><h1 className="brand text-3xl">BizSathi Nepal</h1><div className="flex gap-2"><Button asChild variant="outline"><Link to="/security"><ShieldCheck />Security desk</Link></Button><Button asChild variant="ghost" size="icon" title="Profile"><Link to="/profile"><UserRound /></Link></Button></div></header>
-  <div className="my-8 flex flex-wrap items-center justify-between gap-4"><div><p className="text-xs font-semibold text-primary">BUSINESS ACCESS</p><h2 className="brand mt-2 text-2xl">{view.panel==='roles'?'Positions & permissions':view.panel==='users'?'Employees & branch access':'AURALUXE workspace & staff'}</h2></div></div>
+  <div className="my-8 flex flex-wrap items-center justify-between gap-4"><div><p className="text-xs font-semibold text-primary">BUSINESS ACCESS</p><h2 className="brand mt-2 text-2xl">{view.panel==='roles'?'Roles & permissions':view.panel==='users'?'Employees & branch access':'AURALUXE workspace & staff'}</h2></div></div>
   {(businesses.isPending || (businessId && access.isPending)) && <p role="status">Loading business access…</p>}
   {(businesses.error || access.error) && <p role="alert" className="text-destructive">{businesses.error?.message || access.error?.message}</p>}
   {message && <p role="status" className="mb-6 border-l-2 border-primary pl-3 text-sm">{message}</p>}
@@ -51,6 +52,7 @@ export function BusinessAccess() {
   {businessId && <>
   {view.panel !== 'roles' && <section className="border-y py-7"><h3 className="brand text-xl">Branches</h3>{!access.data?.branches.length && <p className="mt-4 text-sm text-muted-foreground">No authorized branches available.</p>}<ul className="my-5 divide-y">{access.data?.branches.map(b => <li key={b.id} className="flex flex-wrap justify-between gap-2 py-3"><span>{b.name} <span className="text-xs text-muted-foreground">{b.code}</span></span><span className="text-sm text-muted-foreground">{b.is_active ? 'Active' : 'Inactive'}</span></li>)}</ul>{access.data?.manager && <form className="grid gap-3 sm:grid-cols-4" onSubmit={e => { e.preventDefault(); branch.mutate(); }}><Input aria-label="Branch name" placeholder="Branch name" required maxLength={200} value={branchName} onChange={e => setBranchName(e.target.value)} /><Input aria-label="Branch code" placeholder="Branch code" required pattern="[A-Za-z0-9_-]{1,20}" maxLength={20} value={code} onChange={e => setCode(e.target.value)} /><Input aria-label="Branch address" placeholder="Address (optional)" maxLength={500} value={address} onChange={e => setAddress(e.target.value)} /><Button disabled={branch.isPending}><Plus />Add branch</Button></form>}</section>}
   <TeamAccessPanel businessId={businessId} branches={access.data?.branches ?? []} members={access.data?.members ?? []} branchAccess={access.data?.grants ?? []} userId={access.data?.userId ?? ''} isAdmin={Boolean(access.data?.manager)} isOwner={business?.role === 'owner'} viewMode={view.panel === 'roles' ? 'positions' : view.panel === 'users' ? 'employees' : 'all'} legacyInvitations={access.data?.invitations ?? []} legacyTitles={titles} onLegacyReissue={(id, mobile) => reissue.mutate({ id, mobile })} onLegacyChangeRole={(id, jobTitle) => changeRole.mutate({ id, jobTitle })} onLegacyRevoke={(id) => { if (window.confirm('Revoke this invitation?')) revoke.mutate(id); }} legacyActionsPending={reissue.isPending || changeRole.isPending || revoke.isPending} legacyInviteLink={legacyInviteLink} />
+  {view.panel === 'roles' && access.data?.manager && <BusinessAccessRolesPanel businessId={businessId} members={access.data.members ?? []} />}
 
   </>}
  </main>;
