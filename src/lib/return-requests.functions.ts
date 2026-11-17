@@ -34,7 +34,7 @@ export const createSaleReturnRequest=createServerFn({method:'POST'})
   .middleware([requireSupabaseAuth])
   .inputValidator(requestInput)
   .handler(async({data,context})=>{
-    const result=await context.supabase.rpc('request_sale_return',{
+    const result=await db(context.supabase).rpc('request_sale_return',{
       _business_id:data.businessId,_source_sale_id:data.sourceSaleId,
       _lines:data.lines,_reason:data.reason,
     });
@@ -48,7 +48,7 @@ export const reviewSaleReturnRequest=createServerFn({method:'POST'})
   .handler(async({data,context})=>{
     if(data.decision==='approve'&&(!data.periodId||!data.date))throw new Error('Choose an open financial period and approval date.');
     if(data.decision==='reject'&&!data.reason?.trim())throw new Error('Enter a reason for rejection.');
-    const result=await context.supabase.rpc('review_sale_return_request',{
+    const result=await db(context.supabase).rpc('review_sale_return_request',{
       _request_id:data.requestId,_decision:data.decision,_reason:data.reason??null,
       _period_id:data.periodId??null,_date:data.date??new Date().toLocaleDateString('en-CA'),
     });
