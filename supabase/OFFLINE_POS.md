@@ -24,7 +24,7 @@ Before any network submission the exact validated request (including document/pa
 
 ## Recovery
 
-1. Restore internet and sign in as the original user, choose the same business/branch, and enter the same device passphrase.
+1. Restore internet and sign in as the original user. Select the same business and, where more than one branch is authorised, choose the active branch in the shared workspace header. New device vaults unlock automatically in the same browser profile. An older passphrase-encrypted vault asks for its original passphrase once and migrates after successful recovery.
 2. Review the retained local drafts. Confirmed items link to ordinary sales history.
 3. For uncertain work, check the saved sale first; retry only the exact retained request if needed. A revoked role/branch, inactive product, closed period, identifier conflict or invalid cash session needs authorized review; never invent a replacement request to bypass uncertainty.
 4. If another tab changed the vault, lock/reopen it before trying another write. No stale tab may overwrite newer data.
