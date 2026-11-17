@@ -90,7 +90,8 @@ export const getMemberPermissions = createServerFn({ method: 'GET' }).middleware
   const r = await context.supabase.from('member_permission_denials').select('user_id,permission').eq('business_id', data.businessId);
   if (r.error) throw new Error('Permissions could not be loaded.');
   const rd = await anyDb(context.supabase).rpc('member_role_denials', { _business: data.businessId });
-  return { userId: context.userId, denials: r.data ?? [], roleDenials: (rd.error ? [] : rd.data ?? []) as { user_id: string; permission: string }[] };
+  if (rd.error) throw new Error('Role permissions could not be loaded.');
+  return { userId: context.userId, denials: r.data ?? [], roleDenials: (rd.data ?? []) as { user_id: string; permission: string }[] };
 });
 export const saveMemberPermissions = createServerFn({ method: 'POST' }).middleware([requireSupabaseAuth]).inputValidator(permissionInput).handler(async ({ data, context }) => {
   const r = await context.supabase.rpc('set_member_permissions', { _business: data.businessId, _user: data.userId, _denied: data.denied });
