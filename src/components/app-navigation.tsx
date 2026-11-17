@@ -23,7 +23,7 @@ export function AppNavigation({ children, pathname }: { children: ReactNode; pat
  const [person, setPerson] = useState(''); const [compact, setCompact] = useState(false); const [mobileOpen, setMobileOpen] = useState(false);
  const businesses = useQuery({ queryKey: ['businesses'], queryFn: () => load() });
  const can = useCan(businesses.data?.[0]?.id ?? '');
- const admin = businesses.data?.some(b => (b.effectiveRank ?? 0) >= 80);
+ const admin = businesses.data?.some(b => (b.effectiveRank ?? (b.role === 'owner' || b.role === 'admin' ? 100 : 0)) >= 80);
  const billingStaff = isBillingStaff(can);
  const kind = dashboardKind(can);
  const permitted = (to?: string) => { const permission = to ? routePermission[to] : undefined; return !permission || can(permission); };
