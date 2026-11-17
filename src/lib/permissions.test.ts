@@ -12,7 +12,10 @@ describe('custom permissions',()=>{
   const staff=rolePresets['staff'];
   expect(staff).toBeDefined();
   if(!staff)throw new Error('Staff preset is missing');
+  expect(staff.allowed).toEqual(expect.arrayContaining(['sales.create','sales.view','inventory.view','categories.view','customers.view','customers.create']));
   expect(staff.allowed).not.toContain('sales.delete');
+  expect(staff.allowed).not.toContain('purchases.view');
+  expect(staff.allowed).not.toContain('hr.employees.view');
  });
  it('fails closed until the server returns effective permissions',()=>{
   expect(hasEffectivePermission(undefined,'sales.create')).toBe(false);
