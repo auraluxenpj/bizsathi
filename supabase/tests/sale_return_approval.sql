@@ -38,7 +38,7 @@ BEGIN
     'lines',jsonb_build_array(jsonb_build_object('variantId',variant_id,'quantity',10,'price',100,'discount',0,'taxRate',0)),
     'payments',jsonb_build_array(jsonb_build_object('id',gen_random_uuid(),'method','bank','amount',1000,'sessionId',NULL,'reference','Paid invoice')));
   PERFORM public.post_commerce_document(req);
-  req:=jsonb_set(req,'{id}',to_jsonb(sale_b));req:=jsonb_set(req,'{branchId}',to_jsonb(branch_b));req:=jsonb_set(req,'{reference}',to_jsonb('INV-RET-B'::text));
+  req:=jsonb_set(req,'{id}',to_jsonb(sale_b));req:=jsonb_set(req,'{branchId}',to_jsonb(branch_b));req:=jsonb_set(req,'{reference}',to_jsonb('INV-RET-B'::text));req:=jsonb_set(req,'{payments}','[]'::jsonb);
   PERFORM public.post_commerce_document(req);
 
   SELECT coalesce(sum(quantity),0) INTO stock_before FROM public.commerce_stock_movements m WHERE m.business_id=tests.business_id AND m.branch_id=tests.branch_a AND m.variant_id=tests.variant_id;
