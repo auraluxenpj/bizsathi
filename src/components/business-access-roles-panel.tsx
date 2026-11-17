@@ -62,7 +62,7 @@ export function BusinessAccessRolesPanel({ businessId, members, isOwner }: { bus
 
   const editingRole = roles.find((r) => r.id === editingRoleId);
   const availableRoles = useMemo(() => roles.filter((r) =>
-    r.isActive && !r.code.startsWith('legacy_') && r.authorityRank < (isOwner ? 100 : 80) && !assignments.some((a) => a.userId === selectedUserId && a.roleId === r.id)
+    r.isActive && r.authorityRank < (isOwner ? 100 : 80) && !assignments.some((a) => a.userId === selectedUserId && a.roleId === r.id)
   ), [roles, assignments, selectedUserId]);
 
   useEffect(() => {
@@ -134,7 +134,7 @@ export function BusinessAccessRolesPanel({ businessId, members, isOwner }: { bus
     <section className="space-y-6 border-b py-7" aria-labelledby="business-access-roles-heading">
       <div>
         <div className="mb-2 flex items-center gap-2"><ShieldCheck className="size-5 text-primary" /><h3 id="business-access-roles-heading" className="brand text-xl">Business access roles</h3></div>
-        <p className="text-sm text-muted-foreground">Create reusable permission bundles and assign more than one to an employee. Custom roles add permissions but cannot grant administrator authority. Explicit employee denials still win; branch access is managed separately.</p>
+        <p className="text-sm text-muted-foreground">Create reusable permission bundles and assign more than one to an employee. Assign built-in authority roles such as Accountant or Branch Manager alongside custom permission bundles. HR position remains separate; custom roles cannot elevate administrator authority. Explicit employee denials still win, and branch access is managed separately.</p>
       </div>
 
       {(rolesQuery.isPending || assignmentsQuery.isPending) && <p role="status" className="text-sm text-muted-foreground">Loading access roles…</p>}
@@ -184,7 +184,7 @@ export function BusinessAccessRolesPanel({ businessId, members, isOwner }: { bus
               {roles.map((role) => (
                 <article key={role.id} className="flex flex-wrap items-center justify-between gap-3 py-3">
                   <div className="min-w-0">
-                    <p className="font-medium">{role.name} {role.isSystem && <span className="ml-1 rounded bg-muted px-2 py-0.5 text-xs font-normal text-muted-foreground">Built-in</span>}</p>
+                    <p className="font-medium">{role.name} {role.isSystem && <span className="ml-1 rounded bg-muted px-2 py-0.5 text-xs font-normal text-muted-foreground">{role.code.startsWith('legacy_') ? 'Authority role' : 'Position template'}</span>}</p>
                     <p className="text-xs text-muted-foreground">{role.description || role.code} · {role.permissions.length} permissions</p>
                   </div>
                   {!role.isSystem && <Button size="sm" variant="outline" onClick={() => { setEditingRoleId(role.id); setMessage(''); }}><Pencil className="mr-1 size-3" />Edit</Button>}
