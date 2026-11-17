@@ -82,7 +82,7 @@ CREATE POLICY hr_attendance_insert ON public.hr_attendance FOR INSERT TO authent
   WITH CHECK (public.hr_is_manager(business_id) AND recorded_by = auth.uid());
 CREATE POLICY hr_attendance_update ON public.hr_attendance FOR UPDATE TO authenticated
   USING (public.hr_is_manager(business_id))
-  WITH CHECK (public.hr_is_manager(business_id) AND recorded_by = auth.uid());
+  WITH CHECK (public.hr_is_manager(business_id));
 
 CREATE TABLE public.hr_leave_types (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -211,9 +211,11 @@ REVOKE ALL ON public.hr_salary_structures FROM anon;
 GRANT SELECT, INSERT, UPDATE ON public.hr_salary_structures TO authenticated;
 CREATE POLICY hr_salary_read ON public.hr_salary_structures FOR SELECT TO authenticated
   USING (public.hr_can_manage_payroll(business_id));
-CREATE POLICY hr_salary_manage ON public.hr_salary_structures FOR ALL TO authenticated
-  USING (public.hr_can_manage_payroll(business_id))
+CREATE POLICY hr_salary_insert ON public.hr_salary_structures FOR INSERT TO authenticated
   WITH CHECK (public.hr_can_manage_payroll(business_id) AND created_by = auth.uid());
+CREATE POLICY hr_salary_update ON public.hr_salary_structures FOR UPDATE TO authenticated
+  USING (public.hr_can_manage_payroll(business_id))
+  WITH CHECK (public.hr_can_manage_payroll(business_id));
 
 CREATE TABLE public.hr_payroll_runs (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
