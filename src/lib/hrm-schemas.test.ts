@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
-  hrmEmployeeInput, hrmAttendancePolicyInput, hrmLeaveTypeInput, hrmLeaveBalanceAdjustmentInput, hrmReportInput, hrmAttendanceInput, hrmShiftInput, hrmSalaryInput, hrmPayrollGenerateInput,
+  hrmEmployeeInput, hrmAttendancePolicyInput, hrmLeaveTypeInput, hrmLeaveBalanceAdjustmentInput, hrmReportInput, hrmAttendanceInput, hrmShiftInput, hrmSalaryInput, hrmPayrollGenerateInput, hrmPayrollPaidInput,
 } from './hrm-schemas';
 import { rolePresets } from './permissions';
 import { jobTitles } from './job-titles';
@@ -20,6 +20,30 @@ describe('BizSathi HRM validation and access defaults', () => {
   it('rejects invalid employee dates and employee numbers', () => {
     expect(hrmEmployeeInput.safeParse({
       businessId, userId, employeeNumber: 'x', joiningDate: '01-11-2026',
+    }).success).toBe(false);
+  });
+
+  it('requires exit dates for terminated employees and validates HR responsibilities', () => {
+    const base = {
+      businessId, userId, employeeNumber: 'EMP-EXIT-01', joiningDate: '2026-01-01',
+      employmentType: 'full_time', employmentStatus: 'terminated',
+    };
+    expect(hrmEmployeeInput.safeParse(base).success).toBe(false);
+    expect(hrmEmployeeInput.safeParse({
+      ...base, exitDate: '2026-11-17', lastWorkingDate: '2026-11-16',
+      exitType: 'resignation', responsibilities: ['Customer assistance and sales'],
+    }).success).toBe(true);
+    expect(hrmEmployeeInput.safeParse({
+      ...base, exitDate: '2026-11-15', lastWorkingDate: '2026-11-16',
+    }).success).toBe(false);
+  });
+
+  it('requires a valid payroll payment date', () => {
+    expect(hrmPayrollPaidInput.safeParse({
+      businessId, runId: userId, paidDate: '2026-11-17',
+    }).success).toBe(true);
+    expect(hrmPayrollPaidInput.safeParse({
+      businessId, runId: userId, paidDate: '17-11-2026',
     }).success).toBe(false);
   });
 
