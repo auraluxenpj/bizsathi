@@ -13,7 +13,7 @@ const more: Tab = { to: '/more', label: 'More', icon: LayoutGrid, match: ['/more
 const tabsByKind: Record<DashboardKind, Tab[]> = {
   business: [home, pos, parties, { to: '/inventory', label: 'Inventory', icon: Archive, match: ['/inventory', '/products', '/categories'], permission: 'inventory.view' }, more],
   // Billing staff are limited to these pages; /more and /inventory would only bounce them back to POS.
-  cashier: [home, pos, parties, { to: '/cash-counters', label: 'Drawer', icon: Banknote, match: ['/cash-counters'], permission: 'sales.create' }],
+  cashier: [pos],
   stock: [home, { to: '/inventory', label: 'Stock', icon: Archive, match: ['/inventory'], permission: 'inventory.view' }, { to: '/products', label: 'Products', icon: Package, match: ['/products', '/categories'], permission: 'inventory.view' }, { to: '/purchases', label: 'Purchases', icon: Truck, match: ['/purchases', '/purchase-orders'], permission: 'purchases.view' }, more],
   entry: [home, { to: '/sales', label: 'Sales', icon: Receipt, match: ['/sales'], permission: 'sales.view' }, { to: '/purchases', label: 'Purchases', icon: Truck, match: ['/purchases'], permission: 'purchases.view' }, parties, more],
 };
