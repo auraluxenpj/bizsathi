@@ -6,7 +6,7 @@ import { Input } from './ui/input';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from './ui/tooltip';
 import { dashboardItem, workspaceGroups, workspaceItemActive, workspaceItemSearch, type WorkspaceItem } from '@/lib/workspace-navigation';
 
-export function WorkspaceSidebar({ pathname, search, compact = false, visible, onNavigate }: { pathname: string; search: Record<string, unknown>; compact?: boolean; visible: (to?: string) => boolean; onNavigate?: () => void }) {
+export function WorkspaceSidebar({ pathname, search, compact = false, visible, onNavigate }: { pathname: string; search: Record<string, unknown>; compact?: boolean; visible: (to?: string, routeSearch?: Record<string, unknown>) => boolean; onNavigate?: () => void }) {
  const [filter, setFilter] = useState('');
  const [expanded, setExpanded] = useState<Record<string, boolean>>({});
  const groups = workspaceGroups.map(g => ({ ...g, items: g.items.filter(i => visible(i.to)).filter(i => !filter || `${g.name} ${i.name}`.toLowerCase().includes(filter.toLowerCase())) })).filter(g => g.items.length);
