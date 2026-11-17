@@ -107,7 +107,7 @@ export function ReportsHub() {
     <main className="reports-hub mx-auto w-full max-w-[1440px] px-4 py-5 sm:px-6 md:py-7 lg:px-8">
       <header className="reports-heading flex flex-wrap items-center justify-between gap-3 rounded-xl border bg-card px-4 py-4 shadow-sm sm:px-5">
         <div>
-          <p className="text-[11px] font-semibold tracking-[.12em] text-primary">BIZSATHI NEPAL</p>
+          <p className="text-[11px] font-semibold tracking-[.12em] text-primary">SUTRA BY AURALUXE</p>
           <h1 className="mt-1 text-2xl font-bold tracking-tight">Reports</h1>
           <p className="mt-1 text-sm text-muted-foreground">Business reports, statements and operational summaries</p>
         </div>
