@@ -24,7 +24,7 @@ export const permissionInput=z.object({businessId:z.string().uuid(),userId:z.str
 /** The checklist only restricts: a permission is allowed when the role already allows it and it is not unticked. */
 export function isAllowed(roleAllows:boolean,denied:readonly string[],permission:string){return roleAllows&&!denied.includes(permission);}
 /** Route paths hidden when the matching view permission is unticked. */
-export const routePermission:Record<string,string>={'/reports':'reports.view','/accounting':'accounts.view','/businesses':'staff.view','/sales':'sales.view','/quotations':'sales.view','/purchases':'purchases.view','/purchase-orders':'purchases.view','/expenses':'expenses.view','/products':'inventory.view','/categories':'categories.view','/cash-bank':'accounts.view','/parties':'customers.view','/hrm':'hr.self.view'};
+export const routePermission:Record<string,string>={'/reports':'reports.view','/accounting':'accounts.view','/businesses':'staff.view','/sales':'sales.view','/quotations':'sales.view','/purchases':'purchases.view','/purchase-orders':'purchases.view','/expenses':'expenses.view','/products':'inventory.view','/categories':'categories.view','/cash-bank':'accounts.view','/parties':'customers.view','/hrm':'hr.self.view','/pos':'sales.create','/cash-counters':'sales.create','/membership':'customers.view'};
 
 /** Default permissions for each role. A preset lists what the role may do; everything else is stored as "denied". */
 const not=(...rx:RegExp[])=>allPermissions.filter(p=>!rx.some(r=>r.test(p)));
@@ -32,9 +32,9 @@ const only=(...rx:RegExp[])=>allPermissions.filter(p=>rx.some(r=>r.test(p)));
 export const rolePresets:Record<string,{label:string;allowed:string[]}>={
  owner:{label:'Owner',allowed:allPermissions},
  admin:{label:'Administrator',allowed:not(/^settings\.delete_business$/)},
- branch_manager:{label:'Branch Manager',allowed:only(/^hr\.(self\.view|attendance\.view|leave\.(view|create)|shifts\.view)$/,/^sales\.view$/,/^expenses\.view$/,/^inventory\.view$/,/^categories\.view$/,/^stock\.(create|edit)$/,/^customers\.view$/,/^suppliers\.view$/,/^staff\.view$/,/^reports\.(view|home_stats|items|parties|transactions|expenses)$/)},
+ branch_manager:{label:'Branch Manager',allowed:only(/^hr\.(self\.view|attendance\.view|leave\.(view|create)|shifts\.view)$/,/^sales\.(create|view)$/,/^expenses\.view$/,/^inventory\.view$/,/^categories\.view$/,/^stock\.(create|edit)$/,/^customers\.(create|edit|view)$/,/^suppliers\.view$/,/^staff\.view$/,/^reports\.(view|home_stats|items|parties|transactions|expenses)$/)},
  accountant:{label:'Accountant',allowed:only(/^hr\.(self\.view|employees\.view|attendance\.view|leave\.(view|create)|shifts\.view|payroll\.(view|manage|approve))$/,/^(sales|purchases|expenses)\.(create|edit|view)$/,/^accounts\.(create|edit|view|adjust_create)$/,/^reports\./,/^(inventory|customers|suppliers|categories|notebook)\.(view)$/,/^stock\.(create|edit)$/,/^notebook\./,/^other\.(party_adjustments|purchase_price|change_date)$/,/^features\.import$/)},
- staff:{label:'Staff (Sales Person)',allowed:only(/^hr\.(self\.view|attendance\.view|leave\.(view|create)|shifts\.view)$/,/^sales\.(create|edit|view)$/,/^customers\.(create|edit|view)$/,/^inventory\.view$/,/^categories\.view$/,/^reports\.home_stats$/,/^notebook\./,/^features\.(business_cards|greeting_cards)$/)},
+ staff:{label:'Staff (Sales Person)',allowed:only(/^hr\.(self\.view|attendance\.view|leave\.(view|create)|shifts\.view)$/,/^sales\.(create|view)$/,/^customers\.(create|edit|view)$/,/^inventory\.view$/,/^categories\.view$/)},
  viewer:{label:'Viewer',allowed:only(/\.view$/,/^reports\.home_stats$/).filter(p=>p!=='staff.view'&&p!=='accounts.view'&&p!=='reports.view')},
 };
 /** What to store (the unticked ones) for a role's defaults. */

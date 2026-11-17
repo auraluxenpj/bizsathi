@@ -66,6 +66,7 @@ jobs:
             supabase/tests/business_ownership_boundary.sql \
             supabase/tests/business_archive_approval.sql \
             supabase/tests/branch_manager_authority.sql \
+            supabase/tests/sale_return_approval.sql \
             supabase/tests/hrm_security.sql; do
             echo "::group::Running ${test_file}"
             docker exec -i "${DB_CONTAINER}" psql -U postgres -d postgres --no-psqlrc --set ON_ERROR_STOP=1 < "${test_file}"
