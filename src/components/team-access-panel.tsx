@@ -190,9 +190,9 @@ export function TeamAccessPanel({
                 </select>
               </label>
               <div className="mb-4 space-y-2 text-sm">
-                <p className="font-medium">Roles the manager may delegate</p>
+                <p className="font-medium">Positions this manager may invite</p>
                 {(['staff', 'viewer'] as const).map((r) => (
-                  <label key={r} className="flex items-center gap-2"><input type="checkbox" checked={delegatedRoles.includes(r)} onChange={(e) => setDelegatedRoles((old) => e.target.checked ? [...old, r] : old.filter((x) => x !== r))} />{r === 'staff' ? 'Cashier / POS, Inventory Manager and Store Team' : 'Viewer (read only)'}</label>
+                  <label key={r} className="flex items-center gap-2"><input type="checkbox" checked={delegatedRoles.includes(r)} onChange={(e) => setDelegatedRoles((old) => e.target.checked ? [...old, r] : old.filter((x) => x !== r))} />{r === 'staff' ? 'Sales Person, Stock Manager and Store Team' : 'Read-only access'}</label>
                 ))}
               </div>
               <Button disabled={!selectedManager || !delegatedRoles.length || grant.isPending} onClick={() => grant.mutate()}><Users className="mr-2 size-4" />{grant.isPending ? 'Saving…' : 'Grant branch delegation'}</Button>
