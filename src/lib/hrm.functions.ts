@@ -14,10 +14,11 @@ export const getHrmWorkspace = createServerFn({ method: 'GET' })
   .middleware([requireSupabaseAuth]).inputValidator(hrmWorkspaceInput)
   .handler(async ({ data, context }) => {
     const client = db(context.supabase);
-    const [admin, payroll, branches, employees, attendance, leaveTypes, leaveRequests, shifts, assignments, salaries, payrollRuns, payrollItems] = await Promise.all([
+    const [admin, payroll, branches, members, employees, attendance, leaveTypes, leaveRequests, shifts, assignments, salaries, payrollRuns, payrollItems] = await Promise.all([
       client.rpc('has_business_role', { _business_id: data.businessId, _min_role: 'admin' }),
       client.rpc('has_business_role', { _business_id: data.businessId, _min_role: 'accountant' }),
       client.from('branches').select('id,name,code,is_active').eq('business_id', data.businessId).eq('is_active', true).order('name'),
+      client.from('business_memberships').select('user_id,role_code,job_title,status').eq('business_id', data.businessId).eq('status', 'active'),
       client.from('hr_employee_records').select('*').eq('business_id', data.businessId).order('joining_date', { ascending: false }),
       client.from('hr_attendance').select('*').eq('business_id', data.businessId).order('attendance_date', { ascending: false }).limit(150),
       client.from('hr_leave_types').select('*').eq('business_id', data.businessId).eq('is_active', true).order('name'),
@@ -28,9 +29,10 @@ export const getHrmWorkspace = createServerFn({ method: 'GET' })
       client.from('hr_payroll_runs').select('*').eq('business_id', data.businessId).order('period_start', { ascending: false }).limit(36),
       client.from('hr_payroll_items').select('*').eq('business_id', data.businessId).order('period_start', { ascending: false }).limit(200),
     ]);
-    const errors = [branches, employees, attendance, leaveTypes, leaveRequests, shifts, assignments, salaries, payrollRuns, payrollItems].filter(x => x.error);
+    const errors = [branches, members, employees, attendance, leaveTypes, leaveRequests, shifts, assignments, salaries, payrollRuns, payrollItems].filter(x => x.error);
     if (admin.error || payroll.error || errors.length) throw new Error('HR workspace could not be loaded. Check that the HRM migration has been applied and your business access is active.');
     const peopleIds = [...new Set([
+      ...(members.data ?? []).map((x: any) => x.user_id),
       ...(employees.data ?? []).map((x: any) => x.user_id),
       ...(attendance.data ?? []).map((x: any) => x.user_id),
       ...(leaveRequests.data ?? []).map((x: any) => x.user_id),
@@ -44,7 +46,7 @@ export const getHrmWorkspace = createServerFn({ method: 'GET' })
     const enrich = (rows: any[]) => (rows ?? []).map(row => ({ ...row, employee: names[row.user_id] ?? { fullName: 'Employee', phone: null } }));
     return {
       userId: context.userId, isAdmin: Boolean(admin.data), canPayroll: Boolean(payroll.data),
-      branches: branches.data ?? [], employees: enrich(employees.data ?? []),
+      branches: branches.data ?? [], members: enrich(members.data ?? []), employees: enrich(employees.data ?? []),
       attendance: enrich(attendance.data ?? []), leaveTypes: leaveTypes.data ?? [],
       leaveRequests: enrich(leaveRequests.data ?? []), shifts: shifts.data ?? [],
       assignments: enrich(assignments.data ?? []), salaries: salaries.data ?? [],
@@ -118,8 +120,8 @@ export const reviewHrmLeaveRequest = createServerFn({ method: 'POST' })
 
 export const createHrmShift = createServerFn({ method: 'POST' })
   .middleware([requireSupabaseAuth]).inputValidator(hrmShiftInput)
-  .handler(async ({ data }) => {
-    const { error } = await db(data as any).from('hr_shifts').insert({ business_id: data.businessId });
+  .handler(async ({ data, context }) => {
+    const { error } = await db(context.supabase).from('hr_shifts').insert({ business_id: data.businessId, name: data.name, start_time: data.startTime, end_time: data.endTime, break_minutes: data.breakMinutes });
     if (error) throw new Error('Shift could not be created.');
     return { ok: true };
   });
