@@ -22,9 +22,11 @@ export function useCommerce(){
  useEffect(()=>{
   if(!businessId||!access.data)return;
   const allowed=access.data.branches.filter(b=>b.is_active);
-  if(allowed.length===1){setActiveBranchState(allowed[0].id);return;}
   const saved=window.localStorage.getItem('sutra-active-branch:'+businessId)||'';
-  setActiveBranchState(allowed.some(b=>b.id===saved)?saved:'');
+  if(saved&&allowed.some(b=>b.id===saved)){setActiveBranchState(saved);return;}
+  const assigned=access.data.assignedBranchId;
+  if(assigned&&allowed.some(b=>b.id===assigned)){setActiveBranchState(assigned);window.localStorage.setItem('sutra-active-branch:'+businessId,assigned);return;}
+  setActiveBranchState(allowed.length===1?allowed[0].id:'');
  },[businessId,access.data]);
  const setActiveBranchId=(id:string)=>{
   const allowed=access.data?.branches.filter(b=>b.is_active)??[];
