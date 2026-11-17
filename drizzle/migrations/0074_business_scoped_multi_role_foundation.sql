@@ -97,7 +97,7 @@ SELECT DISTINCT p.permission,split_part(p.permission,'.',1),
 FROM (
   SELECT permission FROM public.job_title_denials
   UNION SELECT permission FROM public.member_permission_denials
-  UNION SELECT unnest(denied_permissions) FROM public.business_role_templates
+  UNION SELECT permission FROM public.business_role_template_denials
 ) p
 ON CONFLICT (permission) DO NOTHING;
 
@@ -235,12 +235,8 @@ BEGIN
   -- they inherit the existing global job-title denial template.
   FOR v_item IN
     SELECT br.id, substring(br.code from 10) AS job_title,
-      COALESCE(t.denied_permissions,
-        ARRAY(SELECT d.permission FROM public.job_title_denials d WHERE d.job_title=substring(br.code from 10))
-      ) AS denied
+      ARRAY(SELECT d.permission FROM public.role_template_denials(_business_id, substring(br.code from 10)) AS d(permission)) AS denied
     FROM public.business_access_roles br
-    LEFT JOIN public.business_role_templates t
-      ON t.business_id=br.business_id AND t.job_title=substring(br.code from 10)
     WHERE br.business_id=_business_id AND br.code LIKE 'position_%'
   LOOP
     INSERT INTO public.business_access_role_permissions(business_id,role_id,permission)
@@ -298,7 +294,8 @@ BEGIN
     SELECT COALESCE(array_agg(permission),ARRAY[]::text[]) INTO v_denied
     FROM public.job_title_denials WHERE job_title=v_title;
   ELSE
-    v_denied := NEW.denied_permissions;
+    SELECT COALESCE(array_agg(d.permission),ARRAY[]::text[]) INTO v_denied
+    FROM public.role_template_denials(v_business,v_title) AS d(permission);
   END IF;
 
   DELETE FROM public.business_access_role_permissions
