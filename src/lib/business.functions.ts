@@ -147,3 +147,52 @@ export const resetRoleTemplate = createServerFn({ method: 'POST' }).middleware([
   if (error) throw new Error(friendly(error.message, 'Role permissions could not be reset.'));
   return { ok: true };
 });
+
+
+// Business-scoped multi-role access. Role tables are not directly exposed to the browser;
+// every read/write is performed through a guarded SECURITY DEFINER RPC.
+export const getBusinessAccessRoles = createServerFn({ method: 'GET' }).middleware([requireSupabaseAuth]).inputValidator(tenantInput).handler(async ({ data, context }) => {
+  const { data: roles, error } = await anyDb(context.supabase).rpc('get_business_access_roles', { _business: data.businessId });
+  if (error) throw new Error('Business access roles could not be loaded.');
+  return { roles: (roles ?? []) as { id: string; code: string; name: string; description: string | null; authorityRank: number; isSystem: boolean; isActive: boolean; permissions: string[] }[] };
+});
+
+export const getBusinessMemberAccessRoles = createServerFn({ method: 'GET' }).middleware([requireSupabaseAuth]).inputValidator(tenantInput).handler(async ({ data, context }) => {
+  const { data: assignments, error } = await anyDb(context.supabase).rpc('get_business_member_access_roles', { _business: data.businessId });
+  if (error) throw new Error('Employee role assignments could not be loaded.');
+  return { assignments: (assignments ?? []) as { userId: string; roleId: string; roleCode: string; roleName: string; isDefault: boolean; assignedAt: string }[] };
+});
+
+export const createBusinessAccessRole = createServerFn({ method: 'POST' }).middleware([requireSupabaseAuth]).inputValidator(accessRoleCreateInput).handler(async ({ data, context }) => {
+  const { data: roleId, error } = await anyDb(context.supabase).rpc('create_business_access_role', {
+    _business: data.businessId, _name: data.name, _description: data.description ?? '',
+    _authority_rank: data.authorityRank, _permissions: data.permissions,
+  });
+  if (error) throw new Error(error.message.replace(/^.*?: /, ''));
+  return { roleId: roleId as string };
+});
+
+export const updateBusinessAccessRole = createServerFn({ method: 'POST' }).middleware([requireSupabaseAuth]).inputValidator(accessRoleUpdateInput).handler(async ({ data, context }) => {
+  const { error } = await anyDb(context.supabase).rpc('update_business_access_role', {
+    _business: data.businessId, _role: data.roleId, _name: data.name,
+    _description: data.description ?? '', _permissions: data.permissions,
+  });
+  if (error) throw new Error(error.message.replace(/^.*?: /, ''));
+  return { ok: true };
+});
+
+export const assignBusinessAccessRole = createServerFn({ method: 'POST' }).middleware([requireSupabaseAuth]).inputValidator(accessRoleAssignmentInput).handler(async ({ data, context }) => {
+  const { error } = await anyDb(context.supabase).rpc('assign_business_access_role', {
+    _business: data.businessId, _user: data.userId, _role: data.roleId,
+  });
+  if (error) throw new Error(error.message.replace(/^.*?: /, ''));
+  return { ok: true };
+});
+
+export const unassignBusinessAccessRole = createServerFn({ method: 'POST' }).middleware([requireSupabaseAuth]).inputValidator(accessRoleAssignmentInput).handler(async ({ data, context }) => {
+  const { error } = await anyDb(context.supabase).rpc('unassign_business_access_role', {
+    _business: data.businessId, _user: data.userId, _role: data.roleId,
+  });
+  if (error) throw new Error(error.message.replace(/^.*?: /, ''));
+  return { ok: true };
+});
