@@ -4,7 +4,7 @@ import { requireSupabaseAuth } from '@/integrations/supabase/auth-middleware';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import {
   hrmWorkspaceInput, hrmEmployeeInput, hrmEmployeeUpdateInput, hrmAttendanceInput, hrmClockInput, hrmLeaveTypeInput, hrmAttendancePolicyInput,
-  hrmLeaveRequestInput, hrmLeaveReviewInput, hrmShiftInput, hrmShiftAssignmentInput,
+  hrmLeaveRequestInput, hrmLeaveReviewInput, hrmLeaveBalanceAdjustmentInput, hrmShiftInput, hrmShiftAssignmentInput,
   hrmSalaryInput, hrmPayrollGenerateInput, hrmPayrollActionInput,
 } from './hrm-schemas';
 
@@ -15,7 +15,7 @@ export const getHrmWorkspace = createServerFn({ method: 'GET' })
   .middleware([requireSupabaseAuth]).inputValidator(hrmWorkspaceInput)
   .handler(async ({ data, context }) => {
     const client = db(context.supabase);
-    const [membership, admin, payroll, branches, members, employees, attendance, leaveTypes, leaveRequests, shifts, assignments, salaries, payrollRuns, payrollItems, attendancePolicy] = await Promise.all([
+    const [membership, admin, payroll, branches, members, employees, attendance, leaveTypes, leaveRequests, shifts, assignments, salaries, payrollRuns, payrollItems, attendancePolicy, leaveBalanceEntries] = await Promise.all([
       client.rpc('is_business_member', { _business_id: data.businessId }),
       client.rpc('has_business_role', { _business_id: data.businessId, _min_role: 'admin' }),
       client.rpc('has_business_role', { _business_id: data.businessId, _min_role: 'accountant' }),
@@ -31,8 +31,9 @@ export const getHrmWorkspace = createServerFn({ method: 'GET' })
       client.from('hr_payroll_runs').select('*').eq('business_id', data.businessId).order('period_start', { ascending: false }).limit(36),
       client.from('hr_payroll_items').select('*').eq('business_id', data.businessId).order('period_start', { ascending: false }).limit(200),
       client.from('hr_attendance_policies').select('*').eq('business_id', data.businessId).maybeSingle(),
+      client.from('hr_leave_balance_entries').select('*').eq('business_id', data.businessId).order('created_at', { ascending: false }).limit(500),
     ]);
-    const errors = [branches, members, employees, attendance, leaveTypes, leaveRequests, shifts, assignments, salaries, payrollRuns, payrollItems, attendancePolicy].filter(x => x.error);
+    const errors = [branches, members, employees, attendance, leaveTypes, leaveRequests, shifts, assignments, salaries, payrollRuns, payrollItems, attendancePolicy, leaveBalanceEntries].filter(x => x.error);
     if (membership.error || !membership.data || admin.error || payroll.error || errors.length) throw new Error('HR workspace could not be loaded. Check that the HRM migration has been applied and your business access is active.');
     let employeeRows = employees.data ?? [];
     if (payroll.data && !admin.data) {
@@ -60,6 +61,7 @@ export const getHrmWorkspace = createServerFn({ method: 'GET' })
       leaveRequests: enrich(leaveRequests.data ?? []), shifts: shifts.data ?? [],
       assignments: enrich(assignments.data ?? []), salaries: salaries.data ?? [],
       payrollRuns: payrollRuns.data ?? [], payrollItems: enrich(payrollItems.data ?? []), attendancePolicy: attendancePolicy.data ?? null,
+      leaveBalanceEntries: leaveBalanceEntries.data ?? [],
     };
   });
 
@@ -142,6 +144,18 @@ export const createHrmLeaveType = createServerFn({ method: 'POST' })
     });
     if (error) throw new Error('Leave type could not be created. A type with this name may already exist.');
     return { ok: true };
+  });
+
+export const saveHrmLeaveBalanceEntry = createServerFn({ method: 'POST' })
+  .middleware([requireSupabaseAuth]).inputValidator(hrmLeaveBalanceAdjustmentInput)
+  .handler(async ({ data, context }) => {
+    const { data: entryId, error } = await db(context.supabase).rpc('hr_adjust_leave_balance', {
+      _business_id: data.businessId, _user_id: data.userId, _leave_type_id: data.leaveTypeId,
+      _leave_year: data.leaveYear, _entry_type: data.entryType, _delta_days: data.deltaDays,
+      _notes: data.notes || null,
+    });
+    if (error || !entryId) throw new Error('Leave balance entry could not be posted. Check administrator access, employee and leave type.');
+    return { entryId: entryId as string };
   });
 
 export const createHrmLeaveRequest = createServerFn({ method: 'POST' })
