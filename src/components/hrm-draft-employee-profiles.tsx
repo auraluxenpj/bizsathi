@@ -4,17 +4,35 @@ import { useServerFn } from '@tanstack/react-start';
 import { Button } from '@/components/ui/button';
 import { createHrmDraftEmployee, getHrmDraftEmployees } from '@/lib/hrm-draft-employees.functions';
 
+type BranchOption = { id: string; name: string; code?: string | null };
+type DraftEmployee = {
+  id: string; full_name: string; employee_number: string; designation: string | null;
+  department: string | null; branch_id: string | null; profile_status: string;
+};
+type DraftEmployeeInput = {
+  businessId: string; fullName: string; employeeNumber: string; branchId: string | null;
+  designation: string; department: string; joiningDate: string | null; email: string; phone: string;
+};
 const field = 'mt-1 h-10 w-full rounded-md border bg-background px-3 text-sm';
-export function HrmDraftEmployeeProfiles({ businessId, branches, isAdmin }: { businessId: string; branches: any[]; isAdmin: boolean }) {
+
+export function HrmDraftEmployeeProfiles({ businessId, branches, isAdmin }: { businessId: string; branches: BranchOption[]; isAdmin: boolean }) {
   const client = useQueryClient();
   const load = useServerFn(getHrmDraftEmployees);
   const save = useServerFn(createHrmDraftEmployee);
   const [error, setError] = useState('');
   const [message, setMessage] = useState('');
-  const query = useQuery({ queryKey: ['hrm-draft-employees', businessId], queryFn: () => load({ data: { businessId } }), enabled: Boolean(businessId && isAdmin) });
+  const query = useQuery({
+    queryKey: ['hrm-draft-employees', businessId],
+    queryFn: async () => await load({ data: { businessId } }) as DraftEmployee[],
+    enabled: Boolean(businessId && isAdmin),
+  });
   const mutation = useMutation({
-    mutationFn: (payload: any) => save({ data: payload }),
-    onSuccess: () => { setError(''); setMessage('Draft employee profile saved. No login or staff account was created.'); void client.invalidateQueries({ queryKey: ['hrm-draft-employees', businessId] }); },
+    mutationFn: (payload: DraftEmployeeInput) => save({ data: payload }),
+    onSuccess: () => {
+      setError('');
+      setMessage('Draft employee profile saved. No login or staff account was created.');
+      void client.invalidateQueries({ queryKey: ['hrm-draft-employees', businessId] });
+    },
     onError: (e: Error) => { setMessage(''); setError(e.message); },
   });
   if (!isAdmin) return null;
@@ -43,7 +61,7 @@ export function HrmDraftEmployeeProfiles({ businessId, branches, isAdmin }: { bu
       <div className="flex items-end"><Button type="submit" disabled={mutation.isPending}>{mutation.isPending ? 'Saving…' : 'Save draft profile'}</Button></div>
     </form>
     <div className="border-t pt-4"><h3 className="text-sm font-semibold">Draft employee list</h3>
-      {query.isPending ? <p className="py-4 text-sm text-muted-foreground">Loading draft profiles…</p> : query.error ? <p role="alert" className="py-3 text-sm text-destructive">{(query.error as Error).message}</p> : query.data?.length ? <div className="mt-2 overflow-x-auto"><table className="w-full min-w-[650px] text-left text-sm"><thead className="bg-muted/50 text-xs text-muted-foreground"><tr>{['Name','Employee ID','Designation','Department','Branch','Status'].map(x=><th key={x} className="px-3 py-2 font-medium">{x}</th>)}</tr></thead><tbody className="divide-y">{query.data.map((row:any)=><tr key={row.id}><td className="px-3 py-3 font-medium">{row.full_name}</td><td className="px-3 py-3 font-mono text-xs">{row.employee_number}</td><td className="px-3 py-3">{row.designation || '—'}</td><td className="px-3 py-3">{row.department || '—'}</td><td className="px-3 py-3">{branches.find(b=>b.id===row.branch_id)?.name || '—'}</td><td className="px-3 py-3 capitalize">{row.profile_status.replace('_',' ')}</td></tr>)}</tbody></table></div> : <p className="py-3 text-sm text-muted-foreground">No draft employee profiles yet.</p>}
+      {query.isPending ? <p className="py-4 text-sm text-muted-foreground">Loading draft profiles…</p> : query.error ? <p role="alert" className="py-3 text-sm text-destructive">{(query.error as Error).message}</p> : query.data?.length ? <div className="mt-2 overflow-x-auto"><table className="w-full min-w-[650px] text-left text-sm"><thead className="bg-muted/50 text-xs text-muted-foreground"><tr>{['Name','Employee ID','Designation','Department','Branch','Status'].map(x=><th key={x} className="px-3 py-2 font-medium">{x}</th>)}</tr></thead><tbody className="divide-y">{query.data.map((row: DraftEmployee)=><tr key={row.id}><td className="px-3 py-3 font-medium">{row.full_name}</td><td className="px-3 py-3 font-mono text-xs">{row.employee_number}</td><td className="px-3 py-3">{row.designation || '—'}</td><td className="px-3 py-3">{row.department || '—'}</td><td className="px-3 py-3">{branches.find(b=>b.id===row.branch_id)?.name || '—'}</td><td className="px-3 py-3 capitalize">{row.profile_status.replace('_',' ')}</td></tr>)}</tbody></table></div> : <p className="py-3 text-sm text-muted-foreground">No draft employee profiles yet.</p>}
     </div>
   </section>;
 }
