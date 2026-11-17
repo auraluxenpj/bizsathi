@@ -36,6 +36,8 @@ DECLARE
   v_available numeric(8,2);
   v_delta numeric(8,2);
   v_reason text;
+  v_override_available numeric(8,2);
+  v_override_needed boolean := false;
 BEGIN
   IF NEW.request_status <> 'approved'
      OR (TG_OP = 'UPDATE' AND OLD.request_status = 'approved') THEN
@@ -102,14 +104,18 @@ BEGIN
           v_year, v_delta, round(v_available,2)
           USING ERRCODE='P0001';
       END IF;
-      INSERT INTO public.hr_leave_balance_overrides(
-        business_id,request_id,user_id,leave_type_id,requested_days,available_days,reason,approved_by
-      ) VALUES (
-        NEW.business_id,NEW.id,NEW.user_id,NEW.leave_type_id,v_delta,round(v_available,2),v_reason,auth.uid()
-      );
+      v_override_needed := true;
+      v_override_available := LEAST(COALESCE(v_override_available,round(v_available,2)),round(v_available,2));
     END IF;
     v_year := v_year+1;
   END LOOP;
+  IF v_override_needed THEN
+    INSERT INTO public.hr_leave_balance_overrides(
+      business_id,request_id,user_id,leave_type_id,requested_days,available_days,reason,approved_by
+    ) VALUES (
+      NEW.business_id,NEW.id,NEW.user_id,NEW.leave_type_id,NEW.days,v_override_available,v_reason,auth.uid()
+    );
+  END IF;
   RETURN NEW;
 END; $$;
 REVOKE ALL ON FUNCTION public.hr_enforce_leave_balance_on_approval() FROM PUBLIC, anon, authenticated;
