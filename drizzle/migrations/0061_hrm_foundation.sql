@@ -61,12 +61,33 @@ ALTER TABLE public.hr_employee_records ENABLE ROW LEVEL SECURITY;
 REVOKE ALL ON public.hr_employee_records FROM anon;
 GRANT SELECT, INSERT, UPDATE ON public.hr_employee_records TO authenticated;
 CREATE POLICY hr_employee_read ON public.hr_employee_records FOR SELECT TO authenticated
-  USING (public.hr_is_manager(business_id) OR public.hr_can_manage_payroll(business_id) OR user_id = auth.uid());
+  USING (public.hr_is_manager(business_id) OR user_id = auth.uid());
 CREATE POLICY hr_employee_insert ON public.hr_employee_records FOR INSERT TO authenticated
   WITH CHECK (public.hr_is_manager(business_id) AND created_by = auth.uid() AND public.is_business_member(business_id));
 CREATE POLICY hr_employee_update ON public.hr_employee_records FOR UPDATE TO authenticated
   USING (public.hr_is_manager(business_id))
   WITH CHECK (public.hr_is_manager(business_id));
+
+CREATE OR REPLACE FUNCTION public.hr_list_payroll_employees(_business_id uuid)
+RETURNS TABLE(
+  user_id uuid, employee_number text, designation text, department text,
+  branch_id uuid, joining_date date, employment_status text, full_name text
+)
+LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path = public AS $
+BEGIN
+  IF NOT public.hr_can_manage_payroll(_business_id) THEN
+    RAISE EXCEPTION 'Payroll access required' USING ERRCODE='42501';
+  END IF;
+  RETURN QUERY
+    SELECT e.user_id,e.employee_number,e.designation,e.department,e.branch_id,
+      e.joining_date,e.employment_status,p.full_name
+    FROM public.hr_employee_records e
+    JOIN public.profiles p ON p.id=e.user_id
+    WHERE e.business_id=_business_id
+    ORDER BY e.joining_date DESC,e.employee_number;
+END $;
+REVOKE ALL ON FUNCTION public.hr_list_payroll_employees(uuid) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.hr_list_payroll_employees(uuid) TO authenticated;
 
 CREATE TABLE public.hr_attendance (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
