@@ -29,5 +29,7 @@ describe('Barcode label sheet layouts',()=>{
  it('places 30 labels on each 3 by 10 A4 sheet',()=>{const pages=labelPages([{product,copies:31}],'a4-30');expect(pages.map(p=>p.filter(Boolean).length)).toEqual([30,1]);expect(labelFormats['a4-30'].columns).toBe(3);expect(labelFormats['a4-30'].rows).toBe(10);});
  it('keeps used starting slots empty on only the first sheet',()=>{const pages=labelPages([{product,copies:24}],'a4-24',3);expect(pages[0]?.slice(0,3)).toEqual([null,null,product]);expect(pages[1]?.[0]).toEqual(product);});
  it('prints one label per thermal page with exact dimensions',()=>{expect(labelPages([{product,copies:2}],'thermal-50')).toHaveLength(2);expect(labelFormats['thermal-50']).toMatchObject({pageWidth:50,pageHeight:25});expect(labelFormats['thermal-40']).toMatchObject({pageWidth:40,pageHeight:30});});
+ it('supports printing up to 2000 labels in one batch across multiple sheets',()=>{const pages=labelPages([{product,copies:2000}],'a4-40');expect(pages).toHaveLength(50);expect(pages.reduce((n,p)=>n+p.filter(Boolean).length,0)).toBe(2000);});
+ it('rejects batches above 2000 labels',()=>{expect(()=>labelPages([{product,copies:2001}],'a4-40')).toThrow('Copies must be between 0 and 2000.');});
  it('encodes existing barcode or the exact SKU, never an unregistered generated code',()=>{expect(stickerValue(product)).toBe('AL-SKU-01');expect(stickerValue({...product,barcode:' 1234567890123 '})).toBe('1234567890123');});
 });
