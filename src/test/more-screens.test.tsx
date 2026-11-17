@@ -29,7 +29,7 @@ vi.mock('@/lib/inventory.functions', () => ({ getInventory: async () => ({ movem
 ] }) }));
 vi.mock('@/lib/inventory-queries', () => ({ businessQuery: { queryKey: ['businesses'], queryFn: async () => [{ id: ID.biz, name: 'Auraluxe', role: 'owner' }] } }));
 vi.mock('@/components/trading-settings', () => ({ TradingSettings: () => null }));
-vi.mock('@/integrations/supabase/client', () => ({ supabase: { auth: { getUser: async () => ({ data: { user: { email: 'v@example.com', user_metadata: { full_name: 'Vikky' } } } }), signOut: vi.fn() } }));
+vi.mock('@/integrations/supabase/client', () => ({ supabase: { auth: { getUser: async () => ({ data: { user: { email: 'v@example.com', user_metadata: { full_name: 'Vikky' } } } }), signOut: vi.fn() } } }));
 
 import { ReportsHub } from '@/components/reports-hub';
 import { Transactions } from '@/components/transactions';
