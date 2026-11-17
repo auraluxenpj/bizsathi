@@ -5,7 +5,7 @@ RETURNS TABLE(permission text)
 LANGUAGE plpgsql
 STABLE
 SECURITY DEFINER
-SET search_path = public
+SET search_path = ''
 AS $function$
 BEGIN
   IF auth.uid() IS NULL THEN
@@ -75,7 +75,7 @@ CREATE OR REPLACE FUNCTION public.sync_default_business_access_role()
 RETURNS trigger
 LANGUAGE plpgsql
 SECURITY DEFINER
-SET search_path = public
+SET search_path = ''
 AS $sync_default_access_role$
 DECLARE
   v_role_id uuid;
