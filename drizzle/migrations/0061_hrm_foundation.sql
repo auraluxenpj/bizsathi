@@ -85,7 +85,7 @@ BEGIN
     JOIN public.profiles p ON p.id=e.user_id
     WHERE e.business_id=_business_id
     ORDER BY e.joining_date DESC,e.employee_number;
-END $$;
+END; $$;
 REVOKE ALL ON FUNCTION public.hr_list_payroll_employees(uuid) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.hr_list_payroll_employees(uuid) TO authenticated;
 
@@ -161,7 +161,7 @@ BEGIN
     RAISE EXCEPTION 'Already checked in or out, or a check-in is required first';
   END IF;
   RETURN v_stamp;
-END $$;
+END; $$;
 REVOKE ALL ON FUNCTION public.hr_clock_attendance(uuid,date,text) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.hr_clock_attendance(uuid,date,text) TO authenticated;
 
@@ -460,7 +460,7 @@ BEGIN
     net_total=COALESCE((SELECT sum(i.net_pay) FROM public.hr_payroll_items i WHERE i.payroll_run_id=v_run),0)
   WHERE r.id=v_run;
   RETURN v_run;
-END $$;
+END; $$;
 REVOKE ALL ON FUNCTION public.hr_generate_payroll(uuid,date,date,text) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.hr_generate_payroll(uuid,date,date,text) TO authenticated;
 
@@ -475,7 +475,7 @@ BEGIN
   UPDATE public.hr_payroll_runs SET run_status='approved',approved_by=auth.uid(),approved_at=now()
   WHERE id=_run_id AND run_status='draft';
   IF NOT FOUND THEN RAISE EXCEPTION 'Only draft payroll can be approved'; END IF;
-END $$;
+END; $$;
 REVOKE ALL ON FUNCTION public.hr_approve_payroll(uuid) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.hr_approve_payroll(uuid) TO authenticated;
 
@@ -490,7 +490,7 @@ BEGIN
   UPDATE public.hr_payroll_runs SET run_status='paid',paid_by=auth.uid(),paid_at=now()
   WHERE id=_run_id AND run_status='approved';
   IF NOT FOUND THEN RAISE EXCEPTION 'Only approved payroll can be marked paid'; END IF;
-END $$;
+END; $$;
 REVOKE ALL ON FUNCTION public.hr_mark_payroll_paid(uuid) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.hr_mark_payroll_paid(uuid) TO authenticated;
 
@@ -505,7 +505,7 @@ BEGIN
     RAISE EXCEPTION 'Approved payroll snapshots are immutable' USING ERRCODE='42501';
   END IF;
   RETURN COALESCE(NEW,OLD);
-END $$;
+END; $$;
 REVOKE ALL ON FUNCTION public.hr_guard_payroll_item_mutation() FROM PUBLIC, anon, authenticated;
 DROP TRIGGER IF EXISTS hr_guard_payroll_item_mutation ON public.hr_payroll_items;
 CREATE TRIGGER hr_guard_payroll_item_mutation BEFORE UPDATE OR DELETE ON public.hr_payroll_items
@@ -535,7 +535,7 @@ BEGIN
   END IF;
   RAISE EXCEPTION 'Approved payroll runs are immutable' USING ERRCODE='42501';
   RETURN NEW;
-END $$;
+END; $$;
 REVOKE ALL ON FUNCTION public.hr_guard_payroll_run_mutation() FROM PUBLIC, anon, authenticated;
 DROP TRIGGER IF EXISTS hr_guard_payroll_run_mutation ON public.hr_payroll_runs;
 CREATE TRIGGER hr_guard_payroll_run_mutation BEFORE UPDATE ON public.hr_payroll_runs
