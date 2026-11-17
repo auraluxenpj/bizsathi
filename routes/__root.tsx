@@ -84,7 +84,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { name: "viewport", content: "width=device-width, initial-scale=1, viewport-fit=cover" },
       { title: "BizSathi Nepal" },
       { name: "description", content: "Manage, sell and grow your business with BizSathi." },
-      { name: "theme-color", content: "#075b46" },
+      { name: "theme-color", content: "#172B4D" },
       { name: "application-name", content: "BizSathi" },
       { name: "apple-mobile-web-app-capable", content: "yes" },
       { name: "apple-mobile-web-app-status-bar-style", content: "default" },

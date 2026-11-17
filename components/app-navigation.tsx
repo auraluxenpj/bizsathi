@@ -32,17 +32,17 @@ const isActive = (pathname: string, to: string) => pathname === to || pathname.s
 function Row({ entry, pathname, onNavigate }: { entry: Entry; pathname: string; onNavigate?: () => void }) {
   const childActive = entry.children?.some(c => isActive(pathname, c.to)) ?? false;
   const [open, setOpen] = useState(childActive);
-  const base = 'flex min-h-11 w-full items-center gap-3 rounded-lg px-3 text-sm font-medium transition-colors';
+  const base = 'flex min-h-11 w-full items-center gap-3 rounded-xl px-3 text-sm font-medium transition-colors';
   if (entry.children) {
     return <div>
-      <button type="button" aria-expanded={open || childActive} onClick={() => setOpen(o => !o)} className={`${base} text-foreground/80 hover:bg-secondary`}>
+      <button type="button" aria-expanded={open || childActive} onClick={() => setOpen(o => !o)} className={`${base} text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground`}>
         <entry.icon className="size-4 shrink-0" /><span className="flex-1 text-left">{entry.name}</span>{open || childActive ? <ChevronDown className="size-4" /> : <ChevronRight className="size-4" />}
       </button>
-      {(open || childActive) && <div className="ml-7 mt-1 space-y-1 border-l pl-3">{entry.children.map(c => <Link key={c.to} to={c.to} onClick={onNavigate} aria-current={isActive(pathname, c.to) ? 'page' : undefined} className={`flex min-h-10 items-center rounded-lg px-3 text-sm ${isActive(pathname, c.to) ? 'font-semibold text-primary' : 'text-foreground/70 hover:bg-secondary'}`}>{c.name}</Link>)}</div>}
+      {(open || childActive) && <div className="ml-7 mt-1 space-y-1 border-l border-sidebar-border pl-3">{entry.children.map(c => <Link key={c.to} to={c.to} onClick={onNavigate} aria-current={isActive(pathname, c.to) ? 'page' : undefined} className={`flex min-h-10 items-center rounded-lg px-3 text-sm ${isActive(pathname, c.to) ? 'font-semibold text-sidebar-primary' : 'text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground'}`}>{c.name}</Link>)}</div>}
     </div>;
   }
   const active = isActive(pathname, entry.to!);
-  return <Link to={entry.to!} onClick={onNavigate} aria-current={active ? 'page' : undefined} className={`${base} ${active ? 'bg-primary text-primary-foreground shadow-sm' : 'text-foreground/80 hover:bg-secondary'}`}><entry.icon className="size-4 shrink-0" />{entry.name}</Link>;
+  return <Link to={entry.to!} onClick={onNavigate} aria-current={active ? 'page' : undefined} className={`${base} ${active ? 'bg-sidebar-primary text-sidebar-primary-foreground shadow-sm shadow-black/10' : 'text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground'}`}><entry.icon className="size-4 shrink-0" />{entry.name}</Link>;
 }
 
 export function AppNavigation({ children, pathname }: { children: ReactNode; pathname: string }) {
@@ -65,12 +65,12 @@ export function AppNavigation({ children, pathname }: { children: ReactNode; pat
 
   return (
     <div className="min-h-screen bg-background lg:pl-64">
-      <aside className="fixed inset-y-0 left-0 z-30 hidden w-64 flex-col border-r bg-card lg:flex">
-        <div className="p-4"><div className="flex items-center gap-3 rounded-xl border px-3 py-2.5"><span className="flex size-9 items-center justify-center rounded-lg bg-primary/10 text-primary"><Building2 className="size-5" /></span><span className="min-w-0 flex-1 truncate text-sm font-semibold">{businessName}</span></div></div>
+      <aside className="fixed inset-y-0 left-0 z-30 hidden w-64 flex-col border-r border-sidebar-border bg-sidebar text-sidebar-foreground lg:flex">
+        <div className="p-4"><div className="flex items-center gap-3 rounded-xl border border-sidebar-border bg-sidebar-accent/40 px-3 py-2.5"><span className="flex size-9 items-center justify-center rounded-lg bg-sidebar-primary/15 text-sidebar-primary"><Building2 className="size-5" /></span><span className="min-w-0 flex-1 truncate text-sm font-semibold">{businessName}</span></div></div>
         <nav aria-label="Main navigation" className="flex-1 space-y-1 overflow-y-auto px-3 pb-4">
-          <p className="px-3 pb-1 pt-2 text-sm text-muted-foreground">Business</p>
+          <p className="px-3 pb-1 pt-2 text-[11px] font-semibold uppercase tracking-wider text-sidebar-foreground/55">Business</p>
           {business.map(e => <Row key={e.name} entry={e} pathname={pathname} />)}
-          <p className="px-3 pb-1 pt-5 text-sm text-muted-foreground">Management</p>
+          <p className="px-3 pb-1 pt-5 text-[11px] font-semibold uppercase tracking-wider text-sidebar-foreground/55">Management</p>
           {management.map(e => <Row key={e.name} entry={e} pathname={pathname} />)}
         </nav>
       </aside>
