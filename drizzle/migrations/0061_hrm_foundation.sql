@@ -100,6 +100,50 @@ CREATE POLICY hr_attendance_update ON public.hr_attendance FOR UPDATE TO authent
   USING (public.hr_is_manager(business_id))
   WITH CHECK (public.hr_is_manager(business_id));
 
+CREATE OR REPLACE FUNCTION public.hr_clock_attendance(_business_id uuid, _attendance_date date, _direction text)
+RETURNS timestamptz LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $
+DECLARE
+  v_branch uuid;
+  v_stamp timestamptz;
+BEGIN
+  IF auth.uid() IS NULL OR NOT public.is_business_member(_business_id)
+     OR _direction NOT IN ('check_in','check_out')
+     OR _attendance_date IS NULL OR abs(_attendance_date-current_date) > 1 THEN
+    RAISE EXCEPTION 'Attendance action is unavailable' USING ERRCODE='42501';
+  END IF;
+  SELECT branch_id INTO v_branch FROM public.hr_employee_records
+  WHERE business_id=_business_id AND user_id=auth.uid() AND employment_status='active';
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'An active employee record is required before clocking attendance';
+  END IF;
+
+  IF _direction='check_in' THEN
+    INSERT INTO public.hr_attendance(
+      business_id,user_id,branch_id,attendance_date,check_in,attendance_status,recorded_by
+    ) VALUES (
+      _business_id,auth.uid(),v_branch,_attendance_date,now(),'present',auth.uid()
+    )
+    ON CONFLICT (business_id,user_id,attendance_date) DO UPDATE
+      SET check_in=COALESCE(hr_attendance.check_in,EXCLUDED.check_in),
+          attendance_status=CASE WHEN hr_attendance.attendance_status='absent' THEN 'present' ELSE hr_attendance.attendance_status END,
+          updated_at=now()
+      WHERE hr_attendance.check_in IS NULL
+    RETURNING check_in INTO v_stamp;
+  ELSE
+    UPDATE public.hr_attendance SET check_out=now(),updated_at=now()
+    WHERE business_id=_business_id AND user_id=auth.uid() AND attendance_date=_attendance_date
+      AND check_in IS NOT NULL AND check_out IS NULL
+    RETURNING check_out INTO v_stamp;
+  END IF;
+
+  IF v_stamp IS NULL THEN
+    RAISE EXCEPTION 'Already checked in or out, or a check-in is required first';
+  END IF;
+  RETURN v_stamp;
+END $;
+REVOKE ALL ON FUNCTION public.hr_clock_attendance(uuid,date,text) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.hr_clock_attendance(uuid,date,text) TO authenticated;
+
 CREATE TABLE public.hr_leave_types (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   business_id uuid NOT NULL REFERENCES public.businesses(id) ON DELETE RESTRICT,
