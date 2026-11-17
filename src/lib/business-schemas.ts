@@ -19,7 +19,7 @@ export const roleTemplateResetInput = tenantInput.extend({ jobTitle });
 export const accessRoleCreateInput = tenantInput.extend({
   name: z.string().trim().min(2).max(80),
   description: z.string().trim().max(500).optional(),
-  authorityRank: z.number().int().min(1).max(79),
+  authorityRank: z.literal(1),
   permissions: z.array(z.string().min(1).max(80)).max(200),
 });
 export const accessRoleUpdateInput = accessRoleCreateInput.extend({ roleId: z.string().uuid() });
