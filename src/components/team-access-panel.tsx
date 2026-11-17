@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useServerFn } from '@tanstack/react-start';
 import { GitBranch, ShieldCheck, Users, UserPlus, Ban, ClipboardList } from 'lucide-react';
@@ -20,6 +20,7 @@ import {
 type Branch = { id: string; name: string; code: string; is_active: boolean };
 type Member = { user_id: string; role_code: string; job_title: string | null; status: string; profiles?: { full_name: string | null } | null };
 type BranchAccess = { user_id: string; branch_id: string };
+type MemberRole = { userId: string; roleId: string; roleCode: string; roleName: string; authorityRank: number; isDefault: boolean; assignedAt: string };
 type LegacyInvitation = { id: string; email: string | null; mobile: string | null; invitee_name: string | null; job_title: string | null; role_code: string; expires_at: string; accepted_at: string | null; revoked_at: string | null; created_at: string };
 
 
@@ -42,7 +43,7 @@ const titleLabel: Record<JobTitle, string> = {
 const roleRank: Record<string, number> = { owner: 100, admin: 80, accountant: 60, branch_manager: 50, staff: 40, viewer: 20 };
 
 export function TeamAccessPanel({
-  businessId, branches, members, branchAccess, userId, isAdmin, isOwner,
+  businessId, branches, members, branchAccess, memberRoles = [], userId, isAdmin, isOwner,
   legacyInvitations = [], legacyTitles = [], onLegacyReissue, onLegacyChangeRole, onLegacyRevoke,
   legacyActionsPending = false, legacyInviteLink = '', viewMode = 'all',
 }: {
@@ -50,6 +51,7 @@ export function TeamAccessPanel({
   branches: Branch[];
   members: Member[];
   branchAccess: BranchAccess[];
+  memberRoles?: MemberRole[];
   userId: string;
   isAdmin: boolean;
   isOwner: boolean;
@@ -96,7 +98,8 @@ export function TeamAccessPanel({
   const [inviteeEmail, setInviteeEmail] = useState('');
   const [inviteeMobile, setInviteeMobile] = useState('');
   const [expiryDays, setExpiryDays] = useState(7);
-  const [jobTitle, setJobTitle] = useState<JobTitle>('sales_person');
+  const [inviteRole, setInviteRole] = useState('staff');
+  const [jobTitle, setJobTitle] = useState<JobTitle | ''>('sales_person');
   const [label, setLabel] = useState('');
   const [inviteLink, setInviteLink] = useState('');
   const [message, setMessage] = useState('');
@@ -110,9 +113,20 @@ export function TeamAccessPanel({
   const maxAllowedDays = currentGrant?.max_invite_days ?? 30;
   const effectiveExpiryDays = Math.min(expiryDays, maxAllowedDays);
   const inviteMobileValid = Boolean(normalizeVerifiedNepalMobile(inviteeMobile));
-  const availableTitles = allowedInviteRoles.flatMap((role) => titleByRole[role] ?? []);
+  const availableTitles: JobTitle[] = isAdmin
+    ? jobTitleCodes.filter((title) => isOwner || title !== 'partner')
+    : (titleByRole[inviteRole] ?? []);
+  const allowedInviteRolesKey = allowedInviteRoles.join('|');
+  useEffect(() => {
+    if (!allowedInviteRoles.includes(inviteRole)) setInviteRole(allowedInviteRoles[0] ?? 'staff');
+  }, [allowedInviteRolesKey, inviteRole]);
+  const availableTitlesKey = availableTitles.join('|');
+  useEffect(() => {
+    if (!availableTitles.length) setJobTitle('');
+    else if (!jobTitle || !availableTitles.includes(jobTitle)) setJobTitle(availableTitles[0]);
+  }, [availableTitlesKey, jobTitle]);
   const eligibleManagers = members.filter((m) =>
-    m.status === 'active' && (m.job_title === 'branch_manager' || m.job_title === 'manager') &&
+    m.status === 'active' && memberRoles.some((r) => r.userId === m.user_id && ['position_branch_manager','legacy_branch_manager'].includes(r.roleCode)) &&
     branchAccess.some((g) => g.user_id === m.user_id && g.branch_id === selectedBranchId));
   const selectedManager = eligibleManagers.find((m) => m.user_id === managerUserId);
 
@@ -124,8 +138,8 @@ export function TeamAccessPanel({
 
   const createInvite = useMutation({
     mutationFn: () => createInviteFn({ data: {
-      businessId, branchId: selectedBranchId, role: jobTitles[jobTitle].base, inviteeEmail, inviteeMobile,
-      jobTitle: availableTitles.includes(jobTitle) ? jobTitle : undefined,
+      businessId, branchId: selectedBranchId, role: inviteRole, inviteeEmail, inviteeMobile,
+      jobTitle: jobTitle && availableTitles.includes(jobTitle) ? jobTitle : undefined,
       deniedPermissions: [],
       expiresInHours: effectiveExpiryDays * 24, maxUses: 1, label: label || undefined,
     } }),
@@ -161,7 +175,7 @@ export function TeamAccessPanel({
   });
   const positionMutation = useMutation({
     mutationFn: (v: { userId: string; jobTitle: JobTitle; status: string }) => updateMemberFn({ data: {
-      businessId, userId: v.userId, role: jobTitles[v.jobTitle].base, status: v.status === 'suspended' ? 'suspended' : 'active', jobTitle: v.jobTitle,
+      businessId, userId: v.userId, role: members.find((m) => m.user_id === v.userId)?.role_code ?? 'staff', status: v.status === 'suspended' ? 'suspended' : 'active', jobTitle: v.jobTitle,
     } }),
     onSuccess: () => { setMessage('Employee position updated.'); void client.invalidateQueries({ queryKey: ['business-access', businessId] }); void client.invalidateQueries({ queryKey: ['permissions', businessId] }); },
     onError: (error) => setMessage(error instanceof Error ? error.message : 'Employee position could not be changed.'),
@@ -177,11 +191,13 @@ export function TeamAccessPanel({
       {viewMode !== 'positions' && <>
       <section className="rounded-xl border p-4 md:p-5">
         <div className="mb-3 flex items-center gap-2"><Users className="size-4 text-primary" /><h3 className="font-semibold">Employees & branch access</h3></div>
-        <p className="mb-4 text-sm text-muted-foreground">Assign each employee to one or more branches. Their position controls permissions in every assigned branch.</p>
+        <p className="mb-4 text-sm text-muted-foreground">Assign each employee to one or more branches. Assigned access roles control what they can do; branch membership controls where they can do it. Position is an HR designation.</p>
         {members.length ? <div className="overflow-x-auto"><table className="w-full min-w-[640px] text-left text-sm"><thead><tr className="border-b text-xs text-muted-foreground"><th className="py-2 pr-4 font-medium">Employee</th><th className="py-2 pr-4 font-medium">Position</th>{branches.map((b) => <th key={b.id} className="px-3 py-2 text-center font-medium">{b.name}</th>)}</tr></thead><tbody className="divide-y">{members.map((m) => {
-          const protectedMember = m.user_id === userId || (roleRank[m.role_code] ?? 100) >= (isOwner ? 100 : 80);
+          const assignedAuthority = memberRoles.filter((r) => r.userId === m.user_id).reduce((rank, r) => Math.max(rank, r.authorityRank), 0);
+          const effectiveAuthority = Math.max(roleRank[m.role_code] ?? 0, assignedAuthority);
+          const protectedMember = m.user_id === userId || effectiveAuthority >= (isOwner ? 100 : 80);
           const employeeName = m.profiles?.full_name || m.user_id.slice(0, 8);
-          const permittedPositions = jobTitleCodes.filter((title) => (roleRank[jobTitles[title].base] ?? 100) < (isOwner ? 100 : 80));
+          const permittedPositions = jobTitleCodes.filter((title) => isOwner || title !== 'partner');
           return <tr key={m.user_id}>
             <td className="py-3 pr-4 font-medium">{employeeName}</td>
             <td className="py-3 pr-4">{isAdmin && !protectedMember ? <select aria-label={`Position for ${employeeName}`} className="h-9 max-w-48 rounded-md border bg-background px-2" value={m.job_title ?? ''} disabled={positionMutation.isPending} onChange={(e) => positionMutation.mutate({ userId: m.user_id, jobTitle: e.target.value as JobTitle, status: m.status })}>
@@ -245,11 +261,17 @@ export function TeamAccessPanel({
               {branches.map((b) => <option key={b.id} value={b.id}>{b.name} ({b.code})</option>)}
             </select>
           </label>
-          {availableTitles.length > 0 && <label className="mb-3 block text-sm">Position
+          <label className="mb-3 block text-sm">Base access role
+            <select className="mt-1 h-10 w-full rounded-md border bg-background px-3" value={inviteRole} onChange={(e) => setInviteRole(e.target.value)}>
+              {allowedInviteRoles.map((role) => <option key={role} value={role}>{role.replaceAll('_',' ').replace(/\b\w/g,(v) => v.toUpperCase())}</option>)}
+            </select>
+          </label>
+          {availableTitles.length > 0 && <label className="mb-3 block text-sm">HR position
             <select className="mt-1 h-10 w-full rounded-md border bg-background px-3" value={jobTitle} onChange={(e) => setJobTitle(e.target.value as JobTitle)}>
               {availableTitles.map((t) => <option key={t} value={t}>{titleLabel[t]}</option>)}
             </select>
           </label>}
+          <p className="mb-4 text-xs text-muted-foreground">Base access sets the employee’s initial authority. HR position is separate; additional operational roles can be assigned after the invitation is accepted.</p>
           <label className="mb-3 block text-sm">Invitee email address
             <input className="mt-1 h-10 w-full rounded-md border bg-background px-3" type="email" autoComplete="email" maxLength={254} placeholder="staff@example.com" value={inviteeEmail} onChange={(e) => setInviteeEmail(e.target.value)} />
           </label>
@@ -264,7 +286,7 @@ export function TeamAccessPanel({
           <label className="my-3 block text-sm">Invitation label (optional)
             <input className="mt-1 h-10 w-full rounded-md border bg-background px-3" maxLength={120} value={label} onChange={(e) => setLabel(e.target.value)} placeholder="e.g. Nepalgunj cashier team" />
           </label>
-          <Button className="w-full" disabled={!selectedBranchId || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(inviteeEmail.trim()) || !inviteMobileValid || !availableTitles.includes(jobTitle) || createInvite.isPending} onClick={() => createInvite.mutate()}>
+          <Button className="w-full" disabled={!selectedBranchId || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(inviteeEmail.trim()) || !inviteMobileValid || !allowedInviteRoles.includes(inviteRole) || (Boolean(jobTitle) && !availableTitles.includes(jobTitle)) || createInvite.isPending} onClick={() => createInvite.mutate()}>
             <UserPlus className="mr-2 size-4" />{createInvite.isPending ? 'Creating link…' : 'Create invitation link'}
           </Button>
           {inviteLink && <div className="mt-3 rounded-lg border p-3">

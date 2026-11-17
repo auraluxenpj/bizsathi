@@ -7,13 +7,16 @@ import { useCommerce } from './commerce-workspace';
 import { DocumentEditor } from './document-editor';
 import { OfflinePos } from './offline-pos';
 import { supabase } from '@/integrations/supabase/client';
+import { useCan } from './permission-checklist';
+import { isBillingStaff } from '@/lib/workspace-navigation';
 
 // Standalone point of sale: its own full-screen page (no sidebar), selling through the same
 // stock-checked sale editor and server confirmation as the Sales screen.
 export function Pos() {
   const w = useCommerce();
   const navigate = useNavigate();
-  const billingStaff = w.commerce.data?.role === 'staff' && w.commerce.data?.jobTitle === 'sales_person';
+  const can = useCan(w.businessId ?? '');
+  const billingStaff = isBillingStaff(can);
   async function signOut() { await supabase.auth.signOut(); await navigate({ to: '/auth', replace: true }); }
   const [saved, setSaved] = useState('');
   const name = w.commerce.data?.business.name ?? '';

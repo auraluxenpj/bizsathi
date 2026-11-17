@@ -11,11 +11,14 @@ export type DashboardKind = 'business' | 'cashier' | 'stock' | 'entry';
  * The three staff job titles each get a focused desk. Unknown or missing values fall back to the business
  * overview, whose statistics are separately hidden when the member lacks `reports.home_stats`.
  */
-export function dashboardKind(role: string | null | undefined, jobTitle: string | null | undefined): DashboardKind {
-  if (role !== 'staff') return 'business';
-  if (jobTitle === 'sales_person') return 'cashier';
-  if (jobTitle === 'stock_manager') return 'stock';
-  if (jobTitle === 'entry_person') return 'entry';
+import { isBillingStaff } from './workspace-navigation';
+
+/** Dashboard selection is presentation only; all data and actions remain permission-checked. */
+export function dashboardKind(can: (permission: string) => boolean): DashboardKind {
+  if (isBillingStaff(can)) return 'cashier';
+  if (can('accounts.view') || can('reports.home_stats') || can('reports.view') || can('settings.edit') || can('staff.view') || can('hr.employees.view')) return 'business';
+  if (can('stock.edit') || can('inventory.edit')) return 'stock';
+  if (can('purchases.create') || can('sales.create')) return 'entry';
   return 'business';
 }
 

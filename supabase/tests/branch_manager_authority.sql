@@ -1,4 +1,4 @@
--- Run only in an isolated database with project migrations through 0059 applied.
+-- Run only in an isolated database with all project migrations applied.
 -- Verifies the distinct Branch Manager rank, branch boundary, delegation ceiling and approval helper.
 BEGIN;
 DO $tests$
@@ -164,36 +164,50 @@ BEGIN
 
   RESET ROLE;
 
-  -- Change the fixture as the business owner, not as the restricted Branch Manager.
-  -- The membership guard correctly rejects a Branch Manager editing their own staff record.
+  -- Change the HR designation without changing assigned access roles.
+  PERFORM set_config('request.jwt.claims',json_build_object('sub',owner_id,'role','authenticated')::text,true);
+  PERFORM public.set_member_job_title(v_business_id,manager_id,'sales_person');
+
+  SET LOCAL ROLE authenticated;
+  PERFORM set_config('request.jwt.claims',json_build_object('sub',manager_id,'role','authenticated')::text,true);
+  ASSERT public.has_permission(v_business_id,'stock.edit'),
+    'Changing the HR designation does not silently remove the Branch Manager access role';
+  ASSERT public.can_approve_inventory_count(v_business_id,v_branch_a),
+    'Branch Manager approval follows the assigned access role, not the HR title';
+  RESET ROLE;
+
+  -- Remove the Branch Manager authority role. The HR title alone must not restore it.
   PERFORM set_config('request.jwt.claims',json_build_object('sub',owner_id,'role','authenticated')::text,true);
   UPDATE public.business_memberships
-  SET job_title=NULL
+  SET role_code='staff'
   WHERE business_id=v_business_id AND user_id=manager_id;
 
   SET LOCAL ROLE authenticated;
   PERFORM set_config('request.jwt.claims',json_build_object('sub',manager_id,'role','authenticated')::text,true);
-  ASSERT NOT public.has_permission(v_business_id,'stock.edit'),
-    'Incomplete Branch Manager assignment has no permissions';
+  ASSERT NOT public.has_business_role(v_business_id,'branch_manager'),
+    'Branch Manager authority is removed when the authority role is removed';
   ASSERT NOT public.can_approve_inventory_count(v_business_id,v_branch_a),
-    'Incomplete Branch Manager assignment cannot approve counts';
+    'HR designation alone cannot approve inventory counts';
   ok := false;
   BEGIN
     PERFORM public.create_team_invitation(
-      v_business_id,v_branch_a,'staff','sales_person','{}',
+      v_business_id,v_branch_a,'accountant','accountant','{}',
       'invitee4@example.invalid','9841000004',repeat('d',64),
-      now()+interval '2 days',1,'Incomplete manager test'
+      now()+interval '2 days',1,'Non-manager role delegation test'
     );
   EXCEPTION WHEN OTHERS THEN ok := true;
   END;
-  ASSERT ok, 'Incomplete Branch Manager assignment cannot delegate invitations';
+  ASSERT ok, 'An employee without Branch Manager authority cannot invite outside delegated roles';
   RESET ROLE;
 
-  -- Restore the valid fixture using the owner identity as well.
+  -- Restore the authority role explicitly, without changing the HR designation.
   PERFORM set_config('request.jwt.claims',json_build_object('sub',owner_id,'role','authenticated')::text,true);
   UPDATE public.business_memberships
-  SET job_title='branch_manager'
+  SET role_code='branch_manager'
   WHERE business_id=v_business_id AND user_id=manager_id;
+  SELECT id INTO v_invitation_id FROM public.business_access_roles
+  WHERE business_id=v_business_id AND code='legacy_branch_manager';
+  PERFORM public.assign_business_access_role(v_business_id,manager_id,v_invitation_id);
 
   -- Accountant keeps financial rank but is not automatically a Branch Manager approver.
   SET LOCAL ROLE authenticated;
