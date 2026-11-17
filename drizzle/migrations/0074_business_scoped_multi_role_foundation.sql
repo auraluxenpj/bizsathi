@@ -458,7 +458,7 @@ BEGIN
   RETURNING id INTO new_id;
 
   INSERT INTO public.business_access_role_permissions(business_id,role_id,permission)
-  SELECT _business,new_id,p FROM unnest(COALESCE(_permissions,'{}')) p
+  SELECT _business,new_id,permission_code FROM unnest(COALESCE(_permissions,'{}')) AS permission_code
   ON CONFLICT DO NOTHING;
 
   PERFORM public.write_audit(_business,'access_role.create','business_access_roles',new_id::text,NULL,
