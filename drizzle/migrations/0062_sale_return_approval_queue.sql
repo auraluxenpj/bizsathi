@@ -36,8 +36,7 @@ USING (
   public.can_access_branch(business_id,branch_id)
   AND (
     requested_by=auth.uid()
-    OR public.has_business_role(business_id,'branch_manager')
-    OR public.has_business_role(business_id,'admin')
+    OR public.can_approve_inventory_count(business_id,branch_id)
   )
 );
 
@@ -71,9 +70,8 @@ BEGIN
     RAISE EXCEPTION 'Original sale access denied' USING ERRCODE='42501';
   END IF;
   IF NOT (
-    public.has_business_role(_business_id,'staff')
-    OR public.has_business_role(_business_id,'branch_manager')
-    OR public.has_business_role(_business_id,'admin')
+    public.has_business_job_title(_business_id,'sales_person')
+    OR public.can_approve_inventory_count(_business_id,source.branch_id)
   ) OR NOT public.has_permission(_business_id,'sales.create') THEN
     RAISE EXCEPTION 'Sales permission required' USING ERRCODE='42501';
   END IF;
@@ -133,13 +131,13 @@ DECLARE
   ref text;
 BEGIN
   IF actor IS NULL THEN RAISE EXCEPTION 'Authentication required' USING ERRCODE='42501'; END IF;
-  IF _decision NOT IN ('approve','reject') THEN RAISE EXCEPTION 'Choose approve or reject'; END IF;
+  IF _decision IS NULL OR _decision NOT IN ('approve','reject') THEN RAISE EXCEPTION 'Choose approve or reject'; END IF;
   IF _decision='reject' AND length(btrim(coalesce(_reason,''))) NOT BETWEEN 3 AND 500 THEN
     RAISE EXCEPTION 'Enter a rejection reason (3–500 characters)';
   END IF;
   SELECT * INTO req FROM public.sale_return_requests WHERE id=_request_id FOR UPDATE;
   IF NOT FOUND OR NOT public.can_access_branch(req.business_id,req.branch_id)
-     OR NOT (public.has_business_role(req.business_id,'branch_manager') OR public.has_business_role(req.business_id,'admin')) THEN
+     OR NOT public.can_approve_inventory_count(req.business_id,req.branch_id) THEN
     RAISE EXCEPTION 'Branch return approval access denied' USING ERRCODE='42501';
   END IF;
   IF req.requested_by=actor THEN RAISE EXCEPTION 'You cannot approve your own return request' USING ERRCODE='42501'; END IF;
@@ -237,10 +235,10 @@ BEGIN
   END IF;
   body:=replace(body,
     'IF NOT public.has_business_role(b,''accountant'') AND NOT (public.has_business_role(b,''staff'') AND d.kind=''sale'' AND d.actor_id=auth.uid()) THEN',
-    'IF NOT public.has_business_role(b,''accountant'') AND NOT (public.has_business_role(b,''staff'') AND d.kind=''sale'' AND d.actor_id=auth.uid()) AND NOT (d.kind=''sale_return'' AND public.has_business_role(b,''branch_manager'')) THEN');
+    'IF NOT public.has_business_role(b,''accountant'') AND NOT (public.has_business_role(b,''staff'') AND d.kind=''sale'' AND d.actor_id=auth.uid()) AND NOT (d.kind=''sale_return'' AND public.can_approve_inventory_count(b,d.branch_id)) THEN');
   body:=replace(body,
     'IF d.kind IN (''sale_return'',''purchase_return'') AND NOT public.has_business_role(b,''admin'') THEN',
-    'IF (d.kind=''purchase_return'' AND NOT public.has_business_role(b,''admin'')) OR (d.kind=''sale_return'' AND NOT (public.has_business_role(b,''admin'') OR public.has_business_role(b,''branch_manager''))) THEN');
+    'IF (d.kind=''purchase_return'' AND NOT public.has_business_role(b,''admin'')) OR (d.kind=''sale_return'' AND NOT public.can_approve_inventory_count(b,d.branch_id)) THEN');
   EXECUTE body;
 END
 $patch_refund$;
