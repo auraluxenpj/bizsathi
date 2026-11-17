@@ -153,24 +153,17 @@ export function Join() {
       await acceptFn({ data: { token } });
       sessionStorage.removeItem("bizsathi-team-token");
       setToken("");
-
-      // The generated Supabase types may not include profiles.employee_id yet,
-      // so the result is cast explicitly to keep the build type-safe.
-      let employeeId = "";
       const { data: authData } = await supabase.auth.getUser();
       if (authData.user) {
-        const { data: profile } = (await supabase
+        const { data: profile } = await supabase
           .from("profiles")
           .select("employee_id")
           .eq("id", authData.user.id)
-          .maybeSingle()) as unknown as { data: { employee_id: string | null } | null };
-        employeeId = profile?.employee_id ?? "";
-        if (employeeId) setAssignedEmployeeId(employeeId);
+          .maybeSingle();
+        if (profile?.employee_id) setAssignedEmployeeId(profile.employee_id);
       }
-
-      setMessage(employeeId ? "Invitation accepted! Your Employee ID is shown below." : "Invitation accepted!");
-      // Use the local value, not state: state is stale inside this closure.
-      if (!employeeId) await navigate({ to: "/dashboard" });
+      setMessage("Invitation accepted! Your Employee ID is shown below.");
+      if (!assignedEmployeeId) await navigate({ to: "/dashboard" });
     } catch (e) {
       setMessage(
         e instanceof Error
