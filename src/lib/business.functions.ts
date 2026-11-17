@@ -11,14 +11,18 @@ export const listBusinesses = createServerFn({ method: 'GET' }).middleware([requ
   const { data: isPlatformOwner, error: ownerError } = await anyDb(context.supabase).rpc('is_platform_owner');
   if (ownerError) throw new Error('Business access could not be loaded.');
   if (isPlatformOwner) {
-    // The protected platform-owner mapping grants virtual rank 100; RLS still scopes this query.
     const { data, error } = await context.supabase.from('businesses').select('id,name,archived_at').is('archived_at', null).order('name');
     if (error) { console.error('Platform business query failed', error.code, error.message); throw new Error('Business access could not be loaded.'); }
-    return (data ?? []).map(b => ({ id: b.id, name: b.name, role: 'owner', jobTitle: null, isPlatformOwner: true }));
+    return (data ?? []).map(b => ({ id: b.id, name: b.name, role: 'owner', jobTitle: null, isPlatformOwner: true, effectiveRank: 100 }));
   }
   const { data, error } = await context.supabase.from('business_memberships').select('business_id,role_code,job_title,status,businesses!business_memberships_business_id_fkey(id,name,archived_at)').eq('user_id', context.userId).eq('status', 'active');
   if (error) { console.error('Business access query failed', error.code, error.message); throw new Error('Business access could not be loaded.'); }
-  return (data ?? []).filter(m => m.businesses && !m.businesses.archived_at).map(m => ({ id: m.business_id, name: m.businesses?.name ?? '', role: m.role_code, jobTitle: m.job_title ?? null, isPlatformOwner: false }));
+  const memberships = (data ?? []).filter(m => m.businesses && !m.businesses.archived_at);
+  return await Promise.all(memberships.map(async m => {
+    const { data: effectiveRank, error: rankError } = await anyDb(context.supabase).rpc('business_role_rank', { _business_id: m.business_id, _user_id: context.userId });
+    if (rankError) throw new Error('Business authority could not be verified.');
+    return { id: m.business_id, name: m.businesses?.name ?? '', role: m.role_code, jobTitle: m.job_title ?? null, isPlatformOwner: false, effectiveRank: Number(effectiveRank ?? 0) };
+  }));
 });
 
 export const registerBusiness = createServerFn({ method: 'POST' }).middleware([requireSupabaseAuth]).inputValidator(registrationInput).handler(async () => {
