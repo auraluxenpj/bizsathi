@@ -13,7 +13,7 @@ import { WorkspaceSidebar } from '@/components/workspace-sidebar';
 import { listBusinesses } from '@/lib/business.functions';
 import { supabase } from '@/integrations/supabase/client';
 import { useCan } from './permission-checklist';
-import { routePermission } from '@/lib/permissions';
+import { permissionForRoute } from '@/lib/permissions';
 import { isBillingStaff, shouldRedirectBillingStaff, workspaceGroups, workspaceItemActive } from '@/lib/workspace-navigation';
 import { validateReportSearch } from '@/lib/report-filters';
 import { dashboardKind } from '@/lib/dashboard-profile';
@@ -26,10 +26,14 @@ export function AppNavigation({ children, pathname }: { children: ReactNode; pat
  const admin = businesses.data?.some(b => (b.effectiveRank ?? (b.role === 'owner' || b.role === 'admin' ? 100 : 0)) >= 80);
  const billingStaff = isBillingStaff(can);
  const kind = dashboardKind(can);
- const permitted = (to?: string) => { const permission = to ? routePermission[to] : undefined; return !permission || can(permission); };
- // Billing staff only have the cashier workspace, so links they would be sent back from are not shown to them.
- const visible = (to?: string) => permitted(to) && (!['/security', '/security-history'].includes(to ?? '') || !!admin) && (!billingStaff || (!!to && !shouldRedirectBillingStaff(to)));
- const deniedPage = Object.keys(routePermission).some(r => (pathname === r || pathname.startsWith(`${r}/`)) && !permitted(r));
+ const permitted = (to?: string, routeSearch?: Record<string, unknown>) => { const permission = to ? permissionForRoute(to, routeSearch ?? search) : undefined; return !permission || can(permission); };
+ // POS-only employees see only the terminal. Supporting lookups are available inside POS, not as separate modules.
+ const visible = (to?: string, routeSearch?: Record<string, unknown>) => {
+  if (billingStaff && to !== '/pos') return false;
+  return permitted(to, routeSearch) && (!['/security', '/security-history'].includes(to ?? '') || !!admin);
+ };
+ const activeRoutePermission = permissionForRoute(pathname, search);
+ const deniedPage = (billingStaff && pathname !== '/pos') || (!!activeRoutePermission && !can(activeRoutePermission));
  const businessName = businesses.data?.[0]?.name ?? 'BizSathi';
  const current = workspaceGroups.flatMap(g => g.items).find(i => workspaceItemActive(i, pathname, search));
  const title = pathname === '/dashboard' ? 'Dashboard' : current?.name ?? pathname.slice(1).replaceAll('-', ' ').replace(/^./, c => c.toUpperCase());
@@ -60,8 +64,8 @@ export function AppNavigation({ children, pathname }: { children: ReactNode; pat
    <Button variant="ghost" size="icon" aria-label="Open navigation menu" title="Navigation menu" className="size-10 shrink-0 lg:hidden" onClick={() => setMobileOpen(true)}><Menu className="size-5" /></Button>
    <span className="min-w-0 flex-[1_1_9rem] truncate text-base font-semibold sm:text-xl">{title}</span>
    <div className="ml-auto flex min-w-0 flex-wrap items-center justify-end gap-2">
-    <div className="hidden min-w-0 xl:block"><CommandPalette className="w-64 max-w-full" visible={visible} can={can} businessId={businesses.data?.[0]?.id ?? ''} /></div>
-    <div className="xl:hidden"><CommandPalette variant="icon" shortcut={false} visible={visible} can={can} /></div>
+    {!billingStaff && <><div className="hidden min-w-0 xl:block"><CommandPalette className="w-64 max-w-full" visible={visible} can={can} businessId={businesses.data?.[0]?.id ?? ''} /></div>
+    <div className="xl:hidden"><CommandPalette variant="icon" shortcut={false} visible={visible} can={can} /></div></>}
     {!billingStaff && <>{can('purchases.create') && <Button asChild variant="outline" className="hidden h-10 shrink-0 sm:inline-flex"><Link to="/purchases" search={{ new: '1' }}><Plus className="size-4" />Purchase</Link></Button>}
     {can('sales.create') && <Button asChild className="hidden h-10 shrink-0 sm:inline-flex"><Link to="/sales" search={{ new: '1' }}><Plus className="size-4" />Sale</Link></Button>}</>}
     {workspaceMenu}
