@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState, type ReactNode } from 'react';
 import { useMutation, useQuery, useQueryClient, useSuspenseQuery } from '@tanstack/react-query';
 import { useServerFn } from '@tanstack/react-start';
 import { CalendarDays, Clock3, Users, Wallet, BriefcaseBusiness, ClipboardCheck } from 'lucide-react';
@@ -16,7 +16,7 @@ const today = () => new Date().toISOString().slice(0, 10);
 const money = (value: number | string) => `Rs ${Number(value || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 const inputClass = 'mt-1 h-10 w-full rounded-md border bg-background px-3 text-sm';
 const labelClass = 'block text-sm font-medium';
-function Field({ label, children }: { label: string; children: React.ReactNode }) { return <label className={labelClass}>{label}{children}</label>; }
+function Field({ label, children }: { label: string; children: ReactNode }) { return <label className={labelClass}>{label}{children}</label>; }
 function Empty({ children }: { children: React.ReactNode }) { return <p className="rounded-lg border border-dashed p-6 text-center text-sm text-muted-foreground">{children}</p>; }
 
 export function HrmWorkspace() {
@@ -40,12 +40,12 @@ export function HrmWorkspace() {
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
   const refresh = () => client.invalidateQueries({ queryKey: ['hrm', businessId] });
-  const mutate = (fn: (payload: any) => Promise<any>) => useMutation({
+  const useHrmMutation = (fn: (payload: any) => Promise<any>) => useMutation({
     mutationFn: fn,
     onSuccess: () => { setMessage('Saved successfully.'); setError(''); void refresh(); },
     onError: (e: Error) => { setError(e.message || 'The request could not be completed.'); setMessage(''); },
   });
-  const employeeMutation = mutate((payload) => createEmployee({ data: payload }));
+  const employeeMutation = useHrmMutation((payload) => createEmployee({ data: payload }));
   const attendanceMutation = mutate((payload) => saveAttendance({ data: payload }));
   const leaveTypeMutation = mutate((payload) => createLeaveType({ data: payload }));
   const leaveMutation = mutate((payload) => createLeave({ data: payload }));
