@@ -26,10 +26,15 @@ DECLARE
   v_inserted integer := 0;
   v_updated integer := 0;
   v_adjusted integer := 0;
+  v_can_manage_cost boolean := false;
 BEGIN
   IF NOT public.has_business_role(_business_id,'admin') THEN
     RAISE EXCEPTION 'Administrator access required';
   END IF;
+  IF NOT public.has_permission(_business_id,'features.import') THEN
+    RAISE EXCEPTION 'CSV import permission required';
+  END IF;
+  v_can_manage_cost := public.has_permission(_business_id,'other.purchase_price');
   IF NOT public.can_access_branch(_business_id,_branch_id)
      OR NOT EXISTS (
        SELECT 1 FROM public.branches
@@ -90,7 +95,7 @@ BEGIN
           barcode=nullif(btrim(coalesce(r->>'barcode','')),''),
           unit=coalesce(nullif(btrim(r->>'unit'),''),'pcs'),
           selling_price=coalesce((r->>'selling_price')::numeric,0),
-          purchase_price=coalesce((r->>'purchase_price')::numeric,0),
+          purchase_price=CASE WHEN v_can_manage_cost THEN coalesce((r->>'purchase_price')::numeric,0) ELSE purchase_price END,
           mrp=coalesce((r->>'mrp')::numeric,0),
           wholesale_price=coalesce((r->>'wholesale_price')::numeric,0),
           reorder_level=coalesce((r->>'reorder_level')::numeric,0)
@@ -106,7 +111,7 @@ BEGIN
         coalesce(nullif(btrim(r->>'unit'),''),'pcs'),
         coalesce((r->>'selling_price')::numeric,0),
         coalesce((r->>'reorder_level')::numeric,0),
-        coalesce((r->>'purchase_price')::numeric,0),
+        CASE WHEN v_can_manage_cost THEN coalesce((r->>'purchase_price')::numeric,0) ELSE 0 END,
         v_model,
         coalesce((r->>'mrp')::numeric,0),
         coalesce((r->>'wholesale_price')::numeric,0)
