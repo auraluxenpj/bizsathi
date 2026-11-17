@@ -125,7 +125,7 @@ function RootComponent() {
   const { queryClient } = Route.useRouteContext();
   const router = useRouter();
   const pathname = useRouterState({ select: state => state.location.pathname });
-  const workspace = ['/pos', '/quotations', '/purchase-orders', '/dashboard', '/businesses', '/profile', '/security', '/security-history', '/products', '/contacts', '/inventory', '/sales', '/purchases', '/cash-counters', '/accounting', '/expenses', '/parties', '/membership', '/notebook', '/bill-gallery', '/categories', '/expense-receipts', '/transactions', '/cash-bank', '/credit-reminder', '/reports', '/calculators', '/more', '/help'].includes(pathname);
+  const workspace = ['/pos', '/quotations', '/purchase-orders', '/dashboard', '/businesses', '/profile', '/security', '/security-history', '/products', '/contacts', '/inventory', '/sales', '/purchases', '/cash-counters', '/accounting', '/expenses', '/parties', '/membership', '/notebook', '/bill-gallery', '/categories', '/expense-receipts', '/transactions', '/cash-bank', '/credit-reminder', '/reports', '/calculators', '/more', '/help', '/hrm'].includes(pathname);
   useEffect(() => {
     if (!("serviceWorker" in navigator) || import.meta.env.DEV) return;
     navigator.serviceWorker.register("/sw.js", { scope: "/" }).catch((error) => {
