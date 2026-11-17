@@ -53,13 +53,18 @@ BEGIN
   SET LOCAL ROLE authenticated;
   PERFORM set_config('request.jwt.claims',json_build_object('sub',owner_id,'role','authenticated')::text,true);
   custom_role_id := public.create_business_access_role(
-    v_business_id,'Stock + Sales','Custom combined duties',40::smallint,ARRAY['sales.create','inventory.view']
+    v_business_id,'Stock + Purchase','Custom combined duties',40::smallint,ARRAY['purchases.view','inventory.view']
   );
   PERFORM public.assign_business_access_role(v_business_id,staff_id,custom_role_id);
   RESET ROLE;
   SELECT count(*) INTO assignments FROM public.business_member_access_roles
   WHERE business_id=v_business_id AND user_id=staff_id;
   ASSERT assignments=2,'An employee can hold more than one business role';
+  ASSERT public.has_permission(v_business_id,'purchases.view'),'The second role adds its permissions to the employee';
+  ASSERT NOT public.has_permission(v_business_id,'settings.delete_business'),'A custom role does not grant unrelated destructive permissions';
+  PERFORM public.set_member_permissions(v_business_id,staff_id,ARRAY['purchases.view']);
+  ASSERT NOT public.has_permission(v_business_id,'purchases.view'),'An explicit employee denial overrides grants from every role';
+  PERFORM public.set_member_job_title(v_business_id,staff_id,'stock_manager');
   SET LOCAL ROLE authenticated;
   PERFORM set_config('request.jwt.claims',json_build_object('sub',owner_id,'role','authenticated')::text,true);
   PERFORM public.unassign_business_access_role(v_business_id,staff_id,custom_role_id);
@@ -67,6 +72,8 @@ BEGIN
   SELECT count(*) INTO assignments FROM public.business_member_access_roles
   WHERE business_id=v_business_id AND user_id=staff_id;
   ASSERT assignments=1,'Removing an additional role preserves the default compatibility role';
+  ASSERT (SELECT r.code FROM public.business_member_access_roles a JOIN public.business_access_roles r ON r.id=a.role_id AND r.business_id=a.business_id WHERE a.business_id=v_business_id AND a.user_id=staff_id AND a.is_default)='position_sales_person','Changing an HR designation does not silently change the employee access role';
+  ASSERT public.business_role_rank(v_business_id,staff_id)=40,'Custom permission roles do not elevate the legacy security authority rank';
 
   ASSERT NOT EXISTS (
     SELECT 1 FROM public.branch_memberships WHERE business_id=v_business_id
