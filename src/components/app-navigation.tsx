@@ -14,7 +14,7 @@ import { listBusinesses } from '@/lib/business.functions';
 import { supabase } from '@/integrations/supabase/client';
 import { useCan } from './permission-checklist';
 import { routePermission } from '@/lib/permissions';
-import { shouldRedirectBillingStaff, workspaceGroups, workspaceItemActive } from '@/lib/workspace-navigation';
+import { isBillingStaff, shouldRedirectBillingStaff, workspaceGroups, workspaceItemActive } from '@/lib/workspace-navigation';
 import { validateReportSearch } from '@/lib/report-filters';
 import { dashboardKind } from '@/lib/dashboard-profile';
 
@@ -22,10 +22,10 @@ export function AppNavigation({ children, pathname }: { children: ReactNode; pat
  useApplyAppearance(); const load = useServerFn(listBusinesses); const client = useQueryClient(); const navigate = useNavigate(); const search = useSearch({ strict: false });
  const [person, setPerson] = useState(''); const [compact, setCompact] = useState(false); const [mobileOpen, setMobileOpen] = useState(false);
  const businesses = useQuery({ queryKey: ['businesses'], queryFn: () => load() });
- const admin = businesses.data?.some(b => b.role === 'owner' || b.role === 'admin');
- const billingStaff = businesses.data?.[0]?.role === 'staff' && businesses.data?.[0]?.jobTitle === 'sales_person';
- const kind = dashboardKind(businesses.data?.[0]?.role, businesses.data?.[0]?.jobTitle);
  const can = useCan(businesses.data?.[0]?.id ?? '');
+ const admin = businesses.data?.some(b => (b.effectiveRank ?? 0) >= 80);
+ const billingStaff = isBillingStaff(can);
+ const kind = dashboardKind(can);
  const permitted = (to?: string) => { const permission = to ? routePermission[to] : undefined; return !permission || can(permission); };
  // Billing staff only have the cashier workspace, so links they would be sent back from are not shown to them.
  const visible = (to?: string) => permitted(to) && (!['/security', '/security-history'].includes(to ?? '') || !!admin) && (!billingStaff || (!!to && !shouldRedirectBillingStaff(to)));
