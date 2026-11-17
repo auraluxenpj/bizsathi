@@ -192,3 +192,48 @@ SELECT id,
          ELSE 'pending'::text
        END AS status
 FROM public.team_invitations;
+
+-- Read policies follow the same module permissions as navigation. POS retains only
+-- the product/customer/stock lookups required inside its own checkout workspace.
+DROP POLICY IF EXISTS products_read ON public.products;
+CREATE POLICY products_read ON public.products
+FOR SELECT TO authenticated
+USING (
+  public.is_business_member(business_id)
+  AND public.has_permission(business_id,'inventory.view')
+);
+
+DROP POLICY IF EXISTS variants_read ON public.product_variants;
+CREATE POLICY variants_read ON public.product_variants
+FOR SELECT TO authenticated
+USING (
+  public.is_business_member(business_id)
+  AND public.has_permission(business_id,'inventory.view')
+);
+
+DROP POLICY IF EXISTS parties_read ON public.parties;
+CREATE POLICY parties_read ON public.parties
+FOR SELECT TO authenticated
+USING (
+  public.is_business_member(business_id)
+  AND CASE WHEN kind='customer'
+    THEN public.has_permission(business_id,'customers.view')
+    ELSE public.has_permission(business_id,'suppliers.view')
+  END
+);
+
+DROP POLICY IF EXISTS stock_read ON public.stock_movements;
+CREATE POLICY stock_read ON public.stock_movements
+FOR SELECT TO authenticated
+USING (
+  public.can_access_branch(business_id,branch_id)
+  AND public.has_permission(business_id,'inventory.view')
+);
+
+DROP POLICY IF EXISTS commerce_stock_read ON public.commerce_stock_movements;
+CREATE POLICY commerce_stock_read ON public.commerce_stock_movements
+FOR SELECT TO authenticated
+USING (
+  public.can_access_branch(business_id,branch_id)
+  AND public.has_permission(business_id,'inventory.view')
+);
