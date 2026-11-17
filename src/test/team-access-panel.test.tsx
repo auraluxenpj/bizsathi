@@ -135,7 +135,7 @@ describe('Team Access hierarchy panel', () => {
     </QueryClientProvider>);
 
     await screen.findByText('Delegation active for this branch');
-    const position = screen.getByRole('combobox', { name: 'Position' }) as HTMLSelectElement;
+    const position = screen.getByRole('combobox', { name: 'HR position' }) as HTMLSelectElement;
     expect([...position.options].map((o) => o.value)).toEqual(['sales_person', 'stock_manager', 'entry_person']);
     expect(screen.getByLabelText('Link expiry (days)')).toHaveValue(2);
 
