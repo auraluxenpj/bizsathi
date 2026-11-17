@@ -21,6 +21,10 @@ describe('cashier and Branch Manager workspace access', () => {
     expect(jobTitles.branch_manager.allowed).toContain('sales.create');
     expect(jobTitles.branch_manager.allowed).toContain('sales.view');
     expect(jobTitles.branch_manager.allowed).toContain('customers.view');
+    expect(jobTitles.branch_manager.allowed).toContain('customers.create');
+    expect(jobTitles.branch_manager.allowed).toContain('customers.edit');
+    expect(rolePresets.branch_manager.allowed).toContain('customers.create');
+    expect(rolePresets.branch_manager.allowed).toContain('customers.edit');
     expect(rolePresets.branch_manager.allowed).toContain('sales.create');
     expect(rolePresets.branch_manager.allowed).toContain('sales.view');
     expect(rolePresets.branch_manager.allowed).not.toContain('purchases.create');
