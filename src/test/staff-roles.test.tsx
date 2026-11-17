@@ -25,15 +25,14 @@ vi.mock('@/lib/team-access.functions', () => ({
 import { BusinessAccess } from '@/components/business-access';
 
 describe('Team Access invitations', () => {
-  it('creates a branch-locked invitation using the selected role and position', async () => {
+  it('creates a branch-locked invitation using the selected position', async () => {
     const root = createRootRoute({ component: BusinessAccess });
     const router = createRouter({ routeTree: root, history: createMemoryHistory({ initialEntries: ['/'] }) });
     render(<QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}><RouterProvider router={router} /></QueryClientProvider>);
 
     await screen.findByText('Invite team member');
-    await waitFor(() => expect(screen.getByRole('combobox', { name: 'Role' }).querySelectorAll('option').length).toBeGreaterThan(0));
-    fireEvent.change(screen.getByRole('combobox', { name: 'Role' }), { target: { value: 'accountant' } });
-    fireEvent.change(screen.getByLabelText('Position'), { target: { value: 'accountant' } });
+    await waitFor(() => expect(screen.getByRole('combobox', { name: 'Position' }).querySelectorAll('option').length).toBeGreaterThan(0));
+    fireEvent.change(screen.getByRole('combobox', { name: 'Position' }), { target: { value: 'accountant' } });
     fireEvent.change(screen.getByLabelText('Invitee email address'), { target: { value: 'staff@example.com' } });
     fireEvent.change(screen.getByLabelText('Invitee Nepal mobile number'), { target: { value: '9800000000' } });
     fireEvent.click(screen.getByRole('button', { name: /Create invitation link/ }));

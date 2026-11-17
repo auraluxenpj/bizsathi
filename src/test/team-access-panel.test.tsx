@@ -2,10 +2,12 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const { BUSINESS, BRANCH, MANAGER, createInvite } = vi.hoisted(() => ({
+const { BUSINESS, BRANCH, MANAGER, createInvite, setBranchAccess, updateMember } = vi.hoisted(() => ({
   BUSINESS: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
   BRANCH: 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',
   MANAGER: 'cccccccc-cccc-4ccc-8ccc-cccccccccccc',
+  setBranchAccess: vi.fn(async (_: unknown) => ({ ok: true })),
+  updateMember: vi.fn(async (_: unknown) => ({ ok: true })),
   createInvite: vi.fn(async (_: unknown) => ({
   invitationId: 'dddddddd-dddd-4ddd-8ddd-dddddddddddd',
   token: 'a'.repeat(64),
@@ -23,6 +25,8 @@ vi.mock('@/lib/business.functions', () => ({
   getMemberPermissions: async () => ({ userId: MANAGER, denials: [{ user_id: MANAGER, permission: 'settings.edit' }], roleDenials: [] }),
   saveRoleTemplate: vi.fn(),
   resetRoleTemplate: vi.fn(),
+  setBranchAccess,
+  updateMember,
 }));
 vi.mock('@/lib/team-access.functions', () => ({
   listTeamInvitations: async () => ({ invitations: [], members: [] }),
@@ -46,26 +50,20 @@ import { TeamAccessPanel } from '@/components/team-access-panel';
 describe('Team Access hierarchy panel', () => {
   beforeEach(() => createInvite.mockClear());
 
-  it('shows the approved role hierarchy and rank ceilings', () => {
+  it('shows employee branch access without a separate role hierarchy', () => {
     render(<QueryClientProvider client={new QueryClient()}>
       <TeamAccessPanel businessId={BUSINESS} branches={[{ id: BRANCH, name: 'Nepalgunj', code: 'NP', is_active: true }]} members={[]} branchAccess={[]} userId={MANAGER} isAdmin={false} isOwner={false} />
     </QueryClientProvider>);
-    for (const role of ['Master Owner', 'Business Owner', 'Administrator', 'Branch Manager', 'Accountant', 'Inventory Manager', 'Cashier / POS', 'Store Team', 'Viewer']) {
-      expect(screen.getAllByText(role).length).toBeGreaterThan(0);
-    }
-    expect(screen.getAllByText(/Rank\s*100/)).toHaveLength(2);
-    expect(screen.getByText(/Rank\s*80/)).toBeInTheDocument();
-    expect(screen.getAllByText(/Rank\s*60/)).toHaveLength(1);
-    expect(screen.getAllByText(/Rank\s*50/)).toHaveLength(1);
-    expect(screen.getAllByText(/Rank\s*40/)).toHaveLength(3);
-    expect(screen.getAllByText(/Rank\s*20/)).toHaveLength(1);
+    expect(screen.getByText('Employees & branch access')).toBeInTheDocument();
+    expect(screen.queryByText('Role hierarchy')).not.toBeInTheDocument();
+    expect(screen.getByText(/position controls permissions in every assigned branch/i)).toBeInTheDocument();
   });
 
-  it('keeps all five major Team Access areas collapsed until selected', () => {
+  it('keeps invitation and position-permission sections collapsed until selected', () => {
     render(<QueryClientProvider client={new QueryClient()}>
       <TeamAccessPanel businessId={BUSINESS} branches={[{ id: BRANCH, name: 'Nepalgunj', code: 'NP', is_active: true }]} members={[]} branchAccess={[]} userId={MANAGER} isAdmin={false} isOwner={false} />
     </QueryClientProvider>);
-    const sectionTitles = ['Role hierarchy', 'Branch delegation', 'Invite team member', 'Invitation history & activity', 'Role permissions'];
+    const sectionTitles = ['Invite team member', 'Invitation history & activity', 'Position permissions'];
     for (const title of sectionTitles) {
       const summaries = screen.getAllByText(title).map((element) => element.closest('summary')).filter(Boolean);
       expect(summaries).toHaveLength(1);
@@ -110,7 +108,7 @@ describe('Team Access hierarchy panel', () => {
 
     expect(await screen.findByText('Earlier invitations')).toBeInTheDocument();
     expect(screen.getByText(/Sales Person · Pending/)).toBeInTheDocument();
-    fireEvent.change(screen.getByLabelText('Change invited role for 9616595288'), { target: { value: 'stock_manager' } });
+    fireEvent.change(screen.getByLabelText('Change invited position for 9616595288'), { target: { value: 'stock_manager' } });
     expect(changeRole).toHaveBeenCalledWith('ffffffff-ffff-4fff-8fff-ffffffffffff', 'stock_manager');
     fireEvent.click(screen.getByRole('button', { name: 'New link' }));
     expect(reissue).toHaveBeenCalledWith('ffffffff-ffff-4fff-8fff-ffffffffffff', '9616595288');
@@ -119,17 +117,16 @@ describe('Team Access hierarchy panel', () => {
   });
 
 
-  it('lets an Administrator invite a distinct Branch Manager', async () => {
+  it('lets an Administrator choose Branch Manager as the employee position', async () => {
     render(<QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
       <TeamAccessPanel businessId={BUSINESS} branches={[{ id: BRANCH, name: 'Nepalgunj', code: 'NP', is_active: true }]} members={[]} branchAccess={[]} userId={MANAGER} isAdmin={true} isOwner={false} />
     </QueryClientProvider>);
 
     fireEvent.click(screen.getByText('Invite team member'));
-    const role = screen.getByRole('combobox', { name: 'Role' }) as HTMLSelectElement;
-    expect([...role.options].map((o) => o.value)).toContain('branch_manager');
-    fireEvent.change(role, { target: { value: 'branch_manager' } });
-    expect(screen.getByRole('combobox', { name: 'Position' })).toHaveValue('branch_manager');
-    expect(screen.getAllByRole('option', { name: 'Branch Manager' }).length).toBeGreaterThan(0);
+    const position = screen.getByRole('combobox', { name: 'Position' }) as HTMLSelectElement;
+    expect([...position.options].map((o) => o.value)).toContain('branch_manager');
+    fireEvent.change(position, { target: { value: 'branch_manager' } });
+    expect(position).toHaveValue('branch_manager');
   });
 
   it('limits a branch manager to delegated roles, branch scope and expiry limits', async () => {
@@ -138,8 +135,8 @@ describe('Team Access hierarchy panel', () => {
     </QueryClientProvider>);
 
     await screen.findByText('Delegation active for this branch');
-    const role = screen.getByRole('combobox', { name: 'Role' }) as HTMLSelectElement;
-    expect([...role.options].map((o) => o.value)).toEqual(['staff']);
+    const position = screen.getByRole('combobox', { name: 'Position' }) as HTMLSelectElement;
+    expect([...position.options].map((o) => o.value)).toEqual(['sales_person', 'stock_manager', 'entry_person']);
     expect(screen.getByLabelText('Link expiry (days)')).toHaveValue(2);
 
     fireEvent.change(screen.getByLabelText('Invitee email address'), { target: { value: 'staff@example.com' } });
@@ -152,10 +149,60 @@ describe('Team Access hierarchy panel', () => {
       role: 'staff',
       inviteeEmail: 'staff@example.com',
       inviteeMobile: '9812345678',
-      deniedPermissions: expect.arrayContaining(['settings.edit', 'other.purchase_price', 'purchases.view']),
+      deniedPermissions: [],
       expiresInHours: 48,
       maxUses: 1,
     }) });
     expect(await screen.findByText('Share this private invitation link')).toBeInTheDocument();
   });
+  it('allows an administrator to grant an employee access to an additional branch', async () => {
+    setBranchAccess.mockClear();
+    render(<QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
+      <TeamAccessPanel
+        businessId={BUSINESS}
+        branches={[
+          { id: BRANCH, name: 'Nepalgunj', code: 'NP', is_active: true },
+          { id: 'ffffffff-ffff-4fff-8fff-ffffffffffff', name: 'Lucknow', code: 'LKO', is_active: true },
+        ]}
+        members={[{ user_id: 'dddddddd-dddd-4ddd-8ddd-dddddddddddd', role_code: 'staff', job_title: 'sales_person', status: 'active', profiles: { full_name: 'Test Employee' } }]}
+        branchAccess={[{ user_id: 'dddddddd-dddd-4ddd-8ddd-dddddddddddd', branch_id: BRANCH }]}
+        userId={MANAGER}
+        isAdmin={true}
+        isOwner={false}
+      />
+    </QueryClientProvider>);
+    const checkbox = screen.getByRole('checkbox', { name: /Grant Lucknow access to Test Employee/i });
+    fireEvent.click(checkbox);
+    await waitFor(() => expect(setBranchAccess).toHaveBeenCalledWith({ data: {
+      businessId: BUSINESS,
+      userId: 'dddddddd-dddd-4ddd-8ddd-dddddddddddd',
+      branchId: 'ffffffff-ffff-4fff-8fff-ffffffffffff',
+      allowed: true,
+    } }));
+  });
+
+  it('lets an administrator change an employee position without exposing a role selector', async () => {
+    updateMember.mockClear();
+    render(<QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
+      <TeamAccessPanel
+        businessId={BUSINESS}
+        branches={[{ id: BRANCH, name: 'Nepalgunj', code: 'NP', is_active: true }]}
+        members={[{ user_id: 'dddddddd-dddd-4ddd-8ddd-dddddddddddd', role_code: 'staff', job_title: 'sales_person', status: 'active', profiles: { full_name: 'Test Employee' } }]}
+        branchAccess={[{ user_id: 'dddddddd-dddd-4ddd-8ddd-dddddddddddd', branch_id: BRANCH }]}
+        userId={MANAGER}
+        isAdmin={true}
+        isOwner={false}
+      />
+    </QueryClientProvider>);
+    const position = screen.getByRole('combobox', { name: 'Position for Test Employee' });
+    fireEvent.change(position, { target: { value: 'stock_manager' } });
+    await waitFor(() => expect(updateMember).toHaveBeenCalledWith({ data: {
+      businessId: BUSINESS,
+      userId: 'dddddddd-dddd-4ddd-8ddd-dddddddddddd',
+      role: 'staff',
+      status: 'active',
+      jobTitle: 'stock_manager',
+    } }));
+  });
+
 });

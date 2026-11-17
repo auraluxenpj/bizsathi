@@ -45,7 +45,7 @@ describe('workspace navigation preserves existing workflows', () => {
   expect(items('Stock & Inventory').map(item => item.name)).toEqual(expect.arrayContaining(['Products', 'Categories', 'Suppliers', 'Customer Contacts', 'Barcode Studio', 'Stock Adjustments']));
   expect(items('CRM').map(item => item.name)).toEqual(expect.arrayContaining(['Customers', 'Barcode POS', 'Sale Invoices', 'Purchase Invoices', 'Purchase Orders', 'Sale Returns', 'Purchase Returns']));
   expect(items('Reporting').map(item => item.name)).toEqual(expect.arrayContaining(['Customer Ledger', 'Supplier Ledger', 'Payment Vouchers', 'Net Profit P&L', 'Current Stock']));
-  expect(items('HR & People Management').map(item => item.name)).toEqual(expect.arrayContaining(['HR & People Management', 'Users', 'Roles']));
+  expect(items('HR & People Management').map(item => item.name)).toEqual(expect.arrayContaining(['HR & People Management', 'Employees & Branch Access', 'Positions & Permissions']));
   expect(items('Settings').map(item => item.name)).toEqual(['Business & App Settings']);
   expect(items('Security').map(item => item.name)).toEqual(['Security Findings', 'Review History']);
  });
