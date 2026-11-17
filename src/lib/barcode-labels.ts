@@ -14,9 +14,9 @@ export function stickerValue(product:LabelProduct) { return product.barcode?.tri
 export function labelPages(items:{product:LabelProduct;copies:number}[], format:LabelFormat, startSlot=1) {
   const f=labelFormats[format],capacity=f.columns*f.rows;
   if(!Number.isInteger(startSlot)||startSlot<1||startSlot>capacity)throw new Error('Invalid starting label position.');
-  if(items.some(i=>!Number.isInteger(i.copies)||i.copies<0||i.copies>1000))throw new Error('Copies must be between 0 and 1000.');
+  if(items.some(i=>!Number.isInteger(i.copies)||i.copies<0||i.copies>2000))throw new Error('Copies must be between 0 and 1000.');
   const labels=items.flatMap(i=>Array.from({length:i.copies},()=>i.product));
-  if(labels.length>1000)throw new Error('Print at most 1000 labels at a time.');
+  if(labels.length>1000)throw new Error('Print at most 2000 labels at a time.');
   if(!labels.length)return [];
   const slots:(LabelProduct|null)[]=[...Array.from({length:startSlot-1},()=>null),...labels];
   const pages:(LabelProduct|null)[][]=[];
