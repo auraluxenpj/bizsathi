@@ -232,6 +232,12 @@ BEGIN
   IF position('IF d.kind IN (''sale_return'',''purchase_return'') AND NOT public.has_business_role(b,''admin'') THEN' IN body)=0 THEN
     RAISE EXCEPTION 'Could not locate refund authorization in post_commerce_payment';
   END IF;
+  IF position('IF NOT public.has_business_role(b,''accountant'') AND NOT (public.has_business_role(b,''staff'') AND d.kind=''sale'' AND d.actor_id=auth.uid()) THEN' IN body)=0 THEN
+    RAISE EXCEPTION 'Could not locate payment role gate in post_commerce_payment';
+  END IF;
+  body:=replace(body,
+    'IF NOT public.has_business_role(b,''accountant'') AND NOT (public.has_business_role(b,''staff'') AND d.kind=''sale'' AND d.actor_id=auth.uid()) THEN',
+    'IF NOT public.has_business_role(b,''accountant'') AND NOT (public.has_business_role(b,''staff'') AND d.kind=''sale'' AND d.actor_id=auth.uid()) AND NOT (d.kind=''sale_return'' AND public.has_business_role(b,''branch_manager'')) THEN');
   body:=replace(body,
     'IF d.kind IN (''sale_return'',''purchase_return'') AND NOT public.has_business_role(b,''admin'') THEN',
     'IF (d.kind=''purchase_return'' AND NOT public.has_business_role(b,''admin'')) OR (d.kind=''sale_return'' AND NOT (public.has_business_role(b,''admin'') OR public.has_business_role(b,''branch_manager''))) THEN');
