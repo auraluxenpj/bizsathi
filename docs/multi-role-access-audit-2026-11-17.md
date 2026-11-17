@@ -128,3 +128,36 @@ These are not a configurable, universal approval policy engine. We should preser
 ### Permission catalogue drift
 
 A comparison of the live `member_permission_denials_permission_check` constraint with `src/lib/permissions.ts` found HR permission keys used by the application but absent from the database constraint, including `hr.self.view`, `hr.attendance.view`, `hr.leave.create`, `hr.leave.view` and `hr.shifts.view`. This can cause permission-denial writes for those keys to fail at the database boundary. The new permission catalogue migration must reconcile the complete canonical list before role assignments are enabled.
+
+
+## 8. Implementation prepared in the feature branch
+
+The implementation now prepared in this branch includes:
+- Additive business-scoped role definitions, role-permission grants and many-to-many employee role assignments.
+- A canonical permission catalogue aligned with the application permission list; the missing HR permission keys in the legacy denial constraint are included.
+- One compatibility default role assignment for each existing membership, without deleting or rewriting membership, position, personal-denial or branch-membership rows.
+- Role creation, role editing, role assignment and role removal through guarded RPCs; custom permission roles are rank 1 and cannot elevate business authority.
+- Effective permission resolution as the union of assigned role grants, with explicit employee denials taking precedence.
+- Business authority rank derived from the maximum of the existing membership rank and assigned built-in role ranks.
+- Position changes separated from access-role changes.
+- Branch access continues to require an explicit branch membership. The Branch Manager count-approval guard now checks assigned access roles rather than relying on the HR title.
+- An admin UI for custom roles, permission selection and multiple role assignments per employee.
+- Existing sensitive-action approval workflows are retained; the inventory-count approval guard is role-aware. No generic approval queue is introduced without wiring it into each final posting RPC.
+
+### Staging validation
+
+Migrations 0074–0079 were applied to the separate staging Supabase project. A transactional SQL regression script passed there, covering:
+- Default role backfill and custom role creation/editing.
+- Multiple role assignment and union of permissions.
+- Explicit denial precedence.
+- No authority elevation from custom permission roles.
+- Built-in role authority rank.
+- HR designation changes not silently changing access roles.
+- Branch isolation and Branch Manager inventory-count approval.
+- Removal of additional roles while retaining the default assignment.
+
+The SQL fixture transaction was rolled back; no test employees or businesses were retained. Production Supabase was not modified.
+
+## Final rollout gate
+
+The PR must pass the repository's unit/component tests, ESLint, production build and isolated SQL migration/security workflow. Only after that should the migration be applied to production, followed by the Lovable deployment when hosting credits are available. The app code must not be deployed before the production migration is applied.
