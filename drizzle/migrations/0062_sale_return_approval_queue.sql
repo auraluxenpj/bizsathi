@@ -202,7 +202,7 @@ GRANT EXECUTE ON FUNCTION public.review_sale_return_request(uuid,text,text,uuid,
 
 -- Every posted sale return must consume a pending request approved by a different authorized manager.
 CREATE OR REPLACE FUNCTION public.guard_sale_return_request_posting()
-RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER SET search_path=public AS $
+RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER SET search_path=public AS $function$
 BEGIN
   IF NEW.kind='sale_return' AND NOT EXISTS (
     SELECT 1 FROM public.sale_return_requests r
@@ -216,7 +216,7 @@ BEGIN
   END IF;
   RETURN NEW;
 END
-$;
+$function$;
 REVOKE ALL ON FUNCTION public.guard_sale_return_request_posting() FROM PUBLIC,anon,authenticated;
 CREATE TRIGGER sale_return_request_posting_guard
 BEFORE INSERT ON public.commerce_documents
