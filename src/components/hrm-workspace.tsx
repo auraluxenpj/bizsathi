@@ -283,7 +283,7 @@ function HrmReportsPanel({businessId,isAdmin,canPayroll,branches,attendancePolic
   const [to,setTo] = useState(today);
   const [branchId,setBranchId] = useState('all');
   const days = (Date.parse(to+'T00:00:00Z')-Date.parse(from+'T00:00:00Z'))/86400000;
-  const validRange = /^\\d{4}-\\d{2}-\\d{2}$/.test(from) && /^\\d{4}-\\d{2}-\\d{2}$/.test(to) && from<=to && days<=366;
+  const validRange = /^\d{4}-\d{2}-\d{2}$/.test(from) && /^\d{4}-\d{2}-\d{2}$/.test(to) && from<=to && days<=366;
   const report = useQuery({
     queryKey:['hrm-reports',businessId,from,to,branchId],
     queryFn:()=>load({data:{businessId,from,to,branchId:branchId==='all'?null:branchId}}),
