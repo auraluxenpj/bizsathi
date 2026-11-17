@@ -148,7 +148,7 @@ The implementation now prepared in this branch includes:
 
 ### Staging validation
 
-Migrations 0074–0088 were applied to the separate staging Supabase project. A transactional SQL regression script passed there, covering:
+Migrations 0074–0089 were applied to the separate staging Supabase project. A transactional SQL regression script passed there, covering:
 - Default role backfill and custom role creation/editing.
 - Multiple role assignment and union of permissions.
 - Explicit denial precedence.
