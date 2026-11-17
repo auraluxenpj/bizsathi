@@ -71,7 +71,7 @@ export async function applyStockIn(receipts: StockInReceipt[], d: Dependencies):
   const report: StockInReport = { read: receipts.length, applied: 0, alreadyApplied: 0, failed: 0, issues: [], syncedSkus: [] };
   for (const r of receipts) {
     const variants = d.variantsBySku.get(r.sku.toLowerCase()) ?? [];
-    if (variants.length !== 1) { report.failed++; report.issues.push(`${r.receiptId}: SKU ${r.sku} ${variants.length ? 'matches several items' : 'is not in BizSathi (import the Master tab first)'}`); continue; }
+    if (variants.length !== 1) { report.failed++; report.issues.push(`${r.receiptId}: SKU ${r.sku} ${variants.length ? 'matches several items' : 'is not in Sutra (import the Master tab first)'}`); continue; }
     const variantId = variants[0]!; const reference = `${STOCK_IN_REFERENCE_PREFIX}${r.receiptId}`;
     const found = await d.existing(reference);
     if (found) {
