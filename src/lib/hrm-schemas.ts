@@ -16,6 +16,7 @@ export const hrmEmployeeInput = tenantInput.extend({
   emergencyContactPhone: z.string().trim().max(30).optional(),
   address: z.string().trim().max(500).optional(), notes: z.string().trim().max(1000).optional(),
 });
+export const hrmClockInput = tenantInput.extend({ attendanceDate: date, direction: z.enum(['check_in','check_out']) });
 export const hrmAttendanceInput = tenantInput.extend({
   userId: uuid, branchId: uuid.nullable().optional(), attendanceDate: date,
   checkIn: z.string().datetime().nullable().optional(), checkOut: z.string().datetime().nullable().optional(),
