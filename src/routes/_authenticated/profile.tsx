@@ -23,6 +23,7 @@ function Profile() {
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
   const [avatarPath, setAvatarPath] = useState('');
+  const [originalAvatarPath, setOriginalAvatarPath] = useState('');
   const [avatarUrl, setAvatarUrl] = useState('');
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const [newEmail, setNewEmail] = useState('');
@@ -58,6 +59,7 @@ function Profile() {
       setPhone(profile?.phone ?? '');
       const storedAvatar = profile?.avatar_url ?? '';
       setAvatarPath(storedAvatar && !storedAvatar.startsWith('http') ? storedAvatar : '');
+      setOriginalAvatarPath(storedAvatar && !storedAvatar.startsWith('http') ? storedAvatar : '');
       if (storedAvatar.startsWith('http')) setAvatarUrl(storedAvatar);
       else if (storedAvatar) {
         const { data } = await supabase.storage.from(AVATAR_BUCKET).createSignedUrl(storedAvatar, 60 * 60);
@@ -97,6 +99,7 @@ function Profile() {
     setProfileBusy(true);
     setProfileMessage('');
     let uploadedPath = '';
+    let profileSaved = false;
     try {
       if (avatarFile) {
         const extension = avatarFile.type === 'image/png' ? 'png' : avatarFile.type === 'image/webp' ? 'webp' : 'jpg';
@@ -110,20 +113,22 @@ function Profile() {
         .update({ full_name: name.trim(), phone: phone.trim() || null, avatar_url: nextAvatar })
         .eq('id', userId);
       if (profileError) throw profileError;
+      profileSaved = true;
       const { error: metadataError } = await supabase.auth.updateUser({ data: { full_name: name.trim() } });
       if (metadataError) throw metadataError;
-      if (uploadedPath && avatarPath && !avatarPath.startsWith('http')) {
-        await supabase.storage.from(AVATAR_BUCKET).remove([avatarPath]);
+      if (originalAvatarPath && originalAvatarPath !== nextAvatar) {
+        await supabase.storage.from(AVATAR_BUCKET).remove([originalAvatarPath]);
       }
       if (uploadedPath) {
         const { data } = await supabase.storage.from(AVATAR_BUCKET).createSignedUrl(uploadedPath, 60 * 60);
         setAvatarUrl(data?.signedUrl ?? '');
         setAvatarPath(uploadedPath);
+        setOriginalAvatarPath(uploadedPath);
         setAvatarFile(null);
       }
       setProfileMessage('Profile saved successfully.');
     } catch (error) {
-      if (uploadedPath) await supabase.storage.from(AVATAR_BUCKET).remove([uploadedPath]);
+      if (uploadedPath && !profileSaved) await supabase.storage.from(AVATAR_BUCKET).remove([uploadedPath]);
       setProfileMessage(error instanceof Error ? error.message : 'Profile could not be saved. Please try again.');
     } finally {
       setProfileBusy(false);
