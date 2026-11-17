@@ -139,14 +139,16 @@ The implementation now prepared in this branch includes:
 - Role creation, role editing, role assignment and role removal through guarded RPCs; custom permission roles are rank 1 and cannot elevate business authority.
 - Effective permission resolution as the union of assigned role grants, with explicit employee denials taking precedence.
 - Business authority rank derived from the maximum of the existing membership rank and assigned built-in role ranks.
-- Position changes separated from access-role changes.
+- Position changes separated from access-role changes, including invitation creation and acceptance.
+- Cashier, cash-counter, loyalty and Branch Manager authorization now use assigned access roles rather than HR job-title strings.
+- Built-in authority roles (for example Accountant and Branch Manager) can raise an employee's authority; position templates and custom permission bundles cannot.
 - Branch access continues to require an explicit branch membership. The Branch Manager count-approval guard now checks assigned access roles rather than relying on the HR title.
 - An admin UI for custom roles, permission selection and multiple role assignments per employee.
 - Existing sensitive-action approval workflows are retained; the inventory-count approval guard is role-aware. No generic approval queue is introduced without wiring it into each final posting RPC.
 
 ### Staging validation
 
-Migrations 0074–0079 were applied to the separate staging Supabase project. A transactional SQL regression script passed there, covering:
+Migrations 0074–0085 were applied to the separate staging Supabase project. A transactional SQL regression script passed there, covering:
 - Default role backfill and custom role creation/editing.
 - Multiple role assignment and union of permissions.
 - Explicit denial precedence.
@@ -161,3 +163,8 @@ The SQL fixture transaction was rolled back; no test employees or businesses wer
 ## Final rollout gate
 
 The PR must pass the repository's unit/component tests, ESLint, production build and isolated SQL migration/security workflow. Only after that should the migration be applied to production, followed by the Lovable deployment when hosting credits are available. The app code must not be deployed before the production migration is applied.
+
+
+### Additional compatibility validation
+
+The existing Branch Manager authority and HRM security SQL tests also passed on staging after the invitation and cashier guards were moved to access-role checks. A transactional owner/customer fixture confirmed the legacy `parties` table now maps to the canonical `customers.create` permission. The full sale-return approval suite is being re-run in repository CI against the complete migration chain.
