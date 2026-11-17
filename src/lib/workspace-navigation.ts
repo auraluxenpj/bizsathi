@@ -4,7 +4,7 @@ import { validateReportSearch } from './report-filters';
 export type WorkspaceItem = { name: string; to?: string; icon: LucideIcon; search?: Record<string, string>; unavailable?: boolean; note?: string };
 export type WorkspaceGroup = { name: string; icon: LucideIcon; items: WorkspaceItem[] };
 const report = (name: string, view: string, icon: LucideIcon, focus?: string): WorkspaceItem => ({ name, to: '/accounting', icon, search: { view, ...(focus ? { focus } : {}) } });
-export function isBillingStaff(role: string | undefined, jobTitle: string | null | undefined) { return role === 'staff' && jobTitle === 'sales_person'; }
+export function isBillingStaff(can: (permission: string) => boolean) { return can('sales.create') && !can('purchases.view') && !can('stock.edit') && !can('accounts.view') && !can('reports.view') && !can('staff.view') && !can('settings.edit') && !can('hr.employees.view'); }
 /** Billing staff can move between their cashier dashboard, the sale terminal and their own cash drawer only. */
 export function shouldRedirectBillingStaff(pathname: string) { return !['/dashboard','/pos','/cash-counters','/sales','/parties','/membership','/hrm'].includes(pathname); }
 export const dashboardItem: WorkspaceItem = { name: 'Dashboard', to: '/dashboard', icon: LayoutDashboard };
