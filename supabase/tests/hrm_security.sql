@@ -12,6 +12,7 @@ DECLARE
   v_count integer;
   v_net numeric(14,2);
   v_balance numeric(8,2);
+  v_request_id uuid;
 BEGIN
   INSERT INTO auth.users(id,email,email_confirmed_at,raw_user_meta_data,created_at,updated_at)
   SELECT u,'hrm-test+'||u||'@example.invalid',now(),'{}'::jsonb,now(),now()
@@ -34,7 +35,7 @@ BEGIN
   );
 
   INSERT INTO public.hr_leave_types(business_id,name,annual_quota,is_paid,accrual_method)
-  VALUES (v_business_id,'Unpaid Leave',0,false,'monthly') RETURNING id INTO v_leave_type;
+  VALUES (v_business_id,'Unpaid Leave',5,false,'monthly') RETURNING id INTO v_leave_type;
 
   INSERT INTO public.hr_attendance_policies(business_id,workday_minutes,unpaid_break_minutes,grace_minutes,overtime_after_minutes,overtime_multiplier,updated_by)
   VALUES (v_business_id,480,60,10,0,1.5,owner_id);
@@ -126,6 +127,35 @@ BEGIN
   SELECT sum(delta_days) INTO v_balance FROM public.hr_leave_balance_entries
     WHERE business_id=v_business_id AND user_id=employee_id AND leave_year=2026;
   ASSERT v_balance=1,'Employee sees opening balance plus approved leave consumption';
+  RESET ROLE;
+
+  -- A pending request that exceeds the available balance cannot be approved without an override.
+  INSERT INTO public.hr_leave_requests(
+    business_id,user_id,leave_type_id,start_date,end_date,days,request_status
+  ) VALUES (
+    v_business_id,employee_id,v_leave_type,current_date+1,current_date+7,7,'pending'
+  ) RETURNING id INTO v_request_id;
+
+  SET LOCAL ROLE authenticated;
+  PERFORM set_config('request.jwt.claims',json_build_object('sub',owner_id,'role','authenticated')::text,true);
+  BEGIN
+    PERFORM public.hr_review_leave_request(v_business_id,v_request_id,'approved',NULL,NULL);
+    RAISE EXCEPTION 'Overdrawn leave approval unexpectedly succeeded';
+  EXCEPTION WHEN SQLSTATE 'P0001' THEN
+    ASSERT SQLERRM LIKE 'Insufficient leave balance%', 'Approval fails specifically because the balance is insufficient';
+  END;
+
+  PERFORM public.hr_review_leave_request(
+    v_business_id,v_request_id,'approved',NULL,'Emergency exception approved by owner'
+  );
+  SELECT count(*) INTO v_count FROM public.hr_leave_balance_overrides
+   WHERE business_id=v_business_id AND request_id=v_request_id
+     AND approved_by=owner_id AND reason='Emergency exception approved by owner';
+  ASSERT v_count=1,'Administrator override is recorded once with approver and reason';
+
+  SELECT sum(delta_days) INTO v_balance FROM public.hr_leave_balance_entries
+   WHERE business_id=v_business_id AND user_id=employee_id AND leave_year=extract(year FROM current_date)::integer;
+  ASSERT v_balance=-6,'Overridden leave is still posted to the append-only balance ledger';
   RESET ROLE;
 
   RAISE NOTICE 'HRM_SECURITY_TESTS_PASSED';
