@@ -254,6 +254,7 @@ CREATE TABLE public.hr_payroll_runs (
   paid_by uuid REFERENCES public.profiles(id) ON DELETE RESTRICT,
   paid_at timestamptz,
   created_at timestamptz NOT NULL DEFAULT now(),
+  UNIQUE (business_id, id),
   UNIQUE (business_id, period_start, period_end),
   CHECK (period_end >= period_start),
   CHECK ((run_status IN ('draft','void') AND approved_by IS NULL AND approved_at IS NULL AND paid_by IS NULL AND paid_at IS NULL)
