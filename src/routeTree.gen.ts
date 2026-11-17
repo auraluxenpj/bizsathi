@@ -290,6 +290,7 @@ export interface FileRoutesByTo {
   '/expense-receipts': typeof AuthenticatedExpenseReceiptsRoute
   '/expenses': typeof AuthenticatedExpensesRoute
   '/help': typeof AuthenticatedHelpRoute
+  '/hrm': typeof AuthenticatedHrmRoute
   '/inventory': typeof AuthenticatedInventoryRoute
   '/membership': typeof AuthenticatedMembershipRoute
   '/more': typeof AuthenticatedMoreRoute
@@ -404,6 +405,7 @@ export interface FileRouteTypes {
     | '/expense-receipts'
     | '/expenses'
     | '/help'
+    | '/hrm'
     | '/inventory'
     | '/membership'
     | '/more'
