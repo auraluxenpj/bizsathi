@@ -16,7 +16,7 @@ describe('Catalogue import problems', () => {
     const p = catalogueProblems([row('A', 'M', 'S1', '123'), row('A', 'L', 'S2', '123'), row('B', 'M', 'S3'), row('B', 'L', 'S4')]);
     expect(p.duplicateBarcodes).toEqual(['123']);
   });
-  it('reports no problems for a clean sheet', () => expect(catalogueProblems([row('A', 'M', 'S1'), row('A', 'L', 'S2')], new Set()).any).toBe(false));
+  it('reports no problems for a clean sheet', () => expect(catalogueProblems([row('A', 'M', 'S1'), row('A', 'L', 'S2')]).any).toBe(false));
 });
 describe('Making repeated SKUs unique', () => {
   it('adds the size to every row of a repeated SKU', () => {
