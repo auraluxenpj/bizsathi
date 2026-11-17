@@ -22,17 +22,6 @@ type Member = { user_id: string; role_code: string; job_title: string | null; st
 type BranchAccess = { user_id: string; branch_id: string };
 type LegacyInvitation = { id: string; email: string | null; mobile: string | null; invitee_name: string | null; job_title: string | null; role_code: string; expires_at: string; accepted_at: string | null; revoked_at: string | null; created_at: string };
 
-const hierarchy = [
-  { title: 'Master Owner', rank: 100, detail: 'Protected global authority across all businesses', tone: 'border-primary/40 bg-primary/5' },
-  { title: 'Business Owner', rank: 100, detail: 'Full authority over their own business only', tone: 'border-primary/30 bg-primary/5' },
-  { title: 'Administrator', rank: 80, detail: 'Business operations, team and settings; cannot transfer ownership or archive', tone: 'border-border bg-card' },
-  { title: 'Accountant', rank: 60, detail: 'Accounts, vouchers, ledgers and financial reports', tone: 'border-border bg-card' },
-  { title: 'Branch Manager', rank: 50, detail: 'Assigned branches only; delegated team invitations and branch approvals', tone: 'border-border bg-card' },
-  { title: 'Inventory Manager', rank: 40, detail: 'Products, barcode, stock ledger and physical counts', tone: 'border-border bg-muted/40' },
-  { title: 'Cashier / POS', rank: 40, detail: 'POS checkout, sales invoices and customer loyalty', tone: 'border-border bg-muted/40' },
-  { title: 'Store Team', rank: 40, detail: 'Assigned daily tasks and permitted stock viewing', tone: 'border-border bg-muted/40' },
-  { title: 'Viewer', rank: 20, detail: 'Read-only access to specifically approved screens', tone: 'border-border bg-muted/40' },
-] as const;
 
 const titleByRole: Record<string, JobTitle[]> = {
   admin: ['partner'],
@@ -250,7 +239,7 @@ export function TeamAccessPanel({
           <label className="my-3 block text-sm">Invitation label (optional)
             <input className="mt-1 h-10 w-full rounded-md border bg-background px-3" maxLength={120} value={label} onChange={(e) => setLabel(e.target.value)} placeholder="e.g. Nepalgunj cashier team" />
           </label>
-          <Button className="w-full" disabled={!selectedBranchId || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(inviteeEmail.trim()) || !inviteMobileValid || !allowedInviteRoles.includes(roleCode) || createInvite.isPending} onClick={() => createInvite.mutate()}>
+          <Button className="w-full" disabled={!selectedBranchId || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(inviteeEmail.trim()) || !inviteMobileValid || !availableTitles.includes(jobTitle) || createInvite.isPending} onClick={() => createInvite.mutate()}>
             <UserPlus className="mr-2 size-4" />{createInvite.isPending ? 'Creating link…' : 'Create invitation link'}
           </Button>
           {inviteLink && <div className="mt-3 rounded-lg border p-3">
