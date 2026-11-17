@@ -33,7 +33,7 @@ CROSS JOIN (VALUES ('hr.employees.view'),('hr.payroll.view'),('hr.payroll.manage
 ON CONFLICT DO NOTHING;
 
 -- Widen the existing denial-key constraint after registering the new HR keys.
-DO $
+DO $$
 DECLARE cdef text; keys text;
 BEGIN
   SELECT pg_get_constraintdef(oid) INTO cdef FROM pg_constraint
@@ -45,7 +45,7 @@ BEGIN
   ) s;
   ALTER TABLE public.member_permission_denials DROP CONSTRAINT IF EXISTS member_permission_denials_permission_check;
   EXECUTE 'ALTER TABLE public.member_permission_denials ADD CONSTRAINT member_permission_denials_permission_check CHECK (permission IN (' || keys || '))';
-END $;
+END; $$;
 
 CREATE TABLE public.hr_employee_records (
   business_id uuid NOT NULL REFERENCES public.businesses(id) ON DELETE RESTRICT,
