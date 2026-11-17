@@ -175,7 +175,7 @@ export function TeamAccessPanel({
   });
   const positionMutation = useMutation({
     mutationFn: (v: { userId: string; jobTitle: JobTitle; status: string }) => updateMemberFn({ data: {
-      businessId, userId: v.userId, role: jobTitles[v.jobTitle].base, status: v.status === 'suspended' ? 'suspended' : 'active', jobTitle: v.jobTitle,
+      businessId, userId: v.userId, role: members.find((m) => m.user_id === v.userId)?.role_code ?? 'staff', status: v.status === 'suspended' ? 'suspended' : 'active', jobTitle: v.jobTitle,
     } }),
     onSuccess: () => { setMessage('Employee position updated.'); void client.invalidateQueries({ queryKey: ['business-access', businessId] }); void client.invalidateQueries({ queryKey: ['permissions', businessId] }); },
     onError: (error) => setMessage(error instanceof Error ? error.message : 'Employee position could not be changed.'),
