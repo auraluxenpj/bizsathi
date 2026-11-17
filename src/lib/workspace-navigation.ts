@@ -6,7 +6,7 @@ export type WorkspaceGroup = { name: string; icon: LucideIcon; items: WorkspaceI
 const report = (name: string, view: string, icon: LucideIcon, focus?: string): WorkspaceItem => ({ name, to: '/accounting', icon, search: { view, ...(focus ? { focus } : {}) } });
 export function isBillingStaff(role: string | undefined, jobTitle: string | null | undefined) { return role === 'staff' && jobTitle === 'sales_person'; }
 /** Billing staff can move between the sale terminal and their own cash drawer only. */
-export function shouldRedirectBillingStaff(pathname: string) { return pathname !== '/pos' && pathname !== '/cash-counters' && pathname !== '/sales' && pathname !== '/hrm'; }
+export function shouldRedirectBillingStaff(pathname: string) { return !['/pos','/cash-counters','/sales','/parties','/membership','/hrm'].includes(pathname); }
 export const dashboardItem: WorkspaceItem = { name: 'Dashboard', to: '/dashboard', icon: LayoutDashboard };
 export const workspaceGroups: WorkspaceGroup[] = [
  { name: 'Stock & Inventory', icon: Warehouse, items: [
