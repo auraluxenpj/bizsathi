@@ -83,9 +83,9 @@ export function Dashboard() {
     <section aria-label="Summary" className="mt-5 grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-5">
       <StatCard label="To Receive" value={money(allTime?.receivables)} icon={ArrowDown} iconTone="text-primary" to="/parties" />
       <StatCard label="To Give" value={money(allTime?.payables)} icon={ArrowUp} iconTone="text-rose-600" to="/parties" />
-      <StatCard label={`Sales (${monthName})`} value={money(monthly?.sales)} icon={Tag} tint="bg-emerald-50" iconTone="text-emerald-600" to="/sales" />
-      <StatCard label={`Purchase (${monthName})`} value={money(monthly?.purchases)} icon={ShoppingCart} iconTone="text-blue-600" to="/purchases" />
-      <StatCard label={`Expense (${monthName})`} value={money(expenses)} icon={Wallet} tint="bg-rose-50" iconTone="text-rose-600" to="/expenses" />
+      <StatCard label={`Sales (${monthName})`} value={money(monthly?.sales)} icon={Tag} iconTone="text-primary" to="/sales" />
+      <StatCard label={`Purchase (${monthName})`} value={money(monthly?.purchases)} icon={ShoppingCart} iconTone="text-muted-foreground" to="/purchases" />
+      <StatCard label={`Expense (${monthName})`} value={money(expenses)} icon={Wallet} iconTone="text-rose-600" to="/expenses" />
     </section>
 
     <div className="mt-5 grid gap-5 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
@@ -104,7 +104,7 @@ export function Dashboard() {
               </BarChart>
             </ResponsiveContainer>
           </div>
-          <div className="mt-3 flex justify-center gap-10 text-center text-sm"><div><p className="text-muted-foreground"><span className="mr-1 inline-block size-2 rounded-full bg-emerald-500" />Total Money In</p><p className="text-lg font-semibold text-emerald-600">{money(totalIn)}</p></div><div><p className="text-muted-foreground"><span className="mr-1 inline-block size-2 rounded-full bg-red-500" />Total Money Out</p><p className="text-lg font-semibold text-red-500">{money(totalOut)}</p></div></div>
+          <div className="mt-3 flex justify-center gap-10 text-center text-sm"><div><p className="text-muted-foreground"><span className="mr-1 inline-block size-2 rounded-full bg-emerald-500" />Total Money In</p><p className="text-lg font-semibold text-primary">{money(totalIn)}</p></div><div><p className="text-muted-foreground"><span className="mr-1 inline-block size-2 rounded-full bg-red-500" />Total Money Out</p><p className="text-lg font-semibold text-red-500">{money(totalOut)}</p></div></div>
         </section>
         <section className="rounded-xl border bg-card p-5"><h2 className="text-lg font-semibold">Recent transactions</h2>{recent.map(x => <div key={x.id} className="flex items-center justify-between gap-3 border-b py-3 text-sm last:border-0"><span className="min-w-0"><span className="block break-words font-medium">{x.reference}</span><span className="block text-xs capitalize text-muted-foreground">{x.kind.replaceAll('_', ' ')} · {formatBsAd(x.document_date)}</span></span><span className="shrink-0 font-medium tabular-nums">{money(x.total)}</span></div>)}{!recent.length && <p className="py-8 text-center text-sm text-muted-foreground">No transaction records.</p>}</section>
       </div>
