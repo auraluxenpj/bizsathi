@@ -4,7 +4,7 @@ import { useServerFn } from '@tanstack/react-start';
 import { GitBranch, ShieldCheck, Users, UserPlus, Ban, ClipboardList } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { RolePermissions } from '@/components/role-permissions';
-import { deniedForTitle, jobTitles, type JobTitle } from '@/lib/job-titles';
+import { jobTitles, type JobTitle } from '@/lib/job-titles';
 import { setBranchAccess } from '@/lib/business.functions';
 import { normalizeVerifiedNepalMobile } from '@/lib/login-identifier';
 import {
@@ -124,7 +124,7 @@ export function TeamAccessPanel({
     mutationFn: () => createInviteFn({ data: {
       businessId, branchId: selectedBranchId, role: jobTitles[jobTitle].base, inviteeEmail, inviteeMobile,
       jobTitle: availableTitles.includes(jobTitle) ? jobTitle : undefined,
-      deniedPermissions: availableTitles.includes(jobTitle) ? deniedForTitle(jobTitle) : [],
+      deniedPermissions: [],
       expiresInHours: effectiveExpiryDays * 24, maxUses: 1, label: label || undefined,
     } }),
     onSuccess: (result) => {
