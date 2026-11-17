@@ -21,10 +21,20 @@ export const getCommerce=createServerFn({method:'GET'}).middleware([requireSupab
  for(let offset=0;;offset+=1000){const r=await context.supabase.from('commerce_payments').select('*').eq('business_id',data.businessId).order('id').range(offset,offset+999);if(r.error)throw new Error('Payments could not be loaded.');payments.push(...(r.data??[]));if((r.data?.length??0)<1000)break;}
  for(let offset=0;;offset+=1000){const r=await context.supabase.from('cash_counter_events').select('*').eq('business_id',data.businessId).order('created_at',{ascending:false}).order('id').range(offset,offset+999);if(r.error)throw new Error('Counters could not be loaded.');counters.push(...(r.data??[]));if((r.data?.length??0)<1000)break;}
  for(let offset=0;;offset+=1000){const r=await context.supabase.from('commerce_journal_entries').select('*').eq('business_id',data.businessId).order('id').range(offset,offset+999);if(r.error)throw new Error('Balances could not be loaded.');journals.push(...(r.data??[]));if((r.data?.length??0)<1000)break;}
- const [periods,settings,business,user]=await Promise.all([context.supabase.from('financial_periods').select('*').eq('business_id',data.businessId).order('start_date',{ascending:false}),context.supabase.from('business_settings').select('*').eq('business_id',data.businessId).single(),context.supabase.from('businesses').select('name,legal_name,pan_vat_number').eq('id',data.businessId).single(),context.supabase.from('business_memberships').select('role_code,job_title').eq('business_id',data.businessId).eq('user_id',context.userId).eq('status','active').single()]);
- if(periods.error||settings.error||business.error||user.error)throw new Error('Business financial settings could not be loaded.');
- const role=user.data.role_code;
- const jobTitle=user.data.job_title;
+ const [periods,settings,business,user,platformOwner]=await Promise.all([
+  context.supabase.from('financial_periods').select('*').eq('business_id',data.businessId).order('start_date',{ascending:false}),
+  context.supabase.from('business_settings').select('*').eq('business_id',data.businessId).single(),
+  context.supabase.from('businesses').select('name,legal_name,pan_vat_number').eq('id',data.businessId).single(),
+  context.supabase.from('business_memberships').select('role_code,job_title').eq('business_id',data.businessId).eq('user_id',context.userId).eq('status','active').maybeSingle(),
+  context.supabase.rpc('is_platform_owner')
+ ]);
+ if(periods.error||settings.error||business.error||user.error||platformOwner.error)throw new Error('Business financial settings could not be loaded.');
+ // Platform owners intentionally do not need a duplicate membership in every business.
+ // Keep normal members' role and cashier scoping unchanged; only the verified platform owner
+ // receives the owner-level commerce view when no business membership row exists.
+ if(!user.data&&!platformOwner.data)throw new Error('Business membership could not be verified.');
+ const role=user.data?.role_code??(platformOwner.data?'owner':null);
+ const jobTitle=user.data?.job_title??(platformOwner.data?'Platform Owner':null);
  const commerce={memberships,loyalty,redemptions,documents,payments,counters,journals};
  // The base Staff role is the POS-level role; scope its commerce history to the signed-in cashier.
  const scoped=role==='staff'?scopeCommerceForCashier(commerce,context.userId):commerce;
