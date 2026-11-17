@@ -55,7 +55,7 @@ export const rolePresets:Record<string,{label:string;allowed:string[]}>={
  admin:{label:'Administrator',allowed:not(/^settings\.delete_business$/)},
  branch_manager:{label:'Branch Manager',allowed:only(/^hr\.(self\.view|attendance\.view|leave\.(view|create)|shifts\.view)$/,/^sales\.(create|view)$/,/^expenses\.view$/,/^inventory\.view$/,/^categories\.view$/,/^stock\.(create|edit)$/,/^customers\.(create|edit|view)$/,/^suppliers\.view$/,/^staff\.view$/,/^reports\.(view|home_stats|items|parties|transactions|expenses)$/)},
  accountant:{label:'Accountant',allowed:only(/^hr\.(self\.view|employees\.view|attendance\.view|leave\.(view|create)|shifts\.view|payroll\.(view|manage|approve))$/,/^(sales|purchases|expenses)\.(create|edit|view)$/,/^accounts\.(create|edit|view|adjust_create)$/,/^reports\./,/^(inventory|customers|suppliers|categories|notebook)\.(view)$/,/^stock\.(create|edit)$/,/^notebook\./,/^other\.(party_adjustments|purchase_price|change_date)$/,/^features\.import$/)},
- staff:{label:'Staff (Sales Person)',allowed:only(/^hr\.(self\.view|attendance\.view|leave\.(view|create)|shifts\.view)$/,/^sales\.(create|view)$/,/^customers\.(create|edit|view)$/,/^inventory\.view$/,/^categories\.view$/)},
+ staff:{label:'Staff · POS access',allowed:only(/^sales\.(create|view)$/,/^customers\.(create|view)$/,/^inventory\.view$/,/^categories\.view$/)},
  viewer:{label:'Viewer',allowed:only(/\.view$/,/^reports\.home_stats$/).filter(p=>p!=='staff.view'&&p!=='accounts.view'&&p!=='reports.view')},
 };
 /** What to store (the unticked ones) for a role's defaults. */
