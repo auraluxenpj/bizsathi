@@ -36,7 +36,8 @@ export function AppNavigation({ children, pathname }: { children: ReactNode; pat
   return permitted(to, routeSearch) && (!['/security', '/security-history'].includes(to ?? '') || !!admin);
  };
  const activeRoutePermission = permissionForRoute(pathname, search);
- const deniedPage = permissionsQuery.isPending || permissionsQuery.isError || (permissionsReady && ((billingStaff && pathname !== '/pos') || (!!activeRoutePermission && !can(activeRoutePermission))));
+ const adminOnlyRoute = ['/security','/security-history'].some(route => pathname === route || pathname.startsWith(`${route}/`));
+ const deniedPage = permissionsQuery.isPending || permissionsQuery.isError || (permissionsReady && ((billingStaff && pathname !== '/pos') || (adminOnlyRoute && !admin) || (!!activeRoutePermission && !can(activeRoutePermission))));
  const businessName = businesses.data?.[0]?.name ?? 'BizSathi';
  const current = workspaceGroups.flatMap(g => g.items).find(i => workspaceItemActive(i, pathname, search));
  const title = pathname === '/dashboard' ? 'Dashboard' : current?.name ?? pathname.slice(1).replaceAll('-', ' ').replace(/^./, c => c.toUpperCase());
