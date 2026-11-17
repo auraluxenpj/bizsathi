@@ -14,7 +14,7 @@ export const getHrmWorkspace = createServerFn({ method: 'GET' })
   .middleware([requireSupabaseAuth]).inputValidator(hrmWorkspaceInput)
   .handler(async ({ data, context }) => {
     const client = db(context.supabase);
-    const [admin, payroll, branches, members, employees, attendance, leaveTypes, leaveRequests, shifts, assignments, salaries, payrollRuns, payrollItems] = await Promise.all([
+    const [membership, admin, payroll, branches, members, employees, attendance, leaveTypes, leaveRequests, shifts, assignments, salaries, payrollRuns, payrollItems] = await Promise.all([\n      client.rpc('is_business_member', { _business_id: data.businessId }),
       client.rpc('has_business_role', { _business_id: data.businessId, _min_role: 'admin' }),
       client.rpc('has_business_role', { _business_id: data.businessId, _min_role: 'accountant' }),
       client.from('branches').select('id,name,code,is_active').eq('business_id', data.businessId).eq('is_active', true).order('name'),
@@ -30,7 +30,7 @@ export const getHrmWorkspace = createServerFn({ method: 'GET' })
       client.from('hr_payroll_items').select('*').eq('business_id', data.businessId).order('period_start', { ascending: false }).limit(200),
     ]);
     const errors = [branches, members, employees, attendance, leaveTypes, leaveRequests, shifts, assignments, salaries, payrollRuns, payrollItems].filter(x => x.error);
-    if (admin.error || payroll.error || errors.length) throw new Error('HR workspace could not be loaded. Check that the HRM migration has been applied and your business access is active.');
+    if (membership.error || !membership.data || admin.error || payroll.error || errors.length) throw new Error('HR workspace could not be loaded. Check that the HRM migration has been applied and your business access is active.');
     const peopleIds = [...new Set([
       ...(members.data ?? []).map((x: any) => x.user_id),
       ...(employees.data ?? []).map((x: any) => x.user_id),
