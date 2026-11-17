@@ -1,5 +1,5 @@
 import { Link } from '@tanstack/react-router';
-import { Archive, Banknote, Home, LayoutGrid, Package, Receipt, ShoppingCart, Truck, Users, type LucideIcon } from 'lucide-react';
+import { Archive, Home, LayoutGrid, Package, Receipt, ShoppingCart, Truck, Users, type LucideIcon } from 'lucide-react';
 import type { DashboardKind } from '@/lib/dashboard-profile';
 
 type Tab = { to: string; label: string; icon: LucideIcon; match: string[]; permission?: string };
