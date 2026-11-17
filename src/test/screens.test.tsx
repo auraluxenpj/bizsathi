@@ -296,7 +296,8 @@ describe('Point of sale', () => {
     expect(await screen.findByLabelText('Product search or barcode')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /Camera/ })).toBeInTheDocument();
     expect(await screen.findByRole('heading', { name: 'Local POS drafts' })).toBeInTheDocument();
-    expect(screen.getByLabelText('Device passphrase')).toHaveAttribute('type', 'password');
+    expect(screen.getByRole('button', { name: 'Unlock device' })).toBeInTheDocument();
+    expect(screen.queryByLabelText('Device passphrase')).not.toBeInTheDocument();
     expect(screen.queryByRole('navigation', { name: 'Main navigation' })).not.toBeInTheDocument();
     expect(screen.getByRole('link', { name: /Dashboard/ })).toHaveAttribute('href', '/dashboard');
     noOpenPeriodLabel();

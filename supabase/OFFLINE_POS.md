@@ -9,10 +9,10 @@ The normal authenticated route guard and database authorization remain unchanged
 ## Data protection and durability
 
 - A minimum authenticated cache projection checks current staff-or-higher permission and active branch access. It includes product names/SKUs/barcodes/prices, calculated branch quantities, VAT/currency settings, and open periods, not customer details or the entire trading ledger. Stock/price reads are advisory; posting rechecks the authoritative transaction state.
-- IndexedDB envelopes contain a versioned account/business/branch scope, revision, random salt and AES-GCM IV/ciphertext. PBKDF2-SHA256 (310,000 iterations) derives a nonextractable 256-bit key from the device passphrase; AES-GCM binds ciphertext to the scope. Passphrases and plaintext keys are never durably saved.
+- IndexedDB envelopes contain a versioned account/business/branch scope, revision and AES-GCM IV/ciphertext. New vaults use a nonextractable 256-bit AES-GCM key stored as a structured-clone CryptoKey in a separate IndexedDB object store; the key is not exportable through Web Crypto. Existing passphrase-encrypted vaults are detected and require the original passphrase once; after successful decryption they are re-encrypted under a device key without deleting drafts. Passphrases are never persisted.
 - Keys and decrypted views are locked on sign-out, identity updates, branch/business changes, explicit lock and unmount. Unsynchronized ciphertext is retained. Cached membership does not authorize any database action.
 - A readwrite transaction compares revisions before writing. Competing tabs fail rather than overwrite another tab's drafts. A saved result follows transaction completion; read/write/storage failures remain visible. Persistence permission is requested and reported honestly.
-- A forgotten passphrase, cleared browser storage or browser eviction may make drafts irrecoverable. No reset can recover encrypted data without the passphrase. No backup, compromised-device or XSS protection is claimed.
+- Automatic unlock is scoped to the same browser profile and account/business/branch. Clearing site data, browser eviction, losing the IndexedDB device key or moving to another device can make drafts irrecoverable; there is no cross-device backup. The key is stored in the same origin's IndexedDB, so this is protection for local data at rest, not a defence against XSS, malicious same-origin scripts, browser-profile compromise or a compromised device.
 
 ## Reconnect and confirmation contract
 
@@ -24,7 +24,7 @@ Before any network submission the exact validated request (including document/pa
 
 ## Recovery
 
-1. Restore internet and sign in as the original user, choose the same business/branch, and enter the same device passphrase.
+1. Restore internet and sign in as the original user. Select the same business and, where more than one branch is authorised, choose the active branch in the shared workspace header. New device vaults unlock automatically in the same browser profile. An older passphrase-encrypted vault asks for its original passphrase once and migrates after successful recovery.
 2. Review the retained local drafts. Confirmed items link to ordinary sales history.
 3. For uncertain work, check the saved sale first; retry only the exact retained request if needed. A revoked role/branch, inactive product, closed period, identifier conflict or invalid cash session needs authorized review; never invent a replacement request to bypass uncertainty.
 4. If another tab changed the vault, lock/reopen it before trying another write. No stale tab may overwrite newer data.
@@ -36,6 +36,6 @@ No database change needs rolling back. Remove the local-draft UI/server wrappers
 
 ## Verification and remaining review
 
-All 82 unit/integration tests passed. Unit/storage and UI integration tests cover encrypted recovery, multiple drafts, wrong passphrases, sign-out and revoked-access locking, cross-account writes, concurrent-tab conflict, denied storage, explicit reconnect price conflicts and uncertain-request check-before-retry. Isolated SQL reconnect tests passed with their deliberate rollback marker; they exercise current revoked role/branch, changed VAT, inactive products, closed periods, stock rejection, exact retries, balanced posting and conflicting payload rejection. Existing tenant/inventory/commerce/report/voucher suites were rerun and passed separately.
+The implementation branch adds tests for automatic device-key persistence, one-time legacy passphrase migration, sign-out locking, cross-account writes, concurrent-tab conflicts, denied storage, reconnect price conflicts and uncertain-request check-before-retry. CI results for this branch are pending; no passing result is claimed here.
 
 Live browser checks verify signed-out protection, signed-in local-draft prerequisites, offline indicator and tablet overflow. The real business has no active branch/products/open-period setup available for a complete live save/confirmation flow; no synthetic live data is inserted. Successful live confirmation, real populated recovery/read-back and live cash-session conflict handling remain unverified. The browser-storage engine and financial operations are exercised with isolated fixtures/tests, not claimed as live business verification. High-volume concurrency, compromised-device risks, broader storage quotas/eviction and full offline reopening need further review.
