@@ -166,29 +166,7 @@ END;
 $align_existing_base_roles$;
 
 -- Ensure invitation status reads inherit the underlying team_invitations RLS policy.
-CREATE OR REPLACE VIEW public.team_invitations_status
-WITH (security_invoker = true)
-AS
-SELECT id,
-       business_id,
-       branch_id,
-       role_code,
-       job_title,
-       label,
-       invited_by,
-       expires_at,
-       max_uses,
-       use_count,
-       revoked_at,
-       created_at,
-       CASE
-         WHEN revoked_at IS NOT NULL THEN 'revoked'::text
-         WHEN use_count >= max_uses THEN 'accepted'::text
-         WHEN expires_at <= now() THEN 'expired'::text
-         WHEN use_count > 0 THEN 'partially_used'::text
-         ELSE 'pending'::text
-       END AS status
-FROM public.team_invitations;
+ALTER VIEW public.team_invitations_status SET (security_invoker = true);
 
 -- Read policies follow the same module permissions as navigation. POS retains only
 -- the product/customer/stock lookups required inside its own checkout workspace.
