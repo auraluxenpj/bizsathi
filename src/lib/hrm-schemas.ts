@@ -35,6 +35,16 @@ export const hrmAttendancePolicyInput = tenantInput.extend({
   overtimeAfterMinutes: z.number().int().min(0).max(720),
   overtimeMultiplier: z.number().min(1).max(3),
 });
+export const hrmLeaveBalanceAdjustmentInput = tenantInput.extend({
+  userId: uuid, leaveTypeId: uuid, leaveYear: z.number().int().min(2000).max(2200),
+  entryType: z.enum(['opening_balance','carry_forward','adjustment']),
+  deltaDays: z.number().finite().min(-3660).max(3660).refine(value => value !== 0, 'Balance change cannot be zero'),
+  notes: z.string().trim().max(500).optional(),
+}).superRefine((value, ctx) => {
+  if (value.entryType === 'adjustment' && !value.notes?.trim()) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['notes'], message: 'A reason is required for manual adjustments' });
+  }
+});
 export const hrmLeaveRequestInput = tenantInput.extend({
   leaveTypeId: uuid, startDate: date, endDate: date, days: z.number().positive().max(366),
   reason: z.string().trim().max(1000).optional(),
