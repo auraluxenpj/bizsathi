@@ -265,11 +265,15 @@ export const createHrmLeaveRequest = createServerFn({ method: 'POST' })
 export const reviewHrmLeaveRequest = createServerFn({ method: 'POST' })
   .middleware([requireSupabaseAuth]).inputValidator(hrmLeaveReviewInput)
   .handler(async ({ data, context }) => {
-    const { data: row, error } = await db(context.supabase).from('hr_leave_requests').update({
-      request_status: data.decision, reviewed_by: context.userId, reviewed_at: new Date().toISOString(),
-      review_note: data.reviewNote || null, updated_at: new Date().toISOString(),
-    }).eq('business_id', data.businessId).eq('id', data.requestId).eq('request_status', 'pending').select('id').maybeSingle();
-    if (error || !row) throw new Error('This request could not be reviewed. It may already have been processed.');
+    const { data: row, error } = await db(context.supabase).rpc('hr_review_leave_request', {
+      _business_id: data.businessId, _request_id: data.requestId, _decision: data.decision,
+      _review_note: data.reviewNote || null, _override_reason: data.overrideReason || null,
+    });
+    if (error || !row) {
+      const message = error?.message || '';
+      if (message.includes('Insufficient leave balance')) throw new Error(message);
+      throw new Error(message || 'This request could not be reviewed. It may already have been processed.');
+    }
     return { ok: true };
   });
 
