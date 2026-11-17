@@ -73,7 +73,7 @@ RETURNS TABLE(
   user_id uuid, employee_number text, designation text, department text,
   branch_id uuid, joining_date date, employment_status text, full_name text
 )
-LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path = public AS $
+LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path = public AS $$
 BEGIN
   IF NOT public.hr_can_manage_payroll(_business_id) THEN
     RAISE EXCEPTION 'Payroll access required' USING ERRCODE='42501';
@@ -85,7 +85,7 @@ BEGIN
     JOIN public.profiles p ON p.id=e.user_id
     WHERE e.business_id=_business_id
     ORDER BY e.joining_date DESC,e.employee_number;
-END $;
+END $$;
 REVOKE ALL ON FUNCTION public.hr_list_payroll_employees(uuid) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.hr_list_payroll_employees(uuid) TO authenticated;
 
@@ -122,7 +122,7 @@ CREATE POLICY hr_attendance_update ON public.hr_attendance FOR UPDATE TO authent
   WITH CHECK (public.hr_is_manager(business_id));
 
 CREATE OR REPLACE FUNCTION public.hr_clock_attendance(_business_id uuid, _attendance_date date, _direction text)
-RETURNS timestamptz LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $
+RETURNS timestamptz LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
 DECLARE
   v_branch uuid;
   v_stamp timestamptz;
@@ -161,7 +161,7 @@ BEGIN
     RAISE EXCEPTION 'Already checked in or out, or a check-in is required first';
   END IF;
   RETURN v_stamp;
-END $;
+END $$;
 REVOKE ALL ON FUNCTION public.hr_clock_attendance(uuid,date,text) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.hr_clock_attendance(uuid,date,text) TO authenticated;
 
@@ -364,7 +364,7 @@ ALTER TABLE public.hr_payroll_items ENABLE ROW LEVEL SECURITY;
 REVOKE ALL ON public.hr_payroll_items FROM anon;
 GRANT SELECT ON public.hr_payroll_items TO authenticated;
 CREATE OR REPLACE FUNCTION public.hr_can_read_own_payslip(_business_id uuid, _run_id uuid)
-RETURNS boolean LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public AS $
+RETURNS boolean LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public AS $$
   SELECT EXISTS (SELECT 1 FROM public.hr_payroll_runs r
     JOIN public.hr_payroll_items i ON i.business_id=r.business_id AND i.payroll_run_id=r.id
     WHERE r.business_id=_business_id AND r.id=_run_id AND i.user_id=auth.uid()
