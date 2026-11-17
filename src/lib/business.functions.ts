@@ -109,15 +109,21 @@ export const setBranchAccess = createServerFn({ method: 'POST' }).middleware([re
   return { ok: true };
 });import { permissionInput } from './permissions';
 export const getMemberPermissions = createServerFn({ method: 'GET' }).middleware([requireSupabaseAuth]).inputValidator(tenantInput).handler(async ({ data, context }) => {
-  const [r, rd, effective] = await Promise.all([
+  const [r, effective, admin] = await Promise.all([
     context.supabase.from('member_permission_denials').select('user_id,permission').eq('business_id', data.businessId),
-    anyDb(context.supabase).rpc('member_role_denials', { _business: data.businessId }),
     anyDb(context.supabase).rpc('get_my_business_permissions', { _business: data.businessId }),
+    context.supabase.rpc('has_business_role', { _business_id: data.businessId, _min_role: 'admin' }),
   ]);
   if (r.error) throw new Error('Permissions could not be loaded.');
-  if (rd.error) throw new Error('Role permissions could not be loaded.');
   if (effective.error) throw new Error('Your effective access permissions could not be verified.');
-  return { userId: context.userId, denials: r.data ?? [], roleDenials: (rd.data ?? []) as { user_id: string; permission: string }[], permissions: (effective.data ?? []).map((row: { permission: string }) => row.permission) };
+  let roleDenials: { user_id: string; permission: string }[] = [];
+  if (admin.error) throw new Error('Business administrator authority could not be verified.');
+  if (admin.data) {
+    const rd = await anyDb(context.supabase).rpc('member_role_denials', { _business: data.businessId });
+    if (rd.error) throw new Error('Role permissions could not be loaded.');
+    roleDenials = (rd.data ?? []) as { user_id: string; permission: string }[];
+  }
+  return { userId: context.userId, denials: r.data ?? [], roleDenials, permissions: (effective.data ?? []).map((row: { permission: string }) => row.permission) };
 });
 export const saveMemberPermissions = createServerFn({ method: 'POST' }).middleware([requireSupabaseAuth]).inputValidator(permissionInput).handler(async ({ data, context }) => {
   const r = await context.supabase.rpc('set_member_permissions', { _business: data.businessId, _user: data.userId, _denied: data.denied });
