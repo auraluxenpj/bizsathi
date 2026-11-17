@@ -8,7 +8,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { businessQuery } from '@/lib/inventory-queries';
 import { authorizedSelection } from '@/lib/dashboard-data';
 import {
-  getHrmWorkspace, createHrmEmployee, updateHrmEmployee, saveHrmAttendance, saveHrmAttendancePolicy, clockHrmAttendance, createHrmLeaveType, createHrmLeaveRequest,
+  getHrmWorkspace, getHrmReports, createHrmEmployee, updateHrmEmployee, saveHrmAttendance, saveHrmAttendancePolicy, clockHrmAttendance, createHrmLeaveType, createHrmLeaveRequest,
   reviewHrmLeaveRequest, saveHrmLeaveBalanceEntry, createHrmShift, assignHrmShift, saveHrmSalaryStructure,
   generateHrmPayroll, approveHrmPayroll, markHrmPayrollPaid,
 } from '@/lib/hrm.functions';
@@ -130,7 +130,7 @@ export function HrmWorkspace() {
       </section>
       <Tabs defaultValue="employees" className="space-y-5">
         <TabsList className="h-auto w-full flex-wrap justify-start gap-1">
-          <TabsTrigger value="employees">Employees</TabsTrigger><TabsTrigger value="attendance">Attendance</TabsTrigger><TabsTrigger value="leave">Leave</TabsTrigger><TabsTrigger value="shifts">Shifts</TabsTrigger><TabsTrigger value="payroll">Payroll</TabsTrigger>
+          <TabsTrigger value="employees">Employees</TabsTrigger><TabsTrigger value="attendance">Attendance</TabsTrigger><TabsTrigger value="leave">Leave</TabsTrigger><TabsTrigger value="shifts">Shifts</TabsTrigger>{(isAdmin||canPayroll)&&<TabsTrigger value="reports">Reports</TabsTrigger>}<TabsTrigger value="payroll">Payroll</TabsTrigger>
         </TabsList>
         <TabsContent value="employees" className="space-y-5">
           {isAdmin && <section className="rounded-xl border p-4 md:p-5"><h2 className="font-semibold">Create employee record</h2><p className="mt-1 text-sm text-muted-foreground">Select an existing active BizSathi member. HRM does not create a duplicate login or a second staff account.</p>
@@ -245,6 +245,9 @@ export function HrmWorkspace() {
           </form></section>}
           <section className="rounded-xl border p-4"><h2 className="font-semibold">Shift roster</h2>{data.data.assignments.length ? <div className="mt-3 divide-y">{data.data.assignments.map((a:any)=><div key={a.id} className="flex flex-wrap justify-between gap-2 py-3 text-sm"><span>{a.employee.fullName} · {data.data.shifts.find((s:any)=>s.id===a.shift_id)?.name||'Shift'}</span><span className="text-muted-foreground">{a.shift_date}</span></div>)}</div> : <Empty>No shifts have been assigned.</Empty>}</section>
         </TabsContent>
+        {(isAdmin||canPayroll) && <TabsContent value="reports" className="space-y-5">
+          <HrmReportsPanel businessId={businessId} isAdmin={isAdmin} canPayroll={canPayroll} branches={data.data.branches} attendancePolicy={attendancePolicy}/>
+        </TabsContent>}
         <TabsContent value="payroll" className="space-y-5">
           {canPayroll ? <>
             {canPayroll && employees.length>0 && <section className="rounded-xl border p-4"><h2 className="font-semibold">Salary structure</h2><p className="mt-1 text-xs text-muted-foreground">Salary details are restricted to payroll-authorized users and are not shown in the general employee directory.</p>
@@ -272,4 +275,74 @@ export function HrmWorkspace() {
     </>}
     <p className="mt-6 text-xs text-muted-foreground">Payroll figures are draft records until approved. Marking payroll paid is a manual status confirmation only; bank transfers and general-ledger posting are not performed by this HRM module.</p>
   </main>;
+}
+
+function HrmReportsPanel({businessId,isAdmin,canPayroll,branches,attendancePolicy}:{businessId:string;isAdmin:boolean;canPayroll:boolean;branches:any[];attendancePolicy:any}) {
+  const load = useServerFn(getHrmReports);
+  const [from,setFrom] = useState(()=>`${today().slice(0,7)}-01`);
+  const [to,setTo] = useState(today);
+  const [branchId,setBranchId] = useState('all');
+  const days = (Date.parse(to+'T00:00:00Z')-Date.parse(from+'T00:00:00Z'))/86400000;
+  const validRange = /^\\d{4}-\\d{2}-\\d{2}$/.test(from) && /^\\d{4}-\\d{2}-\\d{2}$/.test(to) && from<=to && days<=366;
+  const report = useQuery({
+    queryKey:['hrm-reports',businessId,from,to,branchId],
+    queryFn:()=>load({data:{businessId,from,to,branchId:branchId==='all'?null:branchId}}),
+    enabled:Boolean(businessId && validRange && (isAdmin||canPayroll)),
+  });
+  const rows = report.data;
+  const branchName = (id:string|null|undefined) => branches.find(b=>b.id===id)?.name ?? 'Unassigned';
+  const employeeName = (id:string) => rows?.employees.find((e:any)=>e.user_id===id)?.full_name ?? rows?.employees.find((e:any)=>e.user_id===id)?.employee_number ?? 'Employee';
+  const employeeBranch = (id:string) => rows?.employees.find((e:any)=>e.user_id===id)?.branch_id ?? null;
+  const attendanceRows = rows?.attendance ?? [];
+  const leaveRows = rows?.leaveRequests ?? [];
+  const payrollRows = rows?.payrollItems ?? [];
+  const payrollStatus = (id:string) => rows?.payrollRuns.find((run:any)=>run.id===id)?.run_status ?? '—';
+  const overtimeMinutes = (record:any) => {
+    if(!record.check_in||!record.check_out) return 0;
+    const worked=Math.max(0,Math.floor((new Date(record.check_out).getTime()-new Date(record.check_in).getTime())/60000)-Number(attendancePolicy.unpaid_break_minutes||0));
+    return Math.max(0,worked-Number(attendancePolicy.workday_minutes||480)-Number(attendancePolicy.overtime_after_minutes||0));
+  };
+  const summaryBranches = [...branches.map(b=>({id:b.id,name:b.name})),{id:null,name:'Unassigned'}].filter(b=>{
+    const hasAttendance=attendanceRows.some((r:any)=>r.branch_id===b.id);
+    const hasLeave=leaveRows.some((r:any)=>employeeBranch(r.user_id)===b.id);
+    const hasPayroll=payrollRows.some((r:any)=>employeeBranch(r.user_id)===b.id);
+    return hasAttendance||hasLeave||hasPayroll||(branchId!=='all'&&b.id===branchId);
+  });
+  return <>
+    <section className="rounded-xl border p-4">
+      <div className="flex flex-wrap items-end gap-3">
+        <Field label="From date"><input type="date" value={from} onChange={e=>setFrom(e.target.value)} className={inputClass}/></Field>
+        <Field label="Through date"><input type="date" value={to} onChange={e=>setTo(e.target.value)} className={inputClass}/></Field>
+        <Field label="Branch"><select value={branchId} onChange={e=>setBranchId(e.target.value)} className={inputClass}><option value="all">All branches</option>{branches.map(b=><option key={b.id} value={b.id}>{b.name}</option>)}</select></Field>
+      </div>
+      <p className="mt-2 text-xs text-muted-foreground">Choose up to 367 days. Attendance and leave reports are available to HR administrators; payroll reports require payroll permission.</p>
+      {!validRange&&<p role="alert" className="mt-2 text-sm text-destructive">Choose a valid date range of no more than 367 days.</p>}
+    </section>
+    {report.isPending&&validRange&&<p role="status" className="py-8 text-center text-sm text-muted-foreground">Preparing HR reports…</p>}
+    {report.error&&<p role="alert" className="rounded-lg border border-destructive/40 p-4 text-sm text-destructive">{report.error.message}</p>}
+    {rows&&<>
+      {summaryBranches.length>0&&<section className="rounded-xl border p-4">
+        <h2 className="font-semibold">Branch-wise summary</h2>
+        <div className="mt-3 overflow-x-auto"><table className="w-full min-w-[760px] text-left text-sm"><thead className="bg-muted/50 text-xs text-muted-foreground"><tr>{['Branch','Attendance records','Late / absent','Leave requests','Approved leave days','Payroll gross','Payroll net'].map(x=><th key={x} className="px-3 py-3 font-medium">{x}</th>)}</tr></thead><tbody className="divide-y">{summaryBranches.map(b=>{
+          const a=attendanceRows.filter((r:any)=>r.branch_id===b.id);
+          const l=leaveRows.filter((r:any)=>employeeBranch(r.user_id)===b.id);
+          const p=payrollRows.filter((r:any)=>employeeBranch(r.user_id)===b.id);
+          return <tr key={b.id??'unassigned'}><td className="px-3 py-3 font-medium">{b.name}</td><td className="px-3 py-3">{isAdmin?a.length:'—'}</td><td className="px-3 py-3">{isAdmin?a.filter((r:any)=>r.attendance_status==='late'||r.attendance_status==='absent').length:'—'}</td><td className="px-3 py-3">{isAdmin?l.length:'—'}</td><td className="px-3 py-3">{isAdmin?l.filter((r:any)=>r.request_status==='approved').reduce((n:number,r:any)=>n+Number(r.days||0),0).toFixed(1):'—'}</td><td className="px-3 py-3">{canPayroll?money(p.reduce((n:number,r:any)=>n+Number(r.gross_pay||0),0)):'—'}</td><td className="px-3 py-3 font-semibold">{canPayroll?money(p.reduce((n:number,r:any)=>n+Number(r.net_pay||0),0)):'—'}</td></tr>;
+        })}</tbody></table></div>
+        {canPayroll&&<p className="mt-2 text-xs text-muted-foreground">Payroll branch totals use each employee’s current HR branch assignment; payroll snapshots do not yet preserve historical branch transfers.</p>}
+      </section>}
+      {isAdmin&&<section className="rounded-xl border">
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b p-4"><div><h2 className="font-semibold">Attendance report</h2><p className="text-xs text-muted-foreground">{attendanceRows.length} records · {from} to {to}</p></div><Button size="sm" variant="outline" disabled={!attendanceRows.length} onClick={()=>exportCsv(`hr-attendance-${from}-to-${to}.csv`,attendanceRows.map((r:any)=>({date:r.attendance_date,employee:employeeName(r.user_id),branch:branchName(r.branch_id),status:r.attendance_status,check_in:r.check_in,check_out:r.check_out,overtime_minutes:overtimeMinutes(r),notes:r.notes}))) }>Export CSV</Button></div>
+        {attendanceRows.length?<div className="overflow-x-auto"><table className="w-full min-w-[760px] text-left text-sm"><thead className="bg-muted/50 text-xs text-muted-foreground"><tr>{['Date','Employee','Branch','Status','Check in','Check out','Overtime estimate'].map(x=><th key={x} className="px-3 py-3 font-medium">{x}</th>)}</tr></thead><tbody className="divide-y">{attendanceRows.map((r:any)=><tr key={r.id}><td className="px-3 py-3">{r.attendance_date}</td><td className="px-3 py-3 font-medium">{employeeName(r.user_id)}</td><td className="px-3 py-3">{branchName(r.branch_id)}</td><td className="px-3 py-3 capitalize">{r.attendance_status.replace('_',' ')}</td><td className="px-3 py-3">{r.check_in?new Date(r.check_in).toLocaleTimeString():'—'}</td><td className="px-3 py-3">{r.check_out?new Date(r.check_out).toLocaleTimeString():'—'}</td><td className="px-3 py-3">{overtimeMinutes(r)?`${Math.floor(overtimeMinutes(r)/60)}h ${overtimeMinutes(r)%60}m`:'—'}</td></tr>)}</tbody></table></div>:<Empty>No attendance records match this date range and branch.</Empty>}
+      </section>}
+      {isAdmin&&<section className="rounded-xl border">
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b p-4"><div><h2 className="font-semibold">Leave report</h2><p className="text-xs text-muted-foreground">{leaveRows.length} requests overlapping {from} to {to}</p></div><Button size="sm" variant="outline" disabled={!leaveRows.length} onClick={()=>exportCsv(`hr-leave-${from}-to-${to}.csv`,leaveRows.map((r:any)=>({employee:employeeName(r.user_id),branch:branchName(employeeBranch(r.user_id)),leave_type:rows.leaveTypes.find((t:any)=>t.id===r.leave_type_id)?.name??'Leave',start_date:r.start_date,end_date:r.end_date,days:r.days,status:r.request_status,reason:r.reason,review_note:r.review_note}))) }>Export CSV</Button></div>
+        {leaveRows.length?<div className="overflow-x-auto"><table className="w-full min-w-[760px] text-left text-sm"><thead className="bg-muted/50 text-xs text-muted-foreground"><tr>{['Employee','Branch','Leave type','From','To','Days','Status'].map(x=><th key={x} className="px-3 py-3 font-medium">{x}</th>)}</tr></thead><tbody className="divide-y">{leaveRows.map((r:any)=><tr key={r.id}><td className="px-3 py-3 font-medium">{employeeName(r.user_id)}</td><td className="px-3 py-3">{branchName(employeeBranch(r.user_id))}</td><td className="px-3 py-3">{rows.leaveTypes.find((t:any)=>t.id===r.leave_type_id)?.name??'Leave'}</td><td className="px-3 py-3">{r.start_date}</td><td className="px-3 py-3">{r.end_date}</td><td className="px-3 py-3">{Number(r.days).toFixed(1)}</td><td className="px-3 py-3 capitalize">{r.request_status}</td></tr>)}</tbody></table></div>:<Empty>No leave requests overlap this date range and branch.</Empty>}
+      </section>}
+      {canPayroll&&<section className="rounded-xl border">
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b p-4"><div><h2 className="font-semibold">Payroll report</h2><p className="text-xs text-muted-foreground">{payrollRows.length} employee snapshots · {from} to {to}</p></div><Button size="sm" variant="outline" disabled={!payrollRows.length} onClick={()=>exportCsv(`hr-payroll-${from}-to-${to}.csv`,payrollRows.map((r:any)=>({period:r.period_label,employee:r.employee_name,branch:branchName(employeeBranch(r.user_id)),gross_pay:r.gross_pay,total_deductions:r.total_deductions,net_pay:r.net_pay,unpaid_leave_days:r.unpaid_leave_days,unpaid_leave_deduction:r.unpaid_leave_deduction,status:payrollStatus(r.payroll_run_id)}))) }>Export CSV</Button></div>
+        {payrollRows.length?<div className="overflow-x-auto"><table className="w-full min-w-[900px] text-left text-sm"><thead className="bg-muted/50 text-xs text-muted-foreground"><tr>{['Period','Employee','Branch','Gross pay','Deductions','Net pay','Run status'].map(x=><th key={x} className="px-3 py-3 font-medium">{x}</th>)}</tr></thead><tbody className="divide-y">{payrollRows.map((r:any)=><tr key={r.id}><td className="px-3 py-3">{r.period_label}</td><td className="px-3 py-3 font-medium">{r.employee_name}</td><td className="px-3 py-3">{branchName(employeeBranch(r.user_id))}</td><td className="px-3 py-3">{money(r.gross_pay)}</td><td className="px-3 py-3">{money(r.total_deductions)}</td><td className="px-3 py-3 font-semibold">{money(r.net_pay)}</td><td className="px-3 py-3 capitalize">{payrollStatus(r.payroll_run_id)}</td></tr>)}</tbody></table></div>:<Empty>No payroll snapshots overlap this date range and branch.</Empty>}
+      </section>}
+    </>}
+  </>;
 }
