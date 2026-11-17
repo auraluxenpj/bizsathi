@@ -30,5 +30,7 @@ describe('custom permissions',()=>{
   expect(permissionForRoute('/contacts',{kind:'customer'})).toBe('customers.view');
   expect(permissionForRoute('/accounting',{view:'sales'})).toBe('reports.view');
   expect(permissionForRoute('/products/variant/123')).toBe('inventory.view');
+  expect(permissionForRoute('/profile')).toBeUndefined();
+  expect(permissionForRoute('/future-module')).toBe('__route_not_configured__');
  });
 });
