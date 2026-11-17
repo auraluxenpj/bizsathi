@@ -123,3 +123,8 @@ These are not a configurable, universal approval policy engine. We should preser
 ## Audit status
 
 **Audit completed for the role/permission/branch/approval subsystem. Implementation has not yet been cut over.** The next code change must be an additive migration plus compatibility tests; production data and schema remain untouched.
+
+
+### Permission catalogue drift
+
+A comparison of the live `member_permission_denials_permission_check` constraint with `src/lib/permissions.ts` found HR permission keys used by the application but absent from the database constraint, including `hr.self.view`, `hr.attendance.view`, `hr.leave.create`, `hr.leave.view` and `hr.shifts.view`. This can cause permission-denial writes for those keys to fail at the database boundary. The new permission catalogue migration must reconcile the complete canonical list before role assignments are enabled.
