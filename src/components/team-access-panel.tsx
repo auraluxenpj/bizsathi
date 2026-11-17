@@ -4,8 +4,8 @@ import { useServerFn } from '@tanstack/react-start';
 import { GitBranch, ShieldCheck, Users, UserPlus, Ban, ClipboardList } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { RolePermissions } from '@/components/role-permissions';
-import { jobTitles, type JobTitle } from '@/lib/job-titles';
-import { setBranchAccess } from '@/lib/business.functions';
+import { jobTitleCodes, jobTitles, type JobTitle } from '@/lib/job-titles';
+import { setBranchAccess, updateMember } from '@/lib/business.functions';
 import { normalizeVerifiedNepalMobile } from '@/lib/login-identifier';
 import {
   createTeamInvitation,
@@ -70,6 +70,7 @@ export function TeamAccessPanel({
   const revokeGrantFn = useServerFn(revokeBranchDelegation);
   const revokeInviteFn = useServerFn(revokeTeamInvitation);
   const setBranchAccessFn = useServerFn(setBranchAccess);
+  const updateMemberFn = useServerFn(updateMember);
 
   const invitations = useQuery({
     queryKey: ['team-invitations', businessId],
@@ -157,6 +158,13 @@ export function TeamAccessPanel({
     onSuccess: () => { setMessage('Employee branch access updated.'); void client.invalidateQueries({ queryKey: ['business-access', businessId] }); },
     onError: (error) => setMessage(error instanceof Error ? error.message : 'Branch access could not be changed.'),
   });
+  const positionMutation = useMutation({
+    mutationFn: (v: { userId: string; jobTitle: JobTitle; status: string }) => updateMemberFn({ data: {
+      businessId, userId: v.userId, role: jobTitles[v.jobTitle].base, status: v.status, jobTitle: v.jobTitle,
+    } }),
+    onSuccess: () => { setMessage('Employee position updated.'); void client.invalidateQueries({ queryKey: ['business-access', businessId] }); void client.invalidateQueries({ queryKey: ['permissions', businessId] }); },
+    onError: (error) => setMessage(error instanceof Error ? error.message : 'Employee position could not be changed.'),
+  });
   const revokeInvite = useMutation({
     mutationFn: (invitationId: string) => revokeInviteFn({ data: { invitationId } }),
     onSuccess: () => { setMessage('Invitation revoked.'); setInviteLink(''); refresh(); },
@@ -168,7 +176,22 @@ export function TeamAccessPanel({
       <section className="rounded-xl border p-4 md:p-5">
         <div className="mb-3 flex items-center gap-2"><Users className="size-4 text-primary" /><h3 className="font-semibold">Employees & branch access</h3></div>
         <p className="mb-4 text-sm text-muted-foreground">Assign each employee to one or more branches. Their position controls permissions in every assigned branch.</p>
-        {members.length ? <div className="overflow-x-auto"><table className="w-full min-w-[640px] text-left text-sm"><thead><tr className="border-b text-xs text-muted-foreground"><th className="py-2 pr-4 font-medium">Employee</th><th className="py-2 pr-4 font-medium">Position</th>{branches.map((b) => <th key={b.id} className="px-3 py-2 text-center font-medium">{b.name}</th>)}</tr></thead><tbody className="divide-y">{members.map((m) => <tr key={m.user_id}><td className="py-3 pr-4 font-medium">{m.profiles?.full_name || m.user_id.slice(0,8)}</td><td className="py-3 pr-4">{jobTitles[(m.job_title ?? '') as JobTitle]?.label ?? 'Position not assigned'}</td>{branches.map((b) => { const checked=branchAccess.some((x) => x.user_id===m.user_id && x.branch_id===b.id); const protectedMember=m.user_id===userId || (roleRank[m.role_code] ?? 100)>=(isOwner?100:80); return <td key={b.id} className="px-3 py-3 text-center"><input aria-label={`Grant ${b.name} access to ${m.profiles?.full_name || 'employee'}`} type="checkbox" checked={checked} disabled={!isAdmin || protectedMember || branchAccessMutation.isPending} onChange={(e) => branchAccessMutation.mutate({userId:m.user_id,branchId:b.id,allowed:e.target.checked})} /></td>; })}</tr>)}</tbody></table></div> : <p className="text-sm text-muted-foreground">No employees have joined this business yet.</p>}
+        {members.length ? <div className="overflow-x-auto"><table className="w-full min-w-[640px] text-left text-sm"><thead><tr className="border-b text-xs text-muted-foreground"><th className="py-2 pr-4 font-medium">Employee</th><th className="py-2 pr-4 font-medium">Position</th>{branches.map((b) => <th key={b.id} className="px-3 py-2 text-center font-medium">{b.name}</th>)}</tr></thead><tbody className="divide-y">{members.map((m) => {
+          const protectedMember = m.user_id === userId || (roleRank[m.role_code] ?? 100) >= (isOwner ? 100 : 80);
+          const employeeName = m.profiles?.full_name || m.user_id.slice(0, 8);
+          const permittedPositions = jobTitleCodes.filter((title) => (roleRank[jobTitles[title].base] ?? 100) < (isOwner ? 100 : 80));
+          return <tr key={m.user_id}>
+            <td className="py-3 pr-4 font-medium">{employeeName}</td>
+            <td className="py-3 pr-4">{isAdmin && !protectedMember ? <select aria-label={`Position for ${employeeName}`} className="h-9 max-w-48 rounded-md border bg-background px-2" value={m.job_title ?? ''} disabled={positionMutation.isPending} onChange={(e) => positionMutation.mutate({ userId: m.user_id, jobTitle: e.target.value as JobTitle, status: m.status })}>
+              <option value="" disabled>Select position</option>
+              {permittedPositions.map((title) => <option key={title} value={title}>{jobTitles[title].label}</option>)}
+            </select> : (jobTitles[(m.job_title ?? '') as JobTitle]?.label ?? 'Position not assigned')}</td>
+            {branches.map((b) => {
+              const checked = branchAccess.some((x) => x.user_id === m.user_id && x.branch_id === b.id);
+              return <td key={b.id} className="px-3 py-3 text-center"><input aria-label={`Grant ${b.name} access to ${employeeName}`} type="checkbox" checked={checked} disabled={!isAdmin || protectedMember || branchAccessMutation.isPending} onChange={(e) => branchAccessMutation.mutate({ userId: m.user_id, branchId: b.id, allowed: e.target.checked })} /></td>;
+            })}
+          </tr>;
+        })}</tbody></table></div> : <p className="text-sm text-muted-foreground">No employees have joined this business yet.</p>}
       </section>
 
       <div className="grid gap-5 xl:grid-cols-[1fr_1fr]">
