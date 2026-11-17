@@ -1190,3 +1190,153 @@ a:not([class*="text-"]) {
   .accounting-reports .report-table thead th,
   .accounting-reports .report-table tbody td { padding: .7rem .65rem; }
 }
+
+
+/* BizSathi unified minimal design system — mobile, tablet and desktop.
+   Presentation-only overrides: no business logic, data, permissions or print layouts changed. */
+:root {
+  --workspace: #F5F6F8;
+  --background: #F5F6F8;
+  --foreground: #172B4D;
+  --card: #FFFFFF;
+  --card-foreground: #172B4D;
+  --popover: #FFFFFF;
+  --popover-foreground: #172B4D;
+  --primary: #244A80;
+  --primary-foreground: #FFFFFF;
+  --secondary: #F1F3F5;
+  --secondary-foreground: #344054;
+  --muted: #F1F3F5;
+  --muted-foreground: #667085;
+  --accent: #F1F3F5;
+  --accent-foreground: #172B4D;
+  --border: #E5E7EB;
+  --input: #D0D5DD;
+  --ring: #7890B0;
+  --sidebar: #FFFFFF;
+  --sidebar-foreground: #172B4D;
+  --sidebar-primary: #244A80;
+  --sidebar-primary-foreground: #FFFFFF;
+  --sidebar-accent: #F1F3F5;
+  --sidebar-accent-foreground: #172B4D;
+  --sidebar-border: #E5E7EB;
+  --chart-1: #244A80;
+  --chart-2: #667085;
+  --chart-3: #98A2B3;
+  --chart-4: #B8C0CC;
+  --chart-5: #D0D5DD;
+  --revenue: #16835D;
+  --expense: #C24141;
+  --purchase: #667085;
+}
+.dark {
+  --workspace: #111827;
+  --background: #111827;
+  --foreground: #F2F4F7;
+  --card: #1D2939;
+  --card-foreground: #F2F4F7;
+  --popover: #1D2939;
+  --popover-foreground: #F2F4F7;
+  --primary: #9CB5D5;
+  --primary-foreground: #172B4D;
+  --secondary: #293548;
+  --secondary-foreground: #E4E7EC;
+  --muted: #293548;
+  --muted-foreground: #98A2B3;
+  --accent: #293548;
+  --accent-foreground: #F2F4F7;
+  --border: #344054;
+  --input: #475467;
+  --ring: #7890B0;
+  --sidebar: #1D2939;
+  --sidebar-foreground: #F2F4F7;
+  --sidebar-primary: #9CB5D5;
+  --sidebar-primary-foreground: #172B4D;
+  --sidebar-accent: #293548;
+  --sidebar-accent-foreground: #F2F4F7;
+  --sidebar-border: #344054;
+  --chart-1: #9CB5D5;
+  --chart-2: #98A2B3;
+  --chart-3: #667085;
+  --chart-4: #475467;
+  --chart-5: #344054;
+}
+html { font-family: 'DM Sans', 'Noto Sans Devanagari', sans-serif; font-synthesis: none; text-rendering: optimizeLegibility; }
+body { background: var(--background); color: var(--foreground); }
+h1,h2,h3,h4 { letter-spacing: -0.025em; }
+p, label, input, select, textarea { line-height: 1.45; }
+button, [role="button"], a { -webkit-tap-highlight-color: transparent; }
+:focus-visible { outline-color: var(--ring); outline-offset: 2px; }
+.app-workspace { background: var(--workspace) !important; }
+.app-topbar { background: color-mix(in srgb, var(--card) 96%, transparent) !important; border-color: var(--border) !important; }
+.app-sidebar { background: var(--sidebar) !important; border-color: var(--sidebar-border) !important; }
+.app-sidebar-brand { border-color: var(--sidebar-border) !important; }
+.app-sidebar-brand > span:first-child { background: var(--primary) !important; color: var(--primary-foreground) !important; }
+.app-sidebar a[aria-current="page"] { background: #EEF2F6 !important; color: #244A80 !important; box-shadow: none !important; }
+.dark .app-sidebar a[aria-current="page"] { background: #293548 !important; color: #D5E2F2 !important; }
+.app-sidebar a, .app-sidebar button { border-radius: 10px !important; }
+.mobile-tab-bar a[aria-current="page"] { color: var(--primary) !important; }
+.mobile-tab-bar a[aria-current="page"]::before { background: var(--primary) !important; }
+nav[aria-label="Mobile navigation"] { background: var(--card) !important; border-color: var(--border) !important; box-shadow: 0 -4px 16px rgb(16 24 40 / 4%); }
+nav[aria-label="Mobile navigation"] a[aria-current="page"] { color: var(--primary) !important; }
+.card, [data-slot="card"] { border-color: var(--border); box-shadow: 0 1px 2px rgb(16 24 40 / 3%); }
+input, select, textarea, [data-slot="input"] { border-color: var(--input); }
+button[data-variant="default"], .bg-primary { background-color: var(--primary); }
+.text-primary { color: var(--primary); }
+.bg-secondary, .bg-accent { background-color: var(--secondary); }
+.text-muted-foreground { color: var(--muted-foreground); }
+
+/* Remove legacy colourful checkout and dashboard treatments. */
+.pos-billing-checkout { background: transparent !important; }
+.pos-billing-checkout [aria-label="Checkout catalogue"],
+.pos-billing-checkout .pos-billing-cart,
+.pos-billing-checkout .pos-product-card {
+  background: var(--card) !important;
+  border: 1px solid var(--border) !important;
+  border-radius: 12px !important;
+  box-shadow: 0 1px 2px rgb(16 24 40 / 4%) !important;
+}
+.pos-billing-checkout .pos-category-filters button {
+  background: var(--card) !important;
+  color: var(--foreground) !important;
+  border: 1px solid var(--border) !important;
+  box-shadow: none !important;
+}
+.pos-billing-checkout .pos-category-filters button[aria-pressed="true"],
+.pos-billing-checkout .pos-category-filters button[data-state="active"] {
+  background: var(--primary) !important;
+  border-color: var(--primary) !important;
+  color: var(--primary-foreground) !important;
+}
+.pos-billing-checkout .pos-billing-cart [aria-label="Payment collection"],
+.pos-billing-checkout .pos-billing-cart [aria-label="Payment collection"] > div:nth-child(2) {
+  background: var(--muted) !important;
+  border-color: var(--border) !important;
+}
+.pos-billing-checkout > div.fixed { background: var(--card) !important; border-color: var(--border) !important; box-shadow: 0 -4px 16px rgb(16 24 40 / 5%) !important; }
+.pos-billing-checkout > div.fixed .text-2xl { color: var(--foreground) !important; }
+.karobar { background: var(--workspace) !important; color: var(--foreground) !important; }
+.karobar section[aria-label="Summary"] > * { background: var(--card) !important; border: 1px solid var(--border) !important; box-shadow: none !important; }
+.karobar section[aria-label="Recent activities"], .karobar section[aria-label="Low stock"] { border-color: var(--border) !important; }
+
+/* Consistent responsive rhythm and readable touch targets. */
+@media (max-width: 639px) {
+  .app-topbar { min-height: 60px !important; padding-inline: 12px !important; }
+  .app-workspace main, .app-workspace .page-content { padding-inline: 16px; }
+  .app-workspace h1 { font-size: 1.375rem; line-height: 1.25; }
+  .app-workspace h2 { font-size: 1.05rem; line-height: 1.3; }
+  .app-workspace button, .app-workspace [role="button"] { min-height: 40px; }
+  .app-workspace input, .app-workspace select, .app-workspace textarea { min-height: 44px; }
+  nav[aria-label="Mobile navigation"] a, nav[aria-label="Mobile navigation"] button { min-height: 58px; }
+}
+@media (min-width: 640px) and (max-width: 1023px) {
+  .app-workspace main, .app-workspace .page-content { padding-inline: 20px; }
+  .app-topbar { padding-inline: 20px !important; }
+}
+@media (min-width: 1024px) {
+  .app-workspace main, .app-workspace .page-content { padding-inline: 24px; }
+  .app-topbar { padding-inline: 28px !important; }
+}
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { scroll-behavior: auto !important; transition-duration: .01ms !important; animation-duration: .01ms !important; }
+}
