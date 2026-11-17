@@ -200,7 +200,7 @@ export function TeamAccessPanel({
         <section className="rounded-xl border p-4 md:p-5">
           <div className="flex items-center justify-between gap-3 font-semibold"><span className="flex items-center gap-2"><GitBranch className="size-4 text-primary" />Branch delegation</span><span className="text-xs font-normal text-muted-foreground">Branch-scoped hiring authority</span></div>
           <div className="mt-4">
-          <p className="mb-4 text-sm text-muted-foreground">Administrators can assign a Branch Manager to a branch and delegate only lower-ranked team roles.</p>
+          <p className="mb-4 text-sm text-muted-foreground">Administrators can assign a Branch Manager to a branch and invite employees into positions permitted by the branch delegation.</p>
           <label className="mb-3 block text-sm">Branch
             <select className="mt-1 h-10 w-full rounded-md border bg-background px-3" value={selectedBranchId} onChange={(e) => { setBranchId(e.target.value); setManagerUserId(''); }} disabled={!branches.length}>
               {branches.map((b) => <option key={b.id} value={b.id}>{b.name} ({b.code})</option>)}
@@ -225,12 +225,12 @@ export function TeamAccessPanel({
           ) : currentGrant ? (
             <div className="rounded-lg bg-muted/50 p-3 text-sm">
               <p className="font-medium">Delegation active for this branch</p>
-              <p className="mt-1 text-muted-foreground">Allowed roles: {currentGrantRoles.join(', ')} · Up to {currentGrant.max_invite_uses} registrations · {currentGrant.max_invite_days} days</p>
+              <p className="mt-1 text-muted-foreground">Allowed positions: {currentGrantRoles.map((r) => r === 'staff' ? 'Sales Person, Stock Manager and Store Team' : r === 'viewer' ? 'Read-only access' : r).join('; ')} · Up to {currentGrant.max_invite_uses} registrations · {currentGrant.max_invite_days} days</p>
             </div>
           ) : <p className="rounded-lg bg-muted/50 p-3 text-sm text-muted-foreground">No invitation delegation is assigned to your account for this branch. Ask an administrator to grant it.</p>}
           {isAdmin && (delegations.data?.grants ?? []).filter((g: { branch_id: string }) => g.branch_id === selectedBranchId).map((g: { id: string; manager_user_id: string; allowed_role_codes: string[] }) => (
             <div key={g.id} className="mt-3 flex items-center justify-between gap-3 rounded-lg border p-3 text-sm">
-              <span>{members.find((m) => m.user_id === g.manager_user_id)?.profiles?.full_name || 'Branch Manager'} · {g.allowed_role_codes.join(', ')}</span>
+              <span>{members.find((m) => m.user_id === g.manager_user_id)?.profiles?.full_name || 'Branch Manager'} · {g.allowed_role_codes.map((r) => r === 'staff' ? 'Operational positions' : r === 'viewer' ? 'Read-only access' : r).join(', ')}</span>
               <Button size="sm" variant="outline" disabled={revokeGrant.isPending} onClick={() => revokeGrant.mutate(g.id)}><Ban className="mr-1 size-3" />Revoke</Button>
             </div>
           ))}
@@ -301,7 +301,7 @@ export function TeamAccessPanel({
               return <article key={i.id} className="flex flex-wrap items-center justify-between gap-3 py-3 text-sm">
                 <div className="min-w-0"><p className="break-all font-medium">{i.invitee_name ? `${i.invitee_name} · ` : ''}{i.mobile ?? i.email ?? 'Invitee not identified'}</p><p className="text-xs text-muted-foreground">{(i.job_title && jobTitles[i.job_title as JobTitle]?.label) || i.role_code} · {status} · created {new Date(i.created_at).toLocaleDateString()} · expires {new Date(i.expires_at).toLocaleDateString()}</p></div>
                 {open && <div className="flex flex-wrap items-center gap-2">
-                  <select aria-label={`Change invited role for ${i.invitee_name || i.mobile || i.email || i.id}`} className="h-9 rounded-md border bg-card px-2 text-sm" value={i.job_title ?? ''} disabled={legacyActionsPending} onChange={(e) => { const next = e.target.value as JobTitle; if (next) onLegacyChangeRole?.(i.id, next); }}>
+                  <select aria-label={`Change invited position for ${i.invitee_name || i.mobile || i.email || i.id}`} className="h-9 rounded-md border bg-card px-2 text-sm" value={i.job_title ?? ''} disabled={legacyActionsPending} onChange={(e) => { const next = e.target.value as JobTitle; if (next) onLegacyChangeRole?.(i.id, next); }}>
                     {!i.job_title && <option value="" disabled>{i.role_code}</option>}{legacyTitles.map((t) => <option key={t} value={t}>{jobTitles[t].label}</option>)}
                   </select>
                   <Button size="sm" variant="outline" disabled={legacyActionsPending} onClick={() => onLegacyReissue?.(i.id, i.mobile ?? '')}>New link</Button>
