@@ -1,5 +1,5 @@
--- Run on an isolated staging database after migration 0074.
--- All fixture writes are rolled back; this verifies the additive Phase A model only.
+-- Run on an isolated staging database after migration 0076.
+-- All fixture writes are rolled back; validates role union and deny precedence.
 BEGIN;
 DO $tests$
 DECLARE
@@ -35,8 +35,8 @@ BEGIN
   JOIN public.business_access_roles r ON r.business_id=a.business_id AND r.id=a.role_id
   WHERE a.business_id=v_business_id AND a.user_id=staff_id AND a.is_default;
 
-  ASSERT owner_default='legacy_owner','Existing owner membership gets a compatibility access role';
-  ASSERT staff_default='position_sales_person','Existing employee position maps to the equivalent access template';
+  ASSERT owner_default='legacy_owner','Owner gets the compatibility permission bundle';
+  ASSERT staff_default='position_sales_person','Employee position maps to the existing permission template';
   ASSERT EXISTS (
     SELECT 1 FROM public.business_access_role_permissions rp
     JOIN public.business_access_roles r ON r.id=rp.role_id AND r.business_id=rp.business_id
@@ -57,29 +57,50 @@ BEGIN
   );
   PERFORM public.assign_business_access_role(v_business_id,staff_id,custom_role_id);
   RESET ROLE;
+
   SELECT count(*) INTO assignments FROM public.business_member_access_roles
   WHERE business_id=v_business_id AND user_id=staff_id;
   ASSERT assignments=2,'An employee can hold more than one business role';
-  ASSERT public.has_permission(v_business_id,'purchases.view'),'The second role adds its permissions to the employee';
-  ASSERT NOT public.has_permission(v_business_id,'settings.delete_business'),'A custom role does not grant unrelated destructive permissions';
+
+  SET LOCAL ROLE authenticated;
+  PERFORM set_config('request.jwt.claims',json_build_object('sub',staff_id,'role','authenticated')::text,true);
+  ASSERT public.has_permission(v_business_id,'sales.create'),'The employee retains their original permission';
+  ASSERT public.has_permission(v_business_id,'purchases.view'),'The additional role adds its permission';
+  ASSERT NOT public.has_permission(v_business_id,'settings.delete_business'),'The combined roles do not grant unrelated destructive permissions';
+  RESET ROLE;
+
+  SET LOCAL ROLE authenticated;
+  PERFORM set_config('request.jwt.claims',json_build_object('sub',owner_id,'role','authenticated')::text,true);
   PERFORM public.set_member_permissions(v_business_id,staff_id,ARRAY['purchases.view']);
-  ASSERT NOT public.has_permission(v_business_id,'purchases.view'),'An explicit employee denial overrides grants from every role';
   PERFORM public.set_member_job_title(v_business_id,staff_id,'stock_manager');
+  RESET ROLE;
+
+  SET LOCAL ROLE authenticated;
+  PERFORM set_config('request.jwt.claims',json_build_object('sub',staff_id,'role','authenticated')::text,true);
+  ASSERT NOT public.has_permission(v_business_id,'purchases.view'),'An explicit employee denial overrides grants from every role';
+  ASSERT public.has_permission(v_business_id,'sales.create'),'The employee keeps permissions granted by the remaining role';
+  RESET ROLE;
+
   SET LOCAL ROLE authenticated;
   PERFORM set_config('request.jwt.claims',json_build_object('sub',owner_id,'role','authenticated')::text,true);
   PERFORM public.unassign_business_access_role(v_business_id,staff_id,custom_role_id);
   RESET ROLE;
+
   SELECT count(*) INTO assignments FROM public.business_member_access_roles
   WHERE business_id=v_business_id AND user_id=staff_id;
   ASSERT assignments=1,'Removing an additional role preserves the default compatibility role';
-  ASSERT (SELECT r.code FROM public.business_member_access_roles a JOIN public.business_access_roles r ON r.id=a.role_id AND r.business_id=a.business_id WHERE a.business_id=v_business_id AND a.user_id=staff_id AND a.is_default)='position_sales_person','Changing an HR designation does not silently change the employee access role';
-  ASSERT public.business_role_rank(v_business_id,staff_id)=40,'Custom permission roles do not elevate the legacy security authority rank';
-
+  ASSERT (
+    SELECT r.code FROM public.business_member_access_roles a
+    JOIN public.business_access_roles r ON r.id=a.role_id AND r.business_id=a.business_id
+    WHERE a.business_id=v_business_id AND a.user_id=staff_id AND a.is_default
+  )='position_sales_person','Changing an HR designation does not silently change access roles';
+  ASSERT public.business_role_rank(v_business_id,staff_id)=40,'Custom permission roles do not elevate the legacy security rank';
   ASSERT NOT EXISTS (
     SELECT 1 FROM public.branch_memberships WHERE business_id=v_business_id
   ),'Role assignment does not create branch membership';
   ASSERT (SELECT count(*) FROM public.business_memberships WHERE business_id=v_business_id)=2,
     'Original business memberships remain intact';
+
   RAISE NOTICE 'MULTI_ROLE_ACCESS_FOUNDATION_TESTS_PASSED';
 END
 $tests$;
