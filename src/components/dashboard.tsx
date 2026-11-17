@@ -74,7 +74,8 @@ export function Dashboard() {
  const list = useServerFn(listBusinesses);
  const businesses = useQuery({ queryKey: ['businesses'], queryFn: () => list() });
  const member = businesses.data?.[0];
- const kind = dashboardKind(member?.role, member?.jobTitle);
+ const can = useCan(member?.id ?? '');
+ const kind = dashboardKind(can);
  if (member && kind === 'cashier') return <CashierDashboard businessId={member.id} businessName={member.name} />;
  if (member && kind === 'stock') return <StockDashboard businessId={member.id} businessName={member.name} />;
  if (member && kind === 'entry') return <EntryDashboard businessId={member.id} businessName={member.name} />;
