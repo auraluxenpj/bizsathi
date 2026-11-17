@@ -77,6 +77,6 @@ describe('BizSathi HRM validation and access defaults', () => {
   });
 
   it('adds HRM to the existing collapsible workspace navigation', () => {
-    expect(workspaceGroups.some(group => group.name === 'System & Settings' && group.items.some(item => item.to === '/hrm'))).toBe(true);
+    expect(workspaceGroups.some(group => group.name === 'HR & People Management' && group.items.some(item => item.to === '/hrm'))).toBe(true);
   });
 });

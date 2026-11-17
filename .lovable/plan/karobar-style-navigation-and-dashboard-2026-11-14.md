@@ -15,11 +15,13 @@
   - **Stock & Inventory:** Batch & Expiry, Stock Adjustments, Stocktake Sessions, Quarantine & Disposal.
   - **Finance & Ledgers:** Customer Ledger, Supplier Ledger, Payment Vouchers, Cash Drawer, Financial Accounts, Operating Expenses, Double-Entry & GL.
   - **Reports:** Net Profit P&L, Cost of Sale, Sale Detail, Purchase Detail, Current Stock, Low Stock & Reorder, Stock Adjustment.
-  - **System & Settings:** Settings, Users, Roles.
+  - **HR & People Management:** HR workspace, Users, Roles.
+  - **Settings:** Business & App Settings.
+  - **Security:** Security Findings, Review History (administrator-only).
 - Add collapsible groups, a menu search, clear selected-page highlighting, a compact desktop sidebar with an always-visible reopen control, and a mobile navigation drawer.
 - Link supported entries to their existing screens and relevant selected views. Customer/supplier and return links will select the corresponding existing workflow rather than duplicate it. Barcode Studio opens the existing barcode tools.
 - Preserve report date/branch selections when switching report links; distinguish active report entries by selected report, not just page address.
-- Show unsupported modules as disabled, clearly marked **Not available**, rather than linking to unrelated screens or inventing working features. Quarantine & Disposal opens existing disposal controls with a clear quarantine limitation. Users and Roles reuse existing staff/permission administration.
+- Show unsupported modules as disabled, clearly marked **Not available**, rather than linking to unrelated screens or inventing working features. Quarantine & Disposal opens existing disposal controls with a clear quarantine limitation. Users and Roles reuse existing staff/permission administration. HR & People Management contains the existing HR workspace plus Users and Roles. Settings and Security are independent collapsible groups; Security Findings and Review History remain administrator-only.
 - Keep all existing URLs working. Retain access to quotations, transactions, other reports, profile and administrator security tools through a supplementary workspace menu, without changing the seven requested groups.
 
 ## Phase 2: dashboard

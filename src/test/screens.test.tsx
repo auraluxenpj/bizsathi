@@ -97,7 +97,7 @@ describe('Navigation and sign-in', () => {
   it('has the sidebar sections, and ⌘K opens exactly one search box', async () => {
     mount(<AppNavigation pathname="/dashboard"><p>page body</p></AppNavigation>);
     const nav = await screen.findByRole('navigation', { name: 'Main navigation' });
-    for (const n of ['Dashboard', 'Stock & Inventory', 'CRM', 'Reporting', 'System & Settings']) expect(within(nav).getByText(n)).toBeInTheDocument();
+    for (const n of ['Dashboard', 'Stock & Inventory', 'CRM', 'Reporting', 'HR & People Management', 'Settings', 'Security']) expect(within(nav).getByText(n)).toBeInTheDocument();
     expect((await screen.findAllByText('Auraluxe', { selector: 'span' })).length).toBeGreaterThan(0);
     fireEvent.keyDown(window, { key: 'k', metaKey: true });
     expect(await screen.findAllByPlaceholderText(/Search products, parties, vouchers or pages/)).toHaveLength(1);

@@ -28,7 +28,7 @@ export function AppNavigation({ children, pathname }: { children: ReactNode; pat
  const can = useCan(businesses.data?.[0]?.id ?? '');
  const permitted = (to?: string) => { const permission = to ? routePermission[to] : undefined; return !permission || can(permission); };
  // Billing staff only have the cashier workspace, so links they would be sent back from are not shown to them.
- const visible = (to?: string) => permitted(to) && (!billingStaff || (!!to && !shouldRedirectBillingStaff(to)));
+ const visible = (to?: string) => permitted(to) && (!['/security', '/security-history'].includes(to ?? '') || !!admin) && (!billingStaff || (!!to && !shouldRedirectBillingStaff(to)));
  const deniedPage = Object.keys(routePermission).some(r => (pathname === r || pathname.startsWith(`${r}/`)) && !permitted(r));
  const businessName = businesses.data?.[0]?.name ?? 'BizSathi';
  const current = workspaceGroups.flatMap(g => g.items).find(i => workspaceItemActive(i, pathname, search));
