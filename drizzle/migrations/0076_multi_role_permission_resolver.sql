@@ -9,6 +9,8 @@ AS $$
 DECLARE
   v_code text;
   v_role_id uuid;
+  v_role_code text;
+  v_job_title text;
   v_has_default boolean := false;
 BEGIN
   IF current_setting('bizsathi.skip_access_role_sync',true)='on' THEN RETURN NEW; END IF;
@@ -20,16 +22,21 @@ BEGIN
     IF NOT COALESCE(v_has_default,false) THEN RETURN NEW; END IF;
   END IF;
 
+  -- Read the current row rather than relying on NEW: an earlier AFTER INSERT trigger
+  -- may already have applied the invitation's stored job title.
+  SELECT job_title,role_code INTO v_job_title,v_role_code
+  FROM public.business_memberships
+  WHERE business_id=NEW.business_id AND user_id=NEW.user_id;
   v_code := CASE
-    WHEN NEW.job_title IS NOT NULL THEN 'position_'||NEW.job_title
-    ELSE 'legacy_'||NEW.role_code
+    WHEN v_job_title IS NOT NULL THEN 'position_'||v_job_title
+    ELSE 'legacy_'||v_role_code
   END;
   SELECT id INTO v_role_id
   FROM public.business_access_roles
   WHERE business_id=NEW.business_id AND code=v_code AND is_active;
 
   IF v_role_id IS NULL THEN
-    v_code := 'legacy_'||NEW.role_code;
+    v_code := 'legacy_'||v_role_code;
     SELECT id INTO v_role_id
     FROM public.business_access_roles
     WHERE business_id=NEW.business_id AND code=v_code AND is_active;
@@ -177,4 +184,38 @@ END;
 $member_access_roles$;
 REVOKE ALL ON FUNCTION public.get_business_member_access_roles(uuid) FROM PUBLIC,anon;
 GRANT EXECUTE ON FUNCTION public.get_business_member_access_roles(uuid) TO authenticated;
+
+
+
+CREATE OR REPLACE FUNCTION public.member_role_denials(_business uuid)
+RETURNS TABLE(user_id uuid,permission text)
+LANGUAGE plpgsql
+STABLE
+SECURITY DEFINER
+SET search_path = public
+AS $effective_role_denials$
+BEGIN
+  IF COALESCE(public.business_role_rank(_business,auth.uid()),0)<80 THEN
+    RAISE EXCEPTION 'Administrator access is required' USING ERRCODE='42501';
+  END IF;
+  RETURN QUERY
+  SELECT m.user_id,p.permission
+  FROM public.business_memberships m
+  CROSS JOIN public.business_permission_catalog p
+  WHERE m.business_id=_business AND m.status='active'
+    AND NOT EXISTS (
+      SELECT 1
+      FROM public.business_member_access_roles a
+      JOIN public.business_access_roles r
+        ON r.business_id=a.business_id AND r.id=a.role_id AND r.is_active
+      JOIN public.business_access_role_permissions rp
+        ON rp.business_id=a.business_id AND rp.role_id=a.role_id
+      WHERE a.business_id=m.business_id AND a.user_id=m.user_id
+        AND rp.permission=p.permission
+    )
+  ORDER BY m.user_id,p.permission;
+END;
+$effective_role_denials$;
+REVOKE ALL ON FUNCTION public.member_role_denials(uuid) FROM PUBLIC,anon;
+GRANT EXECUTE ON FUNCTION public.member_role_denials(uuid) TO authenticated;
 
