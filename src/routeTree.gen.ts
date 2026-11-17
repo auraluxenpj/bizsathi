@@ -28,6 +28,7 @@ import { Route as AuthenticatedDashboardRouteImport } from './routes/_authentica
 import { Route as AuthenticatedExpenseReceiptsRouteImport } from './routes/_authenticated/expense-receipts'
 import { Route as AuthenticatedExpensesRouteImport } from './routes/_authenticated/expenses'
 import { Route as AuthenticatedHelpRouteImport } from './routes/_authenticated/help'
+import { Route as AuthenticatedHrmRouteImport } from './routes/_authenticated/hrm'
 import { Route as AuthenticatedInventoryRouteImport } from './routes/_authenticated/inventory'
 import { Route as AuthenticatedMembershipRouteImport } from './routes/_authenticated/membership'
 import { Route as AuthenticatedMoreRouteImport } from './routes/_authenticated/more'
@@ -144,6 +145,11 @@ const AuthenticatedHelpRoute = AuthenticatedHelpRouteImport.update({
   path: '/help',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedHrmRoute = AuthenticatedHrmRouteImport.update({
+  id: '/hrm',
+  path: '/hrm',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 const AuthenticatedInventoryRoute = AuthenticatedInventoryRouteImport.update({
   id: '/inventory',
   path: '/inventory',
@@ -247,6 +253,7 @@ export interface FileRoutesByFullPath {
   '/expense-receipts': typeof AuthenticatedExpenseReceiptsRoute
   '/expenses': typeof AuthenticatedExpensesRoute
   '/help': typeof AuthenticatedHelpRoute
+  '/hrm': typeof AuthenticatedHrmRoute
   '/inventory': typeof AuthenticatedInventoryRoute
   '/membership': typeof AuthenticatedMembershipRoute
   '/more': typeof AuthenticatedMoreRoute
@@ -321,6 +328,7 @@ export interface FileRoutesById {
   '/_authenticated/expense-receipts': typeof AuthenticatedExpenseReceiptsRoute
   '/_authenticated/expenses': typeof AuthenticatedExpensesRoute
   '/_authenticated/help': typeof AuthenticatedHelpRoute
+  '/_authenticated/hrm': typeof AuthenticatedHrmRoute
   '/_authenticated/inventory': typeof AuthenticatedInventoryRoute
   '/_authenticated/membership': typeof AuthenticatedMembershipRoute
   '/_authenticated/more': typeof AuthenticatedMoreRoute
@@ -359,6 +367,7 @@ export interface FileRouteTypes {
     | '/expense-receipts'
     | '/expenses'
     | '/help'
+    | '/hrm'
     | '/inventory'
     | '/membership'
     | '/more'
@@ -432,6 +441,7 @@ export interface FileRouteTypes {
     | '/_authenticated/expense-receipts'
     | '/_authenticated/expenses'
     | '/_authenticated/help'
+    | '/_authenticated/hrm'
     | '/_authenticated/inventory'
     | '/_authenticated/membership'
     | '/_authenticated/more'
@@ -594,6 +604,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedHelpRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/hrm': {
+      id: '/_authenticated/hrm'
+      path: '/hrm'
+      fullPath: '/hrm'
+      preLoaderRoute: typeof AuthenticatedHrmRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/inventory': {
       id: '/_authenticated/inventory'
       path: '/inventory'
@@ -723,6 +740,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedExpenseReceiptsRoute: typeof AuthenticatedExpenseReceiptsRoute
   AuthenticatedExpensesRoute: typeof AuthenticatedExpensesRoute
   AuthenticatedHelpRoute: typeof AuthenticatedHelpRoute
+  AuthenticatedHrmRoute: typeof AuthenticatedHrmRoute
   AuthenticatedInventoryRoute: typeof AuthenticatedInventoryRoute
   AuthenticatedMembershipRoute: typeof AuthenticatedMembershipRoute
   AuthenticatedMoreRoute: typeof AuthenticatedMoreRoute
@@ -755,6 +773,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedExpenseReceiptsRoute: AuthenticatedExpenseReceiptsRoute,
   AuthenticatedExpensesRoute: AuthenticatedExpensesRoute,
   AuthenticatedHelpRoute: AuthenticatedHelpRoute,
+  AuthenticatedHrmRoute: AuthenticatedHrmRoute,
   AuthenticatedInventoryRoute: AuthenticatedInventoryRoute,
   AuthenticatedMembershipRoute: AuthenticatedMembershipRoute,
   AuthenticatedMoreRoute: AuthenticatedMoreRoute,
