@@ -437,8 +437,8 @@ BEGIN
   IF auth.uid() IS NULL OR actor_rank IS NULL OR actor_rank<80 THEN
     RAISE EXCEPTION 'Administrator access is required' USING ERRCODE='42501';
   END IF;
-  IF _authority_rank IS NULL OR _authority_rank<1 OR _authority_rank>=80 OR _authority_rank>=actor_rank THEN
-    RAISE EXCEPTION 'Custom role authority must be below administrator authority' USING ERRCODE='42501';
+  IF _authority_rank IS DISTINCT FROM 1 THEN
+    RAISE EXCEPTION 'Custom permission roles cannot elevate business authority' USING ERRCODE='42501';
   END IF;
   IF _name IS NULL OR char_length(btrim(_name)) NOT BETWEEN 2 AND 80 THEN
     RAISE EXCEPTION 'Role name must contain 2 to 80 characters';
@@ -748,4 +748,77 @@ END;
 $update_business_access_role$;
 REVOKE ALL ON FUNCTION public.update_business_access_role(uuid,uuid,text,text,text[]) FROM PUBLIC,anon;
 GRANT EXECUTE ON FUNCTION public.update_business_access_role(uuid,uuid,text,text,text[]) TO authenticated;
+
+
+
+-- Security rank is the maximum of the legacy membership rank and assigned built-in
+-- access-role ranks. Custom permission bundles are always rank 1 and cannot elevate it.
+CREATE OR REPLACE FUNCTION public.business_role_rank(_business_id uuid,_user_id uuid DEFAULT auth.uid())
+RETURNS smallint
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = public
+AS $multi_role_rank$
+  SELECT CASE
+    WHEN public.platform_owner_check(_user_id) THEN
+      (SELECT 100::smallint FROM public.businesses b WHERE b.id=_business_id AND b.archived_at IS NULL)
+    ELSE (
+      SELECT GREATEST(r.rank,COALESCE(MAX(ar.authority_rank),0))::smallint
+      FROM public.business_memberships m
+      JOIN public.businesses b ON b.id=m.business_id AND b.archived_at IS NULL
+      JOIN public.roles r ON r.code=m.role_code
+      LEFT JOIN public.business_member_access_roles a
+        ON a.business_id=m.business_id AND a.user_id=m.user_id
+      LEFT JOIN public.business_access_roles ar
+        ON ar.business_id=a.business_id AND ar.id=a.role_id AND ar.is_active
+      WHERE m.business_id=_business_id AND m.user_id=_user_id
+        AND m.status='active' AND _user_id IS NOT NULL
+      GROUP BY r.rank
+    )
+  END
+$multi_role_rank$;
+REVOKE ALL ON FUNCTION public.business_role_rank(uuid,uuid) FROM PUBLIC,anon;
+GRANT EXECUTE ON FUNCTION public.business_role_rank(uuid,uuid) TO authenticated,service_role;
+
+CREATE OR REPLACE FUNCTION public.has_business_access_role(_business uuid,_role_code text)
+RETURNS boolean
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = public
+AS $has_business_access_role$
+  SELECT auth.uid() IS NOT NULL AND EXISTS (
+    SELECT 1
+    FROM public.business_member_access_roles a
+    JOIN public.business_access_roles r
+      ON r.business_id=a.business_id AND r.id=a.role_id AND r.is_active
+    JOIN public.business_memberships m
+      ON m.business_id=a.business_id AND m.user_id=a.user_id AND m.status='active'
+    WHERE a.business_id=_business AND a.user_id=auth.uid() AND r.code=_role_code
+  )
+$has_business_access_role$;
+REVOKE ALL ON FUNCTION public.has_business_access_role(uuid,text) FROM PUBLIC,anon;
+GRANT EXECUTE ON FUNCTION public.has_business_access_role(uuid,text) TO authenticated;
+
+CREATE OR REPLACE FUNCTION public.can_approve_inventory_count(_business_id uuid,_branch_id uuid)
+RETURNS boolean
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = public
+AS $multi_role_count_approval$
+  SELECT auth.uid() IS NOT NULL
+    AND public.can_access_branch(_business_id,_branch_id)
+    AND (
+      public.has_business_role(_business_id,'admin')
+      OR (
+        (public.has_business_access_role(_business_id,'position_branch_manager')
+         OR public.has_business_access_role(_business_id,'legacy_branch_manager'))
+        AND public.has_permission(_business_id,'stock.edit')
+      )
+    )
+$multi_role_count_approval$;
+REVOKE ALL ON FUNCTION public.can_approve_inventory_count(uuid,uuid) FROM PUBLIC,anon;
+GRANT EXECUTE ON FUNCTION public.can_approve_inventory_count(uuid,uuid) TO authenticated,service_role;
 
