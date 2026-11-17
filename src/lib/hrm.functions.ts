@@ -33,8 +33,29 @@ export const getHrmWorkspace = createServerFn({ method: 'GET' })
       client.from('hr_attendance_policies').select('*').eq('business_id', data.businessId).maybeSingle(),
       client.from('hr_leave_balance_entries').select('*').eq('business_id', data.businessId).order('created_at', { ascending: false }).limit(500),
     ]);
-    const errors = [branches, members, employees, attendance, leaveTypes, leaveRequests, shifts, assignments, salaries, payrollRuns, payrollItems, attendancePolicy, leaveBalanceEntries].filter(x => x.error);
-    if (membership.error || !membership.data || admin.error || payroll.error || errors.length) throw new Error('HR workspace could not be loaded. Check that the HRM migration has been applied and your business access is active.');
+    if (membership.error) throw new Error('Your business access could not be verified. Please refresh and confirm that you still belong to this business.');
+    if (!membership.data) throw new Error('You do not have active access to this business.');
+    if (admin.error || payroll.error) throw new Error('Your HR role permissions could not be checked. Please ask the business owner to review your membership.');
+
+    const datasets = [
+      ['branches', branches], ['business members', members], ['employee records', employees],
+      ['attendance', attendance], ['leave types', leaveTypes], ['leave requests', leaveRequests],
+      ['shifts', shifts], ['shift assignments', assignments], ['salary structures', salaries],
+      ['payroll runs', payrollRuns], ['payroll items', payrollItems],
+      ['attendance policy', attendancePolicy], ['leave balance ledger', leaveBalanceEntries],
+    ] as const;
+    const failed = datasets.filter(([, result]) => result.error);
+    if (failed.length) {
+      const schemaFailures = failed.filter(([, result]) =>
+        ['42P01', '42703', 'PGRST204', 'PGRST205'].includes(result.error?.code ?? ''),
+      );
+      if (schemaFailures.length) {
+        const missing = schemaFailures.map(([name]) => name).join(', ');
+        throw new Error(`HRM database setup is incomplete (${missing}). Apply and verify BizSathi HRM migrations 0061–0064 before opening this workspace.`);
+      }
+      const names = failed.map(([name]) => name).join(', ');
+      throw new Error(`HRM data access failed for: ${names}. Ask the business owner to verify the HRM database permissions and your delegated access.`);
+    }
     let employeeRows = employees.data ?? [];
     if (payroll.data && !admin.data) {
       const { data: limitedEmployees, error: employeeListError } = await client.rpc('hr_list_payroll_employees', { _business_id: data.businessId });
