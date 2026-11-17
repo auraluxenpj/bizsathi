@@ -3,31 +3,32 @@ import { allowedActions, countOnDay, dashboardKind, entryDayCounts, localDay, op
 import { isBillingStaff } from './workspace-navigation';
 
 describe('dashboardKind', () => {
-  it('gives each staff job title its own desk', () => {
-    expect(dashboardKind('staff', 'sales_person')).toBe('cashier');
-    expect(dashboardKind('staff', 'stock_manager')).toBe('stock');
-    expect(dashboardKind('staff', 'entry_person')).toBe('entry');
+  const perms = (...allowed: string[]) => (permission: string) => allowed.includes(permission);
+
+  it('derives cashier, stock and entry workspaces from effective permissions', () => {
+    const cashier = perms('sales.create','sales.view','customers.create','customers.view','inventory.view','categories.view');
+    const stock = perms('inventory.view','inventory.edit','stock.edit');
+    const entry = perms('sales.create','purchases.create');
+    expect(dashboardKind(cashier)).toBe('cashier');
+    expect(dashboardKind(stock)).toBe('stock');
+    expect(dashboardKind(entry)).toBe('entry');
   });
 
-  it('keeps owners, administrators and finance roles on the business overview', () => {
-    for (const role of ['owner', 'admin', 'branch_manager', 'accountant', 'viewer']) expect(dashboardKind(role, null)).toBe('business');
-    expect(dashboardKind('owner', 'sales_person')).toBe('business');
-    expect(dashboardKind('accountant', 'stock_manager')).toBe('business');
+  it('keeps business administrators and finance roles on the business overview', () => {
+    expect(dashboardKind(perms('reports.view','reports.home_stats','sales.create'))).toBe('business');
+    expect(dashboardKind(perms('accounts.view','purchases.view'))).toBe('business');
+    expect(dashboardKind(perms('settings.edit','sales.create'))).toBe('business');
   });
 
-  it('falls back to the business overview for unknown or missing values', () => {
-    expect(dashboardKind(undefined, undefined)).toBe('business');
-    expect(dashboardKind(null, null)).toBe('business');
-    expect(dashboardKind('staff', null)).toBe('business');
-    expect(dashboardKind('staff', 'something_new')).toBe('business');
+  it('falls back to the business overview for unknown or missing permissions', () => {
+    expect(dashboardKind(perms())).toBe('business');
   });
 
-  it('agrees with the existing billing-staff rule used for navigation', () => {
-    for (const role of ['owner', 'admin', 'accountant', 'staff', undefined]) {
-      for (const title of ['sales_person', 'stock_manager', 'entry_person', null, undefined]) {
-        expect(dashboardKind(role, title) === 'cashier').toBe(isBillingStaff(role, title));
-      }
-    }
+  it('agrees with the permission-based billing-staff rule used for navigation', () => {
+    const cashier = perms('sales.create','sales.view','customers.create','customers.view','inventory.view','categories.view');
+    expect(dashboardKind(cashier) === 'cashier').toBe(isBillingStaff(cashier));
+    const accountant = perms('sales.create','purchases.view','accounts.view','reports.view');
+    expect(dashboardKind(accountant) === 'cashier').toBe(isBillingStaff(accountant));
   });
 });
 
