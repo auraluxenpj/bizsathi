@@ -30,7 +30,7 @@ type Assignment = {
   assignedAt: string;
 };
 
-export function BusinessAccessRolesPanel({ businessId, members }: { businessId: string; members: Member[] }) {
+export function BusinessAccessRolesPanel({ businessId, members, isOwner }: { businessId: string; members: Member[]; isOwner: boolean }) {
   const client = useQueryClient();
   const loadRoles = useServerFn(getBusinessAccessRoles);
   const loadAssignments = useServerFn(getBusinessMemberAccessRoles);
@@ -62,7 +62,7 @@ export function BusinessAccessRolesPanel({ businessId, members }: { businessId: 
 
   const editingRole = roles.find((r) => r.id === editingRoleId);
   const availableRoles = useMemo(() => roles.filter((r) =>
-    r.isActive && !r.code.startsWith('legacy_') && !assignments.some((a) => a.userId === selectedUserId && a.roleId === r.id)
+    r.isActive && !r.code.startsWith('legacy_') && r.authorityRank < (isOwner ? 100 : 80) && !assignments.some((a) => a.userId === selectedUserId && a.roleId === r.id)
   ), [roles, assignments, selectedUserId]);
 
   useEffect(() => {
@@ -134,7 +134,7 @@ export function BusinessAccessRolesPanel({ businessId, members }: { businessId: 
     <section className="space-y-6 border-b py-7" aria-labelledby="business-access-roles-heading">
       <div>
         <div className="mb-2 flex items-center gap-2"><ShieldCheck className="size-5 text-primary" /><h3 id="business-access-roles-heading" className="brand text-xl">Business access roles</h3></div>
-        <p className="text-sm text-muted-foreground">Create reusable permission bundles and assign more than one to an employee. Existing position permissions and individual restrictions remain in force; branch access is managed separately.</p>
+        <p className="text-sm text-muted-foreground">Create reusable permission bundles and assign more than one to an employee. Custom roles add permissions but cannot grant administrator authority. Explicit employee denials still win; branch access is managed separately.</p>
       </div>
 
       {(rolesQuery.isPending || assignmentsQuery.isPending) && <p role="status" className="text-sm text-muted-foreground">Loading access roles…</p>}
