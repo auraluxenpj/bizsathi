@@ -5,7 +5,7 @@ import { GitBranch, ShieldCheck, Users, UserPlus, Ban, ClipboardList } from 'luc
 import { Button } from '@/components/ui/button';
 import { RolePermissions } from '@/components/role-permissions';
 import { deniedForTitle, jobTitles, type JobTitle } from '@/lib/job-titles';
-import { deniedForRole } from '@/lib/permissions';
+import { setBranchAccess } from '@/lib/business.functions';
 import { normalizeVerifiedNepalMobile } from '@/lib/login-identifier';
 import {
   createTeamInvitation,
@@ -80,6 +80,7 @@ export function TeamAccessPanel({
   const grantFn = useServerFn(grantBranchDelegation);
   const revokeGrantFn = useServerFn(revokeBranchDelegation);
   const revokeInviteFn = useServerFn(revokeTeamInvitation);
+  const setBranchAccessFn = useServerFn(setBranchAccess);
 
   const invitations = useQuery({
     queryKey: ['team-invitations', businessId],
@@ -104,7 +105,6 @@ export function TeamAccessPanel({
   const [inviteeEmail, setInviteeEmail] = useState('');
   const [inviteeMobile, setInviteeMobile] = useState('');
   const [expiryDays, setExpiryDays] = useState(7);
-  const [roleCode, setRoleCode] = useState('staff');
   const [jobTitle, setJobTitle] = useState<JobTitle>('sales_person');
   const [label, setLabel] = useState('');
   const [inviteLink, setInviteLink] = useState('');
@@ -119,7 +119,7 @@ export function TeamAccessPanel({
   const maxAllowedDays = currentGrant?.max_invite_days ?? 30;
   const effectiveExpiryDays = Math.min(expiryDays, maxAllowedDays);
   const inviteMobileValid = Boolean(normalizeVerifiedNepalMobile(inviteeMobile));
-  const availableTitles = titleByRole[roleCode] ?? [];
+  const availableTitles = allowedInviteRoles.flatMap((role) => titleByRole[role] ?? []);
   const eligibleManagers = members.filter((m) =>
     m.status === 'active' && (m.job_title === 'branch_manager' || m.job_title === 'manager') &&
     branchAccess.some((g) => g.user_id === m.user_id && g.branch_id === selectedBranchId));
@@ -133,9 +133,9 @@ export function TeamAccessPanel({
 
   const createInvite = useMutation({
     mutationFn: () => createInviteFn({ data: {
-      businessId, branchId: selectedBranchId, role: roleCode as 'admin' | 'branch_manager' | 'accountant' | 'staff' | 'viewer', inviteeEmail, inviteeMobile,
+      businessId, branchId: selectedBranchId, role: jobTitles[jobTitle].base, inviteeEmail, inviteeMobile,
       jobTitle: availableTitles.includes(jobTitle) ? jobTitle : undefined,
-      deniedPermissions: availableTitles.includes(jobTitle) ? deniedForTitle(jobTitle) : deniedForRole(roleCode),
+      deniedPermissions: availableTitles.includes(jobTitle) ? deniedForTitle(jobTitle) : [],
       expiresInHours: effectiveExpiryDays * 24, maxUses: 1, label: label || undefined,
     } }),
     onSuccess: (result) => {
@@ -163,6 +163,11 @@ export function TeamAccessPanel({
     onSuccess: () => { setMessage('Delegation revoked.'); refresh(); },
     onError: () => setMessage('Delegation could not be revoked.'),
   });
+  const branchAccessMutation = useMutation({
+    mutationFn: (v: { userId: string; branchId: string; allowed: boolean }) => setBranchAccessFn({ data: { businessId, userId: v.userId, branchId: v.branchId, allowed: v.allowed } }),
+    onSuccess: () => { setMessage('Employee branch access updated.'); void client.invalidateQueries({ queryKey: ['business-access', businessId] }); },
+    onError: (error) => setMessage(error instanceof Error ? error.message : 'Branch access could not be changed.'),
+  });
   const revokeInvite = useMutation({
     mutationFn: (invitationId: string) => revokeInviteFn({ data: { invitationId } }),
     onSuccess: () => { setMessage('Invitation revoked.'); setInviteLink(''); refresh(); },
@@ -171,32 +176,15 @@ export function TeamAccessPanel({
 
   return (
     <section className="space-y-7 border-b py-7" aria-labelledby="team-access-heading">
-      <details name="team-access-sections" className="rounded-xl border p-4">
-        <summary className="flex cursor-pointer list-none items-center justify-between gap-3 [&::-webkit-details-marker]:hidden">
-          <div>
-            <div className="flex items-center gap-2 text-primary"><ShieldCheck className="size-4" /><p className="text-xs font-semibold tracking-wide">TEAM ACCESS & DELEGATION</p></div>
-            <h3 id="team-access-heading" className="brand mt-2 text-xl">Role hierarchy</h3>
-            <p className="mt-1 text-sm text-muted-foreground">Nine role and access types · Rank defines delegation ceilings</p>
-          </div>
-          <span aria-hidden="true" className="text-xl text-muted-foreground">⌄</span>
-        </summary>
-        <p className="mt-4 max-w-3xl text-sm text-muted-foreground">Rank sets the maximum authority a role may delegate. Actual access is controlled by security permissions and branch assignments.</p>
-      <div className="mx-auto mt-4 grid max-w-5xl gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        {hierarchy.map((item, index) => (
-          <article key={item.title} className={`rounded-xl border p-4 ${item.tone} ${index === 0 ? 'sm:col-span-2 lg:col-span-4 lg:mx-auto lg:w-1/2' : ''}`}>
-            <div className="flex items-center justify-between gap-2">
-              <h4 className="font-semibold">{item.title}</h4>
-              <span className="rounded-full bg-background px-2 py-1 text-xs font-semibold tabular-nums">Rank {item.rank}</span>
-            </div>
-            <p className="mt-2 text-xs leading-relaxed text-muted-foreground">{item.detail}</p>
-          </article>
-        ))}
-      </div>
-      </details>
+      <section className="rounded-xl border p-4 md:p-5">
+        <div className="mb-3 flex items-center gap-2"><Users className="size-4 text-primary" /><h3 className="font-semibold">Employees & branch access</h3></div>
+        <p className="mb-4 text-sm text-muted-foreground">Assign each employee to one or more branches. Their position controls permissions in every assigned branch.</p>
+        {members.length ? <div className="overflow-x-auto"><table className="w-full min-w-[640px] text-left text-sm"><thead><tr className="border-b text-xs text-muted-foreground"><th className="py-2 pr-4 font-medium">Employee</th><th className="py-2 pr-4 font-medium">Position</th>{branches.map((b) => <th key={b.id} className="px-3 py-2 text-center font-medium">{b.name}</th>)}</tr></thead><tbody className="divide-y">{members.map((m) => <tr key={m.user_id}><td className="py-3 pr-4 font-medium">{m.profiles?.full_name || m.user_id.slice(0,8)}</td><td className="py-3 pr-4">{jobTitles[(m.job_title ?? '') as JobTitle]?.label ?? 'Position not assigned'}</td>{branches.map((b) => { const checked=branchAccess.some((x) => x.user_id===m.user_id && x.branch_id===b.id); const protectedMember=m.user_id===userId || (roleRank[m.role_code] ?? 100)>=(isOwner?100:80); return <td key={b.id} className="px-3 py-3 text-center"><input aria-label={`Grant ${b.name} access to ${m.profiles?.full_name || 'employee'}`} type="checkbox" checked={checked} disabled={!isAdmin || protectedMember || branchAccessMutation.isPending} onChange={(e) => branchAccessMutation.mutate({userId:m.user_id,branchId:b.id,allowed:e.target.checked})} /></td>; })}</tr>)}</tbody></table></div> : <p className="text-sm text-muted-foreground">No employees have joined this business yet.</p>}
+      </section>
 
       <div className="grid gap-5 xl:grid-cols-[1fr_1fr]">
-        <details name="team-access-sections" className="rounded-xl border p-4 md:p-5">
-          <summary className="flex cursor-pointer list-none items-center justify-between gap-3 font-semibold [&::-webkit-details-marker]:hidden"><span className="flex items-center gap-2"><GitBranch className="size-4 text-primary" />Branch delegation</span><span className="text-xs font-normal text-muted-foreground">Branch-scoped hiring authority</span></summary>
+        <section className="rounded-xl border p-4 md:p-5">
+          <div className="flex items-center justify-between gap-3 font-semibold"><span className="flex items-center gap-2"><GitBranch className="size-4 text-primary" />Branch delegation</span><span className="text-xs font-normal text-muted-foreground">Branch-scoped hiring authority</span></div>
           <div className="mt-4">
           <p className="mb-4 text-sm text-muted-foreground">Administrators can assign a Branch Manager to a branch and delegate only lower-ranked team roles.</p>
           <label className="mb-3 block text-sm">Branch
@@ -233,7 +221,7 @@ export function TeamAccessPanel({
             </div>
           ))}
           </div>
-        </details>
+        </section>
         <details name="team-access-sections" className="rounded-xl border p-4 md:p-5">
           <summary className="flex cursor-pointer list-none items-center justify-between gap-3 font-semibold [&::-webkit-details-marker]:hidden"><span className="flex items-center gap-2"><UserPlus className="size-4 text-primary" />Invite team member</span><span className="text-xs font-normal text-muted-foreground">Create a secure, branch-locked invitation</span></summary>
           <div className="mt-4">
@@ -241,11 +229,6 @@ export function TeamAccessPanel({
           <label className="mb-3 block text-sm">Branch
             <select className="mt-1 h-10 w-full rounded-md border bg-background px-3" value={selectedBranchId} onChange={(e) => setBranchId(e.target.value)} disabled={!branches.length}>
               {branches.map((b) => <option key={b.id} value={b.id}>{b.name} ({b.code})</option>)}
-            </select>
-          </label>
-          <label className="mb-3 block text-sm">Role
-            <select className="mt-1 h-10 w-full rounded-md border bg-background px-3" value={roleCode} onChange={(e) => { setRoleCode(e.target.value); setJobTitle((titleByRole[e.target.value] ?? [])[0] ?? 'sales_person'); }}>
-              {allowedInviteRoles.map((r) => <option key={r} value={r}>{r === 'admin' ? 'Administrator / Partner' : r === 'branch_manager' ? 'Branch Manager' : r === 'accountant' ? 'Accountant' : r === 'staff' ? 'Operational Team' : 'Viewer'}</option>)}
             </select>
           </label>
           {availableTitles.length > 0 && <label className="mb-3 block text-sm">Position
@@ -329,10 +312,10 @@ export function TeamAccessPanel({
         </div>
       </details>
       <details name="team-access-sections" className="rounded-xl border p-4 md:p-5">
-        <summary className="flex cursor-pointer list-none items-center justify-between gap-3 font-semibold [&::-webkit-details-marker]:hidden"><span className="flex items-center gap-2"><ShieldCheck className="size-4 text-primary" />Role permissions</span><span className="text-xs font-normal text-muted-foreground">Review and configure access by role</span></summary>
+        <summary className="flex cursor-pointer list-none items-center justify-between gap-3 font-semibold [&::-webkit-details-marker]:hidden"><span className="flex items-center gap-2"><ShieldCheck className="size-4 text-primary" />Position permissions</span><span className="text-xs font-normal text-muted-foreground">Configure the standard access for each position</span></summary>
         <div className="mt-4"><RolePermissions businessId={businessId} isOwner={isOwner} /></div>
       </details>
-      <div className="flex items-start gap-2 text-xs text-muted-foreground"><ShieldCheck className="mt-0.5 size-4 shrink-0" /><p>Role titles describe the job. Rank and server-enforced permissions determine authority. Branch access and delegation are separate grants; removing either stops further access.</p></div>
+      <div className="flex items-start gap-2 text-xs text-muted-foreground"><ShieldCheck className="mt-0.5 size-4 shrink-0" /><p>Each employee receives permissions from their position and data access from assigned branches. Security authority remains enforced by the database.</p></div>
     </section>
   );
 }
