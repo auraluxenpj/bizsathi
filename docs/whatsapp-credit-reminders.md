@@ -27,4 +27,4 @@ This branch introduces only the database foundation. It intentionally does not s
 
 ## Current state
 
-This migration creates opt-in fields, business schedule settings (disabled by default), and an auditable send-history table. It does not schedule jobs or expose a send endpoint. Do not mark the feature live until all remaining items are implemented and verified.
+Migration `0093_whatsapp_credit_reminder_foundation.sql` creates opt-in fields, business schedule settings (disabled by default), and an auditable send-history table. It follows the repository's existing `0092_branch_specific_catalogue_csv_upsert.sql` migration. It does not schedule jobs or expose a send endpoint. Do not mark the feature live until all remaining items are implemented and verified.
