@@ -31,7 +31,7 @@ describe('Team Access invitations', () => {
     render(<QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}><RouterProvider router={router} /></QueryClientProvider>);
 
     await screen.findByText('Invite team member');
-    await waitFor(() => expect(screen.getByRole('combobox', { name: 'Position' }).querySelectorAll('option').length).toBeGreaterThan(0));
+    await waitFor(() => expect(screen.getByRole('combobox', { name: 'HR position' }).querySelectorAll('option').length).toBeGreaterThan(0));
     fireEvent.change(screen.getByRole('combobox', { name: 'Position' }), { target: { value: 'accountant' } });
     fireEvent.change(screen.getByLabelText('Invitee email address'), { target: { value: 'staff@example.com' } });
     fireEvent.change(screen.getByLabelText('Invitee Nepal mobile number'), { target: { value: '9800000000' } });
@@ -41,7 +41,7 @@ describe('Team Access invitations', () => {
     expect((invite.mock.calls[0]![0] as { data: Record<string, unknown> }).data).toMatchObject({
       businessId: BIZ,
       branchId: BRANCH,
-      role: 'accountant',
+      role: 'staff',
       jobTitle: 'accountant',
       inviteeEmail: 'staff@example.com',
       inviteeMobile: '9800000000',
