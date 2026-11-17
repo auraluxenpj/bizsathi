@@ -27,6 +27,20 @@ export const hrmEmployeeInput = tenantInput.extend({
   emergencyContactName: z.string().trim().max(120).optional(),
   emergencyContactPhone: z.string().trim().max(30).optional(),
   address: z.string().trim().max(500).optional(), notes: z.string().trim().max(1000).optional(),
+  responsibilities: z.array(z.string().trim().min(2).max(100)).max(40).optional(),
+  exitDate: date.nullable().optional(), lastWorkingDate: date.nullable().optional(),
+  exitType: z.enum(['resignation','termination','contract_end','retirement','absconded','other']).nullable().optional(),
+  exitReason: z.string().trim().max(1000).optional(),
+  rehireEligible: z.boolean().default(true),
+  finalSettlementDate: date.nullable().optional(),
+}).superRefine((value, ctx) => {
+  if (value.employmentStatus === 'terminated') {
+    if (!value.exitDate) ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['exitDate'], message: 'Exit date is required for an exited employee' });
+    if (!value.lastWorkingDate) ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['lastWorkingDate'], message: 'Last working date is required' });
+    if (value.exitDate && value.lastWorkingDate && value.lastWorkingDate > value.exitDate) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['lastWorkingDate'], message: 'Last working date cannot be after the exit date' });
+    }
+  }
 });
 export const hrmEmployeeUpdateInput = hrmEmployeeInput;
 export const hrmClockInput = tenantInput.extend({ attendanceDate: date, direction: z.enum(['check_in','check_out']) });
@@ -85,3 +99,4 @@ export const hrmPayrollGenerateInput = tenantInput.extend({
   periodStart: date, periodEnd: date, periodLabel: z.string().trim().min(3).max(40),
 });
 export const hrmPayrollActionInput = z.object({ businessId: uuid, runId: uuid });
+export const hrmPayrollPaidInput = hrmPayrollActionInput.extend({ paidDate: date });
