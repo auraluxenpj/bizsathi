@@ -26,7 +26,8 @@ export const getCommerce=createServerFn({method:'GET'}).middleware([requireSupab
  const role=user.data.role_code;
  const jobTitle=user.data.job_title;
  const commerce={memberships,loyalty,redemptions,documents,payments,counters,journals};
- const scoped=role==='staff'&&jobTitle==='sales_person'?scopeCommerceForCashier(commerce,context.userId):commerce;
+ // The base Staff role is the POS-level role; scope its commerce history to the signed-in cashier.
+ const scoped=role==='staff'?scopeCommerceForCashier(commerce,context.userId):commerce;
  return{...scoped,periods:periods.data,settings:settings.data,business:business.data,userId:context.userId,role,jobTitle};
 });
 export const confirmDocument=createServerFn({method:'POST'}).middleware([requireSupabaseAuth]).inputValidator(storedDocumentInput).handler(async({data,context})=>{const r=await context.supabase.rpc('post_commerce_document',{_request:data});if(r.error)throw new Error(friendlyCommerceError(r.error.message)??'Document not confirmed. Check customer mobile, branch permissions, open period, stock, source quantities, payment amounts and counter access. Your request is retained for checking or retry.');return{id:r.data};});
