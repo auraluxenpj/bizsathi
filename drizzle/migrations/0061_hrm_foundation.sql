@@ -16,6 +16,22 @@ $$;
 REVOKE ALL ON FUNCTION public.hr_can_manage_payroll(uuid) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.hr_can_manage_payroll(uuid) TO authenticated;
 
+-- Keep the existing job-title permission templates aligned with the new HR screens.
+INSERT INTO public.job_title_denials(job_title, permission)
+SELECT jt.job_title, p.permission
+FROM (VALUES ('manager'),('accountant'),('branch_manager'),('sales_person'),('stock_manager'),('entry_person')) AS jt(job_title)
+CROSS JOIN (VALUES
+  ('hr.employees.create'),('hr.employees.edit'),('hr.attendance.create'),('hr.attendance.edit'),
+  ('hr.leave.approve'),('hr.shifts.manage')
+) AS p(permission)
+ON CONFLICT DO NOTHING;
+
+INSERT INTO public.job_title_denials(job_title, permission)
+SELECT jt.job_title, p.permission
+FROM (VALUES ('branch_manager'),('sales_person'),('stock_manager'),('entry_person')) AS jt(job_title)
+CROSS JOIN (VALUES ('hr.employees.view'),('hr.payroll.view'),('hr.payroll.manage'),('hr.payroll.approve')) AS p(permission)
+ON CONFLICT DO NOTHING;
+
 CREATE TABLE public.hr_employee_records (
   business_id uuid NOT NULL REFERENCES public.businesses(id) ON DELETE RESTRICT,
   user_id uuid NOT NULL,
@@ -182,9 +198,13 @@ REVOKE ALL ON public.hr_shift_assignments FROM anon;
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.hr_shift_assignments TO authenticated;
 CREATE POLICY hr_shift_assignments_read ON public.hr_shift_assignments FOR SELECT TO authenticated
   USING (public.hr_is_manager(business_id) OR user_id = auth.uid());
-CREATE POLICY hr_shift_assignments_manage ON public.hr_shift_assignments FOR ALL TO authenticated
-  USING (public.hr_is_manager(business_id))
+CREATE POLICY hr_shift_assignments_insert ON public.hr_shift_assignments FOR INSERT TO authenticated
   WITH CHECK (public.hr_is_manager(business_id) AND assigned_by = auth.uid());
+CREATE POLICY hr_shift_assignments_update ON public.hr_shift_assignments FOR UPDATE TO authenticated
+  USING (public.hr_is_manager(business_id))
+  WITH CHECK (public.hr_is_manager(business_id));
+CREATE POLICY hr_shift_assignments_delete ON public.hr_shift_assignments FOR DELETE TO authenticated
+  USING (public.hr_is_manager(business_id));
 
 -- Compensation data is deliberately isolated from the general employee directory.
 CREATE TABLE public.hr_salary_structures (
@@ -294,12 +314,16 @@ RETURNS uuid LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
 DECLARE
   v_run uuid;
   v_days integer;
+  v_expected integer;
+  v_generated integer;
 BEGIN
   IF NOT public.hr_can_manage_payroll(_business_id) OR _period_start IS NULL OR _period_end < _period_start
      OR char_length(btrim(_period_label)) NOT BETWEEN 3 AND 40 THEN
     RAISE EXCEPTION 'Not authorized or invalid payroll period' USING ERRCODE = '42501';
   END IF;
   v_days := (_period_end - _period_start) + 1;
+  SELECT count(*) INTO v_expected FROM public.hr_employee_records
+    WHERE business_id=_business_id AND employment_status IN ('active','on_leave') AND joining_date <= _period_end;
   INSERT INTO public.hr_payroll_runs(business_id,period_start,period_end,period_label,created_by)
   VALUES (_business_id,_period_start,_period_end,btrim(_period_label),auth.uid())
   RETURNING id INTO v_run;
@@ -316,14 +340,14 @@ BEGIN
     _period_label,_period_start,_period_end,
     s.tax_deduction,s.provident_fund,s.insurance_deduction,s.other_deduction,
     COALESCE(l.unpaid_days,0),
-    round((s.basic_salary+s.house_allowance+s.transport_allowance+s.other_allowance) * COALESCE(l.unpaid_days,0) / v_days,2),
+    round((s.basic_salary+s.house_allowance+s.transport_allowance+s.other_allowance) * LEAST(COALESCE(l.unpaid_days,0),v_days) / v_days,2),
     LEAST((s.basic_salary+s.house_allowance+s.transport_allowance+s.other_allowance),
       s.tax_deduction+s.provident_fund+s.insurance_deduction+s.other_deduction+
-      round((s.basic_salary+s.house_allowance+s.transport_allowance+s.other_allowance) * COALESCE(l.unpaid_days,0) / v_days,2)),
+      round((s.basic_salary+s.house_allowance+s.transport_allowance+s.other_allowance) * LEAST(COALESCE(l.unpaid_days,0),v_days) / v_days,2)),
     GREATEST((s.basic_salary+s.house_allowance+s.transport_allowance+s.other_allowance) -
       LEAST((s.basic_salary+s.house_allowance+s.transport_allowance+s.other_allowance),
       s.tax_deduction+s.provident_fund+s.insurance_deduction+s.other_deduction+
-      round((s.basic_salary+s.house_allowance+s.transport_allowance+s.other_allowance) * COALESCE(l.unpaid_days,0) / v_days,2)),0)
+      round((s.basic_salary+s.house_allowance+s.transport_allowance+s.other_allowance) * LEAST(COALESCE(l.unpaid_days,0),v_days) / v_days,2)),0)
   FROM public.hr_employee_records e
   JOIN public.profiles p ON p.id=e.user_id
   JOIN LATERAL (
@@ -343,6 +367,11 @@ BEGIN
   ) l ON true
   WHERE e.business_id=_business_id AND e.employment_status IN ('active','on_leave')
     AND e.joining_date <= _period_end;
+
+  SELECT count(*) INTO v_generated FROM public.hr_payroll_items WHERE payroll_run_id=v_run;
+  IF v_generated <> v_expected THEN
+    RAISE EXCEPTION 'Every active employee needs an effective salary structure before payroll can be generated';
+  END IF;
 
   UPDATE public.hr_payroll_runs r SET
     employee_count=(SELECT count(*) FROM public.hr_payroll_items i WHERE i.payroll_run_id=v_run),
