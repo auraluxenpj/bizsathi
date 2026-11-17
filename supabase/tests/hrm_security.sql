@@ -40,6 +40,7 @@ BEGIN
   INSERT INTO public.hr_attendance_policies(business_id,workday_minutes,unpaid_break_minutes,grace_minutes,overtime_after_minutes,overtime_multiplier,updated_by)
   VALUES (v_business_id,480,60,10,0,1.5,owner_id);
 
+  PERFORM set_config('request.jwt.claims',json_build_object('sub',owner_id,'role','authenticated')::text,true);
   INSERT INTO public.hr_leave_requests(
     business_id,user_id,leave_type_id,start_date,end_date,days,request_status,reviewed_by,reviewed_at
   ) VALUES (
