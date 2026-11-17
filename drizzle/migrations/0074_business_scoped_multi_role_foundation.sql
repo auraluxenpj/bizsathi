@@ -89,6 +89,18 @@ INSERT INTO public.business_permission_catalog(permission,module,action,label) V
   ('suppliers.view','suppliers','view','suppliers view')
 ON CONFLICT (permission) DO UPDATE SET module=EXCLUDED.module, action=EXCLUDED.action, label=EXCLUDED.label;
 
+-- Include any historical keys that may not yet appear in the current UI catalogue.
+INSERT INTO public.business_permission_catalog(permission,module,action,label)
+SELECT DISTINCT p.permission,split_part(p.permission,'.',1),
+       COALESCE(NULLIF(regexp_replace(p.permission,'^[^.]+\.',''),p.permission),'manage'),
+       initcap(replace(replace(p.permission,'.',' '),'_',' '))
+FROM (
+  SELECT permission FROM public.job_title_denials
+  UNION SELECT permission FROM public.member_permission_denials
+  UNION SELECT unnest(denied_permissions) FROM public.business_role_templates
+) p
+ON CONFLICT (permission) DO NOTHING;
+
 CREATE TABLE IF NOT EXISTS public.business_access_roles (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   business_id uuid NOT NULL REFERENCES public.businesses(id) ON DELETE RESTRICT,
@@ -260,6 +272,50 @@ FOR EACH ROW EXECUTE FUNCTION public.seed_business_access_roles_on_insert();
 
 -- Seed existing businesses before backfilling memberships.
 SELECT public.seed_business_access_roles(id) FROM public.businesses;
+
+
+CREATE OR REPLACE FUNCTION public.refresh_position_access_role_permissions()
+RETURNS trigger
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $
+DECLARE
+  v_business uuid := COALESCE(NEW.business_id,OLD.business_id);
+  v_title text := COALESCE(NEW.job_title,OLD.job_title);
+  v_role_id uuid;
+  v_denied text[];
+BEGIN
+  SELECT id INTO v_role_id
+  FROM public.business_access_roles
+  WHERE business_id=v_business AND code='position_'||v_title;
+  IF v_role_id IS NULL THEN RETURN COALESCE(NEW,OLD); END IF;
+
+  IF TG_OP='DELETE' THEN
+    SELECT COALESCE(array_agg(permission),ARRAY[]::text[]) INTO v_denied
+    FROM public.job_title_denials WHERE job_title=v_title;
+  ELSE
+    v_denied := NEW.denied_permissions;
+  END IF;
+
+  DELETE FROM public.business_access_role_permissions
+  WHERE business_id=v_business AND role_id=v_role_id;
+
+  INSERT INTO public.business_access_role_permissions(business_id,role_id,permission)
+  SELECT v_business,v_role_id,p.permission
+  FROM public.business_permission_catalog p
+  WHERE NOT (p.permission=ANY(COALESCE(v_denied,ARRAY[]::text[])))
+  ON CONFLICT DO NOTHING;
+
+  RETURN COALESCE(NEW,OLD);
+END;
+$;
+REVOKE ALL ON FUNCTION public.refresh_position_access_role_permissions() FROM PUBLIC,anon,authenticated;
+DROP TRIGGER IF EXISTS refresh_position_access_role_permissions ON public.business_role_templates;
+CREATE TRIGGER refresh_position_access_role_permissions
+AFTER INSERT OR UPDATE OR DELETE ON public.business_role_templates
+FOR EACH ROW EXECUTE FUNCTION public.refresh_position_access_role_permissions();
+
 
 CREATE OR REPLACE FUNCTION public.sync_default_business_access_role()
 RETURNS trigger
