@@ -2,7 +2,7 @@ import { createServerFn } from '@tanstack/react-start';
 import { z } from 'zod';
 import { requireSupabaseAuth } from '@/integrations/supabase/auth-middleware';
 import { tenantInput } from './business-schemas';
-import { catalogueInput, partyInput, stockInput, variantEditInput } from './inventory-schemas';
+import { catalogueInput, catalogueBranchImportInput, partyInput, stockInput, variantEditInput } from './inventory-schemas';
 import { googleSheetCatalogueInput } from './google-sheet-catalogue';
 export const fetchGoogleSheetCatalogue = createServerFn({method:'POST'}).middleware([requireSupabaseAuth]).inputValidator(googleSheetCatalogueInput).handler(async ({data,context})=>{
  const {data:member,error}=await context.supabase.rpc('is_business_member',{_business_id:data.businessId});
@@ -43,6 +43,15 @@ export const saveCatalogue = createServerFn({method:'POST'}).middleware([require
    if(stockError)skipped.push(r.sku);else opened++;}
  }
  return {count,opened,skipped};
+});
+export const importCatalogueBranchStock = createServerFn({method:'POST'}).middleware([requireSupabaseAuth]).inputValidator(catalogueBranchImportInput).handler(async ({data,context})=>{
+ const {data:result,error}=await context.supabase.rpc('import_catalogue_branch_stock',{
+  _business_id:data.businessId,
+  _branch_id:data.branchId,
+  _rows:data.rows.map(({opening_stock,...row})=>({...row,opening_stock})),
+ });
+ if(error) throw new Error(error.message.includes('different model code') ? error.message : 'CSV stock import failed. No rows were applied. Check branch access, duplicate SKUs, prices and quantities.');
+ return result as {inserted:number;updated:number;stock_adjusted:number;branch_id:string};
 });
 export const editVariant = createServerFn({method:'POST'}).middleware([requireSupabaseAuth]).inputValidator(variantEditInput).handler(async ({data,context})=>{
  const {data:allowed,error:accessError}=await context.supabase.rpc('has_business_role',{_business_id:data.businessId,_min_role:'admin'});
