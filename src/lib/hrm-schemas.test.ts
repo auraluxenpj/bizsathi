@@ -1,0 +1,56 @@
+import { describe, expect, it } from 'vitest';
+import {
+  hrmEmployeeInput, hrmAttendanceInput, hrmShiftInput, hrmSalaryInput, hrmPayrollGenerateInput,
+} from './hrm-schemas';
+import { rolePresets } from './permissions';
+import { jobTitles } from './job-titles';
+import { workspaceGroups } from './workspace-navigation';
+
+const businessId = '00000000-0000-4000-8000-000000000001';
+const userId = '00000000-0000-4000-8000-000000000002';
+
+describe('BizSathi HRM validation and access defaults', () => {
+  it('accepts an employee record linked to an existing business member', () => {
+    expect(hrmEmployeeInput.safeParse({
+      businessId, userId, employeeNumber: 'emp-0001', joiningDate: '2026-11-01',
+      employmentType: 'full_time', employmentStatus: 'active',
+    }).success).toBe(true);
+  });
+
+  it('rejects invalid employee dates and employee numbers', () => {
+    expect(hrmEmployeeInput.safeParse({
+      businessId, userId, employeeNumber: 'x', joiningDate: '01-11-2026',
+    }).success).toBe(false);
+  });
+
+  it('accepts valid attendance statuses and rejects unsupported values', () => {
+    const base = { businessId, userId, attendanceDate: '2026-11-17', attendanceStatus: 'present' };
+    expect(hrmAttendanceInput.safeParse(base).success).toBe(true);
+    expect(hrmAttendanceInput.safeParse({ ...base, attendanceStatus: 'remote' }).success).toBe(false);
+  });
+
+  it('validates shift clock values and non-negative compensation', () => {
+    expect(hrmShiftInput.safeParse({ businessId, name: 'Morning', startTime: '09:00', endTime: '18:00', breakMinutes: 60 }).success).toBe(true);
+    expect(hrmShiftInput.safeParse({ businessId, name: 'Morning', startTime: '9am', endTime: '18:00', breakMinutes: 60 }).success).toBe(false);
+    expect(hrmSalaryInput.safeParse({
+      businessId, userId, effectiveFrom: '2026-11-01', basicSalary: -1, houseAllowance: 0,
+      transportAllowance: 0, otherAllowance: 0, taxDeduction: 0, providentFund: 0,
+      insuranceDeduction: 0, otherDeduction: 0,
+    }).success).toBe(false);
+  });
+
+  it('requires a meaningful payroll period label', () => {
+    expect(hrmPayrollGenerateInput.safeParse({ businessId, periodStart: '2026-11-01', periodEnd: '2026-11-30', periodLabel: 'November 2026' }).success).toBe(true);
+    expect(hrmPayrollGenerateInput.safeParse({ businessId, periodStart: '2026-11-01', periodEnd: '2026-11-30', periodLabel: 'x' }).success).toBe(false);
+  });
+
+  it('grants payroll functions to accountant presets but not ordinary sales staff', () => {
+    expect(rolePresets.accountant?.allowed).toContain('hr.payroll.manage');
+    expect(jobTitles.sales_person.allowed).toContain('hr.self.view');
+    expect(jobTitles.sales_person.allowed).not.toContain('hr.payroll.view');
+  });
+
+  it('adds HRM to the existing collapsible workspace navigation', () => {
+    expect(workspaceGroups.some(group => group.name === 'People & HR' && group.items.some(item => item.to === '/hrm'))).toBe(true);
+  });
+});
