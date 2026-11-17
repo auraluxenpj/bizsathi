@@ -336,18 +336,27 @@ BEGIN
   SELECT
     e.business_id,v_run,e.user_id,e.employee_number,COALESCE(NULLIF(p.full_name,''),'Employee'),
     s.basic_salary,(s.house_allowance+s.transport_allowance+s.other_allowance),
-    (s.basic_salary+s.house_allowance+s.transport_allowance+s.other_allowance),
+    round((s.basic_salary+s.house_allowance+s.transport_allowance+s.other_allowance) * calc.eligible_days / v_days,2),
     _period_label,_period_start,_period_end,
-    s.tax_deduction,s.provident_fund,s.insurance_deduction,s.other_deduction,
-    COALESCE(l.unpaid_days,0),
-    round((s.basic_salary+s.house_allowance+s.transport_allowance+s.other_allowance) * LEAST(COALESCE(l.unpaid_days,0),v_days) / v_days,2),
-    LEAST((s.basic_salary+s.house_allowance+s.transport_allowance+s.other_allowance),
-      s.tax_deduction+s.provident_fund+s.insurance_deduction+s.other_deduction+
-      round((s.basic_salary+s.house_allowance+s.transport_allowance+s.other_allowance) * LEAST(COALESCE(l.unpaid_days,0),v_days) / v_days,2)),
-    GREATEST((s.basic_salary+s.house_allowance+s.transport_allowance+s.other_allowance) -
-      LEAST((s.basic_salary+s.house_allowance+s.transport_allowance+s.other_allowance),
-      s.tax_deduction+s.provident_fund+s.insurance_deduction+s.other_deduction+
-      round((s.basic_salary+s.house_allowance+s.transport_allowance+s.other_allowance) * LEAST(COALESCE(l.unpaid_days,0),v_days) / v_days,2)),0)
+    round(s.tax_deduction * calc.eligible_days / v_days,2),
+    round(s.provident_fund * calc.eligible_days / v_days,2),
+    round(s.insurance_deduction * calc.eligible_days / v_days,2),
+    round(s.other_deduction * calc.eligible_days / v_days,2),
+    calc.unpaid_days,
+    round((s.basic_salary+s.house_allowance+s.transport_allowance+s.other_allowance) * calc.unpaid_days / v_days,2),
+    LEAST(
+      round((s.basic_salary+s.house_allowance+s.transport_allowance+s.other_allowance) * calc.eligible_days / v_days,2),
+      round((s.tax_deduction+s.provident_fund+s.insurance_deduction+s.other_deduction) * calc.eligible_days / v_days,2)
+        + round((s.basic_salary+s.house_allowance+s.transport_allowance+s.other_allowance) * calc.unpaid_days / v_days,2)
+    ),
+    GREATEST(
+      round((s.basic_salary+s.house_allowance+s.transport_allowance+s.other_allowance) * calc.eligible_days / v_days,2)
+      - LEAST(
+        round((s.basic_salary+s.house_allowance+s.transport_allowance+s.other_allowance) * calc.eligible_days / v_days,2),
+        round((s.tax_deduction+s.provident_fund+s.insurance_deduction+s.other_deduction) * calc.eligible_days / v_days,2)
+          + round((s.basic_salary+s.house_allowance+s.transport_allowance+s.other_allowance) * calc.unpaid_days / v_days,2)
+      ),0
+    )
   FROM public.hr_employee_records e
   JOIN public.profiles p ON p.id=e.user_id
   JOIN LATERAL (
@@ -365,6 +374,10 @@ BEGIN
     WHERE lr.business_id=e.business_id AND lr.user_id=e.user_id AND lr.request_status='approved'
       AND lt.is_paid=false AND lr.start_date <= _period_end AND lr.end_date >= _period_start
   ) l ON true
+  CROSS JOIN LATERAL (
+    SELECT GREATEST(0, (_period_end - GREATEST(e.joining_date,_period_start) + 1))::numeric AS eligible_days,
+      LEAST(GREATEST(0, (_period_end - GREATEST(e.joining_date,_period_start) + 1))::numeric, COALESCE(l.unpaid_days,0)) AS unpaid_days
+  ) calc
   WHERE e.business_id=_business_id AND e.employment_status IN ('active','on_leave')
     AND e.joining_date <= _period_end;
 
