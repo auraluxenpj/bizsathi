@@ -5,7 +5,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import {
   hrmWorkspaceInput, hrmEmployeeInput, hrmEmployeeUpdateInput, hrmAttendanceInput, hrmClockInput, hrmLeaveTypeInput, hrmAttendancePolicyInput,
   hrmLeaveRequestInput, hrmLeaveReviewInput, hrmLeaveBalanceAdjustmentInput, hrmShiftInput, hrmShiftAssignmentInput,
-  hrmSalaryInput, hrmPayrollGenerateInput, hrmPayrollActionInput, hrmReportInput,
+  hrmSalaryInput, hrmPayrollGenerateInput, hrmPayrollActionInput, hrmPayrollPaidInput, hrmReportInput,
 } from './hrm-schemas';
 
 // The generated Supabase type file is intentionally not edited for feature-only tables.
@@ -208,7 +208,15 @@ export const updateHrmEmployee = createServerFn({ method: 'POST' })
       confirmation_date: data.confirmationDate ?? null, employment_status: data.employmentStatus,
       emergency_contact_name: data.emergencyContactName || null,
       emergency_contact_phone: data.emergencyContactPhone || null,
-      address: data.address || null, notes: data.notes || null, updated_at: new Date().toISOString(),
+      address: data.address || null, notes: data.notes || null,
+      responsibilities: data.responsibilities ?? [],
+      exit_date: data.employmentStatus === 'terminated' ? data.exitDate ?? null : null,
+      last_working_date: data.employmentStatus === 'terminated' ? data.lastWorkingDate ?? null : null,
+      exit_type: data.employmentStatus === 'terminated' ? data.exitType ?? null : null,
+      exit_reason: data.employmentStatus === 'terminated' ? data.exitReason || null : null,
+      rehire_eligible: data.rehireEligible ?? true,
+      final_settlement_date: data.finalSettlementDate ?? null,
+      updated_at: new Date().toISOString(),
     }).eq('business_id', data.businessId).eq('user_id', data.userId).select('user_id').maybeSingle();
     if (error || !row) throw new Error('Employee record could not be updated. Check employee number and administrator access.');
     return { ok: true };
@@ -349,9 +357,9 @@ export const approveHrmPayroll = createServerFn({ method: 'POST' })
   });
 
 export const markHrmPayrollPaid = createServerFn({ method: 'POST' })
-  .middleware([requireSupabaseAuth]).inputValidator(hrmPayrollActionInput)
+  .middleware([requireSupabaseAuth]).inputValidator(hrmPayrollPaidInput)
   .handler(async ({ data, context }) => {
-    const { error } = await db(context.supabase).rpc('hr_mark_payroll_paid', { _run_id: data.runId });
-    if (error) throw new Error('Only an approved payroll can be marked paid by a business administrator.');
+    const { error } = await db(context.supabase).rpc('hr_mark_payroll_paid', { _run_id: data.runId, _paid_date: data.paidDate });
+    if (error) throw new Error('Only an approved payroll can be marked paid by a business administrator. Choose a valid payment date.');
     return { ok: true };
   });
