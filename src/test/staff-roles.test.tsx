@@ -32,7 +32,7 @@ describe('Team Access invitations', () => {
 
     await screen.findByText('Invite team member');
     await waitFor(() => expect(screen.getByRole('combobox', { name: 'Position' }).querySelectorAll('option').length).toBeGreaterThan(0));
-    fireEvent.change(screen.getByLabelText('Position'), { target: { value: 'accountant' } });
+    fireEvent.change(screen.getByRole('combobox', { name: 'Position' }), { target: { value: 'accountant' } });
     fireEvent.change(screen.getByLabelText('Invitee email address'), { target: { value: 'staff@example.com' } });
     fireEvent.change(screen.getByLabelText('Invitee Nepal mobile number'), { target: { value: '9800000000' } });
     fireEvent.click(screen.getByRole('button', { name: /Create invitation link/ }));
