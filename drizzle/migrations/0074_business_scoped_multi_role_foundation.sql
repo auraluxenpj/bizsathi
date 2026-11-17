@@ -169,20 +169,20 @@ SECURITY DEFINER
 SET search_path = public
 AS $$
 DECLARE
-  r record;
+  v_item record;
 BEGIN
   IF NOT EXISTS (SELECT 1 FROM public.businesses WHERE id=_business_id) THEN
     RAISE EXCEPTION 'Business unavailable';
   END IF;
 
   INSERT INTO public.business_access_roles(business_id,code,name,description,authority_rank,is_system)
-  SELECT _business_id,'legacy_'||r.code,r.name,
+  SELECT _business_id,'legacy_'||role_row.code,role_row.name,
          'Compatibility role migrated from the existing business membership role.',
-         r.rank,true
-  FROM public.roles r
+         role_row.rank,true
+  FROM public.roles role_row
   ON CONFLICT (business_id,code) DO NOTHING;
 
-  FOR r IN
+  FOR v_item IN
     SELECT x.job_title, public.job_title_role(x.job_title) AS base_role,
            CASE x.job_title
              WHEN 'partner' THEN 'Partner'
@@ -197,11 +197,11 @@ BEGIN
                  ('sales_person'),('stock_manager'),('entry_person')) AS x(job_title)
   LOOP
     INSERT INTO public.business_access_roles(business_id,code,name,description,authority_rank,is_system)
-    SELECT _business_id,'position_'||r.job_title,r.role_name,
+    SELECT _business_id,'position_'||v_item.job_title,v_item.role_name,
            'Compatibility role seeded from the existing position permission template.',
            gr.rank,true
     FROM public.roles gr
-    WHERE gr.code=r.base_role
+    WHERE gr.code=v_item.base_role
     ON CONFLICT (business_id,code) DO NOTHING;
   END LOOP;
 
@@ -225,9 +225,9 @@ BEGIN
     WHERE br.business_id=_business_id AND br.code LIKE 'legacy_%'
   LOOP
     INSERT INTO public.business_access_role_permissions(business_id,role_id,permission)
-    SELECT _business_id,r.id,p.permission
+    SELECT _business_id,v_item.id,p.permission
     FROM public.business_permission_catalog p
-    WHERE NOT (p.permission = ANY(r.denied))
+    WHERE NOT (p.permission = ANY(v_item.denied))
     ON CONFLICT DO NOTHING;
   END LOOP;
 
