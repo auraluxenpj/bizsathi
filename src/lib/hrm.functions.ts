@@ -93,8 +93,8 @@ export const getHrmReports = createServerFn({ method: 'GET' })
       if (ids.length) {
         const { data: profiles, error: profileError } = await client.from('profiles').select('id,full_name').in('id', ids);
         if (profileError) throw new Error('Employee report names could not be loaded.');
-        const names = new Map((profiles ?? []).map((profile: any) => [profile.id, profile.full_name ?? 'Employee']));
-        employeeRows = employeeRows.map(row => ({ ...row, full_name: names.get(row.user_id) ?? 'Employee' }));
+        const names = Object.fromEntries((profiles ?? []).map((profile: any) => [profile.id, profile.full_name ?? 'Employee']));
+        employeeRows = employeeRows.map(row => ({ ...row, full_name: names[row.user_id] ?? 'Employee' }));
       }
     } else if (canPayroll) {
       const { data: rows, error } = await client.rpc('hr_list_payroll_employees', { _business_id: data.businessId });
