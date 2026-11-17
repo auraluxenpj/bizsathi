@@ -369,7 +369,7 @@ RETURNS boolean LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public AS
     JOIN public.hr_payroll_items i ON i.business_id=r.business_id AND i.payroll_run_id=r.id
     WHERE r.business_id=_business_id AND r.id=_run_id AND i.user_id=auth.uid()
       AND r.run_status IN ('approved','paid'))
-$;
+$$;
 REVOKE ALL ON FUNCTION public.hr_can_read_own_payslip(uuid,uuid) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.hr_can_read_own_payslip(uuid,uuid) TO authenticated;
 CREATE POLICY hr_payroll_items_read ON public.hr_payroll_items FOR SELECT TO authenticated
