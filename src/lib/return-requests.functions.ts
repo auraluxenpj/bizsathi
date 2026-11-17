@@ -14,7 +14,7 @@ const requestInput=z.object({
 });
 const reviewInput=z.object({
   requestId:id,decision:z.enum(['approve','reject']),reason:z.string().trim().max(500).optional(),
-  periodId:id.optional(),date:z.string().regex(/^\\d{4}-\\d{2}-\\d{2}$/).optional(),
+  periodId:id.optional(),date:z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
 });
 
 export const listSaleReturnRequests=createServerFn({method:'GET'})
