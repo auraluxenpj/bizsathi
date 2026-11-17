@@ -128,9 +128,7 @@ BEGIN
     net_total=COALESCE((SELECT sum(i.net_pay) FROM public.hr_payroll_items i WHERE i.payroll_run_id=v_run),0)
   WHERE r.id=v_run;
   RETURN v_run;
-END; $function$
-
-
+END; $function$;
 
 -- Record the actual payroll payment date (Nepal local time) instead of silently using today's date.
 DROP FUNCTION IF EXISTS public.hr_mark_payroll_paid(uuid);
