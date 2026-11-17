@@ -93,13 +93,13 @@ BEGIN
 
   SET LOCAL ROLE authenticated;
   PERFORM set_config('request.jwt.claims',json_build_object('sub',owner_id,'role','authenticated')::text,true);
-  PERFORM public.set_member_permissions(v_business_id,staff_id,ARRAY['purchases.view']);
+  PERFORM public.set_member_permissions(v_business_id,staff_id,ARRAY['purchases.view','hr.self.view']);
   PERFORM public.set_member_job_title(v_business_id,staff_id,'stock_manager');
   RESET ROLE;
   SELECT id INTO branch_manager_role_id FROM public.business_access_roles
-  WHERE business_id=v_business_id AND code='position_branch_manager';
+  WHERE business_id=v_business_id AND code='legacy_branch_manager';
   SELECT id INTO accountant_role_id FROM public.business_access_roles
-  WHERE business_id=v_business_id AND code='position_accountant';
+  WHERE business_id=v_business_id AND code='legacy_accountant';
   SET LOCAL ROLE authenticated;
   PERFORM set_config('request.jwt.claims',json_build_object('sub',owner_id,'role','authenticated')::text,true);
   PERFORM public.assign_business_access_role(v_business_id,staff_id,branch_manager_role_id);
