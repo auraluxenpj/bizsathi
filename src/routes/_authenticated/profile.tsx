@@ -7,7 +7,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { pageHead } from '@/lib/head';
 
 export const Route = createFileRoute('/_authenticated/profile')({
-  head: () => pageHead('Account profile', 'Manage your BizSathi account profile and login security.'),
+  head: () => pageHead('Account profile', 'Manage your Sutra account profile and login security.'),
   component: Profile,
 });
 
@@ -167,7 +167,7 @@ function Profile() {
       <div className="mb-8">
         <p className="text-xs font-semibold uppercase tracking-[0.16em] text-primary">Account settings</p>
         <h1 className="brand mt-2 text-3xl font-semibold sm:text-4xl">Profile & security</h1>
-        <p className="mt-2 text-sm text-muted-foreground">Manage your personal details and protect your BizSathi sign-in.</p>
+        <p className="mt-2 text-sm text-muted-foreground">Manage your personal details and protect your Sutra sign-in.</p>
       </div>
 
       {loading ? <p role="status" className="py-10 text-sm text-muted-foreground">Loading account details…</p> : (

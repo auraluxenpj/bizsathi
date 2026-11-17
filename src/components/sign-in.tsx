@@ -75,7 +75,7 @@ export function SignIn() {
   const title = mode === 'recovery' ? 'Recover account' : mode === 'signup' ? 'Create account' : 'Sign in';
   return <main className="flex min-h-screen items-center justify-center bg-secondary/40 px-4 py-10">
     <div className="w-full max-w-sm">
-      <p className="brand mb-6 text-center text-3xl font-semibold">BizSathi<span className="text-primary">.</span></p>
+      <img src="/brand/sutra-logo.svg" alt="Sutra by Auraluxe" className="mx-auto mb-6 h-14 w-auto max-w-full" />
       <div className="rounded-2xl border bg-card p-6 shadow-sm">
         {signedIn ? <div className="space-y-3">
           <h1 className="brand text-xl font-semibold">You are signed in</h1>

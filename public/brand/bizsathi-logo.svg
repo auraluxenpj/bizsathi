@@ -1,12 +1,6 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 180" role="img" aria-labelledby="title">
-<title id="title">BizSathi — Manage, Sell, Grow</title>
-<defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#064b3b"/><stop offset="1" stop-color="#12a66a"/></linearGradient></defs>
-<rect x="8" y="8" width="164" height="164" rx="38" fill="url(#g)"/>
-<path d="M38 58h104l-9-20H47z" fill="#fff"/>
-<path d="M42 58v15c0 16 20 16 20 0V58m28 0v15c0 16 20 16 20 0V58m28 0v15c0 16 20 16 20 0V58" fill="#fff"/>
-<path d="M42 83h104v60H42z" fill="#fff"/>
-<path d="M58 129v-19h16v19m12 0V99h16v30m12 0V89h16v40" fill="none" stroke="#087d55" stroke-width="8" stroke-linecap="round"/>
-<path d="m58 101 32-17 22 7 25-24m0 0h-17m17 0v17" fill="none" stroke="#12a66a" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>
-<text x="202" y="104" font-family="Manrope,Arial,sans-serif" font-size="76" font-weight="800" letter-spacing="-4" fill="#073d32">Biz<tspan fill="#0b9961">Sathi</tspan></text>
-<text x="207" y="145" font-family="Arial,sans-serif" font-size="22" letter-spacing="5" fill="#49665c">MANAGE  •  SELL  •  GROW</text>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 480 150" role="img" aria-labelledby="title desc">
+<title id="title">Sutra by Auraluxe</title><desc id="desc">Sutra wordmark with a simple upward gold arrow.</desc>
+<text x="12" y="98" fill="#0B1B3A" font-family="Manrope,Arial,sans-serif" font-size="82" font-weight="750" letter-spacing="1.5">SUTRA</text>
+<path d="M365 78 L414 29 M382 29 H414 V61" fill="none" stroke="#D99A24" stroke-width="9" stroke-linecap="round" stroke-linejoin="round"/>
+<text x="17" y="132" fill="#667085" font-family="Manrope,Arial,sans-serif" font-size="17" font-weight="650" letter-spacing="5.2">BY AURALUXE</text>
 </svg>

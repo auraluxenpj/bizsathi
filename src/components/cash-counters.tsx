@@ -414,7 +414,7 @@ export function CashCounters() {
                 {branches.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}
               </select>
             </label>
-            <Button type="button" variant="outline" className="h-10 self-end" onClick={() => downloadCsv(`bizsathi-cash-closing-${date}.csv`, buildCashClosingCsv(visibleDailySessions.map((session) => ({
+            <Button type="button" variant="outline" className="h-10 self-end" onClick={() => downloadCsv(`sutra-cash-closing-${date}.csv`, buildCashClosingCsv(visibleDailySessions.map((session) => ({
               date,
               branch: session.branch,
               status: session.closed ? 'Closed' : 'Open',
