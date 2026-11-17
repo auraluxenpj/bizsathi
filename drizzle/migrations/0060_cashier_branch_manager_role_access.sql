@@ -93,7 +93,7 @@ BEGIN
       AND m.role_code = 'staff'
       AND m.job_title = 'sales_person'
   ) THEN
-    RAISE EXCEPTION 'Cashiers must submit sale return requests for Branch Manager review; direct returns and refunds are not permitted'
+    RAISE EXCEPTION 'Cashiers cannot post sale returns or refunds directly; ask a Branch Manager to process the return'
       USING ERRCODE = '42501';
   END IF;
 
