@@ -340,6 +340,17 @@ BEGIN
     RAISE EXCEPTION 'Branch Managers can assign roles only to employees whose sole branch is assigned to them' USING ERRCODE='42501';
   END IF;
 
+  IF actor_rank<80 AND EXISTS (
+    SELECT 1 FROM public.business_member_access_roles existing_manager_role
+    JOIN public.business_access_roles existing_manager_code
+      ON existing_manager_code.business_id=existing_manager_role.business_id
+     AND existing_manager_code.id=existing_manager_role.role_id
+    WHERE existing_manager_role.business_id=_business AND existing_manager_role.user_id=_user
+      AND existing_manager_code.code IN ('position_branch_manager','legacy_branch_manager')
+  ) THEN
+    RAISE EXCEPTION 'Branch Managers cannot assign roles to another Branch Manager' USING ERRCODE='42501';
+  END IF;
+
   SELECT authority_rank INTO role_rank
   FROM public.business_access_roles
   WHERE business_id=_business AND id=_role AND is_active
