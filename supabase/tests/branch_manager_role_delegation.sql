@@ -78,7 +78,7 @@ BEGIN
   ASSERT NOT roles @> jsonb_build_array(jsonb_build_object('id',branch_manager_role)),
     'Branch Manager cannot delegate Branch Manager authority';
   BEGIN
-    PERFORM public.create_business_access_role(v_business,'Business-wide role','',1,ARRAY['sales.view']);
+    PERFORM public.create_business_access_role(v_business,'Business-wide role','',1::smallint,ARRAY['sales.view']);
     RAISE EXCEPTION 'Expected Branch Manager business-wide role creation to be rejected';
   EXCEPTION WHEN insufficient_privilege THEN
     NULL;
