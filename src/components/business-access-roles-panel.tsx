@@ -176,13 +176,19 @@ export function BusinessAccessRolesPanel({ businessId, members, isOwner, branche
           <label className="mb-4 block text-sm">Description
             <Input className="mt-1" value={description} maxLength={500} placeholder="What this role is responsible for" onChange={(e) => setDescription(e.target.value)} />
           </label>
+          {isBranchManager && <label className="mb-4 block text-sm">Branch
+            <select className="mt-1 h-10 w-full rounded-md border bg-background px-3" value={selectedBranchId} onChange={(e) => setSelectedBranchId(e.target.value)}>
+              {branches.map((branch) => <option key={branch.id} value={branch.id}>{branch.name}</option>)}
+            </select>
+          </label>}
           <div className="mb-3 flex items-center justify-between gap-2"><h5 className="text-sm font-semibold">Permissions included</h5><span className="text-xs text-muted-foreground">{permissions.length} selected</span></div>
           <div className="max-h-[560px] space-y-4 overflow-y-auto pr-2">
+            {isBranchManager && permissionsQuery.isPending && <p className="text-sm text-muted-foreground">Loading your assignable permissions…</p>}
             {permissionGroups.map((group) => (
               <fieldset key={group.title} className="border-t pt-3">
                 <legend className="px-1 text-sm font-semibold">{group.title}</legend>
                 <div className="grid gap-2 sm:grid-cols-2">
-                  {group.items.map((item) => (
+                  {group.items.filter((item) => !isBranchManager || availablePermissions.has(item.code)).map((item) => (
                     <label key={item.code} className="flex items-start gap-2 text-sm">
                       <input type="checkbox" className="mt-0.5" checked={permissions.includes(item.code)} onChange={() => togglePermission(item.code)} />
                       <span>{item.label}</span>
@@ -193,7 +199,7 @@ export function BusinessAccessRolesPanel({ businessId, members, isOwner, branche
             ))}
           </div>
           <div className="mt-4 flex flex-wrap gap-2">
-            <Button disabled={name.trim().length < 2 || saveRole.isPending || !permissions.length} onClick={() => saveRole.mutate()}>
+            <Button disabled={name.trim().length < 2 || saveRole.isPending || !permissions.length || (isBranchManager && (!selectedBranchId || permissionsQuery.isPending))} onClick={() => saveRole.mutate()}>
               {editingRoleId ? <Pencil className="mr-2 size-4" /> : <Plus className="mr-2 size-4" />}
               {saveRole.isPending ? 'Saving…' : editingRoleId ? 'Save role' : 'Create role'}
             </Button>
