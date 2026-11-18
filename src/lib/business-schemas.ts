@@ -2,7 +2,7 @@ import { z } from 'zod';
 
 export const tenantInput = z.object({ businessId: z.string().uuid() });
 export const registrationInput = z.object({ name: z.string().trim().min(1).max(200), legalName: z.string().trim().max(300), panVat: z.string().trim().refine(v => !v || /^[0-9]{9}$/.test(v), 'Enter a nine-digit PAN/VAT number or leave blank.') });
-const jobTitle = z.enum(['partner', 'manager', 'branch_manager', 'accountant', 'sales_person', 'stock_manager', 'entry_person']);
+const jobTitle = z.enum(['partner', 'manager', 'branch_manager', 'accountant', 'department_manager', 'sales_person', 'stock_manager', 'entry_person']);
 export const inviteInput = tenantInput.extend({ email: z.string().trim().toLowerCase().email().max(254), role: z.enum(['admin', 'branch_manager', 'accountant', 'staff', 'viewer']), jobTitle: jobTitle.optional() }).refine(d => d.role !== 'branch_manager' || d.jobTitle === 'branch_manager', { message: 'Branch Manager invitations must use the Branch Manager position.', path: ['jobTitle'] });
 export const acceptInput = z.object({ token: z.string().regex(/^[a-f0-9]{64}$/) });
 export const memberInput = tenantInput.extend({ userId: z.string().uuid(), role: z.enum(['admin', 'branch_manager', 'accountant', 'staff', 'viewer']), status: z.enum(['active', 'suspended']), jobTitle: jobTitle.optional() }).refine(d => d.role !== 'branch_manager' || d.jobTitle === 'branch_manager', { message: 'Branch Manager access must use the Branch Manager position.', path: ['jobTitle'] });
