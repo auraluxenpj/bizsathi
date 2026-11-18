@@ -260,6 +260,13 @@
       "when": 1794820800000,
       "tag": "0052_inventory_count_whole_quantities",
       "breakpoints": true
+    },
+    {
+      "idx": 37,
+      "version": "7",
+      "when": 1794963852491,
+      "tag": "0037_migration",
+      "breakpoints": true
     }
   ]
 }
