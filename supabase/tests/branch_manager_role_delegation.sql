@@ -6,6 +6,7 @@ DECLARE
   owner_id uuid := gen_random_uuid();
   branch_manager_id uuid := gen_random_uuid();
   cashier_id uuid := gen_random_uuid();
+  department_manager_id uuid := gen_random_uuid();
   multi_branch_staff_id uuid := gen_random_uuid();
   v_business uuid;
   branch_a uuid;
@@ -21,6 +22,7 @@ BEGIN
     (owner_id,'branch-role-owner@example.invalid',now()),
     (branch_manager_id,'branch-role-manager@example.invalid',now()),
     (cashier_id,'branch-role-cashier@example.invalid',now()),
+    (department_manager_id,'branch-role-department-manager@example.invalid',now()),
     (multi_branch_staff_id,'branch-role-multi@example.invalid',now());
 
   INSERT INTO public.businesses(name,created_by)
@@ -37,12 +39,14 @@ BEGIN
     (v_business,owner_id,'owner',NULL),
     (v_business,branch_manager_id,'branch_manager','branch_manager'),
     (v_business,cashier_id,'staff','sales_person'),
+    (v_business,department_manager_id,'staff','entry_person'),
     (v_business,multi_branch_staff_id,'staff','entry_person');
 
   SET LOCAL ROLE authenticated;
   PERFORM set_config('request.jwt.claims',json_build_object('sub',owner_id,'role','authenticated')::text,true);
   PERFORM public.set_branch_access(v_business,branch_a,branch_manager_id,true);
   PERFORM public.set_branch_access(v_business,branch_a,cashier_id,true);
+  PERFORM public.set_branch_access(v_business,branch_a,department_manager_id,true);
   PERFORM public.set_branch_access(v_business,branch_a,multi_branch_staff_id,true);
   PERFORM public.set_branch_access(v_business,branch_b,multi_branch_staff_id,true);
   RESET ROLE;
@@ -64,10 +68,10 @@ BEGIN
   ASSERT NOT roles @> jsonb_build_array(jsonb_build_object('id',branch_manager_role)),
     'Branch Manager cannot delegate Branch Manager authority';
 
-  PERFORM public.set_member_job_title(v_business,cashier_id,'department_manager');
-  PERFORM public.assign_business_access_role(v_business,cashier_id,department_manager_role);
+  PERFORM public.set_member_job_title(v_business,department_manager_id,'department_manager');
+  PERFORM public.assign_business_access_role(v_business,department_manager_id,department_manager_role);
   assignments := public.get_business_member_access_roles(v_business);
-  ASSERT assignments @> jsonb_build_array(jsonb_build_object('userId',cashier_id,'roleId',department_manager_role)),
+  ASSERT assignments @> jsonb_build_array(jsonb_build_object('userId',department_manager_id,'roleId',department_manager_role)),
     'Branch Manager can assign Department Manager to a sole-branch employee';
 
   BEGIN
@@ -78,7 +82,7 @@ BEGIN
   END;
 
   BEGIN
-    PERFORM public.assign_business_access_role(v_business,cashier_id,branch_manager_role);
+    PERFORM public.assign_business_access_role(v_business,department_manager_id,branch_manager_role);
     RAISE EXCEPTION 'Expected Branch Manager role escalation to be rejected';
   EXCEPTION WHEN insufficient_privilege THEN
     NULL;
@@ -91,8 +95,8 @@ BEGIN
   RESET ROLE;
 
   SET LOCAL ROLE authenticated;
-  PERFORM set_config('request.jwt.claims',json_build_object('sub',cashier_id,'role','authenticated')::text,true);
-  ASSERT public.business_role_rank(v_business,cashier_id)=40,
+  PERFORM set_config('request.jwt.claims',json_build_object('sub',department_manager_id,'role','authenticated')::text,true);
+  ASSERT public.business_role_rank(v_business,department_manager_id)=40,
     'Department Manager remains below Branch Manager authority';
   ASSERT public.has_business_access_role(v_business,'position_department_manager'),
     'Department Manager position is represented by its own access role';
@@ -104,6 +108,18 @@ BEGIN
   PERFORM set_config('request.jwt.claims',json_build_object('sub',cashier_id,'role','authenticated')::text,true);
   ASSERT public.business_role_rank(v_business,cashier_id)=40,
     'Cashier remains a Staff-level role and cannot become a Branch Manager by title';
+  ASSERT public.has_business_access_role(v_business,'position_sales_person'),
+    'Cashier retains the separate Sales Person position role';
+  ASSERT NOT public.has_business_access_role(v_business,'position_branch_manager'),
+    'Cashier is not a Branch Manager';
+  RESET ROLE;
+
+  SET LOCAL ROLE authenticated;
+  PERFORM set_config('request.jwt.claims',json_build_object('sub',multi_branch_staff_id,'role','authenticated')::text,true);
+  ASSERT public.business_role_rank(v_business,multi_branch_staff_id)=40,
+    'Staff remains below Branch Manager authority';
+  ASSERT NOT public.has_business_access_role(v_business,'position_branch_manager'),
+    'Staff is not a Branch Manager';
   RESET ROLE;
 
   RAISE NOTICE 'BRANCH_MANAGER_ROLE_DELEGATION_TESTS_PASSED';
