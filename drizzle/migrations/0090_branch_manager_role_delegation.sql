@@ -377,8 +377,8 @@ BEGIN
   SELECT authority_rank INTO role_rank
   FROM public.business_access_roles
   WHERE business_id=_business AND id=_role AND is_active
-    AND code NOT IN ('legacy_owner','legacy_admin','legacy_accountant','legacy_branch_manager',
-                     'position_partner','position_accountant','position_branch_manager');
+    AND (actor_rank>=80 OR code NOT IN ('legacy_owner','legacy_admin','legacy_accountant','legacy_branch_manager',
+                                        'position_partner','position_accountant','position_branch_manager'));
   IF role_rank IS NULL OR role_rank>=actor_rank OR role_rank>=80 THEN
     RAISE EXCEPTION 'Role is unavailable or exceeds your authority' USING ERRCODE='42501';
   END IF;
