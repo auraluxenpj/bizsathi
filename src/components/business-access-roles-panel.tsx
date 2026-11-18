@@ -110,9 +110,13 @@ export function BusinessAccessRolesPanel({ businessId, members, isOwner, branche
   };
 
   const saveRole = useMutation({
-    mutationFn: async (): Promise<unknown> => editingRoleId
-      ? updateRoleFn({ data: { businessId, roleId: editingRoleId, name, description, authorityRank: 1, permissions } })
-      : createRoleFn({ data: { businessId, name, description, authorityRank: 1, permissions } }),
+    mutationFn: async (): Promise<unknown> => isBranchManager
+      ? editingRoleId
+        ? updateBranchRoleFn({ data: { businessId, branchId: editingRole?.branchId ?? selectedBranchId, roleId: editingRoleId, name, description, authorityRank: 1, permissions } })
+        : createBranchRoleFn({ data: { businessId, branchId: selectedBranchId, name, description, authorityRank: 1, permissions } })
+      : editingRoleId
+        ? updateRoleFn({ data: { businessId, roleId: editingRoleId, name, description, authorityRank: 1, permissions } })
+        : createRoleFn({ data: { businessId, name, description, authorityRank: 1, permissions } }),
     onSuccess: async () => {
       setMessage(editingRoleId ? 'Custom role updated.' : 'Custom role created.');
       setEditingRoleId('');
