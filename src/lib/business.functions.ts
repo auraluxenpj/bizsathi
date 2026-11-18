@@ -1,7 +1,7 @@
 import { createServerFn } from '@tanstack/react-start';
 import { requireSupabaseAuth } from '@/integrations/supabase/auth-middleware';
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { accessRoleAssignmentInput, accessRoleCreateInput, accessRoleUpdateInput, acceptInput, branchGrantInput, branchInput, inviteInput, invitationRoleInput, memberInput, mobileInviteInput, registrationInput, removeMemberInput, revokeInviteInput, roleTemplateInput, roleTemplateResetInput, tenantInput } from './business-schemas';
+import { accessRoleAssignmentInput, accessRoleCreateInput, accessRoleUpdateInput, branchAccessRoleCreateInput, branchAccessRoleUpdateInput, acceptInput, branchGrantInput, branchInput, inviteInput, invitationRoleInput, memberInput, mobileInviteInput, registrationInput, removeMemberInput, revokeInviteInput, roleTemplateInput, roleTemplateResetInput, tenantInput } from './business-schemas';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const anyDb = (client: unknown) => client as SupabaseClient<any, 'public', any>;
@@ -155,6 +155,12 @@ export const getMemberPermissions = createServerFn({ method: 'GET' }).middleware
   }
   return { userId: context.userId, denials: r.data ?? [], roleDenials, permissions: (effective.data ?? []).map((row: { permission: string }) => row.permission) };
 });
+export const getMyBusinessPermissions = createServerFn({ method: 'GET' }).middleware([requireSupabaseAuth]).inputValidator(tenantInput).handler(async ({ data, context }) => {
+  const { data: rows, error } = await anyDb(context.supabase).rpc('get_my_business_permissions', { _business: data.businessId });
+  if (error) throw new Error('Your effective permissions could not be verified.');
+  return { permissions: (rows ?? []).map((row: { permission: string }) => row.permission) as string[] };
+});
+
 export const saveMemberPermissions = createServerFn({ method: 'POST' }).middleware([requireSupabaseAuth]).inputValidator(permissionInput).handler(async ({ data, context }) => {
   const r = await context.supabase.rpc('set_member_permissions', { _business: data.businessId, _user: data.userId, _denied: data.denied });
   if (r.error) throw new Error(r.error.message.replace(/^.*?: /, ''));
@@ -238,6 +244,24 @@ export const updateBusinessAccessRole = createServerFn({ method: 'POST' }).middl
   const { error } = await anyDb(context.supabase).rpc('update_business_access_role', {
     _business: data.businessId, _role: data.roleId, _name: data.name,
     _description: data.description ?? '', _permissions: data.permissions,
+  });
+  if (error) throw new Error(error.message.replace(/^.*?: /, ''));
+  return { ok: true };
+});
+
+export const createBranchAccessRole = createServerFn({ method: 'POST' }).middleware([requireSupabaseAuth]).inputValidator(branchAccessRoleCreateInput).handler(async ({ data, context }) => {
+  const { data: roleId, error } = await anyDb(context.supabase).rpc('create_branch_access_role', {
+    _business: data.businessId, _branch: data.branchId, _name: data.name,
+    _description: data.description ?? '', _permissions: data.permissions,
+  });
+  if (error) throw new Error(error.message.replace(/^.*?: /, ''));
+  return { roleId: roleId as string };
+});
+
+export const updateBranchAccessRole = createServerFn({ method: 'POST' }).middleware([requireSupabaseAuth]).inputValidator(branchAccessRoleUpdateInput).handler(async ({ data, context }) => {
+  const { error } = await anyDb(context.supabase).rpc('update_branch_access_role', {
+    _business: data.businessId, _branch: data.branchId, _role: data.roleId,
+    _name: data.name, _description: data.description ?? '', _permissions: data.permissions,
   });
   if (error) throw new Error(error.message.replace(/^.*?: /, ''));
   return { ok: true };
