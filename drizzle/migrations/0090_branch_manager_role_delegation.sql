@@ -454,7 +454,7 @@ BEGIN
       JOIN public.branch_memberships target_bm
         ON target_bm.business_id=m.business_id AND target_bm.user_id=m.user_id
       JOIN public.profiles p ON p.id=m.user_id
-      WHERE m.business_id=_business AND m.status='active'
+      WHERE m.business_id=_business AND m.status='active' AND m.user_id<>actor
         AND target_bm.branch_id IN (
           SELECT own_bm.branch_id FROM public.branch_memberships own_bm
           WHERE own_bm.business_id=_business AND own_bm.user_id=actor
@@ -482,6 +482,19 @@ END;
 $branch_manager_team_access$;
 REVOKE ALL ON FUNCTION public.get_branch_manager_team_access(uuid) FROM PUBLIC,anon;
 GRANT EXECUTE ON FUNCTION public.get_branch_manager_team_access(uuid) TO authenticated;
+
+
+-- Branch Managers can review only the audit events they personally generated.
+DROP POLICY IF EXISTS audit_select_branch_manager_self ON public.audit_logs;
+CREATE POLICY audit_select_branch_manager_self ON public.audit_logs
+FOR SELECT TO authenticated
+USING (
+  actor_id=auth.uid()
+  AND (
+    public.has_business_access_role(business_id,'position_branch_manager')
+    OR public.has_business_access_role(business_id,'legacy_branch_manager')
+  )
+);
 
 COMMENT ON FUNCTION public.assign_business_access_role(uuid,uuid,uuid) IS
   'Business admins manage business role assignments; Branch Managers may assign permission-subset roles only to employees with one shared branch.';
