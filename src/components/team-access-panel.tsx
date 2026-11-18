@@ -29,7 +29,7 @@ const titleByRole: Record<string, JobTitle[]> = {
   admin: ['partner'],
   branch_manager: ['branch_manager'],
   accountant: ['accountant'],
-  staff: ['sales_person', 'stock_manager', 'entry_person'],
+  staff: ['department_manager', 'sales_person', 'stock_manager', 'entry_person'],
   viewer: [],
 };
 const titleLabel: Record<JobTitle, string> = {
@@ -37,6 +37,7 @@ const titleLabel: Record<JobTitle, string> = {
   manager: 'Manager (legacy)',
   branch_manager: 'Branch Manager',
   accountant: 'Accountant',
+  department_manager: 'Department Manager',
   sales_person: 'Cashier / POS',
   stock_manager: 'Inventory Manager',
   entry_person: 'Store Team',
@@ -44,7 +45,7 @@ const titleLabel: Record<JobTitle, string> = {
 const roleRank: Record<string, number> = { owner: 100, admin: 80, accountant: 60, branch_manager: 50, staff: 40, viewer: 20 };
 
 export function TeamAccessPanel({
-  businessId, branches, members, branchAccess, memberRoles = [], userId, isAdmin, isOwner,
+  businessId, branches, members, branchAccess, memberRoles = [], userId, isAdmin, isOwner, isBranchManager = false,
   legacyInvitations = [], legacyTitles = [], onLegacyReissue, onLegacyChangeRole, onLegacyRevoke,
   legacyActionsPending = false, legacyInviteLink = '', viewMode = 'all',
 }: {
@@ -56,6 +57,7 @@ export function TeamAccessPanel({
   userId: string;
   isAdmin: boolean;
   isOwner: boolean;
+  isBranchManager?: boolean;
   legacyInvitations?: LegacyInvitation[];
   legacyTitles?: JobTitle[];
   onLegacyReissue?: (invitationId: string, mobile: string) => void;
