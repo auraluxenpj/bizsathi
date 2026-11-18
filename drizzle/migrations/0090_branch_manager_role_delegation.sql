@@ -60,7 +60,7 @@ LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = public
 AS $seed_department_manager_access_role$
-DECLARE role_id uuid;
+DECLARE v_role_id uuid;
 BEGIN
   INSERT INTO public.business_access_roles
     (business_id,code,name,description,authority_rank,is_system,is_active)
@@ -70,18 +70,18 @@ BEGIN
      1,true,true)
   ON CONFLICT (business_id,code) DO UPDATE
     SET name=EXCLUDED.name,description=EXCLUDED.description,is_system=true
-  RETURNING id INTO role_id;
+  RETURNING id INTO v_role_id;
 
-  IF role_id IS NULL THEN
-    SELECT id INTO role_id FROM public.business_access_roles
+  IF v_role_id IS NULL THEN
+    SELECT id INTO v_role_id FROM public.business_access_roles
     WHERE business_id=_business AND code='position_department_manager' AND is_active;
   END IF;
 
   DELETE FROM public.business_access_role_permissions
-  WHERE business_id=_business AND role_id=role_id;
+  WHERE business_id=_business AND role_id=v_role_id;
 
   INSERT INTO public.business_access_role_permissions(business_id,role_id,permission)
-  SELECT _business,role_id,p.permission
+  SELECT _business,v_role_id,p.permission
   FROM public.business_permission_catalog p
   WHERE NOT EXISTS (
     SELECT 1 FROM public.job_title_denials d
