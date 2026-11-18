@@ -600,7 +600,7 @@ BEGIN
     ),'[]'::jsonb),
     'members',COALESCE((
       SELECT jsonb_agg(jsonb_build_object(
-        'user_id',m.user_id,'role_code',m.role_code,'job_title',m.job_title,'status',m.status,
+        'user_id',m.user_id,'branch_id',target_bm.branch_id,'role_code',m.role_code,'job_title',m.job_title,'status',m.status,
         'profiles',jsonb_build_object('full_name',p.full_name,'phone',p.phone)
       ) ORDER BY p.full_name)
       FROM public.business_memberships m
