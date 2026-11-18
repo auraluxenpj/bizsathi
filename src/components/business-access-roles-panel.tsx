@@ -233,7 +233,7 @@ export function BusinessAccessRolesPanel({ businessId, members, isOwner, branche
             <div className="grid gap-3 sm:grid-cols-[1fr_1fr_auto]">
               <label className="text-sm">Employee
                 <select className="mt-1 h-10 w-full rounded-md border bg-background px-3" value={selectedUserId} onChange={(e) => setSelectedUserId(e.target.value)}>
-                  {members.filter((m) => m.status === 'active').map((m) => <option key={m.user_id} value={m.user_id}>{m.profiles?.full_name || m.user_id.slice(0, 8)}</option>)}
+                  {members.filter((m) => m.status === 'active').map((m) => <option key={m.user_id} value={m.user_id}>{m.profiles?.full_name || m.user_id.slice(0, 8)}{isBranchManager && m.branch_id ? ` · ${branches.find((branch) => branch.id === m.branch_id)?.name ?? 'Branch'}` : ''}</option>)}
                 </select>
               </label>
               <label className="text-sm">Additional role
@@ -247,7 +247,7 @@ export function BusinessAccessRolesPanel({ businessId, members, isOwner, branche
               {members.filter((m) => m.status === 'active').map((member) => {
                 const memberRoles = assignments.filter((a) => a.userId === member.user_id);
                 return <article key={member.user_id} className="py-3">
-                  <p className="mb-2 text-sm font-medium">{member.profiles?.full_name || member.user_id.slice(0, 8)}</p>
+                  <p className="mb-2 text-sm font-medium">{member.profiles?.full_name || member.user_id.slice(0, 8)}{isBranchManager && member.branch_id ? <span className="ml-2 text-xs font-normal text-muted-foreground">· {branches.find((branch) => branch.id === member.branch_id)?.name ?? 'Branch'}</span> : null}</p>
                   <div className="flex flex-wrap gap-2">
                     {memberRoles.map((assignment) => (
                       <span key={assignment.roleId} className="inline-flex items-center gap-1 rounded-full border px-3 py-1 text-xs">
