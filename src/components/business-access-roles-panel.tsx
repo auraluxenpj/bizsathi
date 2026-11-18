@@ -30,7 +30,7 @@ type Assignment = {
   assignedAt: string;
 };
 
-export function BusinessAccessRolesPanel({ businessId, members, isOwner }: { businessId: string; members: Member[]; isOwner: boolean }) {
+export function BusinessAccessRolesPanel({ businessId, members, isOwner, canManageRoleDefinitions = true }: { businessId: string; members: Member[]; isOwner: boolean; canManageRoleDefinitions?: boolean }) {
   const client = useQueryClient();
   const loadRoles = useServerFn(getBusinessAccessRoles);
   const loadAssignments = useServerFn(getBusinessMemberAccessRoles);
@@ -141,7 +141,7 @@ export function BusinessAccessRolesPanel({ businessId, members, isOwner }: { bus
       {(rolesQuery.error || assignmentsQuery.error) && <p role="alert" className="text-sm text-destructive">{rolesQuery.error?.message || assignmentsQuery.error?.message || 'Access roles could not be loaded.'}</p>}
 
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)]">
-        <section className="rounded-xl border p-4 md:p-5">
+        {canManageRoleDefinitions && <section className="rounded-xl border p-4 md:p-5">
           <div className="mb-3 flex items-center justify-between gap-2">
             <h4 className="font-semibold">{editingRoleId ? 'Edit custom role' : 'Create custom role'}</h4>
             {editingRoleId && <Button size="sm" variant="ghost" onClick={startNewRole}>New role</Button>}
@@ -175,7 +175,7 @@ export function BusinessAccessRolesPanel({ businessId, members, isOwner }: { bus
             </Button>
             {editingRoleId && <Button variant="outline" onClick={startNewRole}>Cancel</Button>}
           </div>
-        </section>
+        </section>}
 
         <div className="space-y-5">
           <section className="rounded-xl border p-4 md:p-5">
@@ -187,7 +187,7 @@ export function BusinessAccessRolesPanel({ businessId, members, isOwner }: { bus
                     <p className="font-medium">{role.name} {role.isSystem && <span className="ml-1 rounded bg-muted px-2 py-0.5 text-xs font-normal text-muted-foreground">{role.code.startsWith('legacy_') ? 'Authority role' : 'Position template'}</span>}</p>
                     <p className="text-xs text-muted-foreground">{role.description || role.code} · {role.permissions.length} permissions</p>
                   </div>
-                  {!role.isSystem && <Button size="sm" variant="outline" onClick={() => { setEditingRoleId(role.id); setMessage(''); }}><Pencil className="mr-1 size-3" />Edit</Button>}
+                  {canManageRoleDefinitions && !role.isSystem && <Button size="sm" variant="outline" onClick={() => { setEditingRoleId(role.id); setMessage(''); }}><Pencil className="mr-1 size-3" />Edit</Button>}
                 </article>
               ))}
             </div>}
