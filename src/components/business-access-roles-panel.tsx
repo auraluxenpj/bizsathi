@@ -40,6 +40,9 @@ export function BusinessAccessRolesPanel({ businessId, members, isOwner, branche
   const loadAssignments = useServerFn(getBusinessMemberAccessRoles);
   const createRoleFn = useServerFn(createBusinessAccessRole);
   const updateRoleFn = useServerFn(updateBusinessAccessRole);
+  const createBranchRoleFn = useServerFn(createBranchAccessRole);
+  const updateBranchRoleFn = useServerFn(updateBranchAccessRole);
+  const loadMyPermissions = useServerFn(getMyBusinessPermissions);
   const assignRoleFn = useServerFn(assignBusinessAccessRole);
   const unassignRoleFn = useServerFn(unassignBusinessAccessRole);
 
@@ -53,6 +56,11 @@ export function BusinessAccessRolesPanel({ businessId, members, isOwner, branche
     queryFn: () => loadAssignments({ data: { businessId } }),
     enabled: Boolean(businessId),
   });
+  const permissionsQuery = useQuery({
+    queryKey: ['my-business-permissions', businessId],
+    queryFn: () => loadMyPermissions({ data: { businessId } }),
+    enabled: Boolean(businessId) && isBranchManager,
+  });
 
   const roles = rolesQuery.data?.roles ?? [];
   const assignments = assignmentsQuery.data?.assignments ?? [];
@@ -63,6 +71,9 @@ export function BusinessAccessRolesPanel({ businessId, members, isOwner, branche
   const [selectedUserId, setSelectedUserId] = useState('');
   const [selectedRoleId, setSelectedRoleId] = useState('');
   const [message, setMessage] = useState('');
+  const [selectedBranchId, setSelectedBranchId] = useState(branches[0]?.id ?? '');
+  const canEditRoleDefinitions = canManageRoleDefinitions || isBranchManager;
+  const availablePermissions = useMemo(() => new Set(permissionsQuery.data?.permissions ?? []), [permissionsQuery.data?.permissions]);
 
   const editingRole = roles.find((r) => r.id === editingRoleId);
   const availableRoles = useMemo(() => roles.filter((r) =>
@@ -74,8 +85,13 @@ export function BusinessAccessRolesPanel({ businessId, members, isOwner, branche
       setName(editingRole.name);
       setDescription(editingRole.description ?? '');
       setPermissions(editingRole.permissions);
+      if (editingRole.branchId) setSelectedBranchId(editingRole.branchId);
     }
   }, [editingRole]);
+
+  useEffect(() => {
+    if (!branches.some((branch) => branch.id === selectedBranchId)) setSelectedBranchId(branches[0]?.id ?? '');
+  }, [branches, selectedBranchId]);
 
   useEffect(() => {
     if (!selectedUserId && members.length) setSelectedUserId(members.find((m) => m.status === 'active')?.user_id ?? '');
