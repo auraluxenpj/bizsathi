@@ -13,6 +13,7 @@ DECLARE
   branch_a uuid;
   branch_b uuid;
   department_manager_role uuid;
+  cashier_role_id uuid;
   branch_manager_role uuid;
   branch_custom_role uuid;
   team jsonb;
@@ -59,11 +60,15 @@ BEGIN
   SELECT id INTO department_manager_role
   FROM public.business_access_roles
   WHERE business_id=v_business AND code='position_department_manager' AND is_active;
+  SELECT id INTO cashier_role_id
+  FROM public.business_access_roles
+  WHERE business_id=v_business AND code='position_sales_person' AND is_active;
   SELECT id INTO branch_manager_role
   FROM public.business_access_roles
   WHERE business_id=v_business AND code='position_branch_manager' AND is_active;
   ASSERT department_manager_role IS NOT NULL,'Department Manager role is seeded for every business';
   ASSERT branch_manager_role IS NOT NULL,'Branch Manager role remains available';
+  ASSERT cashier_role_id IS NOT NULL,'Cashier position role is available';
 
   SET LOCAL ROLE authenticated;
   PERFORM set_config('request.jwt.claims',json_build_object('sub',branch_manager_id,'role','authenticated')::text,true);
@@ -85,6 +90,7 @@ BEGIN
 
   PERFORM public.set_member_job_title(v_business,department_manager_id,'department_manager');
   PERFORM public.assign_business_access_role(v_business,department_manager_id,department_manager_role);
+  PERFORM public.assign_business_access_role(v_business,cashier_id,cashier_role_id);
   PERFORM public.assign_business_access_role(v_business,department_manager_id,branch_custom_role);
   assignments := public.get_business_member_access_roles(v_business);
   ASSERT assignments @> jsonb_build_array(jsonb_build_object('userId',department_manager_id,'roleId',department_manager_role)),
