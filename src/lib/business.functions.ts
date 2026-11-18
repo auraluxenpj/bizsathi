@@ -222,7 +222,7 @@ export const resetRoleTemplate = createServerFn({ method: 'POST' }).middleware([
 export const getBusinessAccessRoles = createServerFn({ method: 'GET' }).middleware([requireSupabaseAuth]).inputValidator(tenantInput).handler(async ({ data, context }) => {
   const { data: roles, error } = await anyDb(context.supabase).rpc('get_business_access_roles', { _business: data.businessId });
   if (error) throw new Error('Business access roles could not be loaded.');
-  return { roles: (roles ?? []) as { id: string; code: string; name: string; description: string | null; authorityRank: number; isSystem: boolean; isActive: boolean; permissions: string[] }[] };
+  return { roles: (roles ?? []) as { id: string; code: string; name: string; description: string | null; branchId: string | null; authorityRank: number; isSystem: boolean; isActive: boolean; permissions: string[] }[] };
 });
 
 export const getBusinessMemberAccessRoles = createServerFn({ method: 'GET' }).middleware([requireSupabaseAuth]).inputValidator(tenantInput).handler(async ({ data, context }) => {
