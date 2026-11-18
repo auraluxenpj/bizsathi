@@ -370,7 +370,7 @@ export function TeamAccessPanel({
         </div>
       </details>
       </>}
-      {viewMode !== 'employees' && <details name="team-access-sections" className="rounded-xl border p-4 md:p-5">
+      {viewMode !== 'employees' && !isBranchManager && <details name="team-access-sections" className="rounded-xl border p-4 md:p-5">
         <summary className="flex cursor-pointer list-none items-center justify-between gap-3 font-semibold [&::-webkit-details-marker]:hidden"><span className="flex items-center gap-2"><ShieldCheck className="size-4 text-primary" />Position permissions</span><span className="text-xs font-normal text-muted-foreground">Configure the standard access for each position</span></summary>
         <div className="mt-4"><RolePermissions businessId={businessId} isOwner={isOwner} /></div>
       </details>}
