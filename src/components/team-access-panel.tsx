@@ -212,7 +212,7 @@ export function TeamAccessPanel({
           const effectiveAuthority = Math.max(roleRank[m.role_code] ?? 0, assignedAuthority);
           const protectedMember = m.user_id === userId || effectiveAuthority >= (isOwner ? 100 : 80);
           const employeeName = m.profiles?.full_name || m.user_id.slice(0, 8);
-          const permittedPositions = jobTitleCodes.filter((title) => isOwner || title !== 'partner');
+          const permittedPositions: JobTitle[] = isBranchManager ? ['department_manager','sales_person','stock_manager','entry_person'] : jobTitleCodes.filter((title) => isOwner || title !== 'partner');
           return <tr key={m.user_id}>
             <td className="py-3 pr-4 font-medium">{employeeName}</td>
             <td className="py-3 pr-4">{isAdmin && !isBranchManager && !protectedMember ? <select aria-label={`Base access role for ${employeeName}`} className="h-9 max-w-48 rounded-md border bg-background px-2" value={m.role_code} disabled={baseRoleMutation.isPending} onChange={(e) => baseRoleMutation.mutate({ userId: m.user_id, role: e.target.value as 'admin' | 'accountant' | 'staff' | 'viewer' })}>
