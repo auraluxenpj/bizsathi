@@ -9,7 +9,7 @@
 > the editor, so keep the branch in a working state.
 <!-- LOVABLE:END -->
 
-- Sales bundle invariants are in src/lib/AGENTS.md; reuse posting and tenant checks.
+- Sales bundle and catalogue CSV rules are in src/lib/AGENTS.md; Cloud build config rules in lib/AGENTS.md.
 - Sidebar layout CSS selects the explicit data-sidebar-compact state rather than escaped Tailwind width classes. Why: avoid malformed bracket selectors breaking the entire stylesheet transform.
 
 - Tenant data: every tenant table has `business_id`, RLS via `is_business_member`/`has_business_role` (rank from `roles` table); membership writes only through SECURITY DEFINER RPCs. Why: permissions must come from DB records, never client input.
@@ -23,9 +23,6 @@
 - Workspace module menus use one view-aware configuration over existing routes; unavailable modules stay disabled and dashboard trends aggregate authorized commerce evidence with Decimal. Why: preserve existing workflows, report selections and exact financial records without duplicating backend modules.
 - Inventory uses business-wide product/variant and party records with administrator writes; stock posts through a serialized, idempotent database operation to an append-only branch ledger. Why: enforce atomic transfers, prevent negative stock and duplicate retries, and preserve traceable corrections.
 - Disposals reuse negative reason-classified adjustments; invoice returns reuse source-linked posting and settled-credit refund limits; stickers encode registered barcodes or exact SKUs. Why: avoid parallel ledgers and unscannable identities.
-- Catalogue CSV normalizes header aliases and formatted numbers through Papa Parse before schema validation and a single atomic import, and escapes spreadsheet formulas on exports. Why: accept master-sheet exports without partial imports or unsafe spreadsheet cells.
-- Product CSV exports use the shared catalogue serializer with the trusted cost-view permission; authorized exports include saved purchase costs for round-trip imports. Why: prevent missing costs and hidden-price disclosure in downloaded files.
-- Google Sheets catalogue reads require trusted tenant administrator access, use server-only connector credentials or public CSV sharing, and reuse the CSV preview/atomic confirmation flow. Why: keep external reads separate from catalogue writes and prevent credential exposure.
 - Commerce confirms immutable documents, quantity movements, payments and balanced periodic-accounting entries through authenticated database RPCs under a shared business lock and an open-period row lock. Why: keep retries, stock, tax snapshots, cash and closed-period protection consistent.
 - Quantity reads combine legacy and document-linked movements; invoice entry and goods receiving remain separate events. Why: preserve Phase 3 history and avoid receiving the same purchase twice.
 - Online document requests are retained per user/business in session storage until confirmed or explicitly checked; this is not offline billing. Why: keep unchanged retry identifiers without promising disconnected sales.
@@ -43,4 +40,3 @@
 - Page view denials are guarded once in AppNavigation via routePermission; action buttons use useCan. Why: one route guard instead of per-page checks.
 - Catalogue price levels (MRP, wholesale) are reference prices on the variant; a sale's level only seeds each line's price in the client, and posting RPCs keep taking the price from the document line, with a missing wholesale price falling back to retail. Why: no second pricing source in accounting, and hand-edited line prices survive a level switch.
 - Role dashboards: `dashboardKind(role, job title)` picks the business overview, cashier, stock or entry desk; desks fail closed until the member's permission checklist has loaded, the stock desk never loads commerce/finance records, and billing staff navigation only lists pages they can open. Why: the dashboard must follow the database-derived role and never widen access or fetch figures the role does not show; hiding is presentation, RLS remains the boundary.
-- Vite config injects only the public Cloud URL and publishable key when present and never throws or hardcodes fallbacks. Why: platform preview builds supply these values separately, and failing config load blocks every build.

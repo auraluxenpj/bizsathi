@@ -1,0 +1,1 @@
+- Vite config injects only the public Cloud URL and publishable key when present and never throws or hardcodes fallbacks. Why: platform preview builds supply these values separately, and failing config load blocks every build.
