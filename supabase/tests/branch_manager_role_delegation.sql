@@ -73,6 +73,7 @@ BEGIN
   SET LOCAL ROLE authenticated;
   PERFORM set_config('request.jwt.claims',json_build_object('sub',branch_manager_id,'role','authenticated')::text,true);
   roles := public.get_business_access_roles(v_business);
+  ASSERT public.has_permission(v_business,'staff.edit'),'Branch Manager can manage employee positions';
   ASSERT roles @> jsonb_build_array(jsonb_build_object('id',department_manager_role)),
     'Branch Manager can see the Department Manager role for their branch';
   ASSERT NOT roles @> jsonb_build_array(jsonb_build_object('id',branch_manager_role)),
@@ -157,6 +158,8 @@ BEGIN
     'Department Manager remains below Branch Manager authority';
   ASSERT public.has_business_access_role(v_business,'position_department_manager'),
     'Department Manager position is represented by its own access role';
+  ASSERT NOT public.has_permission(v_business,'staff.edit'),
+    'Department Manager cannot manage employee roles or positions';
   ASSERT NOT public.has_business_access_role(v_business,'position_branch_manager'),
     'Department Manager is not a Branch Manager';
   RESET ROLE;
@@ -167,6 +170,8 @@ BEGIN
     'Cashier remains a Staff-level role and cannot become a Branch Manager by title';
   ASSERT public.has_business_access_role(v_business,'position_sales_person'),
     'Cashier retains the separate Sales Person position role';
+  ASSERT NOT public.has_permission(v_business,'staff.edit'),
+    'Cashier cannot manage employee roles or positions';
   ASSERT NOT public.has_business_access_role(v_business,'position_branch_manager'),
     'Cashier is not a Branch Manager';
   RESET ROLE;
@@ -175,6 +180,8 @@ BEGIN
   PERFORM set_config('request.jwt.claims',json_build_object('sub',multi_branch_staff_id,'role','authenticated')::text,true);
   ASSERT public.business_role_rank(v_business,multi_branch_staff_id)=40,
     'Staff remains below Branch Manager authority';
+  ASSERT NOT public.has_permission(v_business,'staff.edit'),
+    'Staff cannot manage employee roles or positions';
   ASSERT NOT public.has_business_access_role(v_business,'position_branch_manager'),
     'Staff is not a Branch Manager';
   RESET ROLE;
