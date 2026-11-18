@@ -181,7 +181,7 @@ export function BusinessAccessRolesPanel({ businessId, members, isOwner, branche
             <Input className="mt-1" value={description} maxLength={500} placeholder="What this role is responsible for" onChange={(e) => setDescription(e.target.value)} />
           </label>
           {isBranchManager && <label className="mb-4 block text-sm">Branch
-            <select className="mt-1 h-10 w-full rounded-md border bg-background px-3" value={selectedBranchId} onChange={(e) => setSelectedBranchId(e.target.value)}>
+            <select className="mt-1 h-10 w-full rounded-md border bg-background px-3" value={selectedBranchId} disabled={Boolean(editingRoleId)} onChange={(e) => setSelectedBranchId(e.target.value)}>
               {branches.map((branch) => <option key={branch.id} value={branch.id}>{branch.name}</option>)}
             </select>
           </label>}
@@ -204,7 +204,7 @@ export function BusinessAccessRolesPanel({ businessId, members, isOwner, branche
             ))}
           </div>
           <div className="mt-4 flex flex-wrap gap-2">
-            <Button disabled={name.trim().length < 2 || saveRole.isPending || !permissions.length || (isBranchManager && (!selectedBranchId || permissionsQuery.isPending))} onClick={() => saveRole.mutate()}>
+            <Button disabled={name.trim().length < 2 || saveRole.isPending || !permissions.length || (isBranchManager && (!selectedBranchId || permissionsQuery.isPending || Boolean(permissionsQuery.error)))} onClick={() => saveRole.mutate()}>
               {editingRoleId ? <Pencil className="mr-2 size-4" /> : <Plus className="mr-2 size-4" />}
               {saveRole.isPending ? 'Saving…' : editingRoleId ? 'Save role' : 'Create role'}
             </Button>
