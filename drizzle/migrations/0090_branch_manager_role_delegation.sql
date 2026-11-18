@@ -644,6 +644,191 @@ REVOKE ALL ON FUNCTION public.get_branch_manager_team_access(uuid) FROM PUBLIC,a
 GRANT EXECUTE ON FUNCTION public.get_branch_manager_team_access(uuid) TO authenticated;
 
 
+
+
+-- Branch Managers may create and edit custom roles for their assigned branch.
+-- Business-wide role definitions remain under Business Administrator control.
+CREATE OR REPLACE FUNCTION public.create_branch_access_role(
+  _business uuid,_branch uuid,_name text,_description text,_permissions text[]
+)
+RETURNS uuid
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $create_branch_access_role$
+DECLARE
+  actor_rank smallint;
+  new_id uuid;
+  role_code text;
+  p text;
+BEGIN
+  actor_rank := public.business_role_rank(_business,auth.uid());
+  IF auth.uid() IS NULL OR actor_rank<50 OR actor_rank>=80 OR NOT (
+    public.has_business_access_role(_business,'position_branch_manager')
+    OR public.has_business_access_role(_business,'legacy_branch_manager')
+  ) THEN
+    RAISE EXCEPTION 'Branch Manager authority is required' USING ERRCODE='42501';
+  END IF;
+  IF NOT EXISTS (
+    SELECT 1 FROM public.branch_memberships bm
+    JOIN public.branches b ON b.business_id=bm.business_id AND b.id=bm.branch_id AND b.is_active
+    WHERE bm.business_id=_business AND bm.user_id=auth.uid() AND bm.branch_id=_branch
+  ) THEN
+    RAISE EXCEPTION 'You can create roles only for an assigned active branch' USING ERRCODE='42501';
+  END IF;
+  IF _name IS NULL OR char_length(btrim(_name)) NOT BETWEEN 2 AND 80 THEN
+    RAISE EXCEPTION 'Role name must contain 2 to 80 characters';
+  END IF;
+  IF cardinality(COALESCE(_permissions,'{}'))>200 THEN
+    RAISE EXCEPTION 'Too many permissions';
+  END IF;
+  FOREACH p IN ARRAY COALESCE(_permissions,'{}') LOOP
+    IF NOT EXISTS(SELECT 1 FROM public.business_permission_catalog WHERE permission=p) THEN
+      RAISE EXCEPTION 'Unknown permission: %',p;
+    END IF;
+    IF NOT public.has_permission(_business,p) THEN
+      RAISE EXCEPTION 'You cannot delegate a permission you do not have' USING ERRCODE='42501';
+    END IF;
+  END LOOP;
+
+  role_code := 'custom_branch_'||replace(gen_random_uuid()::text,'-','');
+  INSERT INTO public.business_access_roles
+    (business_id,branch_id,code,name,description,authority_rank,is_system,created_by)
+  VALUES
+    (_business,_branch,role_code,btrim(_name),NULLIF(btrim(COALESCE(_description,'')),''),1,false,auth.uid())
+  RETURNING id INTO new_id;
+
+  INSERT INTO public.business_access_role_permissions(business_id,role_id,permission)
+  SELECT _business,new_id,permission_code
+  FROM unnest(COALESCE(_permissions,'{}')) AS permission_code
+  ON CONFLICT DO NOTHING;
+
+  PERFORM public.write_audit(_business,'access_role.branch_create','business_access_roles',new_id::text,NULL,
+    jsonb_build_object('branch_id',_branch,'name',btrim(_name),'permissions',to_jsonb(COALESCE(_permissions,'{}'))));
+  RETURN new_id;
+END;
+$create_branch_access_role$;
+REVOKE ALL ON FUNCTION public.create_branch_access_role(uuid,uuid,text,text,text[]) FROM PUBLIC,anon;
+GRANT EXECUTE ON FUNCTION public.create_branch_access_role(uuid,uuid,text,text,text[]) TO authenticated;
+
+CREATE OR REPLACE FUNCTION public.update_branch_access_role(
+  _business uuid,_branch uuid,_role uuid,_name text,_description text,_permissions text[]
+)
+RETURNS void
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $update_branch_access_role$
+DECLARE
+  actor_rank smallint;
+  role_rank smallint;
+  role_branch uuid;
+  old_permissions jsonb;
+  p text;
+BEGIN
+  actor_rank := public.business_role_rank(_business,auth.uid());
+  IF auth.uid() IS NULL OR actor_rank<50 OR actor_rank>=80 OR NOT (
+    public.has_business_access_role(_business,'position_branch_manager')
+    OR public.has_business_access_role(_business,'legacy_branch_manager')
+  ) THEN
+    RAISE EXCEPTION 'Branch Manager authority is required' USING ERRCODE='42501';
+  END IF;
+  IF NOT EXISTS (
+    SELECT 1 FROM public.branch_memberships bm
+    JOIN public.branches b ON b.business_id=bm.business_id AND b.id=bm.branch_id AND b.is_active
+    WHERE bm.business_id=_business AND bm.user_id=auth.uid() AND bm.branch_id=_branch
+  ) THEN
+    RAISE EXCEPTION 'You can edit roles only for an assigned active branch' USING ERRCODE='42501';
+  END IF;
+  IF _name IS NULL OR char_length(btrim(_name)) NOT BETWEEN 2 AND 80 THEN
+    RAISE EXCEPTION 'Role name must contain 2 to 80 characters';
+  END IF;
+
+  SELECT authority_rank,branch_id INTO role_rank,role_branch
+  FROM public.business_access_roles
+  WHERE business_id=_business AND id=_role AND is_active AND NOT is_system
+  FOR UPDATE;
+  IF role_rank IS NULL OR role_rank>=actor_rank OR role_branch IS DISTINCT FROM _branch THEN
+    RAISE EXCEPTION 'This role is not editable within your assigned branch' USING ERRCODE='42501';
+  END IF;
+  IF cardinality(COALESCE(_permissions,'{}'))>200 THEN
+    RAISE EXCEPTION 'Too many permissions';
+  END IF;
+  FOREACH p IN ARRAY COALESCE(_permissions,'{}') LOOP
+    IF NOT EXISTS(SELECT 1 FROM public.business_permission_catalog WHERE permission=p) THEN
+      RAISE EXCEPTION 'Unknown permission: %',p;
+    END IF;
+    IF NOT public.has_permission(_business,p) THEN
+      RAISE EXCEPTION 'You cannot delegate a permission you do not have' USING ERRCODE='42501';
+    END IF;
+  END LOOP;
+
+  SELECT COALESCE(jsonb_agg(permission ORDER BY permission),'[]'::jsonb)
+  INTO old_permissions
+  FROM public.business_access_role_permissions
+  WHERE business_id=_business AND role_id=_role;
+
+  UPDATE public.business_access_roles
+  SET name=btrim(_name),description=NULLIF(btrim(COALESCE(_description,'')),'')
+  WHERE business_id=_business AND id=_role;
+
+  DELETE FROM public.business_access_role_permissions
+  WHERE business_id=_business AND role_id=_role;
+  INSERT INTO public.business_access_role_permissions(business_id,role_id,permission)
+  SELECT _business,_role,permission_code
+  FROM unnest(COALESCE(_permissions,'{}')) AS permission_code
+  ON CONFLICT DO NOTHING;
+
+  PERFORM public.write_audit(_business,'access_role.branch_update','business_access_roles',_role::text,
+    jsonb_build_object('permissions',old_permissions),
+    jsonb_build_object('branch_id',_branch,'name',btrim(_name),'permissions',to_jsonb(COALESCE(_permissions,'{}'))));
+END;
+$update_branch_access_role$;
+REVOKE ALL ON FUNCTION public.update_branch_access_role(uuid,uuid,uuid,text,text,text[]) FROM PUBLIC,anon;
+GRANT EXECUTE ON FUNCTION public.update_branch_access_role(uuid,uuid,uuid,text,text,text[]) TO authenticated;
+
+-- A branch-scoped role must never silently become effective in a second branch.
+CREATE OR REPLACE FUNCTION public.guard_branch_scoped_role_branch_membership()
+RETURNS trigger
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $guard_branch_scoped_role_branch_membership$
+BEGIN
+  IF EXISTS (
+    SELECT 1
+    FROM public.business_member_access_roles a
+    JOIN public.business_access_roles r
+      ON r.business_id=a.business_id AND r.id=a.role_id
+    WHERE a.business_id=NEW.business_id AND a.user_id=NEW.user_id
+      AND r.branch_id IS NOT NULL
+      AND r.branch_id<>NEW.branch_id
+  ) OR (
+    EXISTS (
+      SELECT 1 FROM public.business_member_access_roles a
+      JOIN public.business_access_roles r
+        ON r.business_id=a.business_id AND r.id=a.role_id
+      WHERE a.business_id=NEW.business_id AND a.user_id=NEW.user_id
+        AND r.branch_id IS NOT NULL
+    )
+    AND EXISTS (
+      SELECT 1 FROM public.branch_memberships existing_branch
+      WHERE existing_branch.business_id=NEW.business_id
+        AND existing_branch.user_id=NEW.user_id
+        AND existing_branch.branch_id<>NEW.branch_id
+    )
+  ) THEN
+    RAISE EXCEPTION 'Remove branch-specific roles before changing this employee to a different or additional branch' USING ERRCODE='42501';
+  END IF;
+  RETURN NEW;
+END;
+$guard_branch_scoped_role_branch_membership$;
+REVOKE ALL ON FUNCTION public.guard_branch_scoped_role_branch_membership() FROM PUBLIC,anon,authenticated;
+DROP TRIGGER IF EXISTS guard_branch_scoped_role_branch_membership ON public.branch_memberships;
+CREATE TRIGGER guard_branch_scoped_role_branch_membership
+BEFORE INSERT OR UPDATE OF branch_id ON public.branch_memberships
+FOR EACH ROW EXECUTE FUNCTION public.guard_branch_scoped_role_branch_membership();
+
 -- Branch Managers can review only the audit events they personally generated.
 DROP POLICY IF EXISTS audit_select_branch_manager_self ON public.audit_logs;
 CREATE POLICY audit_select_branch_manager_self ON public.audit_logs
