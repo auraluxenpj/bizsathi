@@ -46,8 +46,11 @@ export const getBusinessAccess = createServerFn({ method: 'GET' }).middleware([r
   const { data: legacyBranchManagerRole, error: legacyBranchManagerRoleError } = await anyDb(context.supabase).rpc('has_business_access_role', {
     _business: data.businessId, _role_code: 'legacy_branch_manager',
   });
-  if (branchManagerRoleError || legacyBranchManagerRoleError) throw new Error('Branch Manager authority could not be verified.');
-  const isBranchManager = !isBusinessAdmin && Boolean(branchManagerRole || legacyBranchManagerRole);
+  const { data: actorRank, error: actorRankError } = await anyDb(context.supabase).rpc('business_role_rank', {
+    _business_id: data.businessId, _user_id: context.userId,
+  });
+  if (branchManagerRoleError || legacyBranchManagerRoleError || actorRankError) throw new Error('Branch Manager authority could not be verified.');
+  const isBranchManager = !isBusinessAdmin && Number(actorRank ?? 0) >= 50 && Boolean(branchManagerRole || legacyBranchManagerRole);
   const manager = isBusinessAdmin || isBranchManager;
   // An employee's HR branch is their default workspace branch, but POS still
   // validates it against the branches visible to this authenticated member.
