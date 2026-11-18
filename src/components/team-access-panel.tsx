@@ -110,15 +110,19 @@ export function TeamAccessPanel({
   const currentGrant = delegations.data?.grants.find((g: { branch_id: string; manager_user_id: string }) =>
     g.branch_id === selectedBranchId && g.manager_user_id === userId);
   const currentGrantRoles = (currentGrant?.allowed_role_codes ?? []) as string[];
-  const allowedInviteRoles: RoleCode[] = isAdmin
-    ? (isOwner ? ['admin', 'branch_manager', 'accountant', 'staff', 'viewer'] : ['branch_manager', 'accountant', 'staff', 'viewer'])
-    : currentGrantRoles.filter((r) => (roleRank[r] ?? 100) < 60) as RoleCode[];
+  const allowedInviteRoles: RoleCode[] = isBranchManager
+    ? currentGrantRoles.filter((r) => r === 'staff' || r === 'viewer') as RoleCode[]
+    : isAdmin
+      ? (isOwner ? ['admin', 'branch_manager', 'accountant', 'staff', 'viewer'] : ['branch_manager', 'accountant', 'staff', 'viewer'])
+      : currentGrantRoles.filter((r) => (roleRank[r] ?? 100) < 60) as RoleCode[];
   const maxAllowedDays = currentGrant?.max_invite_days ?? 30;
   const effectiveExpiryDays = Math.min(expiryDays, maxAllowedDays);
   const inviteMobileValid = Boolean(normalizeVerifiedNepalMobile(inviteeMobile));
-  const availableTitles: JobTitle[] = isAdmin
-    ? jobTitleCodes.filter((title) => isOwner || title !== 'partner')
-    : (titleByRole[inviteRole] ?? []);
+  const availableTitles: JobTitle[] = isBranchManager
+    ? (inviteRole === 'staff' ? ['department_manager','sales_person','stock_manager','entry_person'] : [])
+    : isAdmin
+      ? jobTitleCodes.filter((title) => isOwner || title !== 'partner')
+      : (titleByRole[inviteRole] ?? []);
   const allowedInviteRolesKey = allowedInviteRoles.join('|');
   useEffect(() => {
     if (!allowedInviteRoles.includes(inviteRole)) setInviteRole(allowedInviteRoles[0] ?? 'staff');
