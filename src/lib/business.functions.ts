@@ -58,7 +58,7 @@ export const getBusinessAccess = createServerFn({ method: 'GET' }).middleware([r
   if (isBranchManager) {
     const { data: team, error: teamError } = await anyDb(context.supabase).rpc('get_branch_manager_team_access', { _business: data.businessId });
     if (teamError || !team) throw new Error('Assigned branch team access could not be loaded.');
-    const scoped = team as { branches?: Branch[]; members?: Member[]; branchAccess?: { user_id: string; branch_id: string }[]; memberRoles?: unknown[] };
+    const scoped = team as { branches?: { id: string; name: string; code: string; is_active: boolean; address?: string | null }[]; members?: { user_id: string; role_code: string; job_title: string | null; status: string; profiles?: { full_name: string | null; phone?: string | null } | null }[]; branchAccess?: { user_id: string; branch_id: string }[]; memberRoles?: { userId: string; roleId: string; roleCode: string; roleName: string; authorityRank: number; isDefault: boolean; assignedAt: string }[] };
     return {
       manager: true, isBusinessAdmin: false, isBranchManager: true, userId: context.userId,
       branches: scoped.branches ?? [], assignedBranchId,
