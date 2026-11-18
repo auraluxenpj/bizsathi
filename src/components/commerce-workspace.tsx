@@ -26,7 +26,7 @@ export function useCommerce(){
   if(saved&&allowed.some(b=>b.id===saved)){setActiveBranchState(saved);return;}
   const assigned=access.data.assignedBranchId;
   if(assigned&&allowed.some(b=>b.id===assigned)){setActiveBranchState(assigned);window.localStorage.setItem('sutra-active-branch:'+businessId,assigned);return;}
-  setActiveBranchState(allowed.length===1?allowed[0].id:'');
+  setActiveBranchState(allowed.length===1?(allowed[0]?.id??''):'');
  },[businessId,access.data]);
  const setActiveBranchId=(id:string)=>{
   const allowed=access.data?.branches.filter(b=>b.is_active)??[];

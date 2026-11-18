@@ -46,8 +46,8 @@ describe('Branch stock CSV parsing', () => {
       'product_name,variant_name,sku,model_code,qty,selling_price,purchase_price,mrp,wholesale_price\nKurti,M,AL-100,MODEL-1,12,1500,900,1800,1300',
       '985f4fd7-edcd-41a9-beec-8148fcb29818',
     );
-    expect(rows[0].opening_stock).toBe(12);
-    expect(rows[0].selling_price).toBe(1500);
-    expect(rows[0].model_code).toBe('MODEL-1');
+    expect(rows[0]?.opening_stock).toBe(12);
+    expect(rows[0]?.selling_price).toBe(1500);
+    expect(rows[0]?.model_code).toBe('MODEL-1');
   });
 });

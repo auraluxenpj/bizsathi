@@ -4,7 +4,7 @@ export const IP_FAILURE_LIMIT = 30;      // wrong attempts per caller IP (shared
 export const THROTTLE_WINDOW_SECONDS = 900; // 15 minutes
 
 const hex = (bytes: Uint8Array) => Array.from(bytes, b => b.toString(16).padStart(2, '0')).join('');
-export async function bucketKey(kind: 'mobile' | 'ip', value: string): Promise<string> {
+export async function bucketKey(kind: 'mobile' | 'ip' | 'employee', value: string): Promise<string> {
   return hex(new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(`${kind}:${value}`))));
 }
 /** Best-effort caller IP from proxy headers (platform-set headers first, then the first X-Forwarded-For hop). */

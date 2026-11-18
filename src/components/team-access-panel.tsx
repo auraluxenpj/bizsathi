@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+type RoleCode = 'accountant' | 'admin' | 'branch_manager' | 'staff' | 'viewer';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useServerFn } from '@tanstack/react-start';
 import { GitBranch, ShieldCheck, Users, UserPlus, Ban, ClipboardList } from 'lucide-react';
@@ -98,7 +99,7 @@ export function TeamAccessPanel({
   const [inviteeEmail, setInviteeEmail] = useState('');
   const [inviteeMobile, setInviteeMobile] = useState('');
   const [expiryDays, setExpiryDays] = useState(7);
-  const [inviteRole, setInviteRole] = useState('staff');
+  const [inviteRole, setInviteRole] = useState<RoleCode>('staff');
   const [jobTitle, setJobTitle] = useState<JobTitle | ''>('sales_person');
   const [label, setLabel] = useState('');
   const [inviteLink, setInviteLink] = useState('');
@@ -107,9 +108,9 @@ export function TeamAccessPanel({
   const currentGrant = delegations.data?.grants.find((g: { branch_id: string; manager_user_id: string }) =>
     g.branch_id === selectedBranchId && g.manager_user_id === userId);
   const currentGrantRoles = (currentGrant?.allowed_role_codes ?? []) as string[];
-  const allowedInviteRoles = isAdmin
+  const allowedInviteRoles: RoleCode[] = isAdmin
     ? (isOwner ? ['admin', 'branch_manager', 'accountant', 'staff', 'viewer'] : ['branch_manager', 'accountant', 'staff', 'viewer'])
-    : currentGrantRoles.filter((r) => (roleRank[r] ?? 100) < 60);
+    : currentGrantRoles.filter((r) => (roleRank[r] ?? 100) < 60) as RoleCode[];
   const maxAllowedDays = currentGrant?.max_invite_days ?? 30;
   const effectiveExpiryDays = Math.min(expiryDays, maxAllowedDays);
   const inviteMobileValid = Boolean(normalizeVerifiedNepalMobile(inviteeMobile));
@@ -123,7 +124,7 @@ export function TeamAccessPanel({
   const availableTitlesKey = availableTitles.join('|');
   useEffect(() => {
     if (!availableTitles.length) setJobTitle('');
-    else if (!jobTitle || !availableTitles.includes(jobTitle)) setJobTitle(availableTitles[0]);
+    else if (!jobTitle || !availableTitles.includes(jobTitle)) setJobTitle(availableTitles[0] ?? '');
   }, [availableTitlesKey, jobTitle]);
   const eligibleManagers = members.filter((m) =>
     m.status === 'active' && memberRoles.some((r) => r.userId === m.user_id && ['position_branch_manager','legacy_branch_manager'].includes(r.roleCode)) &&
@@ -175,7 +176,7 @@ export function TeamAccessPanel({
   });
   const positionMutation = useMutation({
     mutationFn: (v: { userId: string; jobTitle: JobTitle; status: string }) => updateMemberFn({ data: {
-      businessId, userId: v.userId, role: members.find((m) => m.user_id === v.userId)?.role_code ?? 'staff', status: v.status === 'suspended' ? 'suspended' : 'active', jobTitle: v.jobTitle,
+      businessId, userId: v.userId, role: (members.find((m) => m.user_id === v.userId)?.role_code as RoleCode | undefined) ?? 'staff', status: v.status === 'suspended' ? 'suspended' : 'active', jobTitle: v.jobTitle,
     } }),
     onSuccess: () => { setMessage('Employee position updated.'); void client.invalidateQueries({ queryKey: ['business-access', businessId] }); void client.invalidateQueries({ queryKey: ['permissions', businessId] }); },
     onError: (error) => setMessage(error instanceof Error ? error.message : 'Employee position could not be changed.'),
@@ -277,7 +278,7 @@ export function TeamAccessPanel({
             </select>
           </label>
           <label className="mb-3 block text-sm">Base access role
-            <select className="mt-1 h-10 w-full rounded-md border bg-background px-3" value={inviteRole} onChange={(e) => setInviteRole(e.target.value)}>
+            <select className="mt-1 h-10 w-full rounded-md border bg-background px-3" value={inviteRole} onChange={(e) => setInviteRole(e.target.value as RoleCode)}>
               {allowedInviteRoles.map((role) => <option key={role} value={role}>{role === 'staff' ? 'Staff · POS only' : role.replaceAll('_',' ').replace(/\b\w/g,(v) => v.toUpperCase())}</option>)}
             </select>
           </label>
@@ -301,7 +302,7 @@ export function TeamAccessPanel({
           <label className="my-3 block text-sm">Invitation label (optional)
             <input className="mt-1 h-10 w-full rounded-md border bg-background px-3" maxLength={120} value={label} onChange={(e) => setLabel(e.target.value)} placeholder="e.g. Nepalgunj cashier team" />
           </label>
-          <Button className="w-full" disabled={!selectedBranchId || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(inviteeEmail.trim()) || !inviteMobileValid || !allowedInviteRoles.includes(inviteRole) || (Boolean(jobTitle) && !availableTitles.includes(jobTitle)) || createInvite.isPending} onClick={() => createInvite.mutate()}>
+          <Button className="w-full" disabled={!selectedBranchId || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(inviteeEmail.trim()) || !inviteMobileValid || !allowedInviteRoles.includes(inviteRole) || (jobTitle !== '' && !availableTitles.includes(jobTitle)) || createInvite.isPending} onClick={() => createInvite.mutate()}>
             <UserPlus className="mr-2 size-4" />{createInvite.isPending ? 'Creating link…' : 'Create invitation link'}
           </Button>
           {inviteLink && <div className="mt-3 rounded-lg border p-3">

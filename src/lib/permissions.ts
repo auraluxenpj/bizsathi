@@ -37,9 +37,9 @@ export const routePermission:Record<string,string>={
 /** Resolve route-specific permissions for pages whose data scope is selected by search params. */
 export function permissionForRoute(pathname:string,search:Record<string,unknown>={}):string|undefined {
  if(['/dashboard','/profile','/help'].includes(pathname)) return undefined;
- if(pathname==='/contacts' || pathname.startsWith('/contacts/')) return search.kind==='supplier'?'suppliers.view':'customers.view';
- if((pathname==='/parties' || pathname.startsWith('/parties/')) && search.kind==='supplier') return 'suppliers.view';
- if((pathname==='/accounting' || pathname.startsWith('/accounting/')) && search.view && search.view!=='accounts') return 'reports.view';
+ if(pathname==='/contacts' || pathname.startsWith('/contacts/')) return search['kind']==='supplier'?'suppliers.view':'customers.view';
+ if((pathname==='/parties' || pathname.startsWith('/parties/')) && search['kind']==='supplier') return 'suppliers.view';
+ if((pathname==='/accounting' || pathname.startsWith('/accounting/')) && search['view'] && search['view']!=='accounts') return 'reports.view';
  const exact = routePermission[pathname];
  if (exact) return exact;
  const nested = Object.keys(routePermission).sort((a,b)=>b.length-a.length).find(route=>pathname.startsWith(`${route}/`));

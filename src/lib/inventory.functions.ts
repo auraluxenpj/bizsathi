@@ -1,3 +1,4 @@
+import type { Json } from '@/integrations/supabase/types';
 import { createServerFn } from '@tanstack/react-start';
 import { z } from 'zod';
 import { requireSupabaseAuth } from '@/integrations/supabase/auth-middleware';
@@ -147,25 +148,26 @@ export const submitInventoryCountSession = createServerFn({method:'POST'}).middl
 
 
 const countAdjustmentInput = z.object({ sessionId: z.string().uuid() });
+type UntypedRpc = (fn: string, args: Record<string, unknown>) => Promise<{ data: Json; error: unknown }>;
 const confirmCountAdjustmentInput = z.object({
   sessionId: z.string().uuid(),
   reason: z.string().trim().min(1).max(500),
 });
 
 export const readInventoryCountAdjustment = createServerFn({method:'GET'}).middleware([requireSupabaseAuth]).inputValidator(countAdjustmentInput).handler(async ({data,context}) => {
-  const {data:adjustment,error} = await context.supabase.rpc('read_inventory_count_adjustment',{_session_id:data.sessionId});
+  const {data:adjustment,error} = await (context.supabase.rpc as unknown as UntypedRpc)('read_inventory_count_adjustment',{_session_id:data.sessionId});
   if(error) throw new Error('Stock adjustment proposal could not be loaded.');
   return adjustment;
 });
 
 export const prepareInventoryCountAdjustment = createServerFn({method:'POST'}).middleware([requireSupabaseAuth]).inputValidator(countAdjustmentInput).handler(async ({data,context}) => {
-  const {data:adjustment,error} = await context.supabase.rpc('prepare_inventory_count_adjustment',{_session_id:data.sessionId});
+  const {data:adjustment,error} = await (context.supabase.rpc as unknown as UntypedRpc)('prepare_inventory_count_adjustment',{_session_id:data.sessionId});
   if(error || !adjustment) throw new Error('Stock adjustment proposal could not be prepared. Confirm the count is approved and you have Branch Manager or Administrator approval access.');
   return adjustment;
 });
 
 export const confirmInventoryCountAdjustment = createServerFn({method:'POST'}).middleware([requireSupabaseAuth]).inputValidator(confirmCountAdjustmentInput).handler(async ({data,context}) => {
-  const {data:adjustment,error} = await context.supabase.rpc('confirm_inventory_count_adjustment',{
+  const {data:adjustment,error} = await (context.supabase.rpc as unknown as UntypedRpc)('confirm_inventory_count_adjustment',{
     _session_id:data.sessionId,
     _reason:data.reason,
   });
@@ -177,7 +179,7 @@ export const reviewInventoryCountSession = createServerFn({method:'POST'}).middl
   const {data:reviewed,error} = await context.supabase.rpc('review_inventory_count_session',{
     _session_id:data.sessionId,
     _decision:data.decision,
-    _note:data.note,
+    ...(data.note===undefined?{}:{_note:data.note}),
   });
   if(error || reviewed !== true) throw new Error('Inventory count review could not be saved. The reviewer must be a different authorized Branch Manager or Administrator.');
   return {ok:true};

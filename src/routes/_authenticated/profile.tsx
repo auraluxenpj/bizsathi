@@ -74,6 +74,7 @@ function Profile() {
 
   useEffect(() => {
     if (avatarUrl.startsWith('blob:')) return () => URL.revokeObjectURL(avatarUrl);
+    return undefined;
   }, [avatarUrl]);
 
   async function chooseAvatar(event: ChangeEvent<HTMLInputElement>) {

@@ -95,7 +95,7 @@ describe('BizSathi HRM validation and access defaults', () => {
   });
 
   it('grants payroll functions to accountant presets but not ordinary sales staff', () => {
-    expect(rolePresets.accountant?.allowed).toContain('hr.payroll.manage');
+    expect(rolePresets['accountant']?.allowed).toContain('hr.payroll.manage');
     expect(jobTitles.sales_person.allowed).toContain('hr.self.view');
     expect(jobTitles.sales_person.allowed).not.toContain('hr.payroll.view');
   });

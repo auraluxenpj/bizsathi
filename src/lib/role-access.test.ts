@@ -4,7 +4,7 @@ import { shouldRedirectBillingStaff } from './workspace-navigation';
 
 describe('least-privilege employee workspace access', () => {
   it('keeps the base Staff access role limited to POS and its in-screen lookups', () => {
-    const allowed = rolePresets.staff?.allowed ?? [];
+    const allowed = rolePresets['staff']?.allowed ?? [];
     expect(allowed).toEqual(expect.arrayContaining(['sales.create','sales.view','inventory.view','categories.view','customers.view','customers.create']));
     expect(allowed).not.toContain('purchases.view');
     expect(allowed).not.toContain('accounts.view');

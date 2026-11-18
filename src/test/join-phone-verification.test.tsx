@@ -10,8 +10,8 @@ const mocks = vi.hoisted(() => ({
     id: 'user-1',
     email: 'staff@example.com',
     email_confirmed_at: '2026-11-16T00:00:00.000Z',
-    phone: null,
-    phone_confirmed_at: null,
+    phone: null as string | null,
+    phone_confirmed_at: null as string | null,
   } } })),
   preview: vi.fn(async () => ({ invitation: {
     businessName: 'Auraluxe', branchName: 'Nepalgunj', roleName: 'Store Team',

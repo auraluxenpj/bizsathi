@@ -90,7 +90,7 @@ export function BusinessAccessRolesPanel({ businessId, members, isOwner }: { bus
   };
 
   const saveRole = useMutation({
-    mutationFn: () => editingRoleId
+    mutationFn: async (): Promise<unknown> => editingRoleId
       ? updateRoleFn({ data: { businessId, roleId: editingRoleId, name, description, authorityRank: 1, permissions } })
       : createRoleFn({ data: { businessId, name, description, authorityRank: 1, permissions } }),
     onSuccess: async () => {

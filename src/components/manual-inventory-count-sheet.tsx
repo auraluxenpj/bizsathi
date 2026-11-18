@@ -17,7 +17,7 @@ type Branch = { id: string; name: string; is_active: boolean };
 type Movement = { variant_id: string; branch_id: string; quantity: number };
 const formatQuantity = (value: number) => Number.isInteger(value) ? String(value) : String(Number(value.toFixed(3)));
 
-type Props = { variants: Variant[]; branches: Branch[]; movements: Movement[]; businessId: string; canApprove: boolean; currentUserId?: string; canViewPurchasePrice: boolean };
+type Props = { variants: Variant[]; branches: Branch[]; movements: Movement[]; businessId: string; canApprove: boolean; currentUserId?: string | undefined; canViewPurchasePrice: boolean };
 
 type DraftRow = { physical: string; cost: string; system?: number; sku?: string; product?: string; variant?: string; unit?: string };
 type SessionSummary = { id: string; branch_id: string; branch_name: string; count_date: string; counted_by: string; status: 'draft'|'submitted'|'approved'|'rejected'; created_by: string; created_at: string; submitted_at: string | null; reviewed_by: string | null; reviewed_at: string | null; review_note: string | null; line_count: number; counted_line_count: number };

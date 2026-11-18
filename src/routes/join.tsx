@@ -72,7 +72,7 @@ export function Join() {
       setEmailConfirmed(Boolean(user?.email_confirmed_at));
       setCurrentPhone(user?.phone ?? '');
       setCurrentPhoneConfirmed(Boolean(user?.phone_confirmed_at));
-      const signupMobile = typeof user?.user_metadata?.mobile === 'string' ? user.user_metadata.mobile : '';
+      const signupMobile = typeof user?.user_metadata?.['mobile'] === 'string' ? user.user_metadata['mobile'] : '';
       if (signupMobile) setMobile(signupMobile);
     });
   }, [previewFn]);
@@ -149,11 +149,6 @@ export function Join() {
       await acceptFn({ data: { token } });
       sessionStorage.removeItem('bizsathi-team-token');
       setToken('');
-      const { data: authData } = await supabase.auth.getUser();
-      if (authData.user) {
-        const { data: profile } = await supabase.from('profiles').select('employee_id').eq('id', authData.user.id).maybeSingle();
-        if (profile?.employee_id) setAssignedEmployeeId(profile.employee_id);
-      }
       setMessage('Invitation accepted! Your Employee ID is shown below.');
       if (!assignedEmployeeId) await navigate({ to: '/dashboard' });
 

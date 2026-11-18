@@ -18,7 +18,7 @@ const tone = (v: number) => (v < 0 ? 'text-red-500' : 'text-emerald-600');
 
 function Body({ w, commerce }: { w: CommerceWorkspace; commerce: CommerceData }) {
   const can = useCan(w.businessId);
-  const canManage = ['owner', 'admin', 'accountant'].includes(commerce.role);
+  const canManage = ['owner', 'admin', 'accountant'].includes(commerce.role ?? '');
   const load = useServerFn(getAccountBalances);
   const accounts = useQuery({ queryKey: ['accounts', w.businessId], queryFn: () => load({ data: { businessId: w.businessId } }), enabled: canManage, retry: false });
   const [dialog, setDialog] = useState<{ type: 'new' } | { type: 'adjust' | 'transfer'; account: NamedAccount } | null>(null);
