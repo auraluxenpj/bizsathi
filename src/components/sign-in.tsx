@@ -20,9 +20,9 @@ export function SignIn() {
   const [signedIn, setSignedIn] = useState(false);
   const [mode, setMode] = useState<'login'|'signup'|'recovery'>('login'); const [hasInvite, setHasInvite] = useState(false);
   const [email, setEmail] = useState(''); const [mobile, setMobile] = useState(''); const [fullName, setFullName] = useState(''); const [identifier, setIdentifier] = useState(''); const [password, setPassword] = useState(''); const [confirmPassword, setConfirmPassword] = useState(''); const [message, setMessage] = useState('');
-  useEffect(() => { supabase.auth.getUser().then(({ data }) => setSignedIn(Boolean(data.user))); setHasInvite(Boolean(sessionStorage.getItem('bizsathi-invite') || sessionStorage.getItem('bizsathi-team-token'))); }, []);
+  useEffect(() => { if (isSupabaseConfigured()) { supabase.auth.getUser().then(({ data }) => setSignedIn(Boolean(data.user))).catch(() => setSignedIn(false)); } setHasInvite(Boolean(sessionStorage.getItem('bizsathi-invite') || sessionStorage.getItem('bizsathi-team-token'))); }, []);
   async function login(provider: 'google' | 'lovable') {
-    if (!supabaseConfigured) return;
+    if (!isSupabaseConfigured()) return;
     setBusy(true); setError('');
     try {
       const result = await lovable.auth.signInWithOAuth(provider, { redirect_uri: `${window.location.origin}/auth` });
@@ -34,7 +34,7 @@ export function SignIn() {
     finally { setBusy(false); }
   }
   async function emailLogin() {
-    if (!supabaseConfigured) return;
+    if (!isSupabaseConfigured()) return;
     setBusy(true); setError(''); setMessage('');
     try {
       if (mode === 'recovery') {
@@ -94,7 +94,7 @@ export function SignIn() {
             {mode !== 'recovery' && <label className="block text-sm">Password<Input className="mt-1 h-11" type="password" autoComplete={mode === 'signup' ? 'new-password' : 'current-password'} required minLength={8} maxLength={128} value={password} onChange={e => setPassword(e.target.value)} /></label>}
             {mode === 'signup' && <label className="block text-sm">Confirm password<Input className="mt-1 h-11" type="password" autoComplete="new-password" required minLength={8} maxLength={128} value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)} /></label>}
             {mode === 'signup' && password && confirmPassword && password !== confirmPassword && <p className="text-sm text-destructive">Passwords do not match.</p>}
-            <Button className="h-11 w-full" disabled={busy || !supabaseConfigured}>{busy ? 'Please wait…' : mode === 'recovery' ? 'Send recovery link' : mode === 'signup' ? 'Create account' : 'Sign in'}</Button>
+            <Button className="h-11 w-full" disabled={busy || !isSupabaseConfigured()}>{busy ? 'Please wait…' : mode === 'recovery' ? 'Send recovery link' : mode === 'signup' ? 'Create account' : 'Sign in'}</Button>
             <div className="flex flex-wrap justify-between gap-2 text-sm">
               {(hasInvite || mode === 'signup') && <Button type="button" variant="link" className="h-auto p-0" onClick={() => { setMode(mode === 'signup' ? 'login' : 'signup'); setError(''); setMessage(''); }}>{mode === 'signup' ? 'Already have an account?' : 'Create account'}</Button>}
               <Button type="button" variant="link" className="h-auto p-0" onClick={() => { setMode(mode === 'recovery' ? 'login' : 'recovery'); setError(''); setMessage(''); }}>{mode === 'recovery' ? 'Back to sign-in' : 'Forgot password?'}</Button>
@@ -103,8 +103,8 @@ export function SignIn() {
           {mode !== 'recovery' && !pendingEmail && <>
             <div className="my-5 flex items-center gap-3 text-xs text-muted-foreground"><span className="h-px flex-1 bg-border" />or<span className="h-px flex-1 bg-border" /></div>
             <div className="grid gap-2">
-              <Button variant="outline" className="h-11" disabled={busy || !supabaseConfigured} onClick={() => login('google')}>Continue with Google</Button>
-              <Button className="lovable-auth-button h-11" variant="outline" disabled={busy || !supabaseConfigured} onClick={() => login('lovable')}>Continue with Lovable</Button>
+              <Button variant="outline" className="h-11" disabled={busy || !isSupabaseConfigured()} onClick={() => login('google')}>Continue with Google</Button>
+              <Button className="lovable-auth-button h-11" variant="outline" disabled={busy || !isSupabaseConfigured()} onClick={() => login('lovable')}>Continue with Lovable</Button>
             </div>
           </>}
         </>}
