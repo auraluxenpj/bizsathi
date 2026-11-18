@@ -23,6 +23,8 @@ export const accessRoleCreateInput = tenantInput.extend({
   permissions: z.array(z.string().min(1).max(80)).max(200),
 });
 export const accessRoleUpdateInput = accessRoleCreateInput.extend({ roleId: z.string().uuid() });
+export const branchAccessRoleCreateInput = accessRoleCreateInput.extend({ branchId: z.string().uuid() });
+export const branchAccessRoleUpdateInput = branchAccessRoleCreateInput.extend({ roleId: z.string().uuid() });
 export const accessRoleAssignmentInput = tenantInput.extend({
   userId: z.string().uuid(),
   roleId: z.string().uuid(),
