@@ -250,6 +250,7 @@ export type Database = {
         Row: {
           address: string | null
           business_id: string
+          branch_id: string | null
           code: string
           created_at: string
           id: string
@@ -260,6 +261,7 @@ export type Database = {
         Insert: {
           address?: string | null
           business_id: string
+          branch_id?: string | null
           code: string
           created_at?: string
           id?: string
@@ -270,6 +272,7 @@ export type Database = {
         Update: {
           address?: string | null
           business_id?: string
+          branch_id?: string | null
           code?: string
           created_at?: string
           id?: string
@@ -369,6 +372,13 @@ export type Database = {
             columns: ["business_id"]
             isOneToOne: false
             referencedRelation: "businesses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "business_access_roles_branch_id_fkey"
+            columns: ["branch_id"]
+            isOneToOne: false
+            referencedRelation: "branches"
             referencedColumns: ["id"]
           },
           {
