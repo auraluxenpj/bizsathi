@@ -342,6 +342,7 @@ DECLARE
   actor_rank smallint;
   target_rank smallint;
   role_rank smallint;
+  role_branch_id uuid;
   is_branch_manager boolean;
   p text;
 BEGIN
@@ -384,13 +385,24 @@ BEGIN
     RAISE EXCEPTION 'Branch Managers cannot assign roles to another Branch Manager' USING ERRCODE='42501';
   END IF;
 
-  SELECT authority_rank INTO role_rank
+  SELECT authority_rank,branch_id INTO role_rank,role_branch_id
   FROM public.business_access_roles
   WHERE business_id=_business AND id=_role AND is_active
     AND (actor_rank>=80 OR code NOT IN ('legacy_owner','legacy_admin','legacy_accountant','legacy_branch_manager',
                                         'position_partner','position_accountant','position_branch_manager'));
   IF role_rank IS NULL OR role_rank>=actor_rank OR role_rank>=80 THEN
     RAISE EXCEPTION 'Role is unavailable or exceeds your authority' USING ERRCODE='42501';
+  END IF;
+  IF role_branch_id IS NOT NULL AND (
+    (SELECT count(*) FROM public.branch_memberships target_branch
+     WHERE target_branch.business_id=_business AND target_branch.user_id=_user)<>1
+    OR NOT EXISTS (
+      SELECT 1 FROM public.branch_memberships target_branch
+      WHERE target_branch.business_id=_business AND target_branch.user_id=_user
+        AND target_branch.branch_id=role_branch_id
+    )
+  ) THEN
+    RAISE EXCEPTION 'Branch-specific roles can be assigned only to employees whose sole branch matches the role branch' USING ERRCODE='42501';
   END IF;
 
   FOR p IN
