@@ -134,13 +134,13 @@ export function BusinessAccessRolesPanel({ businessId, members, isOwner, canMana
     <section className="space-y-6 border-b py-7" aria-labelledby="business-access-roles-heading">
       <div>
         <div className="mb-2 flex items-center gap-2"><ShieldCheck className="size-5 text-primary" /><h3 id="business-access-roles-heading" className="brand text-xl">Business access roles</h3></div>
-        <p className="text-sm text-muted-foreground">Create reusable permission bundles and assign more than one to an employee. Assign built-in authority roles such as Accountant or Branch Manager alongside custom permission bundles. HR position remains separate; custom roles cannot elevate administrator authority. Explicit employee denials still win, and branch access is managed separately.</p>
+        <p className="text-sm text-muted-foreground">{canManageRoleDefinitions ? 'Create reusable permission bundles and assign more than one to an employee. Assign built-in authority roles alongside custom permission bundles. HR position remains separate; custom roles cannot elevate administrator authority. Explicit employee denials still win.' : 'Assign approved roles to employees in your branch. You can assign only roles below your authority and only permissions you already hold. Cross-branch employees are excluded.'}</p>
       </div>
 
       {(rolesQuery.isPending || assignmentsQuery.isPending) && <p role="status" className="text-sm text-muted-foreground">Loading access roles…</p>}
       {(rolesQuery.error || assignmentsQuery.error) && <p role="alert" className="text-sm text-destructive">{rolesQuery.error?.message || assignmentsQuery.error?.message || 'Access roles could not be loaded.'}</p>}
 
-      <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)]">
+      <div className={canManageRoleDefinitions ? 'grid gap-6 xl:grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)]' : 'grid gap-6'}>
         {canManageRoleDefinitions && <section className="rounded-xl border p-4 md:p-5">
           <div className="mb-3 flex items-center justify-between gap-2">
             <h4 className="font-semibold">{editingRoleId ? 'Edit custom role' : 'Create custom role'}</h4>
