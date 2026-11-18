@@ -20,6 +20,7 @@ import { permissionGroups } from '@/lib/permissions';
 type Member = {
   user_id: string;
   role_code: string;
+  branch_id?: string;
   job_title: string | null;
   status: string;
   profiles?: { full_name: string | null } | null;
@@ -76,9 +77,12 @@ export function BusinessAccessRolesPanel({ businessId, members, isOwner, branche
   const availablePermissions = useMemo(() => new Set(permissionsQuery.data?.permissions ?? []), [permissionsQuery.data?.permissions]);
 
   const editingRole = roles.find((r) => r.id === editingRoleId);
+  const selectedMember = members.find((member) => member.user_id === selectedUserId);
   const availableRoles = useMemo(() => roles.filter((r) =>
-    r.isActive && r.authorityRank < (isOwner ? 100 : 80) && !assignments.some((a) => a.userId === selectedUserId && a.roleId === r.id)
-  ), [roles, assignments, selectedUserId]);
+    r.isActive && r.authorityRank < (isOwner ? 100 : 80)
+    && (!isBranchManager || !r.branchId || r.branchId === selectedMember?.branch_id)
+    && !assignments.some((a) => a.userId === selectedUserId && a.roleId === r.id)
+  ), [roles, assignments, selectedUserId, isOwner, isBranchManager, selectedMember?.branch_id]);
 
   useEffect(() => {
     if (editingRole) {
@@ -164,7 +168,7 @@ export function BusinessAccessRolesPanel({ businessId, members, isOwner, branche
       {(rolesQuery.isPending || assignmentsQuery.isPending) && <p role="status" className="text-sm text-muted-foreground">Loading access roles…</p>}
       {(rolesQuery.error || assignmentsQuery.error) && <p role="alert" className="text-sm text-destructive">{rolesQuery.error?.message || assignmentsQuery.error?.message || 'Access roles could not be loaded.'}</p>}
 
-      <div className={canManageRoleDefinitions ? 'grid gap-6 xl:grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)]' : 'grid gap-6'}>
+      <div className={canEditRoleDefinitions ? 'grid gap-6 xl:grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)]' : 'grid gap-6'}>
         {canEditRoleDefinitions && <section className="rounded-xl border p-4 md:p-5">
           <div className="mb-3 flex items-center justify-between gap-2">
             <h4 className="font-semibold">{editingRoleId ? 'Edit custom role' : 'Create custom role'}</h4>
