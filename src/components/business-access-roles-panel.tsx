@@ -7,10 +7,13 @@ import { Input } from '@/components/ui/input';
 import {
   assignBusinessAccessRole,
   createBusinessAccessRole,
+  createBranchAccessRole,
   getBusinessAccessRoles,
+  getMyBusinessPermissions,
   getBusinessMemberAccessRoles,
   unassignBusinessAccessRole,
   updateBusinessAccessRole,
+  updateBranchAccessRole,
 } from '@/lib/business.functions';
 import { permissionGroups } from '@/lib/permissions';
 
@@ -26,11 +29,12 @@ type Assignment = {
   roleId: string;
   roleCode: string;
   roleName: string;
+  branchId: string | null;
   isDefault: boolean;
   assignedAt: string;
 };
 
-export function BusinessAccessRolesPanel({ businessId, members, isOwner, canManageRoleDefinitions = true }: { businessId: string; members: Member[]; isOwner: boolean; canManageRoleDefinitions?: boolean }) {
+export function BusinessAccessRolesPanel({ businessId, members, isOwner, branches = [], isBranchManager = false, canManageRoleDefinitions = true }: { businessId: string; members: Member[]; isOwner: boolean; branches?: { id: string; name: string }[]; isBranchManager?: boolean; canManageRoleDefinitions?: boolean }) {
   const client = useQueryClient();
   const loadRoles = useServerFn(getBusinessAccessRoles);
   const loadAssignments = useServerFn(getBusinessMemberAccessRoles);
