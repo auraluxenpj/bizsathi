@@ -72,6 +72,12 @@ BEGIN
     'Branch Manager can see the Department Manager role for their branch';
   ASSERT NOT roles @> jsonb_build_array(jsonb_build_object('id',branch_manager_role)),
     'Branch Manager cannot delegate Branch Manager authority';
+  BEGIN
+    PERFORM public.create_business_access_role(v_business,'Business-wide role','',1,ARRAY['sales.view']);
+    RAISE EXCEPTION 'Expected Branch Manager business-wide role creation to be rejected';
+  EXCEPTION WHEN insufficient_privilege THEN
+    NULL;
+  END;
   branch_custom_role := public.create_branch_access_role(v_business,branch_a,'Branch Sales Lead','Branch-scoped sales permissions',ARRAY['sales.view','customers.view','inventory.view']);
   roles := public.get_business_access_roles(v_business);
   ASSERT roles @> jsonb_build_array(jsonb_build_object('id',branch_custom_role,'branchId',branch_a)),
