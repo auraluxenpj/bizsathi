@@ -53,7 +53,7 @@ INSERT INTO public.job_title_denials(job_title,permission)
 SELECT 'department_manager',p.permission
 FROM public.business_permission_catalog p
 WHERE p.permission <> ALL (ARRAY[
-  'sales.create','sales.view','sales.edit',
+  'sales.create','sales.view',
   'inventory.view','categories.view','stock.create','stock.edit',
   'customers.create','customers.edit','customers.view',
   'suppliers.view','reports.home_stats','reports.items','staff.view'
