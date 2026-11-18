@@ -416,6 +416,73 @@ $set_member_job_title$;
 REVOKE ALL ON FUNCTION public.set_member_job_title(uuid,uuid,text) FROM PUBLIC,anon;
 GRANT EXECUTE ON FUNCTION public.set_member_job_title(uuid,uuid,text) TO authenticated;
 
+
+-- Branch Manager team view: return only active employees whose sole branch is
+-- assigned to the caller. This avoids exposing or mutating cross-branch memberships.
+CREATE OR REPLACE FUNCTION public.get_branch_manager_team_access(_business uuid)
+RETURNS jsonb
+LANGUAGE plpgsql
+STABLE
+SECURITY DEFINER
+SET search_path = public
+AS $branch_manager_team_access$
+DECLARE
+  result jsonb;
+  actor uuid := auth.uid();
+BEGIN
+  IF actor IS NULL OR NOT (
+    public.has_business_access_role(_business,'position_branch_manager')
+    OR public.has_business_access_role(_business,'legacy_branch_manager')
+  ) THEN
+    RAISE EXCEPTION 'Branch Manager access is required' USING ERRCODE='42501';
+  END IF;
+
+  SELECT jsonb_build_object(
+    'branches',COALESCE((
+      SELECT jsonb_agg(jsonb_build_object('id',b.id,'name',b.name,'code',b.code,'is_active',b.is_active,'address',b.address) ORDER BY b.name)
+      FROM public.branches b
+      JOIN public.branch_memberships own_bm
+        ON own_bm.business_id=b.business_id AND own_bm.branch_id=b.id
+      WHERE b.business_id=_business AND own_bm.user_id=actor AND b.is_active
+    ),'[]'::jsonb),
+    'members',COALESCE((
+      SELECT jsonb_agg(jsonb_build_object(
+        'user_id',m.user_id,'role_code',m.role_code,'job_title',m.job_title,'status',m.status,
+        'profiles',jsonb_build_object('full_name',p.full_name,'phone',p.phone)
+      ) ORDER BY p.full_name)
+      FROM public.business_memberships m
+      JOIN public.branch_memberships target_bm
+        ON target_bm.business_id=m.business_id AND target_bm.user_id=m.user_id
+      JOIN public.profiles p ON p.id=m.user_id
+      WHERE m.business_id=_business AND m.status='active'
+        AND target_bm.branch_id IN (
+          SELECT own_bm.branch_id FROM public.branch_memberships own_bm
+          WHERE own_bm.business_id=_business AND own_bm.user_id=actor
+        )
+        AND (SELECT count(*) FROM public.branch_memberships only_bm
+             WHERE only_bm.business_id=_business AND only_bm.user_id=m.user_id)=1
+    ),'[]'::jsonb),
+    'branchAccess',COALESCE((
+      SELECT jsonb_agg(jsonb_build_object('user_id',bm.user_id,'branch_id',bm.branch_id))
+      FROM public.branch_memberships bm
+      JOIN public.business_memberships m
+        ON m.business_id=bm.business_id AND m.user_id=bm.user_id AND m.status='active'
+      WHERE bm.business_id=_business
+        AND bm.branch_id IN (
+          SELECT own_bm.branch_id FROM public.branch_memberships own_bm
+          WHERE own_bm.business_id=_business AND own_bm.user_id=actor
+        )
+        AND (SELECT count(*) FROM public.branch_memberships only_bm
+             WHERE only_bm.business_id=_business AND only_bm.user_id=bm.user_id)=1
+    ),'[]'::jsonb),
+    'memberRoles',public.get_business_member_access_roles(_business)
+  ) INTO result;
+  RETURN result;
+END;
+$branch_manager_team_access$;
+REVOKE ALL ON FUNCTION public.get_branch_manager_team_access(uuid) FROM PUBLIC,anon;
+GRANT EXECUTE ON FUNCTION public.get_branch_manager_team_access(uuid) TO authenticated;
+
 COMMENT ON FUNCTION public.assign_business_access_role(uuid,uuid,uuid) IS
   'Business admins manage business role assignments; Branch Managers may assign permission-subset roles only to employees with one shared branch.';
 COMMENT ON FUNCTION public.set_member_job_title(uuid,uuid,text) IS
