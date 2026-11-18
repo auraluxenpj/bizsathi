@@ -30,6 +30,11 @@ ALTER TABLE public.team_invitations
   CHECK (job_title IS NULL OR job_title IN
     ('partner','manager','branch_manager','accountant','department_manager','sales_person','stock_manager','entry_person'));
 
+ALTER TABLE public.business_access_roles
+  ADD COLUMN IF NOT EXISTS branch_id uuid REFERENCES public.branches(id) ON DELETE RESTRICT;
+CREATE INDEX IF NOT EXISTS business_access_roles_branch_idx
+  ON public.business_access_roles(business_id,branch_id);
+
 CREATE OR REPLACE FUNCTION public.job_title_role(_title text)
 RETURNS text
 LANGUAGE sql
@@ -222,7 +227,7 @@ BEGIN
   END IF;
 
   SELECT COALESCE(jsonb_agg(jsonb_build_object(
-    'id',r.id,'code',r.code,'name',r.name,'description',r.description,
+    'id',r.id,'code',r.code,'name',r.name,'description',r.description,'branchId',r.branch_id,
     'authorityRank',r.authority_rank,'isSystem',r.is_system,'isActive',r.is_active,
     'permissions',COALESCE((
       SELECT jsonb_agg(rp.permission ORDER BY rp.permission)
@@ -239,6 +244,11 @@ BEGIN
         is_branch_manager
         AND r.is_active
         AND r.authority_rank<actor_rank
+        AND (r.branch_id IS NULL OR EXISTS (
+          SELECT 1 FROM public.branch_memberships own_branch
+          WHERE own_branch.business_id=_business AND own_branch.user_id=auth.uid()
+            AND own_branch.branch_id=r.branch_id
+        ))
         AND r.code NOT IN ('legacy_owner','legacy_admin','legacy_accountant','legacy_branch_manager',
                            'position_partner','position_accountant','position_branch_manager')
         AND NOT EXISTS (
@@ -278,7 +288,7 @@ BEGIN
   END IF;
 
   SELECT COALESCE(jsonb_agg(jsonb_build_object(
-    'userId',a.user_id,'roleId',r.id,'roleCode',r.code,'roleName',r.name,
+    'userId',a.user_id,'roleId',r.id,'roleCode',r.code,'roleName',r.name,'branchId',r.branch_id,
     'authorityRank',r.authority_rank,'isDefault',a.is_default,'assignedAt',a.assigned_at
   ) ORDER BY a.user_id,r.name),'[]'::jsonb)
   INTO result
