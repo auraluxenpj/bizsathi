@@ -94,7 +94,7 @@ export const listAccessAudit = createServerFn({ method: 'GET' }).middleware([req
   const { data: branchManager } = await db.rpc('has_business_access_role', { _business: data.businessId, _role_code: 'position_branch_manager' });
   const { data: legacyBranchManager } = await db.rpc('has_business_access_role', { _business: data.businessId, _role_code: 'legacy_branch_manager' });
   let auditQuery = db.from('audit_logs').select('id,actor_id,action,entity_id,created_at').eq('business_id', data.businessId)
-    .or('action.like.team_invite.%,action.like.delegation.%,action.like.job_title.%');
+    .or('action.like.team_invite.%,action.like.delegation.%,action.like.job_title.%,action.like.access_role.branch_%');
   if (branchManager || legacyBranchManager) auditQuery = auditQuery.eq('actor_id', context.userId);
   const { data: rows, error } = await auditQuery.order('created_at', { ascending: false }).limit(100);
   if (error) throw new Error('Activity log could not be loaded.');
