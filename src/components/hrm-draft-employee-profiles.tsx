@@ -16,7 +16,7 @@ type DraftEmployeeInput = {
   responsibilities: string[];
 };
 const field = 'mt-1 h-10 w-full rounded-md border bg-background px-3 text-sm';
-const roles = ['Store Manager','Assistant Store Manager','Branch Manager','Sales Manager','Sales Associate','Cashier','Inventory Executive','Stock Controller','HR Executive','Accountant','Operations Executive','Security Officer','Housekeeping','Delivery Associate','Other'];
+const roles = ['Store Manager','Assistant Store Manager','Branch Manager','Department Manager','Sales Manager','Sales Associate','Cashier','Inventory Executive','Stock Controller','HR Executive','Accountant','Operations Executive','Security Officer','Housekeeping','Delivery Associate','Other'];
 const departments = ['Store Operations','Retail Sales','Inventory & Stock','Finance & Accounts','Human Resources','Customer Service','Logistics','Administration','Security','Other'];
 const responsibilities = [
   'Open and close store','Customer assistance and sales','Billing and cash handling','Product display and merchandising',
