@@ -66,6 +66,7 @@ async function addCatalogSaree() {
   fireEvent.click(within(card).getByRole('button', { name: /\+ Add/ }));
   fireEvent.click(screen.getByRole('button', { name: 'Continue to checkout' }));
 }
+function payFullTestBalance(amount = '1500') { fireEvent.change(screen.getByLabelText('Payment amount 1'), { target: { value: amount } }); }
 function SaleEditor() {
   const w = useCommerce();
   return w.commerce.data && w.inventory.data && w.access.data ? <DocumentEditor w={w} kind="sale" onSaved={() => {}} /> : <p>loading</p>;
@@ -122,7 +123,7 @@ describe('Sale editor', () => {
     fireEvent.change(search, { target: { value: 'saree' } });
     await addCatalogSaree();
     fireEvent.change(screen.getByLabelText('Customer mobile'), { target: { value: '9812345678' } });
-    fireEvent.click(screen.getByRole('button', { name: cashButton }));
+    fireEvent.click(screen.getByRole('button', { name: cashButton })); payFullTestBalance();
     vi.spyOn(window, 'confirm').mockReturnValue(true);
     fireEvent.click(screen.getByRole('button', { name: /Confirm sale/ }));
     await waitFor(() => expect(confirm).toHaveBeenCalledTimes(1));
@@ -175,7 +176,7 @@ describe('Why a sale cannot be confirmed', () => {
   });
   it('cash without an open counter explains it and opens the counter in one tap', async () => {
     state.counter = false; mount(<SaleEditor />); await addSaree();
-    fireEvent.click(screen.getByRole('button', { name: /^Cash$/ }));
+    fireEvent.click(screen.getByRole('button', { name: /^Cash$/ })); payFullTestBalance();
     expect(why()).toHaveTextContent(/cash counter open/);
     expect(screen.getByRole('button', { name: /Confirm sale/ })).toBeDisabled();
     fireEvent.click(screen.getByRole('button', { name: 'Open my cash counter' }));
@@ -185,7 +186,7 @@ describe('Why a sale cannot be confirmed', () => {
   });
   it('warns on the line and blocks Confirm when an item has less stock than the quantity', async () => {
     mount(<SaleEditor />); await addSaree();
-    fireEvent.click(screen.getByRole('button', { name: /^Cash$/ }));
+    fireEvent.click(screen.getByRole('button', { name: /^Cash$/ })); payFullTestBalance();
     fireEvent.change(screen.getByLabelText('quantity line 1'), { target: { value: '5' } });
     expect(await screen.findByText('Only 3 in stock here.')).toBeInTheDocument();
     expect(why()).toHaveTextContent(/Not enough stock for Silk Saree \(3 in stock here\)/);
@@ -201,7 +202,7 @@ describe('Choosing which account a payment goes to', () => {
     fireEvent.click(screen.getByRole('button', { name: /^Bank Transfer$/ }));
     const pick = await screen.findByLabelText('Payment account 1');
     expect(within(pick).getAllByRole('option').map(o => o.textContent)).toEqual(['Not assigned', 'Himalayan Bank', 'NIC Asia']);
-    fireEvent.change(pick, { target: { value: ACC.bank2 } });
+    fireEvent.change(pick, { target: { value: ACC.bank2 } }); payFullTestBalance();
     vi.spyOn(window, 'confirm').mockReturnValue(true);
     fireEvent.click(screen.getByRole('button', { name: /Confirm sale/ }));
     await waitFor(() => expect(acct.tagged).toHaveBeenCalledTimes(1));
@@ -219,7 +220,7 @@ describe('Choosing which account a payment goes to', () => {
   });
   it('leaves the payment untagged when no account is chosen, and never offers accounts for counter cash', async () => {
     named(); mount(<SaleEditor />); await addSaree();
-    fireEvent.click(screen.getByRole('button', { name: /^Cash$/ }));
+    fireEvent.click(screen.getByRole('button', { name: /^Cash$/ })); payFullTestBalance();
     expect(screen.queryByLabelText('Payment account 1')).not.toBeInTheDocument();
     vi.spyOn(window, 'confirm').mockReturnValue(true);
     fireEvent.click(screen.getByRole('button', { name: /Confirm sale/ }));
@@ -307,7 +308,7 @@ describe('Point of sale', () => {
     fireEvent.change(await screen.findByLabelText('Customer name'), { target: { value: 'Walk-in Customer' } }); fireEvent.change(await screen.findByLabelText('Customer mobile'), { target: { value: '9812345678' } });
     fireEvent.change(await screen.findByLabelText('Product search or barcode'), { target: { value: 'AL-001' } });
     fireEvent.keyDown(screen.getByLabelText('Product search or barcode'), { key: 'Enter' });
-    fireEvent.click(screen.getByRole('button', { name: /^Cash$/ }));
+    fireEvent.click(screen.getByRole('button', { name: /^Cash$/ })); payFullTestBalance();
     vi.spyOn(window, 'confirm').mockReturnValue(true);
     fireEvent.click(screen.getByRole('button', { name: /Confirm sale/ }));
     await waitFor(() => expect(confirm).toHaveBeenCalledTimes(1));
