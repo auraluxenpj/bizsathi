@@ -190,8 +190,10 @@ DECLARE
   is_branch_manager boolean;
 BEGIN
   actor_rank := COALESCE(public.business_role_rank(_business,auth.uid()),0);
-  is_branch_manager := public.has_business_access_role(_business,'position_branch_manager')
-    OR public.has_business_access_role(_business,'legacy_branch_manager');
+  is_branch_manager := actor_rank>=50 AND (
+    public.has_business_access_role(_business,'position_branch_manager')
+    OR public.has_business_access_role(_business,'legacy_branch_manager')
+  );
   IF actor_rank<80 AND NOT is_branch_manager THEN
     RAISE EXCEPTION 'Administrator or Branch Manager access is required' USING ERRCODE='42501';
   END IF;
@@ -244,8 +246,10 @@ DECLARE
   is_branch_manager boolean;
 BEGIN
   actor_rank := COALESCE(public.business_role_rank(_business,auth.uid()),0);
-  is_branch_manager := public.has_business_access_role(_business,'position_branch_manager')
-    OR public.has_business_access_role(_business,'legacy_branch_manager');
+  is_branch_manager := actor_rank>=50 AND (
+    public.has_business_access_role(_business,'position_branch_manager')
+    OR public.has_business_access_role(_business,'legacy_branch_manager')
+  );
   IF actor_rank<80 AND NOT is_branch_manager THEN
     RAISE EXCEPTION 'Administrator or Branch Manager access is required' USING ERRCODE='42501';
   END IF;
@@ -267,6 +271,13 @@ BEGIN
         is_branch_manager
         AND (SELECT count(*) FROM public.branch_memberships target_bm
              WHERE target_bm.business_id=_business AND target_bm.user_id=a.user_id)=1
+        AND NOT EXISTS (
+          SELECT 1 FROM public.business_member_access_roles manager_role
+          JOIN public.business_access_roles manager_code
+            ON manager_code.business_id=manager_role.business_id AND manager_code.id=manager_role.role_id
+          WHERE manager_role.business_id=_business AND manager_role.user_id=a.user_id
+            AND manager_code.code IN ('position_branch_manager','legacy_branch_manager')
+        )
         AND EXISTS (
           SELECT 1
           FROM public.branch_memberships actor_bm
@@ -303,8 +314,10 @@ DECLARE
 BEGIN
   actor_rank := public.business_role_rank(_business,auth.uid());
   target_rank := public.business_role_rank(_business,_user);
-  is_branch_manager := public.has_business_access_role(_business,'position_branch_manager')
-    OR public.has_business_access_role(_business,'legacy_branch_manager');
+  is_branch_manager := actor_rank>=50 AND (
+    public.has_business_access_role(_business,'position_branch_manager')
+    OR public.has_business_access_role(_business,'legacy_branch_manager')
+  );
 
   IF auth.uid() IS NULL OR actor_rank IS NULL OR _user=auth.uid()
      OR target_rank IS NULL OR target_rank>=actor_rank
@@ -329,7 +342,9 @@ BEGIN
 
   SELECT authority_rank INTO role_rank
   FROM public.business_access_roles
-  WHERE business_id=_business AND id=_role AND is_active;
+  WHERE business_id=_business AND id=_role AND is_active
+    AND code NOT IN ('legacy_owner','legacy_admin','legacy_accountant','legacy_branch_manager',
+                     'position_partner','position_accountant','position_branch_manager');
   IF role_rank IS NULL OR role_rank>=actor_rank OR role_rank>=80 THEN
     RAISE EXCEPTION 'Role is unavailable or exceeds your authority' USING ERRCODE='42501';
   END IF;
@@ -368,8 +383,10 @@ DECLARE
 BEGIN
   actor_rank := public.business_role_rank(_business,auth.uid());
   target_rank := public.business_role_rank(_business,_user);
-  is_branch_manager := public.has_business_access_role(_business,'position_branch_manager')
-    OR public.has_business_access_role(_business,'legacy_branch_manager');
+  is_branch_manager := actor_rank>=50 AND (
+    public.has_business_access_role(_business,'position_branch_manager')
+    OR public.has_business_access_role(_business,'legacy_branch_manager')
+  );
 
   IF auth.uid() IS NULL OR actor_rank IS NULL OR _user=auth.uid()
      OR target_rank IS NULL OR target_rank>=actor_rank
@@ -390,6 +407,17 @@ BEGIN
     )
   ) THEN
     RAISE EXCEPTION 'Branch Managers can change roles only for employees whose sole branch is assigned to them' USING ERRCODE='42501';
+  END IF;
+
+  IF actor_rank<80 AND EXISTS (
+    SELECT 1 FROM public.business_member_access_roles existing_manager_role
+    JOIN public.business_access_roles existing_manager_code
+      ON existing_manager_code.business_id=existing_manager_role.business_id
+     AND existing_manager_code.id=existing_manager_role.role_id
+    WHERE existing_manager_role.business_id=_business AND existing_manager_role.user_id=_user
+      AND existing_manager_code.code IN ('position_branch_manager','legacy_branch_manager')
+  ) THEN
+    RAISE EXCEPTION 'Branch Managers cannot change another Branch Manager access roles' USING ERRCODE='42501';
   END IF;
 
   SELECT count(*) INTO assignment_count
@@ -426,13 +454,25 @@ DECLARE
 BEGIN
   actor_rank := public.business_role_rank(_business,auth.uid());
   target_rank := public.business_role_rank(_business,_user);
-  is_branch_manager := public.has_business_access_role(_business,'position_branch_manager')
-    OR public.has_business_access_role(_business,'legacy_branch_manager');
+  is_branch_manager := actor_rank>=50 AND (
+    public.has_business_access_role(_business,'position_branch_manager')
+    OR public.has_business_access_role(_business,'legacy_branch_manager')
+  );
 
   IF auth.uid() IS NULL OR actor_rank IS NULL OR _user=auth.uid()
      OR target_rank IS NULL OR target_rank>=actor_rank
      OR (actor_rank<80 AND NOT is_branch_manager) THEN
     RAISE EXCEPTION 'Not authorized to change this employee designation' USING ERRCODE='42501';
+  END IF;
+  IF actor_rank<80 AND EXISTS (
+    SELECT 1 FROM public.business_member_access_roles existing_manager_role
+    JOIN public.business_access_roles existing_manager_code
+      ON existing_manager_code.business_id=existing_manager_role.business_id
+     AND existing_manager_code.id=existing_manager_role.role_id
+    WHERE existing_manager_role.business_id=_business AND existing_manager_role.user_id=_user
+      AND existing_manager_code.code IN ('position_branch_manager','legacy_branch_manager')
+  ) THEN
+    RAISE EXCEPTION 'Branch Managers cannot change another Branch Manager designation' USING ERRCODE='42501';
   END IF;
   IF _title IS NOT NULL AND public.job_title_role(_title) IS NULL THEN
     RAISE EXCEPTION 'Unknown position';
@@ -487,7 +527,7 @@ DECLARE
   result jsonb;
   actor uuid := auth.uid();
 BEGIN
-  IF actor IS NULL OR NOT (
+  IF actor IS NULL OR COALESCE(public.business_role_rank(_business,actor),0)<50 OR NOT (
     public.has_business_access_role(_business,'position_branch_manager')
     OR public.has_business_access_role(_business,'legacy_branch_manager')
   ) THEN
@@ -518,6 +558,13 @@ BEGIN
         )
         AND (SELECT count(*) FROM public.branch_memberships only_bm
              WHERE only_bm.business_id=_business AND only_bm.user_id=m.user_id)=1
+        AND NOT EXISTS (
+          SELECT 1 FROM public.business_member_access_roles manager_role
+          JOIN public.business_access_roles manager_code
+            ON manager_code.business_id=manager_role.business_id AND manager_code.id=manager_role.role_id
+          WHERE manager_role.business_id=_business AND manager_role.user_id=m.user_id
+            AND manager_code.code IN ('position_branch_manager','legacy_branch_manager')
+        )
     ),'[]'::jsonb),
     'branchAccess',COALESCE((
       SELECT jsonb_agg(jsonb_build_object('user_id',bm.user_id,'branch_id',bm.branch_id))
