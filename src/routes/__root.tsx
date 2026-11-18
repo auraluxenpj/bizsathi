@@ -13,7 +13,7 @@ import { useEffect, type ReactNode } from "react";
 
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
-import { supabase } from '@/integrations/supabase/client';
+import { supabase, isSupabaseConfigured } from '@/integrations/supabase/client';
 import { AppNavigation } from '@/components/app-navigation';
 import { lockOfflineVaults } from '@/lib/offline-vault';
 
@@ -137,6 +137,12 @@ function RootComponent() {
   }, []);
 
   useEffect(() => {
+    // Lovable editor previews may not receive the project's Supabase public env.
+    // Keep the shell renderable; auth becomes available when real keys are injected.
+    if (!isSupabaseConfigured()) {
+      console.warn('[Supabase] Preview auth listener skipped: public connection variables are unavailable.');
+      return;
+    }
     if (new URLSearchParams(window.location.hash.slice(1)).get('type') === 'recovery') sessionStorage.setItem('bizsathi-recovery', 'true');
     const { data } = supabase.auth.onAuthStateChange(event => {
       if (event === 'PASSWORD_RECOVERY') { sessionStorage.setItem('bizsathi-recovery', 'true'); router.navigate({ to: '/reset-password' }); return; }
