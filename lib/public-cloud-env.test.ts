@@ -13,8 +13,12 @@ describe('publicCloudDefines', () => {
     });
   });
 
-  it('fails clearly when a required public value is missing', () => {
-    expect(() => publicCloudDefines({ VITE_SUPABASE_URL: 'https://example.supabase.co' }))
-      .toThrow('Missing public Cloud build configuration: VITE_SUPABASE_PUBLISHABLE_KEY');
+  it('leaves missing values to the platform instead of failing the build', () => {
+    const saved = process.env['VITE_SUPABASE_PUBLISHABLE_KEY'];
+    delete process.env['VITE_SUPABASE_PUBLISHABLE_KEY'];
+    try {
+      expect(publicCloudDefines({ VITE_SUPABASE_URL: 'https://example.supabase.co' }))
+        .toEqual({ 'import.meta.env.VITE_SUPABASE_URL': JSON.stringify('https://example.supabase.co') });
+    } finally { if (saved !== undefined) process.env['VITE_SUPABASE_PUBLISHABLE_KEY'] = saved; }
   });
 });
