@@ -17,6 +17,12 @@ ALTER TABLE public.business_invitations
   CHECK (job_title IS NULL OR job_title IN
     ('partner','manager','branch_manager','accountant','department_manager','sales_person','stock_manager','entry_person'));
 
+ALTER TABLE public.business_role_templates
+  DROP CONSTRAINT IF EXISTS business_role_templates_job_title_check;
+ALTER TABLE public.business_role_templates
+  ADD CONSTRAINT business_role_templates_job_title_check
+  CHECK (job_title IN ('partner','manager','branch_manager','accountant','department_manager','sales_person','stock_manager','entry_person'));
+
 ALTER TABLE public.team_invitations
   DROP CONSTRAINT IF EXISTS team_invitations_job_title_check;
 ALTER TABLE public.team_invitations
