@@ -72,7 +72,7 @@ ON CONFLICT (job_title,permission) DO NOTHING;
 -- business-specific template restrictions.
 DELETE FROM public.job_title_denials
 WHERE job_title='branch_manager'
-  AND permission IN ('hr.self.view','hr.attendance.view','hr.leave.view','hr.leave.create','hr.shifts.view');
+  AND permission IN ('hr.self.view','hr.attendance.view','hr.leave.view','hr.leave.create','hr.shifts.view','staff.edit');
 
 DELETE FROM public.business_access_role_permissions rp
 USING public.business_access_roles r
@@ -191,7 +191,7 @@ AS $branch_manager_permission_ceiling$
         )
         OR COALESCE(public.business_role_rank(_business,auth.uid()),0)>50
         OR _perm = ANY (ARRAY[
-          'hr.self.view','hr.attendance.view','hr.leave.view','hr.leave.create','hr.shifts.view',
+          'hr.self.view','hr.attendance.view','hr.leave.view','hr.leave.create','hr.shifts.view','staff.edit',
           'sales.view','sales.create','expenses.view','inventory.view','categories.view',
           'stock.create','stock.edit','customers.create','customers.edit','customers.view',
           'suppliers.view','staff.view','reports.view','reports.home_stats','reports.expenses',
