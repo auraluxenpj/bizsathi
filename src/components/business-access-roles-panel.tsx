@@ -188,6 +188,7 @@ export function BusinessAccessRolesPanel({ businessId, members, isOwner, branche
           <div className="mb-3 flex items-center justify-between gap-2"><h5 className="text-sm font-semibold">Permissions included</h5><span className="text-xs text-muted-foreground">{permissions.length} selected</span></div>
           <div className="max-h-[560px] space-y-4 overflow-y-auto pr-2">
             {isBranchManager && permissionsQuery.isPending && <p className="text-sm text-muted-foreground">Loading your assignable permissions…</p>}
+            {isBranchManager && permissionsQuery.error && <p role="alert" className="text-sm text-destructive">{permissionsQuery.error.message}</p>}
             {permissionGroups.map((group) => (
               <fieldset key={group.title} className="border-t pt-3">
                 <legend className="px-1 text-sm font-semibold">{group.title}</legend>
@@ -219,7 +220,7 @@ export function BusinessAccessRolesPanel({ businessId, members, isOwner, branche
                 <article key={role.id} className="flex flex-wrap items-center justify-between gap-3 py-3">
                   <div className="min-w-0">
                     <p className="font-medium">{role.name} {role.isSystem && <span className="ml-1 rounded bg-muted px-2 py-0.5 text-xs font-normal text-muted-foreground">{role.code.startsWith('legacy_') ? 'Authority role' : 'Position template'}</span>}</p>
-                    <p className="text-xs text-muted-foreground">{role.description || role.code} · {role.permissions.length} permissions{role.branchId ? ' · Branch role' : ' · Business-wide'}</p>
+                    <p className="text-xs text-muted-foreground">{role.description || role.code} · {role.permissions.length} permissions{role.branchId ? ` · ${branches.find((branch) => branch.id === role.branchId)?.name ?? 'Branch role'}` : ' · Business-wide'}</p>
                   </div>
                   {((canManageRoleDefinitions && !role.isSystem) || (isBranchManager && Boolean(role.branchId))) && <Button size="sm" variant="outline" onClick={() => { setEditingRoleId(role.id); setMessage(''); }}><Pencil className="mr-1 size-3" />Edit</Button>}
                 </article>
