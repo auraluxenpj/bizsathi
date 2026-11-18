@@ -287,6 +287,99 @@ export type Database = {
           },
         ]
       }
+      business_access_role_permissions: {
+        Row: {
+          business_id: string
+          created_at: string
+          permission: string
+          role_id: string
+        }
+        Insert: {
+          business_id: string
+          created_at?: string
+          permission: string
+          role_id: string
+        }
+        Update: {
+          business_id?: string
+          created_at?: string
+          permission?: string
+          role_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "business_access_role_permissions_business_id_role_id_fkey"
+            columns: ["business_id", "role_id"]
+            isOneToOne: false
+            referencedRelation: "business_access_roles"
+            referencedColumns: ["business_id", "id"]
+          },
+          {
+            foreignKeyName: "business_access_role_permissions_permission_fkey"
+            columns: ["permission"]
+            isOneToOne: false
+            referencedRelation: "business_permission_catalog"
+            referencedColumns: ["permission"]
+          },
+        ]
+      }
+      business_access_roles: {
+        Row: {
+          authority_rank: number
+          business_id: string
+          code: string
+          created_at: string
+          created_by: string | null
+          description: string | null
+          id: string
+          is_active: boolean
+          is_system: boolean
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          authority_rank: number
+          business_id: string
+          code: string
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          is_system?: boolean
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          authority_rank?: number
+          business_id?: string
+          code?: string
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          is_system?: boolean
+          name?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "business_access_roles_business_id_fkey"
+            columns: ["business_id"]
+            isOneToOne: false
+            referencedRelation: "businesses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "business_access_roles_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       business_bills: {
         Row: {
           bill_date: string
@@ -401,6 +494,55 @@ export type Database = {
           },
         ]
       }
+      business_member_access_roles: {
+        Row: {
+          assigned_at: string
+          assigned_by: string | null
+          business_id: string
+          is_default: boolean
+          role_id: string
+          user_id: string
+        }
+        Insert: {
+          assigned_at?: string
+          assigned_by?: string | null
+          business_id: string
+          is_default?: boolean
+          role_id: string
+          user_id: string
+        }
+        Update: {
+          assigned_at?: string
+          assigned_by?: string | null
+          business_id?: string
+          is_default?: boolean
+          role_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "business_member_access_roles_assigned_by_fkey"
+            columns: ["assigned_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "business_member_access_roles_business_id_role_id_fkey"
+            columns: ["business_id", "role_id"]
+            isOneToOne: false
+            referencedRelation: "business_access_roles"
+            referencedColumns: ["business_id", "id"]
+          },
+          {
+            foreignKeyName: "business_member_access_roles_business_id_user_id_fkey"
+            columns: ["business_id", "user_id"]
+            isOneToOne: false
+            referencedRelation: "business_memberships"
+            referencedColumns: ["business_id", "user_id"]
+          },
+        ]
+      }
       business_memberships: {
         Row: {
           business_id: string
@@ -506,6 +648,30 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      business_permission_catalog: {
+        Row: {
+          action: string
+          created_at: string
+          label: string
+          module: string
+          permission: string
+        }
+        Insert: {
+          action: string
+          created_at?: string
+          label: string
+          module: string
+          permission: string
+        }
+        Update: {
+          action?: string
+          created_at?: string
+          label?: string
+          module?: string
+          permission?: string
+        }
+        Relationships: []
       }
       business_role_template_denials: {
         Row: {
@@ -1346,6 +1512,957 @@ export type Database = {
             columns: ["closed_by"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      hr_attendance: {
+        Row: {
+          attendance_date: string
+          attendance_status: string
+          branch_id: string | null
+          business_id: string
+          check_in: string | null
+          check_out: string | null
+          created_at: string
+          id: string
+          notes: string | null
+          recorded_by: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          attendance_date: string
+          attendance_status?: string
+          branch_id?: string | null
+          business_id: string
+          check_in?: string | null
+          check_out?: string | null
+          created_at?: string
+          id?: string
+          notes?: string | null
+          recorded_by: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          attendance_date?: string
+          attendance_status?: string
+          branch_id?: string | null
+          business_id?: string
+          check_in?: string | null
+          check_out?: string | null
+          created_at?: string
+          id?: string
+          notes?: string | null
+          recorded_by?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "hr_attendance_business_id_branch_id_fkey"
+            columns: ["business_id", "branch_id"]
+            isOneToOne: false
+            referencedRelation: "branches"
+            referencedColumns: ["business_id", "id"]
+          },
+          {
+            foreignKeyName: "hr_attendance_business_id_fkey"
+            columns: ["business_id"]
+            isOneToOne: false
+            referencedRelation: "businesses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "hr_attendance_business_id_user_id_fkey"
+            columns: ["business_id", "user_id"]
+            isOneToOne: false
+            referencedRelation: "hr_employee_records"
+            referencedColumns: ["business_id", "user_id"]
+          },
+          {
+            foreignKeyName: "hr_attendance_recorded_by_fkey"
+            columns: ["recorded_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      hr_attendance_policies: {
+        Row: {
+          business_id: string
+          created_at: string
+          grace_minutes: number
+          overtime_after_minutes: number
+          overtime_multiplier: number
+          unpaid_break_minutes: number
+          updated_at: string
+          updated_by: string | null
+          workday_minutes: number
+        }
+        Insert: {
+          business_id: string
+          created_at?: string
+          grace_minutes?: number
+          overtime_after_minutes?: number
+          overtime_multiplier?: number
+          unpaid_break_minutes?: number
+          updated_at?: string
+          updated_by?: string | null
+          workday_minutes?: number
+        }
+        Update: {
+          business_id?: string
+          created_at?: string
+          grace_minutes?: number
+          overtime_after_minutes?: number
+          overtime_multiplier?: number
+          unpaid_break_minutes?: number
+          updated_at?: string
+          updated_by?: string | null
+          workday_minutes?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "hr_attendance_policies_business_id_fkey"
+            columns: ["business_id"]
+            isOneToOne: true
+            referencedRelation: "businesses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "hr_attendance_policies_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      hr_employee_drafts: {
+        Row: {
+          branch_id: string | null
+          business_id: string
+          created_at: string
+          created_by: string
+          department: string | null
+          designation: string | null
+          email: string | null
+          employee_number: string
+          full_name: string
+          id: string
+          joining_date: string | null
+          notes: string | null
+          phone: string | null
+          profile_status: string
+          responsibilities: string[]
+          updated_at: string
+        }
+        Insert: {
+          branch_id?: string | null
+          business_id: string
+          created_at?: string
+          created_by: string
+          department?: string | null
+          designation?: string | null
+          email?: string | null
+          employee_number: string
+          full_name: string
+          id?: string
+          joining_date?: string | null
+          notes?: string | null
+          phone?: string | null
+          profile_status?: string
+          responsibilities?: string[]
+          updated_at?: string
+        }
+        Update: {
+          branch_id?: string | null
+          business_id?: string
+          created_at?: string
+          created_by?: string
+          department?: string | null
+          designation?: string | null
+          email?: string | null
+          employee_number?: string
+          full_name?: string
+          id?: string
+          joining_date?: string | null
+          notes?: string | null
+          phone?: string | null
+          profile_status?: string
+          responsibilities?: string[]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "hr_employee_drafts_business_id_branch_id_fkey"
+            columns: ["business_id", "branch_id"]
+            isOneToOne: false
+            referencedRelation: "branches"
+            referencedColumns: ["business_id", "id"]
+          },
+          {
+            foreignKeyName: "hr_employee_drafts_business_id_fkey"
+            columns: ["business_id"]
+            isOneToOne: false
+            referencedRelation: "businesses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "hr_employee_drafts_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      hr_employee_records: {
+        Row: {
+          address: string | null
+          branch_id: string | null
+          business_id: string
+          confirmation_date: string | null
+          created_at: string
+          created_by: string
+          department: string | null
+          designation: string | null
+          emergency_contact_name: string | null
+          emergency_contact_phone: string | null
+          employee_number: string
+          employment_status: string
+          employment_type: string
+          exit_date: string | null
+          exit_reason: string | null
+          exit_type: string | null
+          final_settlement_date: string | null
+          joining_date: string
+          last_working_date: string | null
+          notes: string | null
+          rehire_eligible: boolean
+          responsibilities: string[]
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          address?: string | null
+          branch_id?: string | null
+          business_id: string
+          confirmation_date?: string | null
+          created_at?: string
+          created_by: string
+          department?: string | null
+          designation?: string | null
+          emergency_contact_name?: string | null
+          emergency_contact_phone?: string | null
+          employee_number: string
+          employment_status?: string
+          employment_type?: string
+          exit_date?: string | null
+          exit_reason?: string | null
+          exit_type?: string | null
+          final_settlement_date?: string | null
+          joining_date: string
+          last_working_date?: string | null
+          notes?: string | null
+          rehire_eligible?: boolean
+          responsibilities?: string[]
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          address?: string | null
+          branch_id?: string | null
+          business_id?: string
+          confirmation_date?: string | null
+          created_at?: string
+          created_by?: string
+          department?: string | null
+          designation?: string | null
+          emergency_contact_name?: string | null
+          emergency_contact_phone?: string | null
+          employee_number?: string
+          employment_status?: string
+          employment_type?: string
+          exit_date?: string | null
+          exit_reason?: string | null
+          exit_type?: string | null
+          final_settlement_date?: string | null
+          joining_date?: string
+          last_working_date?: string | null
+          notes?: string | null
+          rehire_eligible?: boolean
+          responsibilities?: string[]
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "hr_employee_records_business_id_branch_id_fkey"
+            columns: ["business_id", "branch_id"]
+            isOneToOne: false
+            referencedRelation: "branches"
+            referencedColumns: ["business_id", "id"]
+          },
+          {
+            foreignKeyName: "hr_employee_records_business_id_fkey"
+            columns: ["business_id"]
+            isOneToOne: false
+            referencedRelation: "businesses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "hr_employee_records_business_id_user_id_fkey"
+            columns: ["business_id", "user_id"]
+            isOneToOne: true
+            referencedRelation: "business_memberships"
+            referencedColumns: ["business_id", "user_id"]
+          },
+          {
+            foreignKeyName: "hr_employee_records_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      hr_leave_balance_entries: {
+        Row: {
+          business_id: string
+          created_at: string
+          created_by: string
+          delta_days: number
+          entry_type: string
+          id: string
+          leave_type_id: string
+          leave_year: number
+          notes: string | null
+          source_request_id: string | null
+          user_id: string
+        }
+        Insert: {
+          business_id: string
+          created_at?: string
+          created_by: string
+          delta_days: number
+          entry_type: string
+          id?: string
+          leave_type_id: string
+          leave_year: number
+          notes?: string | null
+          source_request_id?: string | null
+          user_id: string
+        }
+        Update: {
+          business_id?: string
+          created_at?: string
+          created_by?: string
+          delta_days?: number
+          entry_type?: string
+          id?: string
+          leave_type_id?: string
+          leave_year?: number
+          notes?: string | null
+          source_request_id?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "hr_leave_balance_entries_business_id_fkey"
+            columns: ["business_id"]
+            isOneToOne: false
+            referencedRelation: "businesses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "hr_leave_balance_entries_business_id_leave_type_id_fkey"
+            columns: ["business_id", "leave_type_id"]
+            isOneToOne: false
+            referencedRelation: "hr_leave_types"
+            referencedColumns: ["business_id", "id"]
+          },
+          {
+            foreignKeyName: "hr_leave_balance_entries_business_id_user_id_fkey"
+            columns: ["business_id", "user_id"]
+            isOneToOne: false
+            referencedRelation: "hr_employee_records"
+            referencedColumns: ["business_id", "user_id"]
+          },
+          {
+            foreignKeyName: "hr_leave_balance_entries_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "hr_leave_balance_entries_source_request_id_fkey"
+            columns: ["source_request_id"]
+            isOneToOne: false
+            referencedRelation: "hr_leave_requests"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      hr_leave_balance_overrides: {
+        Row: {
+          approved_by: string
+          available_days: number
+          business_id: string
+          created_at: string
+          id: string
+          leave_type_id: string
+          reason: string
+          request_id: string
+          requested_days: number
+          user_id: string
+        }
+        Insert: {
+          approved_by: string
+          available_days: number
+          business_id: string
+          created_at?: string
+          id?: string
+          leave_type_id: string
+          reason: string
+          request_id: string
+          requested_days: number
+          user_id: string
+        }
+        Update: {
+          approved_by?: string
+          available_days?: number
+          business_id?: string
+          created_at?: string
+          id?: string
+          leave_type_id?: string
+          reason?: string
+          request_id?: string
+          requested_days?: number
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "hr_leave_balance_overrides_approved_by_fkey"
+            columns: ["approved_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "hr_leave_balance_overrides_business_id_fkey"
+            columns: ["business_id"]
+            isOneToOne: false
+            referencedRelation: "businesses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "hr_leave_balance_overrides_business_id_leave_type_id_fkey"
+            columns: ["business_id", "leave_type_id"]
+            isOneToOne: false
+            referencedRelation: "hr_leave_types"
+            referencedColumns: ["business_id", "id"]
+          },
+          {
+            foreignKeyName: "hr_leave_balance_overrides_business_id_user_id_fkey"
+            columns: ["business_id", "user_id"]
+            isOneToOne: false
+            referencedRelation: "hr_employee_records"
+            referencedColumns: ["business_id", "user_id"]
+          },
+          {
+            foreignKeyName: "hr_leave_balance_overrides_request_id_fkey"
+            columns: ["request_id"]
+            isOneToOne: true
+            referencedRelation: "hr_leave_requests"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      hr_leave_requests: {
+        Row: {
+          business_id: string
+          created_at: string
+          days: number
+          end_date: string
+          id: string
+          leave_type_id: string
+          reason: string | null
+          request_status: string
+          review_note: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          start_date: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          business_id: string
+          created_at?: string
+          days: number
+          end_date: string
+          id?: string
+          leave_type_id: string
+          reason?: string | null
+          request_status?: string
+          review_note?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          start_date: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          business_id?: string
+          created_at?: string
+          days?: number
+          end_date?: string
+          id?: string
+          leave_type_id?: string
+          reason?: string | null
+          request_status?: string
+          review_note?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          start_date?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "hr_leave_requests_business_id_fkey"
+            columns: ["business_id"]
+            isOneToOne: false
+            referencedRelation: "businesses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "hr_leave_requests_business_id_leave_type_id_fkey"
+            columns: ["business_id", "leave_type_id"]
+            isOneToOne: false
+            referencedRelation: "hr_leave_types"
+            referencedColumns: ["business_id", "id"]
+          },
+          {
+            foreignKeyName: "hr_leave_requests_business_id_user_id_fkey"
+            columns: ["business_id", "user_id"]
+            isOneToOne: false
+            referencedRelation: "hr_employee_records"
+            referencedColumns: ["business_id", "user_id"]
+          },
+          {
+            foreignKeyName: "hr_leave_requests_reviewed_by_fkey"
+            columns: ["reviewed_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      hr_leave_types: {
+        Row: {
+          accrual_method: string
+          annual_quota: number
+          business_id: string
+          created_at: string
+          id: string
+          is_active: boolean
+          is_paid: boolean
+          name: string
+        }
+        Insert: {
+          accrual_method?: string
+          annual_quota?: number
+          business_id: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          is_paid?: boolean
+          name: string
+        }
+        Update: {
+          accrual_method?: string
+          annual_quota?: number
+          business_id?: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          is_paid?: boolean
+          name?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "hr_leave_types_business_id_fkey"
+            columns: ["business_id"]
+            isOneToOne: false
+            referencedRelation: "businesses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      hr_payroll_items: {
+        Row: {
+          allowances: number
+          basic_salary: number
+          business_id: string
+          created_at: string
+          employee_name: string
+          employee_number: string
+          gross_pay: number
+          id: string
+          insurance_deduction: number
+          net_pay: number
+          other_deduction: number
+          payroll_run_id: string
+          period_end: string
+          period_label: string
+          period_start: string
+          provident_fund: number
+          tax_deduction: number
+          total_deductions: number
+          unpaid_leave_days: number
+          unpaid_leave_deduction: number
+          user_id: string
+        }
+        Insert: {
+          allowances: number
+          basic_salary: number
+          business_id: string
+          created_at?: string
+          employee_name: string
+          employee_number: string
+          gross_pay: number
+          id?: string
+          insurance_deduction: number
+          net_pay: number
+          other_deduction: number
+          payroll_run_id: string
+          period_end: string
+          period_label: string
+          period_start: string
+          provident_fund: number
+          tax_deduction: number
+          total_deductions: number
+          unpaid_leave_days?: number
+          unpaid_leave_deduction?: number
+          user_id: string
+        }
+        Update: {
+          allowances?: number
+          basic_salary?: number
+          business_id?: string
+          created_at?: string
+          employee_name?: string
+          employee_number?: string
+          gross_pay?: number
+          id?: string
+          insurance_deduction?: number
+          net_pay?: number
+          other_deduction?: number
+          payroll_run_id?: string
+          period_end?: string
+          period_label?: string
+          period_start?: string
+          provident_fund?: number
+          tax_deduction?: number
+          total_deductions?: number
+          unpaid_leave_days?: number
+          unpaid_leave_deduction?: number
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "hr_payroll_items_business_id_fkey"
+            columns: ["business_id"]
+            isOneToOne: false
+            referencedRelation: "businesses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "hr_payroll_items_business_id_payroll_run_id_fkey"
+            columns: ["business_id", "payroll_run_id"]
+            isOneToOne: false
+            referencedRelation: "hr_payroll_runs"
+            referencedColumns: ["business_id", "id"]
+          },
+          {
+            foreignKeyName: "hr_payroll_items_business_id_user_id_fkey"
+            columns: ["business_id", "user_id"]
+            isOneToOne: false
+            referencedRelation: "hr_employee_records"
+            referencedColumns: ["business_id", "user_id"]
+          },
+        ]
+      }
+      hr_payroll_runs: {
+        Row: {
+          approved_at: string | null
+          approved_by: string | null
+          business_id: string
+          created_at: string
+          created_by: string
+          deduction_total: number
+          employee_count: number
+          gross_total: number
+          id: string
+          net_total: number
+          paid_at: string | null
+          paid_by: string | null
+          period_end: string
+          period_label: string
+          period_start: string
+          run_status: string
+        }
+        Insert: {
+          approved_at?: string | null
+          approved_by?: string | null
+          business_id: string
+          created_at?: string
+          created_by: string
+          deduction_total?: number
+          employee_count?: number
+          gross_total?: number
+          id?: string
+          net_total?: number
+          paid_at?: string | null
+          paid_by?: string | null
+          period_end: string
+          period_label: string
+          period_start: string
+          run_status?: string
+        }
+        Update: {
+          approved_at?: string | null
+          approved_by?: string | null
+          business_id?: string
+          created_at?: string
+          created_by?: string
+          deduction_total?: number
+          employee_count?: number
+          gross_total?: number
+          id?: string
+          net_total?: number
+          paid_at?: string | null
+          paid_by?: string | null
+          period_end?: string
+          period_label?: string
+          period_start?: string
+          run_status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "hr_payroll_runs_approved_by_fkey"
+            columns: ["approved_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "hr_payroll_runs_business_id_fkey"
+            columns: ["business_id"]
+            isOneToOne: false
+            referencedRelation: "businesses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "hr_payroll_runs_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "hr_payroll_runs_paid_by_fkey"
+            columns: ["paid_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      hr_salary_structures: {
+        Row: {
+          basic_salary: number
+          business_id: string
+          created_at: string
+          created_by: string
+          effective_from: string
+          house_allowance: number
+          id: string
+          insurance_deduction: number
+          other_allowance: number
+          other_deduction: number
+          provident_fund: number
+          tax_deduction: number
+          transport_allowance: number
+          user_id: string
+        }
+        Insert: {
+          basic_salary: number
+          business_id: string
+          created_at?: string
+          created_by: string
+          effective_from: string
+          house_allowance?: number
+          id?: string
+          insurance_deduction?: number
+          other_allowance?: number
+          other_deduction?: number
+          provident_fund?: number
+          tax_deduction?: number
+          transport_allowance?: number
+          user_id: string
+        }
+        Update: {
+          basic_salary?: number
+          business_id?: string
+          created_at?: string
+          created_by?: string
+          effective_from?: string
+          house_allowance?: number
+          id?: string
+          insurance_deduction?: number
+          other_allowance?: number
+          other_deduction?: number
+          provident_fund?: number
+          tax_deduction?: number
+          transport_allowance?: number
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "hr_salary_structures_business_id_fkey"
+            columns: ["business_id"]
+            isOneToOne: false
+            referencedRelation: "businesses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "hr_salary_structures_business_id_user_id_fkey"
+            columns: ["business_id", "user_id"]
+            isOneToOne: false
+            referencedRelation: "hr_employee_records"
+            referencedColumns: ["business_id", "user_id"]
+          },
+          {
+            foreignKeyName: "hr_salary_structures_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      hr_shift_assignments: {
+        Row: {
+          assigned_by: string
+          branch_id: string | null
+          business_id: string
+          created_at: string
+          id: string
+          shift_date: string
+          shift_id: string
+          user_id: string
+        }
+        Insert: {
+          assigned_by: string
+          branch_id?: string | null
+          business_id: string
+          created_at?: string
+          id?: string
+          shift_date: string
+          shift_id: string
+          user_id: string
+        }
+        Update: {
+          assigned_by?: string
+          branch_id?: string | null
+          business_id?: string
+          created_at?: string
+          id?: string
+          shift_date?: string
+          shift_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "hr_shift_assignments_assigned_by_fkey"
+            columns: ["assigned_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "hr_shift_assignments_business_id_branch_id_fkey"
+            columns: ["business_id", "branch_id"]
+            isOneToOne: false
+            referencedRelation: "branches"
+            referencedColumns: ["business_id", "id"]
+          },
+          {
+            foreignKeyName: "hr_shift_assignments_business_id_fkey"
+            columns: ["business_id"]
+            isOneToOne: false
+            referencedRelation: "businesses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "hr_shift_assignments_business_id_shift_id_fkey"
+            columns: ["business_id", "shift_id"]
+            isOneToOne: false
+            referencedRelation: "hr_shifts"
+            referencedColumns: ["business_id", "id"]
+          },
+          {
+            foreignKeyName: "hr_shift_assignments_business_id_user_id_fkey"
+            columns: ["business_id", "user_id"]
+            isOneToOne: false
+            referencedRelation: "hr_employee_records"
+            referencedColumns: ["business_id", "user_id"]
+          },
+        ]
+      }
+      hr_shifts: {
+        Row: {
+          break_minutes: number
+          business_id: string
+          created_at: string
+          end_time: string
+          id: string
+          is_active: boolean
+          name: string
+          start_time: string
+        }
+        Insert: {
+          break_minutes?: number
+          business_id: string
+          created_at?: string
+          end_time: string
+          id?: string
+          is_active?: boolean
+          name: string
+          start_time: string
+        }
+        Update: {
+          break_minutes?: number
+          business_id?: string
+          created_at?: string
+          end_time?: string
+          id?: string
+          is_active?: boolean
+          name?: string
+          start_time?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "hr_shifts_business_id_fkey"
+            columns: ["business_id"]
+            isOneToOne: false
+            referencedRelation: "businesses"
             referencedColumns: ["id"]
           },
         ]
@@ -2538,6 +3655,10 @@ export type Database = {
       }
       adjust_payment_account: { Args: { _request: Json }; Returns: string }
       archive_business: { Args: { _business_id: string }; Returns: undefined }
+      assign_business_access_role: {
+        Args: { _business: string; _role: string; _user: string }
+        Returns: undefined
+      }
       begin_website_stock_sync: {
         Args: { _branch_id: string; _business_id: string; _lease_id: string }
         Returns: undefined
@@ -2548,6 +3669,10 @@ export type Database = {
         Returns: number
       }
       can_access_branch: {
+        Args: { _branch_id: string; _business_id: string }
+        Returns: boolean
+      }
+      can_approve_inventory_count: {
         Args: { _branch_id: string; _business_id: string }
         Returns: boolean
       }
@@ -2597,6 +3722,16 @@ export type Database = {
         Args: { _legal_name?: string; _name: string; _pan_vat?: string }
         Returns: string
       }
+      create_business_access_role: {
+        Args: {
+          _authority_rank: number
+          _business: string
+          _description: string
+          _name: string
+          _permissions: string[]
+        }
+        Returns: string
+      }
       create_business_invitation: {
         Args: {
           _business_id: string
@@ -2629,23 +3764,51 @@ export type Database = {
         }
         Returns: string
       }
-      create_team_invitation: {
-        Args: {
-          _branch_id: string
-          _business_id: string
-          _denied: string[]
-          _expires_at: string
-          _job_title: string
-          _label?: string
-          _max_uses: number
-          _role: string
-          _token_hash: string
-        }
-        Returns: string
-      }
+      create_team_invitation:
+        | {
+            Args: {
+              _branch_id: string
+              _business_id: string
+              _denied: string[]
+              _expires_at: string
+              _invitee_email: string
+              _invitee_mobile: string
+              _job_title: string
+              _label?: string
+              _max_uses: number
+              _role: string
+              _token_hash: string
+            }
+            Returns: string
+          }
+        | {
+            Args: {
+              _branch_id: string
+              _business_id: string
+              _denied: string[]
+              _expires_at: string
+              _job_title: string
+              _label?: string
+              _max_uses: number
+              _role: string
+              _token_hash: string
+            }
+            Returns: string
+          }
       end_website_stock_sync: {
         Args: { _business_id: string; _lease_id: string }
         Returns: undefined
+      }
+      get_business_access_roles: { Args: { _business: string }; Returns: Json }
+      get_business_member_access_roles: {
+        Args: { _business: string }
+        Returns: Json
+      }
+      get_my_business_permissions: {
+        Args: { _business: string }
+        Returns: {
+          permission: string
+        }[]
       }
       get_role_templates: { Args: { _business: string }; Returns: Json }
       grant_branch_delegation: {
@@ -2659,6 +3822,10 @@ export type Database = {
         }
         Returns: string
       }
+      has_business_access_role: {
+        Args: { _business: string; _role_code: string }
+        Returns: boolean
+      }
       has_business_job_title: {
         Args: { _business_id: string; _job_title: string }
         Returns: boolean
@@ -2670,6 +3837,76 @@ export type Database = {
       has_permission: {
         Args: { _business: string; _perm: string }
         Returns: boolean
+      }
+      hr_adjust_leave_balance: {
+        Args: {
+          _business_id: string
+          _delta_days: number
+          _entry_type: string
+          _leave_type_id: string
+          _leave_year: number
+          _notes?: string
+          _user_id: string
+        }
+        Returns: string
+      }
+      hr_approve_payroll: { Args: { _run_id: string }; Returns: undefined }
+      hr_can_manage_payroll: {
+        Args: { _business_id: string }
+        Returns: boolean
+      }
+      hr_can_read_own_payslip: {
+        Args: { _business_id: string; _run_id: string }
+        Returns: boolean
+      }
+      hr_clock_attendance: {
+        Args: {
+          _attendance_date: string
+          _business_id: string
+          _direction: string
+        }
+        Returns: string
+      }
+      hr_generate_payroll: {
+        Args: {
+          _business_id: string
+          _period_end: string
+          _period_label: string
+          _period_start: string
+        }
+        Returns: string
+      }
+      hr_is_manager: { Args: { _business_id: string }; Returns: boolean }
+      hr_list_payroll_employees: {
+        Args: { _business_id: string }
+        Returns: {
+          branch_id: string
+          department: string
+          designation: string
+          employee_number: string
+          employment_status: string
+          full_name: string
+          joining_date: string
+          user_id: string
+        }[]
+      }
+      hr_mark_payroll_paid: {
+        Args: { _paid_date?: string; _run_id: string }
+        Returns: undefined
+      }
+      hr_review_leave_request: {
+        Args: {
+          _business_id: string
+          _decision: string
+          _override_reason?: string
+          _request_id: string
+          _review_note?: string
+        }
+        Returns: string
+      }
+      import_catalogue_branch_stock: {
+        Args: { _branch_id: string; _business_id: string; _rows: Json }
+        Returns: Json
       }
       inv_sync_push: { Args: { _items: Json }; Returns: Json }
       is_business_member: { Args: { _business_id: string }; Returns: boolean }
@@ -2837,6 +4074,15 @@ export type Database = {
         Args: { _business_id: string; _user_id: string }
         Returns: undefined
       }
+      request_sale_return: {
+        Args: {
+          _business_id: string
+          _lines: Json
+          _reason: string
+          _source_sale_id: string
+        }
+        Returns: string
+      }
       reset_role_template: {
         Args: { _business: string; _title: string }
         Returns: undefined
@@ -2862,6 +4108,10 @@ export type Database = {
         Returns: number
       }
       save_quotation: { Args: { _request: Json }; Returns: string }
+      seed_business_access_roles: {
+        Args: { _business_id: string }
+        Returns: undefined
+      }
       set_branch_access: {
         Args: {
           _allowed: boolean
@@ -2904,6 +4154,20 @@ export type Database = {
       transfer_between_accounts: { Args: { _request: Json }; Returns: string }
       transfer_business_ownership: {
         Args: { _business_id: string; _new_owner: string }
+        Returns: undefined
+      }
+      unassign_business_access_role: {
+        Args: { _business: string; _role: string; _user: string }
+        Returns: undefined
+      }
+      update_business_access_role: {
+        Args: {
+          _business: string
+          _description: string
+          _name: string
+          _permissions: string[]
+          _role: string
+        }
         Returns: undefined
       }
       update_business_member: {
