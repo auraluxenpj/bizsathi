@@ -68,7 +68,8 @@ jobs:
             supabase/tests/branch_manager_authority.sql \
             supabase/tests/sale_return_approval.sql \
             supabase/tests/hrm_security.sql \
-            supabase/tests/multi_role_access_foundation.sql; do
+            supabase/tests/multi_role_access_foundation.sql \
+            supabase/tests/branch_manager_role_delegation.sql; do
             echo "::group::Running ${test_file}"
             docker exec -i "${DB_CONTAINER}" psql -U postgres -d postgres --no-psqlrc --set ON_ERROR_STOP=1 < "${test_file}"
             echo "::endgroup::"

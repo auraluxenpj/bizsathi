@@ -17,7 +17,7 @@ import {
 const today = () => new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kathmandu' }).format(new Date());
 const money = (value: number | string) => `Rs ${Number(value || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 const inputClass = 'mt-1 h-10 w-full rounded-md border bg-background px-3 text-sm';
-const hrRoles = ['Store Manager','Assistant Store Manager','Branch Manager','Sales Manager','Sales Associate','Cashier','Inventory Executive','Stock Controller','HR Executive','Accountant','Operations Executive','Security Officer','Housekeeping','Delivery Associate','Other'];
+const hrRoles = ['Store Manager','Assistant Store Manager','Branch Manager','Department Manager','Sales Manager','Sales Associate','Cashier','Inventory Executive','Stock Controller','HR Executive','Accountant','Operations Executive','Security Officer','Housekeeping','Delivery Associate','Other'];
 const hrDepartments = ['Store Operations','Retail Sales','Inventory & Stock','Finance & Accounts','Human Resources','Customer Service','Logistics','Administration','Security','Other'];
 const hrResponsibilities = ['Open and close store','Customer assistance and sales','Billing and cash handling','Product display and merchandising','Stock receiving and verification','Inventory counting and stock transfers','Purchase coordination','Daily sales reporting','Staff scheduling and attendance','Leave coordination','Cash reconciliation and deposits','Customer complaints and returns','Store cleanliness and safety','Branch operations and supervision','Vendor coordination','Payroll input and attendance review'];
 const labelClass = 'block text-sm font-medium';

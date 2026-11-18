@@ -52,7 +52,7 @@ describe('Team Access hierarchy panel', () => {
 
   it('shows employee branch access with position and role scopes separated', () => {
     render(<QueryClientProvider client={new QueryClient()}>
-      <TeamAccessPanel businessId={BUSINESS} branches={[{ id: BRANCH, name: 'Nepalgunj', code: 'NP', is_active: true }]} members={[]} branchAccess={[]} userId={MANAGER} isAdmin={false} isOwner={false} />
+      <TeamAccessPanel businessId={BUSINESS} branches={[{ id: BRANCH, name: 'Nepalgunj', code: 'NP', is_active: true }]} members={[]} branchAccess={[]} userId={MANAGER} isAdmin={true} isBranchManager={true} isOwner={false} />
     </QueryClientProvider>);
     expect(screen.getByText('Employees & branch access')).toBeInTheDocument();
     expect(screen.queryByText('Role hierarchy')).not.toBeInTheDocument();
@@ -136,7 +136,7 @@ describe('Team Access hierarchy panel', () => {
 
     await screen.findByText('Delegation active for this branch');
     const position = screen.getByRole('combobox', { name: 'HR position' }) as HTMLSelectElement;
-    expect([...position.options].map((o) => o.value)).toEqual(['sales_person', 'stock_manager', 'entry_person']);
+    expect([...position.options].map((o) => o.value)).toEqual(['department_manager', 'sales_person', 'stock_manager', 'entry_person']);
     expect(screen.getByLabelText('Link expiry (days)')).toHaveValue(2);
 
     fireEvent.change(screen.getByLabelText('Invitee email address'), { target: { value: 'staff@example.com' } });

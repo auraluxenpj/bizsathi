@@ -19,7 +19,6 @@ describe('Branch Manager role boundary', () => {
       'accounts.create',
       'settings.edit',
       'settings.delete_business',
-      'staff.edit',
       'other.purchase_price',
       'other.change_date',
     ]) {
@@ -34,6 +33,7 @@ describe('Branch Manager role boundary', () => {
       'reports.view',
       'reports.items',
       'reports.transactions',
+      'staff.edit',
     ]) {
       expect(denied).not.toContain(permission);
     }

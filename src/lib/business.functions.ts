@@ -1,7 +1,7 @@
 import { createServerFn } from '@tanstack/react-start';
 import { requireSupabaseAuth } from '@/integrations/supabase/auth-middleware';
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { accessRoleAssignmentInput, accessRoleCreateInput, accessRoleUpdateInput, acceptInput, branchGrantInput, branchInput, inviteInput, invitationRoleInput, memberInput, mobileInviteInput, registrationInput, removeMemberInput, revokeInviteInput, roleTemplateInput, roleTemplateResetInput, tenantInput } from './business-schemas';
+import { accessRoleAssignmentInput, accessRoleCreateInput, accessRoleUpdateInput, branchAccessRoleCreateInput, branchAccessRoleUpdateInput, acceptInput, branchGrantInput, branchInput, inviteInput, invitationRoleInput, memberInput, mobileInviteInput, registrationInput, removeMemberInput, revokeInviteInput, roleTemplateInput, roleTemplateResetInput, tenantInput } from './business-schemas';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const anyDb = (client: unknown) => client as SupabaseClient<any, 'public', any>;
@@ -39,18 +39,43 @@ export const getBusinessAccess = createServerFn({ method: 'GET' }).middleware([r
   const { data: businessAdmin, error: rankError } = await context.supabase.rpc('has_business_role', { _business_id: data.businessId, _min_role: 'admin' });
   if (rankError) throw new Error('Business administration authority could not be verified.');
   // Platform Owner is a cross-business administrator without creating a normal business membership.
-  const manager = Boolean(isPlatformOwner || businessAdmin);
-  const { data: branches, error: branchError } = await context.supabase.from('branches').select('id,name,code,is_active,address').eq('business_id', data.businessId).order('name');
-  if (branchError) {
-    console.error('Business access branch query failed', branchError.code, branchError.message);
-    throw new Error('Branches could not be loaded.');
-  }
+  const isBusinessAdmin = Boolean(isPlatformOwner || businessAdmin);
+  const { data: branchManagerRole, error: branchManagerRoleError } = await anyDb(context.supabase).rpc('has_business_access_role', {
+    _business: data.businessId, _role_code: 'position_branch_manager',
+  });
+  const { data: legacyBranchManagerRole, error: legacyBranchManagerRoleError } = await anyDb(context.supabase).rpc('has_business_access_role', {
+    _business: data.businessId, _role_code: 'legacy_branch_manager',
+  });
+  const { data: actorRank, error: actorRankError } = await anyDb(context.supabase).rpc('business_role_rank', {
+    _business_id: data.businessId, _user_id: context.userId,
+  });
+  if (branchManagerRoleError || legacyBranchManagerRoleError || actorRankError) throw new Error('Branch Manager authority could not be verified.');
+  const isBranchManager = !isBusinessAdmin && Number(actorRank ?? 0) >= 50 && Boolean(branchManagerRole || legacyBranchManagerRole);
+  const manager = isBusinessAdmin || isBranchManager;
   // An employee's HR branch is their default workspace branch, but POS still
   // validates it against the branches visible to this authenticated member.
   const { data: employee } = await anyDb(context.supabase).from('hr_employee_records')
     .select('branch_id').eq('business_id', data.businessId).eq('user_id', context.userId).maybeSingle();
   const assignedBranchId = employee?.branch_id ?? null;
-  if (!manager) return { manager: false, userId: context.userId, branches: branches ?? [], assignedBranchId, members: [], invitations: [], grants: [], memberRoles: [] };
+
+  if (isBranchManager) {
+    const { data: team, error: teamError } = await anyDb(context.supabase).rpc('get_branch_manager_team_access', { _business: data.businessId });
+    if (teamError || !team) throw new Error('Assigned branch team access could not be loaded.');
+    const scoped = team as { branches?: { id: string; name: string; code: string; is_active: boolean; address?: string | null }[]; members?: { user_id: string; branch_id?: string; role_code: string; job_title: string | null; status: string; profiles?: { full_name: string | null; phone?: string | null } | null }[]; branchAccess?: { user_id: string; branch_id: string }[]; memberRoles?: { userId: string; roleId: string; roleCode: string; roleName: string; authorityRank: number; isDefault: boolean; assignedAt: string }[] };
+    return {
+      manager: true, isBusinessAdmin: false, isBranchManager: true, userId: context.userId,
+      branches: scoped.branches ?? [], assignedBranchId,
+      members: scoped.members ?? [], invitations: [], grants: scoped.branchAccess ?? [],
+      memberRoles: scoped.memberRoles ?? [],
+    };
+  }
+
+  const { data: branches, error: branchError } = await context.supabase.from('branches').select('id,name,code,is_active,address').eq('business_id', data.businessId).order('name');
+  if (branchError) {
+    console.error('Business access branch query failed', branchError.code, branchError.message);
+    throw new Error('Branches could not be loaded.');
+  }
+  if (!manager) return { manager: false, isBusinessAdmin: false, isBranchManager: false, userId: context.userId, branches: branches ?? [], assignedBranchId, members: [], invitations: [], grants: [], memberRoles: [] };
   const [members, invitations, grants, memberRoles] = await Promise.all([
     context.supabase.from('business_memberships').select('user_id,role_code,job_title,status,profiles!business_memberships_user_id_fkey(full_name,phone)').eq('business_id', data.businessId),
     context.supabase.from('business_invitations').select('id,email,mobile,invitee_name,job_title,role_code,expires_at,accepted_at,revoked_at,created_at').eq('business_id', data.businessId).order('created_at', { ascending: false }),
@@ -65,7 +90,7 @@ export const getBusinessAccess = createServerFn({ method: 'GET' }).middleware([r
     console.error('Business staff access query failed', failed[0], error.code, error.message);
     throw new Error(`Staff access could not be loaded (${failed[0]}).`);
   }
-  return { manager: true, userId: context.userId, branches: branches ?? [], assignedBranchId, members: members.data ?? [], invitations: invitations.data ?? [], grants: grants.data ?? [], memberRoles: memberRoles.data ?? [] };
+  return { manager: true, isBusinessAdmin: true, isBranchManager: false, userId: context.userId, branches: branches ?? [], assignedBranchId, members: members.data ?? [], invitations: invitations.data ?? [], grants: grants.data ?? [], memberRoles: memberRoles.data ?? [] };
 });
 
 export const createInvitation = createServerFn({ method: 'POST' }).middleware([requireSupabaseAuth]).inputValidator(inviteInput).handler(async ({ data, context }) => {
@@ -130,6 +155,12 @@ export const getMemberPermissions = createServerFn({ method: 'GET' }).middleware
   }
   return { userId: context.userId, denials: r.data ?? [], roleDenials, permissions: (effective.data ?? []).map((row: { permission: string }) => row.permission) };
 });
+export const getMyBusinessPermissions = createServerFn({ method: 'GET' }).middleware([requireSupabaseAuth]).inputValidator(tenantInput).handler(async ({ data, context }) => {
+  const { data: rows, error } = await anyDb(context.supabase).rpc('get_my_business_permissions', { _business: data.businessId });
+  if (error) throw new Error('Your effective permissions could not be verified.');
+  return { permissions: (rows ?? []).map((row: { permission: string }) => row.permission) as string[] };
+});
+
 export const saveMemberPermissions = createServerFn({ method: 'POST' }).middleware([requireSupabaseAuth]).inputValidator(permissionInput).handler(async ({ data, context }) => {
   const r = await context.supabase.rpc('set_member_permissions', { _business: data.businessId, _user: data.userId, _denied: data.denied });
   if (r.error) throw new Error(r.error.message.replace(/^.*?: /, ''));
@@ -191,13 +222,13 @@ export const resetRoleTemplate = createServerFn({ method: 'POST' }).middleware([
 export const getBusinessAccessRoles = createServerFn({ method: 'GET' }).middleware([requireSupabaseAuth]).inputValidator(tenantInput).handler(async ({ data, context }) => {
   const { data: roles, error } = await anyDb(context.supabase).rpc('get_business_access_roles', { _business: data.businessId });
   if (error) throw new Error('Business access roles could not be loaded.');
-  return { roles: (roles ?? []) as { id: string; code: string; name: string; description: string | null; authorityRank: number; isSystem: boolean; isActive: boolean; permissions: string[] }[] };
+  return { roles: (roles ?? []) as { id: string; code: string; name: string; description: string | null; branchId: string | null; authorityRank: number; isSystem: boolean; isActive: boolean; permissions: string[] }[] };
 });
 
 export const getBusinessMemberAccessRoles = createServerFn({ method: 'GET' }).middleware([requireSupabaseAuth]).inputValidator(tenantInput).handler(async ({ data, context }) => {
   const { data: assignments, error } = await anyDb(context.supabase).rpc('get_business_member_access_roles', { _business: data.businessId });
   if (error) throw new Error('Employee role assignments could not be loaded.');
-  return { assignments: (assignments ?? []) as { userId: string; roleId: string; roleCode: string; roleName: string; authorityRank: number; isDefault: boolean; assignedAt: string }[] };
+  return { assignments: (assignments ?? []) as { userId: string; roleId: string; roleCode: string; roleName: string; branchId: string | null; authorityRank: number; isDefault: boolean; assignedAt: string }[] };
 });
 
 export const createBusinessAccessRole = createServerFn({ method: 'POST' }).middleware([requireSupabaseAuth]).inputValidator(accessRoleCreateInput).handler(async ({ data, context }) => {
@@ -213,6 +244,24 @@ export const updateBusinessAccessRole = createServerFn({ method: 'POST' }).middl
   const { error } = await anyDb(context.supabase).rpc('update_business_access_role', {
     _business: data.businessId, _role: data.roleId, _name: data.name,
     _description: data.description ?? '', _permissions: data.permissions,
+  });
+  if (error) throw new Error(error.message.replace(/^.*?: /, ''));
+  return { ok: true };
+});
+
+export const createBranchAccessRole = createServerFn({ method: 'POST' }).middleware([requireSupabaseAuth]).inputValidator(branchAccessRoleCreateInput).handler(async ({ data, context }) => {
+  const { data: roleId, error } = await anyDb(context.supabase).rpc('create_branch_access_role', {
+    _business: data.businessId, _branch: data.branchId, _name: data.name,
+    _description: data.description ?? '', _permissions: data.permissions,
+  });
+  if (error) throw new Error(error.message.replace(/^.*?: /, ''));
+  return { roleId: roleId as string };
+});
+
+export const updateBranchAccessRole = createServerFn({ method: 'POST' }).middleware([requireSupabaseAuth]).inputValidator(branchAccessRoleUpdateInput).handler(async ({ data, context }) => {
+  const { error } = await anyDb(context.supabase).rpc('update_branch_access_role', {
+    _business: data.businessId, _branch: data.branchId, _role: data.roleId,
+    _name: data.name, _description: data.description ?? '', _permissions: data.permissions,
   });
   if (error) throw new Error(error.message.replace(/^.*?: /, ''));
   return { ok: true };

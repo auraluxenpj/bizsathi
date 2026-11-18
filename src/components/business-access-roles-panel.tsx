@@ -7,16 +7,20 @@ import { Input } from '@/components/ui/input';
 import {
   assignBusinessAccessRole,
   createBusinessAccessRole,
+  createBranchAccessRole,
   getBusinessAccessRoles,
+  getMyBusinessPermissions,
   getBusinessMemberAccessRoles,
   unassignBusinessAccessRole,
   updateBusinessAccessRole,
+  updateBranchAccessRole,
 } from '@/lib/business.functions';
 import { permissionGroups } from '@/lib/permissions';
 
 type Member = {
   user_id: string;
   role_code: string;
+  branch_id?: string;
   job_title: string | null;
   status: string;
   profiles?: { full_name: string | null } | null;
@@ -26,16 +30,20 @@ type Assignment = {
   roleId: string;
   roleCode: string;
   roleName: string;
+  branchId: string | null;
   isDefault: boolean;
   assignedAt: string;
 };
 
-export function BusinessAccessRolesPanel({ businessId, members, isOwner }: { businessId: string; members: Member[]; isOwner: boolean }) {
+export function BusinessAccessRolesPanel({ businessId, members, isOwner, branches = [], isBranchManager = false, canManageRoleDefinitions = true }: { businessId: string; members: Member[]; isOwner: boolean; branches?: { id: string; name: string }[]; isBranchManager?: boolean; canManageRoleDefinitions?: boolean }) {
   const client = useQueryClient();
   const loadRoles = useServerFn(getBusinessAccessRoles);
   const loadAssignments = useServerFn(getBusinessMemberAccessRoles);
   const createRoleFn = useServerFn(createBusinessAccessRole);
   const updateRoleFn = useServerFn(updateBusinessAccessRole);
+  const createBranchRoleFn = useServerFn(createBranchAccessRole);
+  const updateBranchRoleFn = useServerFn(updateBranchAccessRole);
+  const loadMyPermissions = useServerFn(getMyBusinessPermissions);
   const assignRoleFn = useServerFn(assignBusinessAccessRole);
   const unassignRoleFn = useServerFn(unassignBusinessAccessRole);
 
@@ -49,6 +57,11 @@ export function BusinessAccessRolesPanel({ businessId, members, isOwner }: { bus
     queryFn: () => loadAssignments({ data: { businessId } }),
     enabled: Boolean(businessId),
   });
+  const permissionsQuery = useQuery({
+    queryKey: ['my-business-permissions', businessId],
+    queryFn: () => loadMyPermissions({ data: { businessId } }),
+    enabled: Boolean(businessId) && isBranchManager,
+  });
 
   const roles = rolesQuery.data?.roles ?? [];
   const assignments = assignmentsQuery.data?.assignments ?? [];
@@ -59,19 +72,30 @@ export function BusinessAccessRolesPanel({ businessId, members, isOwner }: { bus
   const [selectedUserId, setSelectedUserId] = useState('');
   const [selectedRoleId, setSelectedRoleId] = useState('');
   const [message, setMessage] = useState('');
+  const [selectedBranchId, setSelectedBranchId] = useState(branches[0]?.id ?? '');
+  const canEditRoleDefinitions = canManageRoleDefinitions || isBranchManager;
+  const availablePermissions = useMemo(() => new Set(permissionsQuery.data?.permissions ?? []), [permissionsQuery.data?.permissions]);
 
   const editingRole = roles.find((r) => r.id === editingRoleId);
+  const selectedMember = members.find((member) => member.user_id === selectedUserId);
   const availableRoles = useMemo(() => roles.filter((r) =>
-    r.isActive && r.authorityRank < (isOwner ? 100 : 80) && !assignments.some((a) => a.userId === selectedUserId && a.roleId === r.id)
-  ), [roles, assignments, selectedUserId]);
+    r.isActive && r.authorityRank < (isOwner ? 100 : 80)
+    && (!isBranchManager || !r.branchId || r.branchId === selectedMember?.branch_id)
+    && !assignments.some((a) => a.userId === selectedUserId && a.roleId === r.id)
+  ), [roles, assignments, selectedUserId, isOwner, isBranchManager, selectedMember?.branch_id]);
 
   useEffect(() => {
     if (editingRole) {
       setName(editingRole.name);
       setDescription(editingRole.description ?? '');
       setPermissions(editingRole.permissions);
+      if (editingRole.branchId) setSelectedBranchId(editingRole.branchId);
     }
   }, [editingRole]);
+
+  useEffect(() => {
+    if (!branches.some((branch) => branch.id === selectedBranchId)) setSelectedBranchId(branches[0]?.id ?? '');
+  }, [branches, selectedBranchId]);
 
   useEffect(() => {
     if (!selectedUserId && members.length) setSelectedUserId(members.find((m) => m.status === 'active')?.user_id ?? '');
@@ -90,9 +114,13 @@ export function BusinessAccessRolesPanel({ businessId, members, isOwner }: { bus
   };
 
   const saveRole = useMutation({
-    mutationFn: async (): Promise<unknown> => editingRoleId
-      ? updateRoleFn({ data: { businessId, roleId: editingRoleId, name, description, authorityRank: 1, permissions } })
-      : createRoleFn({ data: { businessId, name, description, authorityRank: 1, permissions } }),
+    mutationFn: async (): Promise<unknown> => isBranchManager
+      ? editingRoleId
+        ? updateBranchRoleFn({ data: { businessId, branchId: editingRole?.branchId ?? selectedBranchId, roleId: editingRoleId, name, description, authorityRank: 1, permissions } })
+        : createBranchRoleFn({ data: { businessId, branchId: selectedBranchId, name, description, authorityRank: 1, permissions } })
+      : editingRoleId
+        ? updateRoleFn({ data: { businessId, roleId: editingRoleId, name, description, authorityRank: 1, permissions } })
+        : createRoleFn({ data: { businessId, name, description, authorityRank: 1, permissions } }),
     onSuccess: async () => {
       setMessage(editingRoleId ? 'Custom role updated.' : 'Custom role created.');
       setEditingRoleId('');
@@ -133,15 +161,15 @@ export function BusinessAccessRolesPanel({ businessId, members, isOwner }: { bus
   return (
     <section className="space-y-6 border-b py-7" aria-labelledby="business-access-roles-heading">
       <div>
-        <div className="mb-2 flex items-center gap-2"><ShieldCheck className="size-5 text-primary" /><h3 id="business-access-roles-heading" className="brand text-xl">Business access roles</h3></div>
-        <p className="text-sm text-muted-foreground">Create reusable permission bundles and assign more than one to an employee. Assign built-in authority roles such as Accountant or Branch Manager alongside custom permission bundles. HR position remains separate; custom roles cannot elevate administrator authority. Explicit employee denials still win, and branch access is managed separately.</p>
+        <div className="mb-2 flex items-center gap-2"><ShieldCheck className="size-5 text-primary" /><h3 id="business-access-roles-heading" className="brand text-xl">{isBranchManager ? 'Branch access roles' : 'Business access roles'}</h3></div>
+        <p className="text-sm text-muted-foreground">{isBranchManager ? 'Create and edit custom roles for your assigned branches. Roles are branch-scoped, and you can include only permissions you already hold. Cross-branch employees are excluded.' : 'Create reusable business-wide permission bundles and assign more than one to an employee. HR position remains separate; custom roles cannot elevate administrator authority. Explicit employee denials still win.'}</p>
       </div>
 
       {(rolesQuery.isPending || assignmentsQuery.isPending) && <p role="status" className="text-sm text-muted-foreground">Loading access roles…</p>}
       {(rolesQuery.error || assignmentsQuery.error) && <p role="alert" className="text-sm text-destructive">{rolesQuery.error?.message || assignmentsQuery.error?.message || 'Access roles could not be loaded.'}</p>}
 
-      <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)]">
-        <section className="rounded-xl border p-4 md:p-5">
+      <div className={canEditRoleDefinitions ? 'grid gap-6 xl:grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)]' : 'grid gap-6'}>
+        {canEditRoleDefinitions && <section className="rounded-xl border p-4 md:p-5">
           <div className="mb-3 flex items-center justify-between gap-2">
             <h4 className="font-semibold">{editingRoleId ? 'Edit custom role' : 'Create custom role'}</h4>
             {editingRoleId && <Button size="sm" variant="ghost" onClick={startNewRole}>New role</Button>}
@@ -152,13 +180,20 @@ export function BusinessAccessRolesPanel({ businessId, members, isOwner }: { bus
           <label className="mb-4 block text-sm">Description
             <Input className="mt-1" value={description} maxLength={500} placeholder="What this role is responsible for" onChange={(e) => setDescription(e.target.value)} />
           </label>
+          {isBranchManager && <label className="mb-4 block text-sm">Branch
+            <select className="mt-1 h-10 w-full rounded-md border bg-background px-3" value={selectedBranchId} disabled={Boolean(editingRoleId)} onChange={(e) => setSelectedBranchId(e.target.value)}>
+              {branches.map((branch) => <option key={branch.id} value={branch.id}>{branch.name}</option>)}
+            </select>
+          </label>}
           <div className="mb-3 flex items-center justify-between gap-2"><h5 className="text-sm font-semibold">Permissions included</h5><span className="text-xs text-muted-foreground">{permissions.length} selected</span></div>
           <div className="max-h-[560px] space-y-4 overflow-y-auto pr-2">
+            {isBranchManager && permissionsQuery.isPending && <p className="text-sm text-muted-foreground">Loading your assignable permissions…</p>}
+            {isBranchManager && permissionsQuery.error && <p role="alert" className="text-sm text-destructive">{permissionsQuery.error.message}</p>}
             {permissionGroups.map((group) => (
               <fieldset key={group.title} className="border-t pt-3">
                 <legend className="px-1 text-sm font-semibold">{group.title}</legend>
                 <div className="grid gap-2 sm:grid-cols-2">
-                  {group.items.map((item) => (
+                  {group.items.filter((item) => !isBranchManager || availablePermissions.has(item.code)).map((item) => (
                     <label key={item.code} className="flex items-start gap-2 text-sm">
                       <input type="checkbox" className="mt-0.5" checked={permissions.includes(item.code)} onChange={() => togglePermission(item.code)} />
                       <span>{item.label}</span>
@@ -169,13 +204,13 @@ export function BusinessAccessRolesPanel({ businessId, members, isOwner }: { bus
             ))}
           </div>
           <div className="mt-4 flex flex-wrap gap-2">
-            <Button disabled={name.trim().length < 2 || saveRole.isPending || !permissions.length} onClick={() => saveRole.mutate()}>
+            <Button disabled={name.trim().length < 2 || saveRole.isPending || !permissions.length || (isBranchManager && (!selectedBranchId || permissionsQuery.isPending || Boolean(permissionsQuery.error)))} onClick={() => saveRole.mutate()}>
               {editingRoleId ? <Pencil className="mr-2 size-4" /> : <Plus className="mr-2 size-4" />}
               {saveRole.isPending ? 'Saving…' : editingRoleId ? 'Save role' : 'Create role'}
             </Button>
             {editingRoleId && <Button variant="outline" onClick={startNewRole}>Cancel</Button>}
           </div>
-        </section>
+        </section>}
 
         <div className="space-y-5">
           <section className="rounded-xl border p-4 md:p-5">
@@ -185,9 +220,9 @@ export function BusinessAccessRolesPanel({ businessId, members, isOwner }: { bus
                 <article key={role.id} className="flex flex-wrap items-center justify-between gap-3 py-3">
                   <div className="min-w-0">
                     <p className="font-medium">{role.name} {role.isSystem && <span className="ml-1 rounded bg-muted px-2 py-0.5 text-xs font-normal text-muted-foreground">{role.code.startsWith('legacy_') ? 'Authority role' : 'Position template'}</span>}</p>
-                    <p className="text-xs text-muted-foreground">{role.description || role.code} · {role.permissions.length} permissions</p>
+                    <p className="text-xs text-muted-foreground">{role.description || role.code} · {role.permissions.length} permissions{role.branchId ? ` · ${branches.find((branch) => branch.id === role.branchId)?.name ?? 'Branch role'}` : ' · Business-wide'}</p>
                   </div>
-                  {!role.isSystem && <Button size="sm" variant="outline" onClick={() => { setEditingRoleId(role.id); setMessage(''); }}><Pencil className="mr-1 size-3" />Edit</Button>}
+                  {((canManageRoleDefinitions && !role.isSystem) || (isBranchManager && Boolean(role.branchId))) && <Button size="sm" variant="outline" onClick={() => { setEditingRoleId(role.id); setMessage(''); }}><Pencil className="mr-1 size-3" />Edit</Button>}
                 </article>
               ))}
             </div>}
@@ -198,7 +233,7 @@ export function BusinessAccessRolesPanel({ businessId, members, isOwner }: { bus
             <div className="grid gap-3 sm:grid-cols-[1fr_1fr_auto]">
               <label className="text-sm">Employee
                 <select className="mt-1 h-10 w-full rounded-md border bg-background px-3" value={selectedUserId} onChange={(e) => setSelectedUserId(e.target.value)}>
-                  {members.filter((m) => m.status === 'active').map((m) => <option key={m.user_id} value={m.user_id}>{m.profiles?.full_name || m.user_id.slice(0, 8)}</option>)}
+                  {members.filter((m) => m.status === 'active').map((m) => <option key={m.user_id} value={m.user_id}>{m.profiles?.full_name || m.user_id.slice(0, 8)}{isBranchManager && m.branch_id ? ` · ${branches.find((branch) => branch.id === m.branch_id)?.name ?? 'Branch'}` : ''}</option>)}
                 </select>
               </label>
               <label className="text-sm">Additional role
@@ -212,7 +247,7 @@ export function BusinessAccessRolesPanel({ businessId, members, isOwner }: { bus
               {members.filter((m) => m.status === 'active').map((member) => {
                 const memberRoles = assignments.filter((a) => a.userId === member.user_id);
                 return <article key={member.user_id} className="py-3">
-                  <p className="mb-2 text-sm font-medium">{member.profiles?.full_name || member.user_id.slice(0, 8)}</p>
+                  <p className="mb-2 text-sm font-medium">{member.profiles?.full_name || member.user_id.slice(0, 8)}{isBranchManager && member.branch_id ? <span className="ml-2 text-xs font-normal text-muted-foreground">· {branches.find((branch) => branch.id === member.branch_id)?.name ?? 'Branch'}</span> : null}</p>
                   <div className="flex flex-wrap gap-2">
                     {memberRoles.map((assignment) => (
                       <span key={assignment.roleId} className="inline-flex items-center gap-1 rounded-full border px-3 py-1 text-xs">
