@@ -91,8 +91,12 @@ export const listBranchDelegations = createServerFn({ method: 'GET' }).middlewar
 // Access-related audit trail for admins and the master owner (row level security hides it from everyone else).
 export const listAccessAudit = createServerFn({ method: 'GET' }).middleware([requireSupabaseAuth]).inputValidator(delegationListInput).handler(async ({ data, context }) => {
   const db = anyDb(context.supabase);
-  const { data: rows, error } = await db.from('audit_logs').select('id,actor_id,action,entity_id,created_at').eq('business_id', data.businessId)
-    .or('action.like.team_invite.%,action.like.delegation.%,action.like.job_title.%').order('created_at', { ascending: false }).limit(100);
+  const { data: branchManager } = await db.rpc('has_business_access_role', { _business: data.businessId, _role_code: 'position_branch_manager' });
+  const { data: legacyBranchManager } = await db.rpc('has_business_access_role', { _business: data.businessId, _role_code: 'legacy_branch_manager' });
+  let auditQuery = db.from('audit_logs').select('id,actor_id,action,entity_id,created_at').eq('business_id', data.businessId)
+    .or('action.like.team_invite.%,action.like.delegation.%,action.like.job_title.%');
+  if (branchManager || legacyBranchManager) auditQuery = auditQuery.eq('actor_id', context.userId);
+  const { data: rows, error } = await auditQuery.order('created_at', { ascending: false }).limit(100);
   if (error) throw new Error('Activity log could not be loaded.');
   const actorIds = [...new Set((rows ?? []).map((r: { actor_id: string | null }) => r.actor_id).filter(Boolean))] as string[];
   const { data: people } = actorIds.length ? await db.from('profiles').select('id,full_name').in('id', actorIds) : { data: [] };
