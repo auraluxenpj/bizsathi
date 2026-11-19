@@ -2,7 +2,7 @@ import { createServerFn } from '@tanstack/react-start';
 import { z } from 'zod';
 import { requireSupabaseAuth } from '@/integrations/supabase/auth-middleware';
 import type { Json } from '@/integrations/supabase/types';
-import { readReceipt } from './receipt-ai';
+import { readReceipt, RECEIPT_MODEL } from './receipt-ai';
 import { MAX_RECEIPT_BYTES, receiptTypes } from './receipt-schemas';
 import { voucherInput } from './voucher-schemas';
 
@@ -27,9 +27,29 @@ export const scanReceipt = createServerFn({ method: 'POST' }).middleware([requir
     if (file.error || !file.data) throw new Error('The uploaded file could not be read.');
     if (file.data.size > MAX_RECEIPT_BYTES) throw new Error('Files must be 8 MB or smaller.');
     const bytes = new Uint8Array(await file.data.arrayBuffer());
-    // The AI gateway is server-only and reads LOVABLE_API_KEY from the environment.
-    const { generateChatCompletion } = await import('@lovable.dev/ai-gateway');
-    const result = await readReceipt({ bytes, mime: data.mimeType, name: data.fileName }, request => generateChatCompletion(request as never));
+    const apiKey = process.env['GOOGLE_GENERATIVE_AI_API_KEY'];
+    const result = apiKey
+      ? await (async () => {
+          const [{ createGoogleGenerativeAI }, { generateText }] = await Promise.all([
+            import('@ai-sdk/google'),
+            import('ai'),
+          ]);
+          const google = createGoogleGenerativeAI({ apiKey });
+          return readReceipt({ bytes, mime: data.mimeType, name: data.fileName }, async ({ file, prompt }) => {
+            const content = file.mime === 'application/pdf'
+              ? [{ type: 'text' as const, text: prompt }, { type: 'file' as const, data: file.bytes, mediaType: file.mime, filename: file.name }]
+              : [{ type: 'text' as const, text: prompt }, { type: 'image' as const, image: file.bytes, mediaType: file.mime }];
+            const response = await generateText({
+              model: google(RECEIPT_MODEL),
+              messages: [{ role: 'user', content }],
+              temperature: 0,
+              maxRetries: 0,
+              timeout: 30_000,
+            });
+            return response.text;
+          });
+        })()
+      : { extraction: null, error: 'AI receipt scanning is not configured. Fill in the details yourself.', model: RECEIPT_MODEL };
     const { data: row, error } = await context.supabase.from('expense_receipts').insert({ business_id: data.businessId, file_path: data.path, file_name: data.fileName, mime_type: data.mimeType, ai_extraction: result.extraction as unknown as Json, ai_error: result.error, ai_model: result.extraction ? result.model : null, uploaded_by: context.userId }).select('id').single();
     if (error || !row) { await context.supabase.storage.from(BUCKET).remove([data.path]); throw new Error('The receipt could not be saved.'); }
     return { id: row.id, aiError: result.error };
