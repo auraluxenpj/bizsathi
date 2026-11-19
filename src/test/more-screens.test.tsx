@@ -111,7 +111,7 @@ describe('Karobar-style screens', () => {
     mount(<AppNavigation pathname="/dashboard"><p>body</p></AppNavigation>);
     fireEvent.click(await screen.findByRole('button', { name: 'Open navigation menu' }));
     expect(await screen.findByRole('navigation', { name: 'Main navigation' })).toBeInTheDocument();
-    expect(screen.getByLabelText('Filter navigation menu')).toBeInTheDocument();
+    expect(screen.getAllByLabelText('Filter navigation menu')).toHaveLength(2);
   });
 
   it('dashboard quick actions keep existing destinations', async () => {
