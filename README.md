@@ -2,38 +2,39 @@
 
 **Sutra by Auraluxe** is the internal business management platform for Auraluxe.
 
-## Production application
+## Application
 
 - **Dashboard:** https://bizsathi-migration.auraluxe26.workers.dev/dashboard
-- **Hosting:** Cloudflare Workers
+- **Runtime:** Cloudflare Workers
 - **Database and authentication:** Supabase
 - **Source control:** https://github.com/auraluxenpj/bizsathi
 
 ## Development
 
-Requirements: Node.js and npm.
+Requirements: Bun.
 
 ```sh
 git clone https://github.com/auraluxenpj/bizsathi.git
 cd bizsathi
-npm install
-npm run dev
+bun install
+bun run dev
 ```
 
 ## Validation
 
 ```sh
-npm test
-npm run lint
-npm run build
+bun run test
+bun run lint
+bun run build
+bunx cf deploy --dry-run
 ```
 
-## Deployment
+## Deployment safety
 
-The production Worker is managed in the Cloudflare account. Do not deploy from an unverified local build or change production routing without confirming the release checklist.
+The existing Worker is the deployment target. Do not create another Worker, change production routing, attach a custom domain, or deploy an unverified build. Keep the current live deployment available until the release checklist and end-to-end acceptance tests pass.
 
-Required runtime configuration is managed as Cloudflare Worker secrets. Never commit credentials, access tokens, private keys, or populated environment files to this repository.
+Runtime credentials belong in Cloudflare Worker secrets. Never commit credentials, access tokens, private keys, or populated environment files to this repository.
 
 ## Data and security
 
-The application uses Supabase for authentication and business data. Tenant access must be enforced by trusted database permissions and row-level security; never trust role or business identifiers supplied by the browser.
+Supabase handles authentication and business data. Tenant access must be enforced by trusted database permissions and row-level security; never trust role or business identifiers supplied by the browser.
