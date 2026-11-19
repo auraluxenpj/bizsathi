@@ -41,9 +41,20 @@ BEGIN
     (v_business_id,manager_id,'branch_manager'),
     (v_business_id,accountant_id,'accountant');
 
-  -- Establish the owner actor before guarded membership updates; the test previously
-  -- reached the edit-staff trigger with auth.uid() unset.
+  -- Make the admin fixture's compatibility access role deterministic. The
+  -- guarded membership trigger requires an explicit staff.edit grant.
+  PERFORM public.seed_business_access_roles(v_business_id);
+  INSERT INTO public.business_member_access_roles
+    (business_id,user_id,role_id,assigned_by,is_default)
+  SELECT v_business_id,admin_id,r.id,owner_id,true
+  FROM public.business_access_roles r
+  WHERE r.business_id=v_business_id AND r.code='legacy_admin'
+  ON CONFLICT (business_id,user_id,role_id)
+  DO UPDATE SET is_default=true,assigned_by=EXCLUDED.assigned_by,assigned_at=now();
+
   PERFORM set_config('request.jwt.claims',json_build_object('sub',admin_id,'role','authenticated')::text,true);
+  ASSERT public.has_permission(v_business_id,'staff.edit'),
+    'Admin fixture has the staff.edit grant required by guarded membership updates';
 
   UPDATE public.business_memberships
   SET job_title='branch_manager'
