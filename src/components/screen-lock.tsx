@@ -134,6 +134,12 @@ export function ScreenLockProvider({ children }: { children: ReactNode }) {
   const lock = useCallback(() => { if (config) { setLocked(true); setPin(''); setMessage(''); } }, [config]);
 
   useEffect(() => {
+    if (!retryAt) return;
+    const timer = setTimeout(() => { setRetryAt(0); setMessage(''); }, Math.max(0, retryAt - Date.now()));
+    return () => clearTimeout(timer);
+  }, [retryAt]);
+
+  useEffect(() => {
     if (!config || locked || !loaded) return;
     let timer: ReturnType<typeof setTimeout>;
     let hiddenAt: number | null = null;
@@ -159,6 +165,15 @@ export function ScreenLockProvider({ children }: { children: ReactNode }) {
     };
   }, [config, locked, loaded]);
 
+  const resetDeviceLock = () => {
+    if (userId) {
+      try { localStorage.removeItem(storageKey(userId)); } catch { /* Sign-out still protects the account. */ }
+    }
+    setConfig(null);
+    setLocked(false);
+    void supabase.auth.signOut();
+  };
+
   const value = useMemo(() => ({ config, locked, savePin, disablePin, updateIdle, lock, unlock }), [config, locked, savePin, disablePin, updateIdle, lock, unlock]);
 
   return (
@@ -175,8 +190,9 @@ export function ScreenLockProvider({ children }: { children: ReactNode }) {
             {message && <p role="alert" className="mt-3 text-sm text-rose-200">{message}</p>}
             {retryAt > Date.now() && <p className="mt-2 text-xs text-white/60">Try again in 30 seconds.</p>}
             <Button type="submit" disabled={pin.length !== 6 || Date.now() < retryAt} className="mt-5 h-12 w-full bg-white text-[#0B1B3A] hover:bg-white/90">Unlock Sutra</Button>
-            <p className="mt-5 text-xs text-white/50">Forgot your PIN? Sign out and sign back in, then reset it in My Account.</p>
-            <Button type="button" variant="ghost" className="mt-2 text-white/70 hover:bg-white/10 hover:text-white" onClick={() => void supabase.auth.signOut()}>Sign out</Button>
+            <p className="mt-5 text-xs text-white/50">Forgot your PIN? Reset this device's lock and sign in again. You will need your normal account credentials.</p>
+            <Button type="button" variant="ghost" className="mt-2 text-white/70 hover:bg-white/10 hover:text-white" onClick={resetDeviceLock}>Forgot PIN? Reset device lock</Button>
+            <Button type="button" variant="ghost" className="mt-1 text-white/70 hover:bg-white/10 hover:text-white" onClick={() => void supabase.auth.signOut()}>Sign out</Button>
           </form>
         </div>
       )}
