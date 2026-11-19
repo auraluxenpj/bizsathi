@@ -96,6 +96,7 @@ describe('Dashboard', () => {
 describe('Navigation and sign-in', () => {
   it('has the sidebar sections, and ⌘K opens exactly one search box', async () => {
     mount(<AppNavigation pathname="/dashboard"><p>page body</p></AppNavigation>);
+    fireEvent.click(await screen.findByRole('button', { name: 'Open navigation menu' }));
     const nav = await screen.findByRole('navigation', { name: 'Main navigation' });
     for (const n of ['Dashboard', 'Stock & Inventory', 'CRM', 'Reporting', 'HR & People Management', 'Settings', 'Security']) expect(within(nav).getByText(n)).toBeInTheDocument();
     expect((await screen.findAllByText('Auraluxe', { selector: 'span' })).length).toBeGreaterThan(0);
