@@ -1,0 +1,104 @@
+/* Sutra UI refresh: presentation-only refinements for dashboard, navigation and POS. */
+:root {
+  --sutra-accent: #74263b;
+  --sutra-accent-strong: #5c1d2f;
+  --sutra-accent-soft: #f6edf0;
+  --sutra-ink: #20242d;
+  --sutra-muted: #687181;
+  --sutra-line: #e7e4e5;
+}
+.dark {
+  --sutra-accent: #d99aaa;
+  --sutra-accent-strong: #edbdc8;
+  --sutra-accent-soft: #38252c;
+  --sutra-ink: #f2edf0;
+  --sutra-muted: #b9adb2;
+  --sutra-line: #45363c;
+}
+.app-workspace { background: #f7f6f5; }
+.dark .app-workspace { background: var(--background); }
+.app-topbar {
+  min-height: 72px;
+  border-color: var(--sutra-line);
+  background: color-mix(in srgb, var(--card) 94%, transparent);
+  backdrop-filter: blur(18px);
+}
+.app-sidebar {
+  border-color: var(--sutra-line);
+  box-shadow: 8px 0 30px -28px rgb(38 24 29 / 30%);
+}
+.app-sidebar-brand { border-color: var(--sutra-line); }
+.workspace-navigation { scrollbar-width: thin; scrollbar-color: #d6cbd0 transparent; }
+.workspace-nav-group { letter-spacing: .055em; }
+.workspace-nav-item { min-height: 42px; border-radius: 10px; }
+.workspace-nav-item[aria-current="page"],
+.workspace-nav-item:has([aria-current="page"]) {
+  background: var(--sutra-accent-soft);
+  color: var(--sutra-accent-strong);
+  box-shadow: inset 3px 0 0 var(--sutra-accent);
+}
+.workspace-nav-item:hover { background: color-mix(in srgb, var(--sutra-accent-soft) 72%, var(--card)); }
+.dashboard-shell {
+  max-width: 1720px;
+  padding-top: clamp(1.25rem, 2.4vw, 2.25rem);
+}
+.dashboard-header {
+  border-color: var(--sutra-line);
+  border-radius: 18px;
+  background: linear-gradient(115deg, var(--card), color-mix(in srgb, var(--sutra-accent-soft) 40%, var(--card)));
+  box-shadow: 0 8px 30px -28px rgb(38 24 29 / 32%);
+}
+.dashboard-header h1, .dashboard-shell h1 { color: var(--sutra-ink); }
+.dashboard-stat-card, .dashboard-panel, .dashboard-quick-actions {
+  border-color: var(--sutra-line);
+  border-radius: 16px;
+  box-shadow: 0 5px 20px -18px rgb(38 24 29 / 28%);
+}
+.dashboard-stat-card { transition: transform .18s ease, border-color .18s ease, box-shadow .18s ease; }
+.dashboard-stat-card:hover {
+  border-color: color-mix(in srgb, var(--sutra-accent) 38%, var(--sutra-line));
+  box-shadow: 0 12px 28px -22px rgb(92 29 47 / 35%);
+}
+.dashboard-stat-card .stat-label { letter-spacing: .025em; }
+.dashboard-quick-actions { background: color-mix(in srgb, var(--card) 96%, var(--sutra-accent-soft)); }
+.pos-workspace { --pos-surface: var(--card); }
+.pos-topbar {
+  min-height: 60px;
+  border-color: var(--sutra-line);
+  box-shadow: 0 8px 24px -24px rgb(38 24 29 / 45%);
+}
+.pos-catalogue-heading {
+  border-color: var(--sutra-line);
+  background: linear-gradient(120deg, var(--card), var(--sutra-accent-soft));
+}
+.pos-product-card {
+  overflow: hidden;
+  border-radius: 14px;
+  background: var(--card);
+  box-shadow: 0 4px 18px -17px rgb(38 24 29 / 42%);
+  transition: transform .16s ease, box-shadow .16s ease, border-color .16s ease;
+}
+.pos-product-card:hover {
+  transform: translateY(-2px);
+  border-color: color-mix(in srgb, var(--sutra-accent) 42%, var(--sutra-line));
+  box-shadow: 0 12px 24px -20px rgb(92 29 47 / 35%);
+}
+.pos-cart-with-catalogue { border-color: var(--sutra-line) !important; }
+.pos-cart-heading { border-color: var(--sutra-line); }
+.pos-cart-count { background: var(--sutra-accent-soft); color: var(--sutra-accent-strong); }
+.pos-checkout-footer {
+  border-top: 1px solid var(--sutra-line);
+  background: color-mix(in srgb, var(--card) 94%, transparent);
+}
+.pos-workspace :where(button, a, input, select):focus-visible {
+  outline: 2px solid var(--sutra-accent);
+  outline-offset: 2px;
+}
+@media (max-width: 1023px) {
+  .app-topbar { min-height: 60px; }
+  .dashboard-shell { padding-inline: 1rem; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .dashboard-stat-card, .pos-product-card { transition: none; }
+  .pos-product-card:hover { transform: none; }
+}
