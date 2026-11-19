@@ -123,7 +123,7 @@ describe('Team Access hierarchy panel', () => {
     </QueryClientProvider>);
 
     fireEvent.click(screen.getByText('Invite team member'));
-    const position = screen.getByRole('combobox', { name: 'HR position' }) as HTMLSelectElement;
+    const position = screen.getByRole('combobox', { name: 'Employee position' }) as HTMLSelectElement;
     expect([...position.options].map((o) => o.value)).toContain('branch_manager');
     fireEvent.change(position, { target: { value: 'branch_manager' } });
     expect(position).toHaveValue('branch_manager');
@@ -135,7 +135,7 @@ describe('Team Access hierarchy panel', () => {
     </QueryClientProvider>);
 
     await screen.findByText('Delegation active for this branch');
-    const position = screen.getByRole('combobox', { name: 'HR position' }) as HTMLSelectElement;
+    const position = screen.getByRole('combobox', { name: 'Employee position' }) as HTMLSelectElement;
     expect([...position.options].map((o) => o.value)).toEqual(['department_manager', 'sales_person', 'stock_manager', 'entry_person']);
     expect(screen.getByLabelText('Link expiry (days)')).toHaveValue(2);
 
