@@ -118,7 +118,7 @@ export function HrmWorkspace() {
   if (!businessId) return <main className="mx-auto max-w-6xl px-5 py-8"><h1 className="brand text-2xl">HR & People Management</h1><Empty>Link the AURALUXE business workspace to use HRM.</Empty></main>;
   return <main className="mx-auto max-w-7xl px-4 py-6 md:px-8">
     <header className="flex flex-wrap items-end justify-between gap-4 border-b pb-5">
-      <div><p className="text-xs font-semibold tracking-widest text-primary">BIZSATHI · PEOPLE OPERATIONS</p><h1 className="brand mt-2 text-3xl">HR & People Management</h1><p className="mt-1 text-sm text-muted-foreground">Employees, attendance, leave, shifts and payroll in one workspace.</p></div>
+      <div><p className="text-xs font-semibold tracking-widest text-primary">SUTRA · PEOPLE OPERATIONS</p><h1 className="brand mt-2 text-3xl">HR & People Management</h1><p className="mt-1 text-sm text-muted-foreground">Employees, attendance, leave, shifts and payroll in one workspace.</p></div>
       <Field label="Business"><select aria-label="HRM business" className={inputClass + ' min-w-56'} value={businessId} onChange={e => setSelectedBusiness(e.target.value)}>{businesses.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}</select></Field>
     </header>
     {message && <p role="status" className="mt-4 rounded-lg border p-3 text-sm">{message}</p>}
