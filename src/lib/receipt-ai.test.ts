@@ -8,7 +8,7 @@ class RateLimitError extends Error { override name = 'RateLimitError'; }
 
 describe('reading a receipt with the AI', () => {
   it('sends image bytes and the accounting prompt, then validates the result', async () => {
-    const generate = vi.fn(async (_r: { file: typeof file; prompt: string }) => answer);
+    const generate = vi.fn(async (_r: { file: { bytes: Uint8Array; mime: string; name: string }; prompt: string }) => answer);
     const r = await readReceipt(file, generate);
     expect(r.error).toBeNull();
     expect(r.model).toBe(RECEIPT_MODEL);
@@ -19,7 +19,7 @@ describe('reading a receipt with the AI', () => {
 
   it('passes PDF bytes and filename unchanged to the provider', async () => {
     const pdf = { ...file, mime: 'application/pdf', name: 'a.pdf' };
-    const generate = vi.fn(async (_r: { file: typeof pdf; prompt: string }) => JSON.stringify({ supplier: 'A', total: '10' }));
+    const generate = vi.fn(async (_r: { file: { bytes: Uint8Array; mime: string; name: string }; prompt: string }) => JSON.stringify({ supplier: 'A', total: '10' }));
     const r = await readReceipt(pdf, generate);
     expect(r.extraction?.supplier).toBe('A');
     expect(generate.mock.calls[0]![0].file).toEqual(pdf);
