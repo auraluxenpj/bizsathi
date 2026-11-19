@@ -1,3 +1,4 @@
+// Isolated migration target; do not attach production domains until acceptance is complete.
 import { defineConfig } from "cf/config";
 
 export default defineConfig({
