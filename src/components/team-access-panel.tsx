@@ -348,7 +348,7 @@ export function TeamAccessPanel({
                   <select aria-label={`Change invited position for ${i.invitee_name || i.mobile || i.email || i.id}`} className="h-9 rounded-md border bg-card px-2 text-sm" value={i.job_title ?? ''} disabled={legacyActionsPending} onChange={(e) => { const next = e.target.value as JobTitle; if (next) onLegacyChangeRole?.(i.id, next); }}>
                     {!i.job_title && <option value="" disabled>{i.role_code}</option>}{legacyTitles.map((t) => <option key={t} value={t}>{jobTitles[t].label}</option>)}
                   </select>
-                  <Button size="sm" variant="outline" disabled={legacyActionsPending} onClick={() => onLegacyReissue?.(i.id, i.mobile ?? '')}>New link</Button>
+                  {i.mobile && <Button size="sm" variant="outline" disabled={legacyActionsPending} onClick={() => onLegacyReissue?.(i.id, i.mobile!)}>New link</Button>}
                   <Button size="sm" variant="ghost" disabled={legacyActionsPending} onClick={() => onLegacyRevoke?.(i.id)}><Ban className="mr-1 size-3" />Revoke</Button>
                 </div>}
               </article>;
