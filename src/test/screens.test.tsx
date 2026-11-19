@@ -41,8 +41,6 @@ vi.mock('@/lib/inventory-queries', () => ({ businessQuery: { queryKey: ['busines
 vi.mock('@/lib/vouchers.functions', () => ({ getVoucherWorkspace: async () => ({ userId: ID.user, role: 'owner', branches: [{ id: ID.br, name: 'Main' }], periods: state.periods, vouchers: [] }), postVoucher: vi.fn(), checkVoucher: vi.fn() }));
 vi.mock('@/components/trading-settings', () => ({ TradingSettings: () => null }));
 vi.mock('@/integrations/supabase/client', () => ({ isSupabaseConfigured: () => true, supabase: { auth: { getUser: async () => ({ data: { user: auth.user } }), signOut: vi.fn() } } }));
-vi.mock('@/integrations/lovable', () => ({ lovable: { auth: { signInWithOAuth: vi.fn() } } }));
-vi.mock('@lovable.dev/cloud-auth-js/styles.css', () => ({}));
 
 import { Dashboard } from '@/components/dashboard';
 import { AppNavigation } from '@/components/app-navigation';
