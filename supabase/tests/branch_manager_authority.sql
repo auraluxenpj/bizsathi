@@ -41,6 +41,10 @@ BEGIN
     (v_business_id,manager_id,'branch_manager'),
     (v_business_id,accountant_id,'accountant');
 
+  -- Establish the owner actor before guarded membership updates; the test previously
+  -- reached the edit-staff trigger with auth.uid() unset.
+  PERFORM set_config('request.jwt.claims',json_build_object('sub',owner_id,'role','authenticated')::text,true);
+
   UPDATE public.business_memberships
   SET job_title='branch_manager'
   WHERE business_id=v_business_id AND user_id=manager_id;
