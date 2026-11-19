@@ -98,7 +98,7 @@ export function TeamAccessPanel({
   const [inviteeEmail, setInviteeEmail] = useState('');
   const [inviteeMobile, setInviteeMobile] = useState('');
   const [expiryDays, setExpiryDays] = useState(7);
-  const [jobTitle, setJobTitle] = useState<JobTitle | ''>('sales_person');
+  const [jobTitle, setJobTitle] = useState<JobTitle | 'viewer' | ''>('sales_person');
   const [label, setLabel] = useState('');
   const [inviteLink, setInviteLink] = useState('');
   const [message, setMessage] = useState('');
@@ -117,12 +117,14 @@ export function TeamAccessPanel({
   const availableTitles: JobTitle[] = jobTitleCodes.filter((title) =>
     allowedInviteRoles.includes(roleForTitle[title]) && (isOwner || title !== 'partner')
   );
-  const inviteRole: RoleCode = jobTitle ? roleForTitle[jobTitle] : 'staff';
+  const canInviteViewer = allowedInviteRoles.includes('viewer');
+  const inviteRole: RoleCode = jobTitle === 'viewer' ? 'viewer' : jobTitle ? roleForTitle[jobTitle] : 'staff';
   const availableTitlesKey = availableTitles.join('|');
   useEffect(() => {
-    if (!availableTitles.length) setJobTitle('');
-    else if (!jobTitle || !availableTitles.includes(jobTitle)) setJobTitle(availableTitles[0] ?? '');
-  }, [availableTitlesKey, jobTitle]);
+    if (jobTitle === 'viewer' && canInviteViewer) return;
+    if (!availableTitles.length) setJobTitle(canInviteViewer ? 'viewer' : '');
+    else if (!jobTitle || jobTitle === 'viewer' || !availableTitles.includes(jobTitle)) setJobTitle(availableTitles[0] ?? '');
+  }, [availableTitlesKey, jobTitle, canInviteViewer]);
   const eligibleManagers = members.filter((m) =>
     m.status === 'active' && memberRoles.some((r) => r.userId === m.user_id && ['position_branch_manager','legacy_branch_manager'].includes(r.roleCode)) &&
     branchAccess.some((g) => g.user_id === m.user_id && g.branch_id === selectedBranchId));
@@ -137,7 +139,7 @@ export function TeamAccessPanel({
   const createInvite = useMutation({
     mutationFn: () => createInviteFn({ data: {
       businessId, branchId: selectedBranchId, role: inviteRole, inviteeEmail, inviteeMobile,
-      jobTitle: jobTitle && availableTitles.includes(jobTitle) ? jobTitle : undefined,
+      jobTitle: jobTitle && jobTitle !== 'viewer' && availableTitles.includes(jobTitle) ? jobTitle : undefined,
       deniedPermissions: [],
       expiresInHours: effectiveExpiryDays * 24, maxUses: 1, label: label || undefined,
     } }),
@@ -202,7 +204,7 @@ export function TeamAccessPanel({
             <td className="py-3 pr-4">{isAdmin && !protectedMember ? <select aria-label={`Position for ${employeeName}`} className="h-9 max-w-48 rounded-md border bg-background px-2" value={m.job_title ?? ''} disabled={positionMutation.isPending} onChange={(e) => positionMutation.mutate({ userId: m.user_id, jobTitle: e.target.value as JobTitle, status: m.status })}>
               <option value="" disabled>Select position</option>
               {permittedPositions.map((title) => <option key={title} value={title}>{jobTitles[title].label}</option>)}
-            </select> : (jobTitles[(m.job_title ?? '') as JobTitle]?.label ?? 'Position not assigned')}</td>
+            </select> : (jobTitles[(m.job_title ?? '') as JobTitle]?.label ?? (m.role_code === 'viewer' ? 'Read-only Viewer' : 'Position not assigned'))}</td>
             {branches.map((b) => {
               const checked = branchAccess.some((x) => x.user_id === m.user_id && x.branch_id === b.id);
               return <td key={b.id} className="px-3 py-3 text-center"><input aria-label={`Grant ${b.name} access to ${employeeName}`} type="checkbox" checked={checked} disabled={!isAdmin || isBranchManager || protectedMember || branchAccessMutation.isPending} onChange={(e) => branchAccessMutation.mutate({ userId: m.user_id, branchId: b.id, allowed: e.target.checked })} /></td>;
@@ -260,12 +262,13 @@ export function TeamAccessPanel({
               {branches.map((b) => <option key={b.id} value={b.id}>{b.name} ({b.code})</option>)}
             </select>
           </label>
-          {availableTitles.length > 0 && <label className="mb-3 block text-sm">Employee position
-            <select className="mt-1 h-10 w-full rounded-md border bg-background px-3" value={jobTitle} onChange={(e) => setJobTitle(e.target.value as JobTitle)}>
+          {(availableTitles.length > 0 || canInviteViewer) && <label className="mb-3 block text-sm">Employee position / access
+            <select className="mt-1 h-10 w-full rounded-md border bg-background px-3" value={jobTitle} onChange={(e) => setJobTitle(e.target.value as JobTitle | 'viewer' | '')}>
               {availableTitles.map((t) => <option key={t} value={t}>{titleLabel[t]}</option>)}
+              {canInviteViewer && <option value="viewer">Read-only Viewer</option>}
             </select>
           </label>}
-          <p className="mb-4 text-xs text-muted-foreground">The selected position automatically sets the employee’s default application permissions and authority. Add an extra custom role after onboarding only when the employee has additional responsibilities. Branch access is assigned separately.</p>
+          <p className="mb-4 text-xs text-muted-foreground">A selected position automatically sets the employee’s default application permissions and authority. A read-only viewer can be invited without a position. Add an extra custom role only when the employee has additional responsibilities; branch access is assigned separately.</p>
           <label className="mb-3 block text-sm">Invitee email address
             <input className="mt-1 h-10 w-full rounded-md border bg-background px-3" type="email" autoComplete="email" maxLength={254} placeholder="staff@example.com" value={inviteeEmail} onChange={(e) => setInviteeEmail(e.target.value)} />
           </label>
@@ -280,7 +283,7 @@ export function TeamAccessPanel({
           <label className="my-3 block text-sm">Invitation label (optional)
             <input className="mt-1 h-10 w-full rounded-md border bg-background px-3" maxLength={120} value={label} onChange={(e) => setLabel(e.target.value)} placeholder="e.g. Nepalgunj cashier team" />
           </label>
-          <Button className="w-full" disabled={!selectedBranchId || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(inviteeEmail.trim()) || !inviteMobileValid || !jobTitle || !availableTitles.includes(jobTitle) || !allowedInviteRoles.includes(inviteRole) || createInvite.isPending} onClick={() => createInvite.mutate()}>
+          <Button className="w-full" disabled={!selectedBranchId || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(inviteeEmail.trim()) || !inviteMobileValid || !jobTitle || (jobTitle === 'viewer' ? !canInviteViewer : !availableTitles.includes(jobTitle)) || !allowedInviteRoles.includes(inviteRole) || createInvite.isPending} onClick={() => createInvite.mutate()}>
             <UserPlus className="mr-2 size-4" />{createInvite.isPending ? 'Creating link…' : 'Create invitation link'}
           </Button>
           {inviteLink && <div className="mt-3 rounded-lg border p-3">
