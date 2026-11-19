@@ -1,7 +1,7 @@
 import { Link, useNavigate } from '@tanstack/react-router';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useServerFn } from '@tanstack/react-start';
-import { Banknote, Building2, ScanLine, Image as ImageIcon, NotebookPen, Shapes, Calculator, ChevronRight, LogOut, MessageSquareText, ShieldCheck, ShoppingCart, ArrowLeftRight, BarChart3, UserCog, UsersRound, Upload, Wallet, type LucideIcon } from 'lucide-react';
+import { Banknote, Building2, ScanLine, Image as ImageIcon, NotebookPen, Shapes, Calculator, ChevronRight, LogOut, MessageSquareText, ShieldCheck, ShoppingCart, ArrowLeftRight, BarChart3, UserCog, Upload, Wallet, type LucideIcon } from 'lucide-react';
 import { listBusinesses } from '@/lib/business.functions';
 import { FiscalYearClose } from '@/components/fiscal-year-close';
 import { AppearanceSettings } from '@/components/appearance-settings';
