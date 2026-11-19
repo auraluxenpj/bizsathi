@@ -37,7 +37,7 @@ export function SaleReturnRequests({w,manager,cashier}:{w:CommerceWorkspace;mana
  const review=useMutation({mutationFn:(v:{requestId:string;decision:'approve'|'reject';reason?:string})=>reviewFn({data:{...v,...(v.decision==='approve'?{periodId:approvalPeriod?.id,date:today}: {})}}),onSuccess:async result=>{setMessage(result.documentId?'Return approved and posted. Record any refund from the approved return invoice.':'Return request rejected. Reserved quantities have been released.');await client.invalidateQueries();},onError:e=>setMessage(e.message)});
  const branches=w.access.data?.branches??[];const today=new Date().toLocaleDateString('en-CA');const approvalPeriod=data?.periods.find(p=>p.status==='open'&&today>=p.start_date&&today<=p.end_date);
  const canSubmit=!!source&&reason.trim().length>=3&&available.some(l=>Number(quantities[l.variantId]??0)>0&&Number(quantities[l.variantId])<=l.remaining)&&!create.isPending;
- return <section className="my-7 space-y-5 border-y py-6" aria-label="Sale return requests">
+ return <section id="sale-return-requests" className="my-7 space-y-5 border-y py-6" aria-label="Sale return requests">
    <div><h2 className="text-lg font-semibold">Sale return requests</h2><p className="mt-1 text-sm text-muted-foreground">{cashier?'Submit a return for review. Stock and refunds are not changed until a Branch Manager approves it.':'Review requests for your authorized branches. Approval posts the linked sale return and stock reversal; refunds are a separate recorded payment.'}</p></div>
    {cashier&&<div className="grid gap-3 rounded-xl border p-4">
      <h3 className="font-medium">Request a return</h3>
