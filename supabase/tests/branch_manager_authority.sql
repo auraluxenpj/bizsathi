@@ -43,7 +43,7 @@ BEGIN
 
   -- Establish the owner actor before guarded membership updates; the test previously
   -- reached the edit-staff trigger with auth.uid() unset.
-  PERFORM set_config('request.jwt.claims',json_build_object('sub',owner_id,'role','authenticated')::text,true);
+  PERFORM set_config('request.jwt.claims',json_build_object('sub',admin_id,'role','authenticated')::text,true);
 
   UPDATE public.business_memberships
   SET job_title='branch_manager'
@@ -169,7 +169,7 @@ BEGIN
   RESET ROLE;
 
   -- Change the HR designation without changing assigned access roles.
-  PERFORM set_config('request.jwt.claims',json_build_object('sub',owner_id,'role','authenticated')::text,true);
+  PERFORM set_config('request.jwt.claims',json_build_object('sub',admin_id,'role','authenticated')::text,true);
   PERFORM public.set_member_job_title(v_business_id,manager_id,'sales_person');
 
   SET LOCAL ROLE authenticated;
@@ -181,7 +181,7 @@ BEGIN
   RESET ROLE;
 
   -- Remove the Branch Manager authority role. The HR title alone must not restore it.
-  PERFORM set_config('request.jwt.claims',json_build_object('sub',owner_id,'role','authenticated')::text,true);
+  PERFORM set_config('request.jwt.claims',json_build_object('sub',admin_id,'role','authenticated')::text,true);
   UPDATE public.business_memberships
   SET role_code='staff'
   WHERE business_id=v_business_id AND user_id=manager_id;
@@ -205,7 +205,7 @@ BEGIN
   RESET ROLE;
 
   -- Restore the authority role explicitly, without changing the HR designation.
-  PERFORM set_config('request.jwt.claims',json_build_object('sub',owner_id,'role','authenticated')::text,true);
+  PERFORM set_config('request.jwt.claims',json_build_object('sub',admin_id,'role','authenticated')::text,true);
   UPDATE public.business_memberships
   SET role_code='branch_manager'
   WHERE business_id=v_business_id AND user_id=manager_id;
