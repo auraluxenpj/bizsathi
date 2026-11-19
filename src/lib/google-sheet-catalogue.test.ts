@@ -1,40 +1,79 @@
-import {describe,it,expect,vi} from 'vitest';
-import {extractSpreadsheetId,googleSheetCatalogueInput,parseGoogleSheetValues} from './google-sheet-catalogue';
-import {readGoogleSheetCatalogue} from './google-sheet-catalogue.server';
-const businessId='10000000-0000-4000-8000-000000000001';
-const input={businessId,spreadsheetIdOrUrl:'sheet_123',sheetName:'Inventory & Catalogue'};
-describe('Google Sheets catalogue import',()=>{
- it.each([' sheet_123 ','https://docs.google.com/spreadsheets/d/sheet_123/edit#gid=0'])('extracts spreadsheet ID from %s',value=>expect(extractSpreadsheetId(value)).toBe('sheet_123'));
- it.each(['https://evil.example/spreadsheets/d/sheet_123/edit','http://docs.google.com/spreadsheets/d/sheet_123/edit','https://docs.google.com.evil.example/spreadsheets/d/sheet_123','../secret'])('rejects unsafe inputs %s',value=>expect(()=>extractSpreadsheetId(value)).toThrow());
- it('defaults to the master tab',()=>expect(googleSheetCatalogueInput.parse({businessId,spreadsheetIdOrUrl:'sheet_123'}).sheetName).toBe('Inventory & Catalogue'));
- it('normalizes ragged sheet rows using CSV aliases',()=>expect(parseGoogleSheetValues([['Item Name','Generated SKU','Selling Price','Primary Unit'],['Shirt','S1','NPR 1,250.50']],businessId)[0]).toMatchObject({product_name:'Shirt',sku:'S1',selling_price:1250.5,unit:'pcs'}));
- it('rejects missing required sheet data',()=>expect(()=>parseGoogleSheetValues([['Item Name','Generated SKU'],['Shirt']],businessId)).toThrow());
- it('uses authenticated gateway with a quoted tab and no encoded colon',async()=>{
-  const request=vi.fn<typeof fetch>().mockResolvedValue(Response.json({values:[['Item Name','Generated SKU'],['Shirt','S1']]}));
-  const rows=await readGoogleSheetCatalogue(input,{gatewayKey:'test-gateway',connectionKey:'test-connection'},request);
-  expect(rows[0]?.sku).toBe('S1');
-  const url=String(request.mock.calls[0]?.[0]);
-  expect(url).toContain('A1:Z5002');expect(url).not.toContain('%3A');expect(url).toContain('Inventory%20&%20Catalogue');
-  expect(request.mock.calls[0]?.[1]?.headers).toEqual({Authorization:'Bearer test-gateway','X-Connection-Api-Key':'test-connection'});
- });
- it('uses link-shared CSV without connector credentials',async()=>{
-  const request=vi.fn<typeof fetch>().mockResolvedValue(new Response('Item Name,Generated SKU\nShirt,S1'));
-  expect((await readGoogleSheetCatalogue(input,{},request))[0]?.sku).toBe('S1');
-  const url=new URL(String(request.mock.calls[0]?.[0]));expect(url.hostname).toBe('docs.google.com');expect(url.searchParams.get('sheet')).toBe('Inventory & Catalogue');expect(request.mock.calls[0]?.[1]?.headers).toBeUndefined();
- });
- it('falls back for inaccessible connector sheets without forwarding credentials',async()=>{
-  vi.spyOn(console,'error').mockImplementation(()=>{});
-  const request=vi.fn<typeof fetch>().mockResolvedValueOnce(new Response('Access denied',{status:403})).mockResolvedValueOnce(new Response('Item Name,Generated SKU\nShirt,S1'));
-  expect((await readGoogleSheetCatalogue(input,{gatewayKey:'test',connectionKey:'test'},request))[0]?.sku).toBe('S1');expect(request.mock.calls[1]?.[1]?.headers).toBeUndefined();vi.restoreAllMocks();
- });
- it('does not bypass quota failures',async()=>{
-  vi.spyOn(console,'error').mockImplementation(()=>{});
-  const request=vi.fn<typeof fetch>().mockResolvedValue(new Response('Quota exceeded',{status:429}));
-  await expect(readGoogleSheetCatalogue(input,{gatewayKey:'test',connectionKey:'test'},request)).rejects.toThrow('429');expect(request).toHaveBeenCalledTimes(1);vi.restoreAllMocks();
- });
- it('reports private workbook HTML clearly',async()=>{
-  const request=vi.fn<typeof fetch>().mockResolvedValue(new Response('<html>Sign in</html>'));
-  await expect(readGoogleSheetCatalogue(input,{},request)).rejects.toThrow('private or unreachable');
- });
- it('rejects more than 5,000 product rows',()=>expect(()=>parseGoogleSheetValues([['Item Name','Generated SKU'],...Array.from({length:5001},(_,i)=>[`Product ${i}`,`S${i}`])],businessId)).toThrow());
+import { webcrypto } from 'node:crypto';
+import { describe, it, expect, vi } from 'vitest';
+import { extractSpreadsheetId, googleSheetCatalogueInput, parseGoogleSheetValues } from './google-sheet-catalogue';
+import { readGoogleSheetCatalogue } from './google-sheet-catalogue.server';
+
+Object.defineProperty(globalThis, 'crypto', { value: webcrypto, configurable: true });
+
+const businessId = '10000000-0000-4000-8000-000000000001';
+const input = { businessId, spreadsheetIdOrUrl: 'sheet_123', sheetName: 'Inventory & Catalogue' };
+
+async function serviceAccountJson(email: string) {
+  const pair = await webcrypto.subtle.generateKey(
+    { name: 'RSASSA-PKCS1-v1_5', modulusLength: 2048, publicExponent: new Uint8Array([1, 0, 1]), hash: 'SHA-256' },
+    true,
+    ['sign', 'verify'],
+  );
+  const pkcs8 = new Uint8Array(await webcrypto.subtle.exportKey('pkcs8', pair.privateKey));
+  let binary = '';
+  for (const byte of pkcs8) binary += String.fromCharCode(byte);
+  const base64 = btoa(binary);
+  const pem = `-----BEGIN PRIVATE KEY-----\n${base64.match(/.{1,64}/g)?.join('\n')}\n-----END PRIVATE KEY-----\n`;
+  return JSON.stringify({ client_email: email, private_key: pem });
+}
+
+describe('Google Sheets catalogue import', () => {
+  it.each([' sheet_123 ', 'https://docs.google.com/spreadsheets/d/sheet_123/edit#gid=0'])('extracts spreadsheet ID from %s', value => expect(extractSpreadsheetId(value)).toBe('sheet_123'));
+  it.each(['https://evil.example/spreadsheets/d/sheet_123/edit', 'http://docs.google.com/spreadsheets/d/sheet_123/edit', 'https://docs.google.com.evil.example/spreadsheets/d/sheet_123', '../secret'])('rejects unsafe inputs %s', value => expect(() => extractSpreadsheetId(value)).toThrow());
+  it('defaults to the master tab', () => expect(googleSheetCatalogueInput.parse({ businessId, spreadsheetIdOrUrl: 'sheet_123' }).sheetName).toBe('Inventory & Catalogue'));
+  it('normalizes ragged sheet rows using CSV aliases', () => expect(parseGoogleSheetValues([['Item Name', 'Generated SKU', 'Selling Price', 'Primary Unit'], ['Shirt', 'S1', 'NPR 1,250.50']], businessId)[0]).toMatchObject({ product_name: 'Shirt', sku: 'S1', selling_price: 1250.5, unit: 'pcs' }));
+  it('rejects missing required sheet data', () => expect(() => parseGoogleSheetValues([['Item Name', 'Generated SKU'], ['Shirt']], businessId)).toThrow());
+
+  it('uses service-account OAuth and the Google Sheets API for private catalogues', async () => {
+    const credentials = { serviceAccountJson: await serviceAccountJson(`catalogue-${crypto.randomUUID()}@example.iam.gserviceaccount.com`) };
+    const request = vi.fn<typeof fetch>()
+      .mockResolvedValueOnce(Response.json({ access_token: 'test-access-token', expires_in: 3600 }))
+      .mockResolvedValueOnce(Response.json({ values: [['Item Name', 'Generated SKU'], ['Shirt', 'S1']] }));
+    const rows = await readGoogleSheetCatalogue(input, credentials, request);
+    expect(rows[0]?.sku).toBe('S1');
+    expect(String(request.mock.calls[0]?.[0])).toContain('oauth2.googleapis.com/token');
+    const apiUrl = new URL(String(request.mock.calls[1]?.[0]));
+    expect(apiUrl.hostname).toBe('sheets.googleapis.com');
+    expect(decodeURIComponent(apiUrl.pathname)).toContain("'Inventory & Catalogue'!A1:Z5002");
+    expect(new Headers(request.mock.calls[1]?.[1]?.headers).get('Authorization')).toBe('Bearer test-access-token');
+  });
+
+  it('uses link-shared CSV without service-account credentials', async () => {
+    const request = vi.fn<typeof fetch>().mockResolvedValue(new Response('Item Name,Generated SKU\nShirt,S1'));
+    expect((await readGoogleSheetCatalogue(input, {}, request))[0]?.sku).toBe('S1');
+    const url = new URL(String(request.mock.calls[0]?.[0]));
+    expect(url.hostname).toBe('docs.google.com');
+    expect(url.searchParams.get('sheet')).toBe('Inventory & Catalogue');
+    expect(request.mock.calls[0]?.[1]?.headers).toBeUndefined();
+  });
+
+  it('falls back to public CSV when service-account access is denied', async () => {
+    const credentials = { serviceAccountJson: await serviceAccountJson(`fallback-${crypto.randomUUID()}@example.iam.gserviceaccount.com`) };
+    const request = vi.fn<typeof fetch>()
+      .mockResolvedValueOnce(new Response('Access denied', { status: 403 }))
+      .mockResolvedValueOnce(new Response('Item Name,Generated SKU\nShirt,S1'));
+    expect((await readGoogleSheetCatalogue(input, credentials, request))[0]?.sku).toBe('S1');
+    expect(request.mock.calls[1]?.[1]?.headers).toBeUndefined();
+  });
+
+  it('does not bypass Google API quota failures', async () => {
+    const credentials = { serviceAccountJson: await serviceAccountJson(`quota-${crypto.randomUUID()}@example.iam.gserviceaccount.com`) };
+    const request = vi.fn<typeof fetch>()
+      .mockResolvedValueOnce(Response.json({ access_token: 'test-access-token', expires_in: 3600 }))
+      .mockResolvedValueOnce(new Response('Quota exceeded', { status: 429 }));
+    await expect(readGoogleSheetCatalogue(input, credentials, request)).rejects.toThrow('429');
+    expect(request).toHaveBeenCalledTimes(2);
+  });
+
+  it('reports private workbook HTML clearly', async () => {
+    const request = vi.fn<typeof fetch>().mockResolvedValue(new Response('<html>Sign in</html>'));
+    await expect(readGoogleSheetCatalogue(input, {}, request)).rejects.toThrow('private or unreachable');
+  });
+
+  it('rejects more than 5,000 product rows', () => expect(() => parseGoogleSheetValues([['Item Name', 'Generated SKU'], ...Array.from({ length: 5001 }, (_, i) => [`Product ${i}`, `S${i}`])], businessId)).toThrow());
 });
