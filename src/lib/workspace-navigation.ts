@@ -40,7 +40,7 @@ export const workspaceGroups: WorkspaceGroup[] = [
   { name: 'Roles & Permissions', to: '/businesses', search: { panel: 'roles' }, icon: ShieldCheck, note: 'Manage custom access roles, employee role assignments and position defaults' },
  ] },
  { name: 'Settings', icon: Settings, items: [
-  { name: 'Business & App Settings', to: '/sales', search: { panel: 'settings' }, icon: Settings },
+  { name: 'Auraluxe & App Settings', to: '/sales', search: { panel: 'settings' }, icon: Settings },
  ] },
  { name: 'Security', icon: LockKeyhole, items: [
   { name: 'Security Findings', to: '/security', icon: ShieldAlert },
