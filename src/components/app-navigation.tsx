@@ -17,6 +17,7 @@ import { permissionForRoute } from '@/lib/permissions';
 import { isBillingStaff, shouldRedirectBillingStaff, workspaceGroups, workspaceItemActive } from '@/lib/workspace-navigation';
 import { validateReportSearch } from '@/lib/report-filters';
 import { dashboardKind } from '@/lib/dashboard-profile';
+import { ScreenLockButton } from '@/components/screen-lock';
 
 export function AppNavigation({ children, pathname }: { children: ReactNode; pathname: string }) {
  useApplyAppearance(); const load = useServerFn(listBusinesses); const client = useQueryClient(); const navigate = useNavigate(); const search = useSearch({ strict: false });
@@ -81,6 +82,7 @@ export function AppNavigation({ children, pathname }: { children: ReactNode; pat
     {!billingStaff && <>{can('purchases.create') && <Button asChild variant="outline" className="hidden h-10 shrink-0 sm:inline-flex"><Link to="/purchases" search={{ new: '1' }}><Plus className="size-4" />Purchase</Link></Button>}
     {can('sales.create') && <Button asChild className="hidden h-10 shrink-0 sm:inline-flex"><Link to="/sales" search={{ new: '1' }}><Plus className="size-4" />Sale</Link></Button>}</>}
     {workspaceMenu}
+    <ScreenLockButton />
     <DropdownMenu><DropdownMenuTrigger asChild><Button variant="ghost" className="h-10 min-h-10 shrink-0 gap-2 px-1 sm:px-2" aria-label="Account menu"><span className="flex size-8 items-center justify-center overflow-hidden rounded-full bg-primary/10 text-xs font-semibold uppercase text-primary">{avatar ? <img src={avatar} alt="" className="size-full object-cover" /> : person.slice(0, 1) || 'A'}</span><span className="hidden max-w-24 truncate text-xs font-medium md:block">{person}</span><ChevronDown className="hidden size-3 md:block" /></Button></DropdownMenuTrigger><DropdownMenuContent align="end">{!billingStaff && <DropdownMenuItem asChild><Link to="/profile">My account</Link></DropdownMenuItem>}<DropdownMenuItem onSelect={signOut}><LogOut className="size-4" />Sign out</DropdownMenuItem></DropdownMenuContent></DropdownMenu>
    </div>
   </header>
