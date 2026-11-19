@@ -232,7 +232,7 @@ export function TeamAccessPanel({
               <div className="mb-4 space-y-2 text-sm">
                 <p className="font-medium">Positions this manager may invite</p>
                 {(['staff', 'viewer'] as const).map((r) => (
-                  <label key={r} className="flex items-center gap-2"><input type="checkbox" checked={delegatedRoles.includes(r)} onChange={(e) => setDelegatedRoles((old) => e.target.checked ? [...old, r] : old.filter((x) => x !== r))} />{r === 'staff' ? 'Sales Person, Stock Manager and Store Team' : 'Read-only access'}</label>
+                  <label key={r} className="flex items-center gap-2"><input type="checkbox" checked={delegatedRoles.includes(r)} onChange={(e) => setDelegatedRoles((old) => e.target.checked ? [...old, r] : old.filter((x) => x !== r))} />{r === 'staff' ? 'Department Manager, Cashier / POS, Inventory Manager and Store Assistant' : 'Read-only access'}</label>
                 ))}
               </div>
               <Button disabled={!selectedManager || !delegatedRoles.length || grant.isPending} onClick={() => grant.mutate()}><Users className="mr-2 size-4" />{grant.isPending ? 'Saving…' : 'Grant branch delegation'}</Button>
@@ -240,7 +240,7 @@ export function TeamAccessPanel({
           ) : currentGrant ? (
             <div className="rounded-lg bg-muted/50 p-3 text-sm">
               <p className="font-medium">Delegation active for this branch</p>
-              <p className="mt-1 text-muted-foreground">Allowed positions: {currentGrantRoles.map((r) => r === 'staff' ? 'Sales Person, Stock Manager and Store Team' : r === 'viewer' ? 'Read-only access' : r).join('; ')} · Up to {currentGrant.max_invite_uses} registrations · {currentGrant.max_invite_days} days</p>
+              <p className="mt-1 text-muted-foreground">Allowed positions: {currentGrantRoles.map((r) => r === 'staff' ? 'Department Manager, Cashier / POS, Inventory Manager and Store Assistant' : r === 'viewer' ? 'Read-only access' : r).join('; ')} · Up to {currentGrant.max_invite_uses} registrations · {currentGrant.max_invite_days} days</p>
             </div>
           ) : <p className="rounded-lg bg-muted/50 p-3 text-sm text-muted-foreground">No invitation delegation is assigned to your account for this branch. Ask an administrator to grant it.</p>}
           {isAdmin && !isBranchManager && (delegations.data?.grants ?? []).filter((g: { branch_id: string }) => g.branch_id === selectedBranchId).map((g: { id: string; manager_user_id: string; allowed_role_codes: string[] }) => (
