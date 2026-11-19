@@ -2,7 +2,7 @@ import { defineConfig } from "cf/config";
 
 export default defineConfig({
   worker: {
-    name: "bizsathi",
+    name: "bizsathi-migration",
     entrypoint: "./src/server.ts",
     compatibilityDate: "2026-11-19",
     compatibilityFlags: ["nodejs_compat"],
