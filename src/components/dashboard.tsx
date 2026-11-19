@@ -8,7 +8,6 @@ import Decimal from 'decimal.js';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { getBusinessAccess, listBusinesses } from '@/lib/business.functions';
-import { authorizedSelection } from '@/lib/dashboard-data';
 import { getCommerce } from '@/lib/commerce.functions';
 import { commerceTotals } from '@/lib/commerce-totals';
 import { dashboardTrends } from '@/lib/dashboard-trends';
