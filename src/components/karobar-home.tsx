@@ -1,5 +1,5 @@
 import { Link } from '@tanstack/react-router';
-import { Bell, Building2, Calculator, ChevronDown, ChevronRight, ArrowDown, ArrowUp, EyeOff, FilePlus2, HandCoins, MessageSquareText, NotebookText, Package, PackagePlus, ReceiptText, ShoppingCart, Tag, Undo2, UserPlus, Wallet, Zap, BarChart3, Plus, type LucideIcon } from 'lucide-react';
+import { Bell, Building2, Calculator, ChevronRight, ArrowDown, ArrowUp, EyeOff, FilePlus2, HandCoins, MessageSquareText, NotebookText, Package, PackagePlus, ReceiptText, ShoppingCart, Tag, Undo2, UserPlus, Wallet, Zap, BarChart3, Plus, type LucideIcon } from 'lucide-react';
 import { Switch } from '@/components/ui/switch';
 
 export type KarobarHomeProps = {
@@ -38,7 +38,7 @@ export function KarobarHome(p: KarobarHomeProps) {
   return <main className="karobar min-h-screen bg-[#f8f9fc] px-4 pb-28 pt-4 font-[Roboto,sans-serif]">
     <header className="flex items-center gap-3">
       <span className="flex size-12 shrink-0 items-center justify-center overflow-hidden rounded-full bg-[#fdf8ea] text-[#b8860b]"><Building2 className="size-6" /></span>
-      <Link to="/businesses" className="flex min-w-0 flex-1 items-center gap-2"><span className="truncate text-lg font-bold uppercase text-[#1b1f23]">{p.businessName}</span><ChevronDown className="size-5 shrink-0" /></Link>
+      <div className="min-w-0 flex-1"><span className="block truncate text-lg font-bold uppercase text-[#1b1f23]">{p.businessName}</span><span className="text-[11px] font-medium tracking-wide text-[#6b7280]">SUTRA BY AURALUXE</span></div>
       <Link to="/more" aria-label="Notifications" className="p-1"><Bell className="size-6" /></Link>
     </header>
     <label className="mt-4 flex items-center gap-4 rounded-xl bg-white px-5 py-4 text-[15px] text-[#1b1f23]"><EyeOff className="size-6 text-[#6b7280]" /><span className="flex-1">Privacy Mode</span><Switch checked={p.privacy} onCheckedChange={p.onPrivacy} aria-label="Privacy mode" /></label>
