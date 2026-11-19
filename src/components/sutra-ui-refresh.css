@@ -102,3 +102,71 @@
   .dashboard-stat-card, .pos-product-card { transition: none; }
   .pos-product-card:hover { transform: none; }
 }
+
+
+/* Higher-specificity finish: the legacy workspace stylesheet contains
+   important declarations, so scope the refresh to the Sutra shell. */
+.app-workspace .app-topbar {
+  min-height: 72px !important;
+  height: auto !important;
+  background: color-mix(in srgb, var(--card) 94%, transparent) !important;
+  border-color: var(--sutra-line) !important;
+  box-shadow: 0 6px 24px -22px rgb(38 24 29 / 35%) !important;
+  backdrop-filter: blur(18px) !important;
+}
+.app-workspace .app-sidebar {
+  border-color: var(--sutra-line) !important;
+  box-shadow: 8px 0 30px -28px rgb(38 24 29 / 30%) !important;
+}
+.app-workspace .app-sidebar a[aria-current="page"],
+.app-workspace .workspace-nav-item[aria-current="page"],
+.app-workspace .workspace-nav-item:has([aria-current="page"]) {
+  background: var(--sutra-accent-soft) !important;
+  color: var(--sutra-accent-strong) !important;
+  box-shadow: inset 3px 0 0 var(--sutra-accent) !important;
+}
+.app-workspace .dashboard-header,
+.app-workspace .dashboard-toolbar,
+.app-workspace .dashboard-panel,
+.app-workspace .dashboard-quick-actions,
+.app-workspace .dashboard-stat-card {
+  border-color: var(--sutra-line) !important;
+  border-radius: 16px !important;
+  box-shadow: 0 5px 20px -18px rgb(38 24 29 / 28%) !important;
+}
+.app-workspace .dashboard-header {
+  background: linear-gradient(115deg, var(--card), color-mix(in srgb, var(--sutra-accent-soft) 40%, var(--card))) !important;
+}
+.app-workspace .dashboard-stat-card,
+.app-workspace .dashboard-panel,
+.app-workspace .dashboard-quick-actions {
+  background: var(--card) !important;
+}
+.app-workspace .dashboard-stat-card:hover {
+  border-color: color-mix(in srgb, var(--sutra-accent) 38%, var(--sutra-line)) !important;
+  box-shadow: 0 12px 28px -22px rgb(92 29 47 / 35%) !important;
+}
+.app-workspace .dashboard-quick-actions button {
+  border-color: var(--sutra-line) !important;
+  border-radius: 10px !important;
+}
+.app-workspace .pos-billing-checkout .pos-product-card {
+  border-color: var(--sutra-line) !important;
+  border-radius: 14px !important;
+  background: var(--card) !important;
+  box-shadow: 0 4px 18px -17px rgb(38 24 29 / 42%) !important;
+}
+.app-workspace .pos-billing-checkout .pos-product-card:hover {
+  border-color: color-mix(in srgb, var(--sutra-accent) 42%, var(--sutra-line)) !important;
+  box-shadow: 0 12px 24px -20px rgb(92 29 47 / 35%) !important;
+}
+.app-workspace .pos-billing-checkout .pos-cart-with-catalogue,
+.app-workspace .pos-billing-checkout .pos-cart-heading {
+  border-color: var(--sutra-line) !important;
+}
+.app-workspace .pos-billing-checkout .pos-catalogue-heading {
+  background: linear-gradient(120deg, var(--card), var(--sutra-accent-soft)) !important;
+}
+@media (max-width: 1023px) {
+  .app-workspace .app-topbar { min-height: 60px !important; }
+}
