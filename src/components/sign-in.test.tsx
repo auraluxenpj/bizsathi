@@ -75,7 +75,7 @@ describe("SignIn email OTP", () => {
       expect(authMocks.signInWithOtp).toHaveBeenCalledWith({
         email: "owner@example.com",
         options: {
-          emailRedirectTo: expect.stringMatching(/\\/auth$/),
+          emailRedirectTo: expect.stringMatching(/\/auth$/),
           shouldCreateUser: false,
         },
       });
