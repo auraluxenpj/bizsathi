@@ -52,6 +52,13 @@ BEGIN
   ON CONFLICT (business_id,user_id,role_id)
   DO UPDATE SET is_default=true,assigned_by=EXCLUDED.assigned_by,assigned_at=now();
 
+  -- Keep the test's required grant explicit even if the seeded preset changes.
+  INSERT INTO public.business_access_role_permissions(business_id,role_id,permission)
+  SELECT v_business_id,r.id,'staff.edit'
+  FROM public.business_access_roles r
+  WHERE r.business_id=v_business_id AND r.code='legacy_admin'
+  ON CONFLICT DO NOTHING;
+
   PERFORM set_config('request.jwt.claims',json_build_object('sub',admin_id,'role','authenticated')::text,true);
   ASSERT public.has_permission(v_business_id,'staff.edit'),
     'Admin fixture has the staff.edit grant required by guarded membership updates';
