@@ -131,7 +131,7 @@ BEGIN
   END IF;
 
   IF actor_rank < 80 AND _title NOT IN ('department_manager', 'sales_person', 'stock_manager', 'entry_person') THEN
-    RAISE EXCEPTION 'Branch Managers may assign only Department Manager, Cashier, Inventory Manager or Store Assistant positions' USING ERRCODE = '42501';
+    RAISE EXCEPTION 'Branch Managers may assign only Department Manager, Cashier, Inventory Manager or Store Team positions' USING ERRCODE = '42501';
   END IF;
 
   IF actor_rank < 80 AND EXISTS (
