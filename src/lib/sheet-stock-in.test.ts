@@ -57,11 +57,13 @@ describe('catalogue import barcodes', () => {
 import { readSheetValues } from './google-sheet-values.server';
 describe('readSheetValues resilience', () => {
   const csv = 'Receipt ID,SKU,Qty Received\nRCP-1,A-1,2\n';
-  it('falls back to the public link when the connector cannot be reached', async () => {
+  it('uses the public CSV link when no service account is configured', async () => {
     const calls: string[] = [];
-    const fake = (async (url: URL | string) => { calls.push(String(url)); if (String(url).includes('connector-gateway')) throw new TypeError('fetch failed'); return new Response(csv, { status: 200 }); }) as typeof fetch;
-    const rows = await readSheetValues('1I4kUw4XJaENcx91RsAjRtjWgER2Iu4AUALhcsb56KDg', 'Stock In', { gatewayKey: 'k', connectionKey: 'c' }, fake);
-    expect(rows[1]).toEqual(['RCP-1', 'A-1', '2']); expect(calls.some(c => c.includes('docs.google.com'))).toBe(true);
+    const fake = (async (url: URL | string) => { calls.push(String(url)); return new Response(csv, { status: 200 }); }) as typeof fetch;
+    const rows = await readSheetValues('1I4kUw4XJaENcx91RsAjRtjWgER2Iu4AUALhcsb56KDg', 'Stock In', {}, fake);
+    expect(rows[1]).toEqual(['RCP-1', 'A-1', '2']);
+    expect(calls).toHaveLength(1);
+    expect(calls[0]).toContain('docs.google.com');
   });
   it('retries a dropped request once', async () => {
     let n = 0; const fake = (async () => { if (n++ === 0) throw new TypeError('fetch failed'); return new Response(csv, { status: 200 }); }) as typeof fetch;
