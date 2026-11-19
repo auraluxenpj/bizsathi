@@ -3,7 +3,7 @@ import { Link } from '@tanstack/react-router';
 import { useServerFn } from '@tanstack/react-start';
 import { useQuery } from '@tanstack/react-query';
 import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
-import { ArrowDownLeft, ArrowUpRight, BarChart3, Building2, Eye, Landmark, Package, Plus, Receipt, RefreshCw, ShoppingCart, Wallet, Zap, type LucideIcon } from 'lucide-react';
+import { ArrowDownLeft, ArrowUpRight, BarChart3, Eye, Landmark, Package, Plus, Receipt, RefreshCw, ShoppingCart, Wallet, Zap, type LucideIcon } from 'lucide-react';
 import Decimal from 'decimal.js';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
