@@ -9,43 +9,26 @@ permissions:
   contents: write
 
 jobs:
-  scaffold:
+  inspect:
     if: github.actor != 'github-actions[bot]'
     runs-on: ubuntu-latest
     steps:
       - name: Check out migration branch
         uses: actions/checkout@v4
-        with:
-          persist-credentials: true
 
       - name: Set up Bun
         uses: oven-sh/setup-bun@v2
 
-      - name: Install the existing locked dependencies
+      - name: Install locked dependencies
         run: bun install --frozen-lockfile
 
-      - name: Inspect the existing Lovable Vite wrapper
+      - name: Inspect Lovable Vite wrapper contract
         run: |
-          node -e "const p=require('./node_modules/@lovable.dev/vite-tanstack-config/package.json'); console.log(JSON.stringify({version:p.version,main:p.main,module:p.module,exports:p.exports},null,2))"
-          find node_modules/@lovable.dev/vite-tanstack-config -maxdepth 2 -type f | sort
-          for f in node_modules/@lovable.dev/vite-tanstack-config/dist/*.js; do
-            echo "--- $f"
-            sed -n '1,220p' "$f"
-          done
-
-      - name: Let Cloudflare configure this existing Vite project
-        continue-on-error: true
-        run: bunx --yes cf init .
-
-      - name: Commit generated Cloudflare dependencies and config
-        if: always()
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add package.json bun.lock tsconfig.json vite.config.ts cloudflare.config.ts .gitignore
-          if git diff --cached --quiet; then
-            echo "Cloudflare init produced no tracked changes."
-          else
-            git commit -m "chore: scaffold Cloudflare Workers configuration"
-            git push
-          fi
+          echo "--- README"
+          sed -n '1,220p' node_modules/@lovable.dev/vite-tanstack-config/README.md
+          echo "--- Type declarations"
+          sed -n '1,260p' node_modules/@lovable.dev/vite-tanstack-config/dist/index.d.ts
+          echo "--- Current Vite config"
+          cat vite.config.ts
+          echo "--- Relevant package dependencies"
+          node -e "const p=require('./package.json'); console.log(JSON.stringify({dependencies:p.dependencies,devDependencies:p.devDependencies},null,2))"
