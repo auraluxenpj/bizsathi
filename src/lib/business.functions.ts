@@ -78,7 +78,7 @@ export const getBusinessAccess = createServerFn({ method: 'GET' }).middleware([r
   if (!manager) return { manager: false, isBusinessAdmin: false, isBranchManager: false, userId: context.userId, branches: branches ?? [], assignedBranchId, members: [], invitations: [], grants: [], memberRoles: [] };
   const [members, invitations, grants, memberRoles] = await Promise.all([
     context.supabase.from('business_memberships').select('user_id,role_code,job_title,status,profiles!business_memberships_user_id_fkey(full_name,phone)').eq('business_id', data.businessId),
-    context.supabase.from('business_invitations').select('id,email,job_title,role_code,expires_at,accepted_at,revoked_at,created_at').eq('business_id', data.businessId).order('created_at', { ascending: false }),
+    context.supabase.rpc('list_business_invitations', { _business: data.businessId }),
     context.supabase.from('branch_memberships').select('user_id,branch_id').eq('business_id', data.businessId),
     anyDb(context.supabase).rpc('get_business_member_access_roles', { _business: data.businessId }),
   ]);
