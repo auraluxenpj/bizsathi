@@ -3,9 +3,7 @@ import { useNavigate } from '@tanstack/react-router';
 import { useQueryClient } from '@tanstack/react-query';
 import { ArrowUpRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { lovable } from '@/integrations/lovable';
 import { supabase, isSupabaseConfigured } from '@/integrations/supabase/client';
-import '@lovable.dev/cloud-auth-js/styles.css';
 import { Input } from '@/components/ui/input';
 import { signInWithEmployeeId, signInWithMobile } from '@/lib/mobile-login.functions';
 import { classifyLoginIdentifier, isEmailLoginIdentifier } from '@/lib/login-identifier';
@@ -21,16 +19,16 @@ export function SignIn() {
   const [mode, setMode] = useState<'login'|'signup'|'recovery'>('login'); const [hasInvite, setHasInvite] = useState(false);
   const [email, setEmail] = useState(''); const [mobile, setMobile] = useState(''); const [fullName, setFullName] = useState(''); const [identifier, setIdentifier] = useState(''); const [password, setPassword] = useState(''); const [confirmPassword, setConfirmPassword] = useState(''); const [message, setMessage] = useState('');
   useEffect(() => { if (isSupabaseConfigured()) { supabase.auth.getUser().then(({ data }) => setSignedIn(Boolean(data.user))).catch(() => setSignedIn(false)); } setHasInvite(Boolean(sessionStorage.getItem('bizsathi-invite') || sessionStorage.getItem('bizsathi-team-token'))); }, []);
-  async function login(provider: 'google' | 'lovable') {
+  async function loginWithGoogle() {
     if (!isSupabaseConfigured()) return;
     setBusy(true); setError('');
     try {
-      const result = await lovable.auth.signInWithOAuth(provider, { redirect_uri: `${window.location.origin}/auth` });
-      if (result.error) throw result.error;
-      if (result.redirected) return;
-      const { data } = await supabase.auth.getUser();
-      if (data.user) await navigate({ to: sessionStorage.getItem('bizsathi-team-token') ? '/join' : sessionStorage.getItem('bizsathi-invite') ? '/invite' : '/dashboard' });
-    } catch { setError('Sign-in could not be completed. Please try again.'); }
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: { redirectTo: `${window.location.origin}/auth` },
+      });
+      if (error) throw error;
+    } catch { setError('Google sign-in could not be completed. Please try again.'); }
     finally { setBusy(false); }
   }
   async function emailLogin() {
@@ -103,8 +101,7 @@ export function SignIn() {
           {mode !== 'recovery' && !pendingEmail && <>
             <div className="my-5 flex items-center gap-3 text-xs text-muted-foreground"><span className="h-px flex-1 bg-border" />or<span className="h-px flex-1 bg-border" /></div>
             <div className="grid gap-2">
-              <Button variant="outline" className="h-11" disabled={busy || !isSupabaseConfigured()} onClick={() => login('google')}>Continue with Google</Button>
-              <Button className="lovable-auth-button h-11" variant="outline" disabled={busy || !isSupabaseConfigured()} onClick={() => login('lovable')}>Continue with Lovable</Button>
+              <Button variant="outline" className="h-11" disabled={busy || !isSupabaseConfigured()} onClick={loginWithGoogle}>Continue with Google</Button>
             </div>
           </>}
         </>}
