@@ -9,9 +9,8 @@ import { supabase } from '@/integrations/supabase/client';
 
 type Item = { to: string; label: string; icon: LucideIcon; badge?: string };
 const main: Item[] = [
-  { to: '/businesses', label: 'Business Profile', icon: Building2 },
+  { to: '/businesses', label: 'Branches & Staff', icon: Building2 },
   { to: '/credit-reminder', label: 'Credit Reminder', icon: MessageSquareText, badge: 'New' },
-  { to: '/businesses', label: 'Manage Staff', icon: UsersRound },
   { to: '/cash-bank', label: 'Cash & Bank Accounts', icon: Banknote },
   { to: '/categories', label: 'Item Categories', icon: Shapes },
   { to: '/reports', label: 'View Reports', icon: BarChart3 },
