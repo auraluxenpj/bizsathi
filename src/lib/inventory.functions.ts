@@ -11,7 +11,7 @@ export const fetchGoogleSheetCatalogue = createServerFn({method:'POST'}).middlew
  if(error || roleError || !member || !admin) throw new Error('Administrator access to this business is required.');
  const {readGoogleSheetCatalogue}=await import('./google-sheet-catalogue.server');
  try {
-  return await readGoogleSheetCatalogue(data,{gatewayKey:process.env['LOVABLE_API_KEY'],connectionKey:process.env['GOOGLE_SHEETS_API_KEY']});
+  return await readGoogleSheetCatalogue(data,{serviceAccountJson:process.env['GOOGLE_SERVICE_ACCOUNT_JSON']});
  } catch(error) {
   if(error instanceof Error && (error.name==='TimeoutError' || error.name==='TypeError')) throw new Error('Google Sheets could not be reached. Check the URL and try again.');
   throw error;
