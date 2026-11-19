@@ -12,7 +12,7 @@
     "format": "prettier --write .",
     "test": "vitest run",
     "test:watch": "vitest",
-    "deploy": "cf deploy",
+    "deploy": "cf deploy --force",
     "cf-typegen": "cf workers types"
   },
   "overrides": {
