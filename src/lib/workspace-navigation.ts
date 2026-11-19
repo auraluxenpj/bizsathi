@@ -36,7 +36,7 @@ export const workspaceGroups: WorkspaceGroup[] = [
  ] },
  { name: 'HR & People Management', icon: UserCog, items: [
   { name: 'HR & People Management', to: '/hrm', icon: UserCog, note: 'Employee records, attendance, leave, shifts and payroll' },
-  { name: 'Branches & staff', to: '/businesses', search: { panel: 'users' }, icon: Users, note: 'Manage AURALUXE branches, employees and branch assignments' },
+  { name: 'Employees & Branch Access', to: '/businesses', search: { panel: 'users' }, icon: Users, note: 'Manage AURALUXE branches, employees and branch assignments' },
   { name: 'Roles & Permissions', to: '/businesses', search: { panel: 'roles' }, icon: ShieldCheck, note: 'Manage custom access roles, employee role assignments and position defaults' },
  ] },
  { name: 'Settings', icon: Settings, items: [
