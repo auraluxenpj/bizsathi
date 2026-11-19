@@ -5,7 +5,7 @@ DECLARE
   owner_id uuid := gen_random_uuid();
   admin_id uuid := gen_random_uuid();
   master_id uuid := gen_random_uuid();
-  v_business_id uuid;
+  v_business_id uuid := 'c0f0ed15-97e4-4859-ac8f-a2d4e81f5b01';
   request_id uuid;
   denied boolean;
 BEGIN
@@ -17,9 +17,8 @@ BEGIN
 
   -- Seed synthetic business and memberships as the disposable database owner.
   -- Migration 0041 intentionally disables the application create_business RPC.
-  INSERT INTO public.businesses(name,created_by)
-  VALUES ('Synthetic archive approval',owner_id)
-  RETURNING id INTO v_business_id;
+  INSERT INTO public.businesses(id,name,created_by)
+  VALUES (v_business_id,'Synthetic archive approval',owner_id);
   INSERT INTO public.business_memberships(business_id,user_id,role_code,status)
   VALUES
     (v_business_id,owner_id,'owner','active'),
