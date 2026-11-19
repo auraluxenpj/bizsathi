@@ -1,8 +1,6 @@
 import { createFileRoute } from '@tanstack/react-router';
 import { useSuspenseQuery } from '@tanstack/react-query';
-import { Link } from '@tanstack/react-router';
 import { Building2 } from 'lucide-react';
-import { Button } from '@/components/ui/button';
 import { VoucherWorkspace } from '@/components/voucher-workspace';
 import { businessQuery } from '@/lib/inventory-queries';
 import { pageHead } from '@/lib/head';
