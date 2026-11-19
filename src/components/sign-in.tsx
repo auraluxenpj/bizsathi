@@ -60,7 +60,7 @@ export function SignIn() {
             },
           });
           if (error) throw error;
-          setMessage('A secure sign-in link has been sent to your email. Open it on this device to access BizSathi.');
+          setMessage('A secure sign-in link has been sent to your email. Open it on this device to access Sutra.');
           return;
         }
         await navigate({ to: sessionStorage.getItem('bizsathi-team-token') ? '/join' : sessionStorage.getItem('bizsathi-invite') ? '/invite' : '/dashboard' });
