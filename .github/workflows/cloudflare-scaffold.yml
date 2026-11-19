@@ -44,5 +44,8 @@ jobs:
       - name: Build for Cloudflare Workers
         run: bun run build
 
+      - name: Validate Cloudflare deployment package without uploading
+        run: bunx cf deploy --dry-run
+
       - name: Run application test suite
         run: bun run test
