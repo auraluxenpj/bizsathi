@@ -14,6 +14,7 @@ import { useEffect, type ReactNode } from "react";
 import appCss from "../styles.css?url";
 import { supabase, isSupabaseConfigured } from '@/integrations/supabase/client';
 import { AppNavigation } from '@/components/app-navigation';
+import { ScreenLockProvider } from '@/components/screen-lock';
 import { lockOfflineVaults } from '@/lib/offline-vault';
 
 function NotFoundComponent() {
@@ -152,7 +153,7 @@ function RootComponent() {
   return (
     <QueryClientProvider client={queryClient}>
       {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
-      {workspace ? <AppNavigation pathname={pathname}><Outlet /></AppNavigation> : <Outlet />}
+      {workspace ? <ScreenLockProvider><AppNavigation pathname={pathname}><Outlet /></AppNavigation></ScreenLockProvider> : <Outlet />}
     </QueryClientProvider>
   );
 }
