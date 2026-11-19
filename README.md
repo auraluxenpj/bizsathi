@@ -1,8 +1,8 @@
-# Bizsathi
+# Sutra
 
 Create a new project with Supabase enabled.
 
-Biz sathi Nepal
+Sutra By Auraluxe
 
 Implement the BizSathi Nepal PostgreSQL schema and security foundation in the connected Supabase project.
 
