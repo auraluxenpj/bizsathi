@@ -2,6 +2,7 @@ import { webcrypto } from 'node:crypto';
 import { describe, it, expect, vi } from 'vitest';
 import { extractSpreadsheetId, googleSheetCatalogueInput, parseGoogleSheetValues } from './google-sheet-catalogue';
 import { readGoogleSheetCatalogue } from './google-sheet-catalogue.server';
+import { writeStatusCells } from './google-sheet-values.server';
 
 Object.defineProperty(globalThis, 'crypto', { value: webcrypto, configurable: true });
 
@@ -68,6 +69,22 @@ describe('Google Sheets catalogue import', () => {
       .mockResolvedValueOnce(new Response('Quota exceeded', { status: 429 }));
     await expect(readGoogleSheetCatalogue(input, credentials, request)).rejects.toThrow('429');
     expect(request).toHaveBeenCalledTimes(2);
+  });
+
+  it('writes BizSathi and website status cells through Sheets batchUpdate', async () => {
+    const credentials = { serviceAccountJson: await serviceAccountJson(`writeback-${crypto.randomUUID()}@example.iam.gserviceaccount.com`) };
+    const request = vi.fn<typeof fetch>()
+      .mockResolvedValueOnce(Response.json({ access_token: 'test-access-token', expires_in: 3600 }))
+      .mockResolvedValueOnce(new Response(null, { status: 200 }));
+    const ok = await writeStatusCells('sheet_123', 'Stock In', [{ row: 2, bizsathi: '2026-11-19 08:00 UTC', website: '2026-11-19 08:00 UTC' }], credentials, request);
+    expect(ok).toBe(true);
+    expect(String(request.mock.calls[1]?.[0])).toContain('sheets.googleapis.com/v4/spreadsheets/sheet_123/values:batchUpdate');
+    const body = JSON.parse(String(request.mock.calls[1]?.[1]?.body));
+    expect(body.valueInputOption).toBe('RAW');
+    expect(body.data).toEqual([
+      { range: "'Stock In'!I2", values: [['2026-11-19 08:00 UTC']] },
+      { range: "'Stock In'!J2", values: [['2026-11-19 08:00 UTC']] },
+    ]);
   });
 
   it('reports private workbook HTML clearly', async () => {
