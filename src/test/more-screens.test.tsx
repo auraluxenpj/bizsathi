@@ -4,6 +4,7 @@ import { RouterProvider, createMemoryHistory, createRootRoute, createRouter,crea
 import { fireEvent, render, screen } from '@testing-library/react';
 import type { ReactNode } from 'react';
 import { describe, expect, it, vi } from 'vitest';
+vi.mock('@/components/screen-lock', () => ({ ScreenLockButton: () => null }));
 
 class ResizeObserverStub { observe() {} unobserve() {} disconnect() {} }
 (globalThis as unknown as { ResizeObserver: unknown }).ResizeObserver = ResizeObserverStub;
