@@ -21,6 +21,9 @@ jobs:
       - name: Set up Bun
         uses: oven-sh/setup-bun@v2
 
+      - name: Install the existing locked dependencies
+        run: bun install --frozen-lockfile
+
       - name: Let Cloudflare configure this existing Vite project
         run: bunx --yes cf init .
 
