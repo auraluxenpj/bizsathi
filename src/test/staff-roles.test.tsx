@@ -41,7 +41,7 @@ describe('Team Access invitations', () => {
     expect((invite.mock.calls[0]![0] as { data: Record<string, unknown> }).data).toMatchObject({
       businessId: BIZ,
       branchId: BRANCH,
-      role: 'staff',
+      role: 'accountant',
       jobTitle: 'accountant',
       inviteeEmail: 'staff@example.com',
       inviteeMobile: '9800000000',
