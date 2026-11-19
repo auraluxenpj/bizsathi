@@ -24,14 +24,25 @@ jobs:
       - name: Install the existing locked dependencies
         run: bun install --frozen-lockfile
 
+      - name: Inspect the existing Lovable Vite wrapper
+        run: |
+          node -e "const p=require('./node_modules/@lovable.dev/vite-tanstack-config/package.json'); console.log(JSON.stringify({version:p.version,main:p.main,module:p.module,exports:p.exports},null,2))"
+          find node_modules/@lovable.dev/vite-tanstack-config -maxdepth 2 -type f | sort
+          for f in node_modules/@lovable.dev/vite-tanstack-config/dist/*.js; do
+            echo "--- $f"
+            sed -n '1,220p' "$f"
+          done
+
       - name: Let Cloudflare configure this existing Vite project
+        continue-on-error: true
         run: bunx --yes cf init .
 
-      - name: Commit only the generated Cloudflare scaffold
+      - name: Commit generated Cloudflare dependencies and config
+        if: always()
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add package.json bun.lock vite.config.ts cloudflare.config.ts .gitignore
+          git add package.json bun.lock tsconfig.json vite.config.ts cloudflare.config.ts .gitignore
           if git diff --cached --quiet; then
             echo "Cloudflare init produced no tracked changes."
           else
