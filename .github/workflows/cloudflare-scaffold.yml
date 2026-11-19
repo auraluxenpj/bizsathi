@@ -22,13 +22,23 @@ jobs:
       - name: Install locked dependencies
         run: bun install --frozen-lockfile
 
-      - name: Inspect Lovable Vite wrapper contract
+      - name: Inspect resolved Vite plugins from the Lovable wrapper
         run: |
-          echo "--- README"
-          sed -n '1,220p' node_modules/@lovable.dev/vite-tanstack-config/README.md
-          echo "--- Type declarations"
-          sed -n '1,260p' node_modules/@lovable.dev/vite-tanstack-config/dist/index.d.ts
+          node --input-type=module <<'NODE'
+          import { defineConfig } from "@lovable.dev/vite-tanstack-config";
+          const resolve = defineConfig({ tanstackStart: { server: { entry: "server" } } });
+          const config = await resolve({ command: "build", mode: "production", isSsrBuild: false, isPreview: false });
+          console.log(JSON.stringify({
+            keys: Object.keys(config),
+            plugins: (config.plugins ?? []).map(plugin => Array.isArray(plugin) ? plugin.map(p => p?.name) : plugin?.name),
+            resolve: config.resolve,
+            server: config.server,
+            build: config.build,
+            ssr: config.ssr
+          }, null, 2));
+          NODE
+          echo "--- README and config type contract"
+          sed -n '1,180p' node_modules/@lovable.dev/vite-tanstack-config/README.md
+          sed -n '1,220p' node_modules/@lovable.dev/vite-tanstack-config/dist/index.d.ts
           echo "--- Current Vite config"
           cat vite.config.ts
-          echo "--- Relevant package dependencies"
-          node -e "const p=require('./package.json'); console.log(JSON.stringify({dependencies:p.dependencies,devDependencies:p.devDependencies},null,2))"
