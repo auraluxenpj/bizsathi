@@ -98,19 +98,18 @@ describe('Karobar-style screens', () => {
     expect(screen.getByText('Rs. 130.00')).toBeInTheDocument();
   });
 
-  it('More menu has the Karobar sections', async () => {
+  it('More menu shows the current workspace and utilities', async () => {
     mount(<MoreMenu />);
-    expect(await screen.findByText('Business Profile')).toBeInTheDocument();
-    for (const t of ['Credit Reminder', 'Manage Staff', 'Cash & Bank Accounts', 'View Reports', 'Account Settings', 'Utilities', 'Calculators', 'Sign out']) expect(screen.getByText(t)).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: 'Auraluxe' })).toBeInTheDocument();
+    for (const t of ['Branches & Staff', 'Credit Reminder', 'Cash & Bank Accounts', 'Item Categories', 'View Reports', 'Account Settings', 'Utilities', 'Calculators', 'Sign out']) expect(screen.getByText(t)).toBeInTheDocument();
     expect(screen.getByRole('link', { name: /Cash & Bank Accounts/ })).toHaveAttribute('href', '/cash-bank');
     expect(await screen.findByText('Security Findings')).toBeInTheDocument();
   });
 
-  it('navigation can collapse and reopen without hiding its control', async () => {
+  it('mobile navigation opens and exposes the menu filter', async () => {
     mount(<AppNavigation pathname="/dashboard"><p>body</p></AppNavigation>);
-    fireEvent.click(await screen.findByRole('button', { name: 'Collapse sidebar' }));
-    expect(screen.getByRole('button', { name: 'Expand sidebar' })).toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button', { name: 'Expand sidebar' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Open navigation menu' }));
+    expect(await screen.findByRole('navigation', { name: 'Main navigation' })).toBeInTheDocument();
     expect(screen.getByLabelText('Filter navigation menu')).toBeInTheDocument();
   });
 
