@@ -26,14 +26,14 @@ export const workspaceGroups: WorkspaceGroup[] = [
  ] },
  { name: 'Stock & Inventory', icon: Warehouse, items: [
   { name: 'Products', to: '/products', icon: Package }, { name: 'Categories', to: '/categories', icon: FolderTree },
-  { name: 'Brands', icon: Tag, unavailable: true }, { name: 'Customer Contacts', to: '/contacts', search: { kind: 'customer' }, icon: Users },
+  { name: 'Brands', icon: Tag, unavailable: true },
   { name: 'Barcode Studio', to: '/products', search: { tool: 'barcode' }, icon: ScanBarcode },
   { name: 'Physical Inventory Count', to: '/inventory', search: { tool: 'count' }, icon: ClipboardCheck, note: 'Scan barcodes or enter physical quantities, then save and submit the count' },
   { name: 'Batch & Expiry', icon: Clock, unavailable: true }, { name: 'Stock Adjustments', to: '/inventory', search: { tool: 'adjust' }, icon: SlidersHorizontal },
   { name: 'Stocktake Sessions', icon: ClipboardCheck, unavailable: true }, { name: 'Quarantine & Disposal', to: '/inventory', search: { tool: 'dispose' }, icon: ShieldAlert, note: 'Disposal available; quarantine not available' },
  ] },
  { name: 'Customers & Loyalty', icon: Users, items: [
-  { name: 'Customers', to: '/parties', icon: Users }, { name: 'Membership & Loyalty', to: '/membership', icon: Award },
+  { name: 'Customers', to: '/parties', icon: Users }, { name: 'Customer Contacts', to: '/contacts', search: { kind: 'customer' }, icon: Users }, { name: 'Membership & Loyalty', to: '/membership', icon: Award },
  ] },
  { name: 'Finance', icon: Wallet, items: [
   { name: 'Cash Drawer', to: '/cash-counters', icon: Banknote }, { name: 'Financial Accounts', to: '/cash-bank', icon: Building2 },
