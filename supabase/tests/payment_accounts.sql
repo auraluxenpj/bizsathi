@@ -10,7 +10,7 @@ DECLARE
   req jsonb;
 BEGIN
  INSERT INTO auth.users(id,email,email_confirmed_at,raw_user_meta_data,created_at,updated_at) SELECT u,'test+'||u||'@example.invalid',now(),'{}',now(),now() FROM unnest(ARRAY[owner_id,acc,staff,viewer,other_id]) u;
- b:=gen_random_uuid(); ob:=gen_random_uuid();
+ b:='c0f0ed15-97e4-4859-ac8f-a2d4e81f5b01'; ob:=gen_random_uuid();
  INSERT INTO public.businesses(id,name,created_by) VALUES(b,'Accounts A',owner_id),(ob,'Accounts B',other_id);
  INSERT INTO public.business_memberships(business_id,user_id,role_code,status) VALUES
   (b,owner_id,'admin','active'),(b,acc,'accountant','active'),(b,staff,'staff','active'),(b,viewer,'viewer','active'),
