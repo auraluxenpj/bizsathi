@@ -72,6 +72,8 @@ BEGIN
  exp_id:=public.post_accounting_voucher_with_account(req,safe);
  ASSERT (SELECT coalesce(sum(amount),0) FROM public.account_movements WHERE account_id=safe)=26000,'Expense reduced the safe';
  ASSERT public.post_accounting_voucher_with_account(req,safe)=exp_id AND (SELECT coalesce(sum(amount),0) FROM public.account_movements WHERE account_id=safe)=26000,'Expense replay changes nothing';
+ denied:=false; BEGIN PERFORM public.post_accounting_voucher_with_account(req,bank); EXCEPTION WHEN OTHERS THEN denied:=true; END; ASSERT denied,'An expense cannot be re-tagged to another account';
+ ASSERT (SELECT count(*) FROM public.account_movements WHERE source_type='voucher' AND source_id=exp_id)=1,'Expense retains exactly one named-account movement';
  req:=req||jsonb_build_object('id',gen_random_uuid(),'reference','EL-1','lines',jsonb_build_array(jsonb_build_object('account','expense_utilities','debit','700','credit','0'),jsonb_build_object('account','wallet','debit','0','credit','700')));
  PERFORM public.post_accounting_voucher_with_account(req,wallet); ASSERT (SELECT coalesce(sum(amount),0) FROM public.account_movements WHERE account_id=wallet)=4300,'Expense from the wallet';
  denied:=false; BEGIN PERFORM public.post_accounting_voucher_with_account(req||jsonb_build_object('id',gen_random_uuid(),'reference','EL-2'),bank); EXCEPTION WHEN OTHERS THEN denied:=true; END; ASSERT denied,'A bank account cannot be tagged to a wallet expense';
@@ -93,8 +95,11 @@ BEGIN
  denied:=false; BEGIN PERFORM public.post_commerce_document_with_accounts(jsonb_build_object('id',gen_random_uuid(),'businessId',b,'branchId',br,'periodId',per,'date','2026-11-07','mobile','9812345678','partyId',NULL,'sourceId',NULL,'kind','sale','status','confirmed','reference','S3','lines',jsonb_build_array(jsonb_build_object('variantId',v,'quantity',1,'price',1500,'discount',0,'taxRate',0)),'payments',jsonb_build_array(jsonb_build_object('id',pay2,'method','bank','amount',1500,'sessionId',NULL,'reference','x'))),jsonb_build_array(jsonb_build_object('paymentId',pay2,'accountId',wallet))); EXCEPTION WHEN OTHERS THEN denied:=true; END; ASSERT denied,'Wallet account cannot take a bank payment';
  -- Party payment on credit, and a purchase paid out.
  doc:=public.post_commerce_document(jsonb_build_object('id',gen_random_uuid(),'businessId',b,'branchId',br,'periodId',per,'date','2026-11-08','mobile','9812345678','partyId',cust,'sourceId',NULL,'kind','sale','status','confirmed','reference','CR1','lines',jsonb_build_array(jsonb_build_object('variantId',v,'quantity',2,'price',1500,'discount',0,'taxRate',0)),'payments','[]'::jsonb));
- pay:=public.post_commerce_payment_with_account(jsonb_build_object('id',gen_random_uuid(),'businessId',b,'documentId',doc,'periodId',per,'date','2026-11-09','method','wallet','amount',1000,'sessionId',NULL,'reference','part'),wallet);
+ req:=jsonb_build_object('id',gen_random_uuid(),'businessId',b,'documentId',doc,'periodId',per,'date','2026-11-09','method','wallet','amount',1000,'sessionId',NULL,'reference','part');
+ pay:=public.post_commerce_payment_with_account(req,wallet);
  ASSERT (SELECT coalesce(sum(amount),0) FROM public.account_movements WHERE account_id=wallet)=5300,'Customer payment tagged to the wallet';
+ denied:=false; BEGIN PERFORM public.post_commerce_payment_with_account(req,bank); EXCEPTION WHEN OTHERS THEN denied:=true; END; ASSERT denied,'A payment cannot be re-tagged to another account';
+ ASSERT (SELECT count(*) FROM public.account_movements WHERE source_type='payment' AND source_id=pay)=1,'Payment retains exactly one named-account movement';
  doc:=public.post_commerce_document(jsonb_build_object('id',gen_random_uuid(),'businessId',b,'branchId',br,'periodId',per,'date','2026-11-09','partyId',sup,'sourceId',NULL,'kind','purchase','status','confirmed','reference','P1','lines',jsonb_build_array(jsonb_build_object('variantId',v,'quantity',3,'price',1000,'discount',0,'taxRate',0)),'payments','[]'::jsonb));
  PERFORM public.post_commerce_payment_with_account(jsonb_build_object('id',gen_random_uuid(),'businessId',b,'documentId',doc,'periodId',per,'date','2026-11-09','method','bank','amount',2000,'sessionId',NULL,'reference','supplier'),bank);
  ASSERT (SELECT coalesce(sum(amount),0) FROM public.account_movements WHERE account_id=bank)=31500-2000,'Supplier payment reduces the bank account';
