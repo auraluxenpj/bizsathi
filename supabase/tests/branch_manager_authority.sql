@@ -60,26 +60,6 @@ BEGIN
   ON CONFLICT DO NOTHING;
 
   PERFORM set_config('request.jwt.claims',json_build_object('sub',admin_id,'role','authenticated')::text,true);
-  RAISE NOTICE 'BRANCH_MANAGER_FIXTURE_DIAGNOSTIC %', jsonb_build_object(
-    'auth_uid',auth.uid(),
-    'rank',public.business_role_rank(v_business_id,admin_id),
-    'platform_owner',public.platform_owner_check(admin_id),
-    'legacy_admin_assignment',EXISTS (
-      SELECT 1 FROM public.business_member_access_roles a JOIN public.business_access_roles r
-        ON r.business_id=a.business_id AND r.id=a.role_id
-      WHERE a.business_id=v_business_id AND a.user_id=admin_id AND r.code='legacy_admin' AND a.is_default
-    ),
-    'staff_edit_grant',EXISTS (
-      SELECT 1 FROM public.business_access_role_permissions rp JOIN public.business_access_roles r
-        ON r.business_id=rp.business_id AND r.id=rp.role_id
-      WHERE rp.business_id=v_business_id AND r.code='legacy_admin' AND rp.permission='staff.edit'
-    ),
-    'staff_edit_denial',EXISTS (
-      SELECT 1 FROM public.member_permission_denials d
-      WHERE d.business_id=v_business_id AND d.user_id=admin_id AND d.permission='staff.edit'
-    ),
-    'business_archived',EXISTS (SELECT 1 FROM public.businesses WHERE id=v_business_id AND archived_at IS NOT NULL)
-  );
   ASSERT public.has_permission(v_business_id,'staff.edit'),
     'Admin fixture has the staff.edit grant required by guarded membership updates';
 
