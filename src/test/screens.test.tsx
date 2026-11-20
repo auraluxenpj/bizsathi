@@ -99,7 +99,9 @@ describe('Navigation and sign-in', () => {
     mount(<AppNavigation pathname="/dashboard"><p>page body</p></AppNavigation>);
     fireEvent.click(await screen.findByRole('button', { name: 'Open navigation menu' }));
     const nav = await screen.findByRole('navigation', { name: 'Main navigation' });
-    for (const n of ['Dashboard', 'Stock & Inventory', 'CRM', 'Reporting', 'HR & People Management', 'Settings', 'Security']) expect(within(nav).getByText(n)).toBeInTheDocument();
+    for (const n of ['Dashboard', 'Sales & POS', 'Purchases', 'Stock & Inventory', 'Customers & Loyalty', 'Finance', 'Reporting', 'HR & People Management', 'Settings', 'Security']) expect(within(nav).getByText(n)).toBeInTheDocument();
+    fireEvent.click(within(nav).getByRole('button', { name: /Customers & Loyalty/ }));
+    expect(await within(nav).findByText('Customers')).toBeInTheDocument();
     expect((await screen.findAllByText('Auraluxe', { selector: 'span' })).length).toBeGreaterThan(0);
     fireEvent.keyDown(window, { key: 'k', metaKey: true });
     expect(await screen.findAllByPlaceholderText(/Search products, parties, vouchers or pages/)).toHaveLength(1);
