@@ -10,7 +10,7 @@ import { todayAd } from '@/lib/format';
 
 const ID = { biz: '55555555-5555-4555-8555-555555555555', br: '33333333-3333-4333-8333-333333333333', per: '44444444-4444-4444-8444-444444444444', user: '66666666-6666-4666-8666-666666666666', v1: '77777777-7777-4777-8777-777777777777', v2: '77777777-7777-4777-8777-777777777778', prod1: '88888888-8888-4888-8888-888888888887', prod2: '88888888-8888-4888-8888-888888888886', p1: '88888888-8888-4888-8888-888888888888' };
 const SESSION = '99999999-9999-4999-8999-999999999999';
-const state = { counter: true, periods: [{ id: ID.per, name: 'FY test', status: 'open', start_date: '2020-01-01', end_date: '2099-12-31' }] as { id: string; name: string; status: string; start_date: string; end_date: string }[] };
+const state = { counter: true, vatRegistered: false, vatRate: 0, periods: [{ id: ID.per, name: 'FY test', status: 'open', start_date: '2020-01-01', end_date: '2099-12-31' }] as { id: string; name: string; status: string; start_date: string; end_date: string }[] };
 class ResizeObserverStub { observe() {} unobserve() {} disconnect() {} }
 (globalThis as unknown as { ResizeObserver: unknown }).ResizeObserver = ResizeObserverStub;
 Element.prototype.scrollIntoView = () => {};
@@ -23,7 +23,7 @@ const counter = vi.fn(async (_: unknown) => { state.counter = true; return 'ok';
 
 const commerce = () => ({
   userId: ID.user, role: 'owner', counters: state.counter ? [{ kind: 'open', branch_id: ID.br, actor_id: ID.user, session_id: SESSION }] : [], memberships: [], loyalty: [], documents: [], payments: [],
-  settings: { vat_registered: false, vat_rate: 0, currency: 'NPR' }, business: { name: 'Auraluxe', legal_name: 'Auraluxe Private limited', pan_vat_number: '' },
+  settings: { vat_registered: state.vatRegistered, vat_rate: state.vatRate, currency: 'NPR' }, business: { name: 'Auraluxe', legal_name: 'Auraluxe Private limited', pan_vat_number: '' },
   journals: [{ account_code: 'cash', debit: 5000, credit: 0, entry_date: todayAd(), branch_id: ID.br }, { account_code: 'receivable', debit: 1200, credit: 0, entry_date: todayAd(), branch_id: ID.br }],
   periods: state.periods,
 });
@@ -75,7 +75,7 @@ function SaleEditor() {
 }
 const noOpenPeriodLabel = () => expect(screen.queryByText(/open period/i)).not.toBeInTheDocument();
 
-beforeEach(() => { acct.list = []; acct.tagged.mockClear(); acct.voucher.mockClear(); localStorage.clear(); auth.user = { email: 'vikky@example.com', user_metadata: { full_name: 'Vikky' } }; confirm.mockClear(); createPeriod.mockClear(); counter.mockClear(); sessionStorage.clear(); state.counter = true; state.periods = [{ id: ID.per, name: 'FY test', status: 'open', start_date: '2020-01-01', end_date: '2099-12-31' }]; });
+beforeEach(() => { acct.list = []; acct.tagged.mockClear(); acct.voucher.mockClear(); localStorage.clear(); auth.user = { email: 'vikky@example.com', user_metadata: { full_name: 'Vikky' } }; confirm.mockClear(); createPeriod.mockClear(); counter.mockClear(); sessionStorage.clear(); state.counter = true; state.vatRegistered = false; state.vatRate = 0; state.periods = [{ id: ID.per, name: 'FY test', status: 'open', start_date: '2020-01-01', end_date: '2099-12-31' }]; });
 
 describe('Dashboard', () => {
   it('shows the Karobar-style cards, chart and quick actions', async () => {
@@ -117,6 +117,44 @@ describe('Navigation and sign-in', () => {
     expect(screen.getByRole('button', { name: /Email me a sign-in link/ })).toBeInTheDocument();
     expect(screen.queryByLabelText('Password')).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: /Continue with Google/ })).toBeInTheDocument();
+  });
+});
+
+describe('Billing journey: VAT and split tender', () => {
+  it('uses the configured VAT rate in the sale request and checkout amount', async () => {
+    state.vatRegistered = true; state.vatRate = 13;
+    mount(<SaleEditor />);
+    fireEvent.change(await screen.findByLabelText('Customer name'), { target: { value: 'Walk-in Customer' } });
+    fireEvent.change(await screen.findByLabelText('Customer mobile'), { target: { value: '9812345678' } });
+    await addCatalogSaree();
+    fireEvent.click(screen.getByRole('button', { name: /^Cash$/ }));
+    payFullTestBalance('1695');
+    vi.spyOn(window, 'confirm').mockReturnValue(true);
+    fireEvent.click(screen.getByRole('button', { name: /Confirm sale/ }));
+    await waitFor(() => expect(confirm).toHaveBeenCalledTimes(1));
+    const sent = (confirm.mock.calls[0]![0] as { data: { lines: { price: number; taxRate: number }[]; payments: { amount: number }[] } }).data;
+    expect(sent.lines).toMatchObject([{ price: 1500, taxRate: 13 }]);
+    expect(sent.payments).toMatchObject([{ amount: 1695 }]);
+  });
+
+  it('posts cash and bank as separate split payments with the bank transaction reference', async () => {
+    mount(<SaleEditor />);
+    fireEvent.change(await screen.findByLabelText('Customer name'), { target: { value: 'Walk-in Customer' } });
+    fireEvent.change(await screen.findByLabelText('Customer mobile'), { target: { value: '9812345678' } });
+    await addCatalogSaree();
+    fireEvent.click(screen.getByRole('button', { name: /^Cash$/ }));
+    fireEvent.change(screen.getByLabelText('Payment amount 1'), { target: { value: '500' } });
+    fireEvent.click(screen.getByRole('button', { name: /^Bank Transfer$/ }));
+    fireEvent.change(screen.getByLabelText('Payment amount 2'), { target: { value: '1000' } });
+    fireEvent.change(screen.getByLabelText('Payment reference 2'), { target: { value: 'UTR-SPLIT-01' } });
+    vi.spyOn(window, 'confirm').mockReturnValue(true);
+    fireEvent.click(screen.getByRole('button', { name: /Confirm sale/ }));
+    await waitFor(() => expect(confirm).toHaveBeenCalledTimes(1));
+    const sent = (confirm.mock.calls[0]![0] as { data: { payments: { method: string; amount: number; reference: string; sessionId: string | null }[] } }).data;
+    expect(sent.payments).toMatchObject([
+      { method: 'cash', amount: 500, sessionId: SESSION },
+      { method: 'bank', amount: 1000, reference: 'UTR-SPLIT-01', sessionId: null },
+    ]);
   });
 });
 
