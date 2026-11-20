@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 type RoleCode = 'accountant' | 'admin' | 'branch_manager' | 'staff' | 'viewer';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useServerFn } from '@tanstack/react-start';
-import { GitBranch, ShieldCheck, Users, UserPlus, Ban, ClipboardList } from 'lucide-react';
+import { GitBranch, ShieldCheck, Users, UserPlus, Ban, ClipboardList, ChevronDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { RolePermissions } from '@/components/role-permissions';
 import { jobTitleCodes, jobTitles, type JobTitle } from '@/lib/job-titles';
@@ -230,6 +230,12 @@ export function TeamAccessPanel({
                   {eligibleManagers.map((m) => <option key={m.user_id} value={m.user_id}>{m.profiles?.full_name || m.user_id.slice(0, 8)}</option>)}
                 </select>
               </label>
+              {eligibleManagers.length === 0 && (
+                <div className="mb-4 rounded-lg border border-dashed bg-muted/40 p-3 text-sm" role="status">
+                  <p className="font-medium">No eligible Branch Manager for this branch yet.</p>
+                  <p className="mt-1 text-muted-foreground">Invite an employee with the Branch Manager position, then enable their access to this branch in the employee table above. They will appear in this list automatically.</p>
+                </div>
+              )}
               <div className="mb-4 space-y-2 text-sm">
                 <p className="font-medium">Positions this manager may invite</p>
                 {(['staff', 'viewer'] as const).map((r) => (
@@ -252,8 +258,8 @@ export function TeamAccessPanel({
           ))}
           </div>
         </section>
-        <details name="team-access-sections" className="rounded-xl border p-4 md:p-5">
-          <summary className="flex cursor-pointer list-none items-center justify-between gap-3 font-semibold [&::-webkit-details-marker]:hidden"><span className="flex items-center gap-2"><UserPlus className="size-4 text-primary" />Invite team member</span><span className="text-xs font-normal text-muted-foreground">Create a secure, branch-locked invitation</span></summary>
+        <details name="team-access-sections" className="group rounded-xl border p-4 md:p-5">
+          <summary className="flex cursor-pointer list-none items-center justify-between gap-3 font-semibold [&::-webkit-details-marker]:hidden"><span className="flex items-center gap-2"><UserPlus className="size-4 text-primary" />Invite team member</span><span className="flex items-center gap-2 text-xs font-normal text-muted-foreground">Create a secure, branch-locked invitation<ChevronDown className="size-4 shrink-0 transition-transform group-open:rotate-180" aria-hidden="true" /></span></summary>
           <div className="mt-4">
           <p className="mb-4 text-sm text-muted-foreground">Every invitation is locked to one branch, one email, one Nepal mobile number and one use. The recipient must confirm the email and verify that mobile with Supabase Auth before joining.</p>
           <label className="mb-3 block text-sm">Branch
