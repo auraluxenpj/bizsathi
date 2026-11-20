@@ -1,5 +1,5 @@
 import {describe,it,expect} from 'vitest';
-import {returnableLines,returnSettlement,returnLine,type ReturnDocument} from './invoice-returns';
+import {receivableLines,returnableLines,returnSettlement,returnLine,type ReturnDocument} from './invoice-returns';
 
 const variant='10000000-0000-4000-8000-000000000001';
 const source=(kind:'sale'|'purchase',lines:unknown):ReturnDocument=>({id:'source',source_id:null,kind,status:'confirmed',total:100,lines});
@@ -17,6 +17,22 @@ describe('return quantity and settlement rules',()=>{
     expect(rows[0]?.returned).toBe(3);
     expect(rows[0]?.remaining).toBe(7);
     expect(rows[0]?.maximum).toBe(7);
+  });
+
+  it('defaults goods receipts to the remaining quantity after confirmed partial receipts',()=>{
+    const original=source('purchase',line(10));
+    const rows=receivableLines(original,[
+      doc('receipt-1','goods_receipt','source','confirmed',line(3)),
+      doc('receipt-draft','goods_receipt','source','draft',line(2)),
+      doc('other-invoice','goods_receipt','another-source','confirmed',line(4)),
+    ]);
+    expect(rows[0]).toMatchObject({received:3,remaining:7,maximum:7});
+  });
+
+  it('returns zero remaining quantity after the invoice has been fully received',()=>{
+    const original=source('purchase',line(10));
+    const rows=receivableLines(original,[doc('receipt','goods_receipt','source','confirmed',line(10))]);
+    expect(rows[0]).toMatchObject({received:10,remaining:0,maximum:0});
   });
 
   it('caps purchase returns by received quantity, prior returns and current branch stock',()=>{
