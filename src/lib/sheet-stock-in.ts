@@ -55,6 +55,11 @@ export async function receiptOperationId(businessId: string, receipt: string): P
   return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
 }
 
+/** Sheet timestamps are cosmetic; a failed writeback must never turn a completed ledger post into an apparent sync failure. */
+export async function bestEffortSheetStatusWrite(write: () => Promise<boolean>): Promise<boolean> {
+  try { return await write(); } catch { return false; }
+}
+
 export type StockInReport = { read: number; applied: number; alreadyApplied: number; failed: number; issues: string[]; syncedSkus: string[] };
 type ExistingMovement = { variantId: string; branchId: string; quantity: number };
 type Dependencies = {

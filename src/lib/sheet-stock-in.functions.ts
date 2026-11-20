@@ -3,7 +3,7 @@ import { z } from 'zod';
 import { requireSupabaseAuth } from '@/integrations/supabase/auth-middleware';
 import { defaultCatalogueSpreadsheet } from './google-sheet-catalogue';
 import { AURALUXE_BUSINESS_ID, type SyncReport } from './website-sync';
-import { applyStockIn, parseStockInValues, STOCK_IN_SHEET, type StockInReport } from './sheet-stock-in';
+import { applyStockIn, bestEffortSheetStatusWrite, parseStockInValues, STOCK_IN_SHEET, type StockInReport } from './sheet-stock-in';
 
 const input = z.object({
   businessId: z.literal(AURALUXE_BUSINESS_ID),
@@ -72,6 +72,6 @@ export const syncSheetStock = createServerFn({ method: 'POST' }).middleware([req
     if (website && !website.error && !r.appliedOnWebsite && !blockedSkus.has(r.sku.toLowerCase())) u.website = stamp;
     if (u.bizsathi || u.website) updates.push(u);
   }
-  const sheetStatusUpdated = await writeStatusCells(data.spreadsheetIdOrUrl, STOCK_IN_SHEET, updates, credentials, statusColumns);
+  const sheetStatusUpdated = await bestEffortSheetStatusWrite(() => writeStatusCells(data.spreadsheetIdOrUrl, STOCK_IN_SHEET, updates, credentials, statusColumns));
   return { stockIn, website, sheetStatusUpdated, sheetIssues: parsed.issues };
 });
