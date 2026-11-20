@@ -66,7 +66,7 @@ describe('supplier settlement', () => {
     const rows = outstandingInvoices('supplier-refund', 'purchase', docs, payments);
     expect(rows.map(r => [r.doc.id, r.outstanding])).toEqual([['invoice', 510]]);
     expect(allocatePayment(rows, 510)).toEqual([
-      { documentId: 'invoice', branchId: 'branch-a', reference: 'invoice', amount: 510 },
+      { documentId: 'invoice', branchId: 'b1', reference: 'invoice', amount: 510 },
     ]);
     expect(() => allocatePayment(rows, 510.01)).toThrow();
   });
