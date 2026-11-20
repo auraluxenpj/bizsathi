@@ -8,7 +8,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 vi.mock('@/components/screen-lock', () => ({ ScreenLockButton: () => null }));
 import { todayAd } from '@/lib/format';
 
-const ID = { biz: '55555555-5555-4555-8555-555555555555', br: '33333333-3333-4333-8333-333333333333', per: '44444444-4444-4444-8444-444444444444', user: '66666666-6666-4666-8666-666666666666', v1: '77777777-7777-4777-8777-777777777777', p1: '88888888-8888-4888-8888-888888888888' };
+const ID = { biz: '55555555-5555-4555-8555-555555555555', br: '33333333-3333-4333-8333-333333333333', per: '44444444-4444-4444-8444-444444444444', user: '66666666-6666-4666-8666-666666666666', v1: '77777777-7777-4777-8777-777777777777', v2: '77777777-7777-4777-8777-777777777778', prod1: '88888888-8888-4888-8888-888888888887', prod2: '88888888-8888-4888-8888-888888888886', p1: '88888888-8888-4888-8888-888888888888' };
 const SESSION = '99999999-9999-4999-8999-999999999999';
 const state = { counter: true, periods: [{ id: ID.per, name: 'FY test', status: 'open', start_date: '2020-01-01', end_date: '2099-12-31' }] as { id: string; name: string; status: string; start_date: string; end_date: string }[] };
 class ResizeObserverStub { observe() {} unobserve() {} disconnect() {} }
@@ -35,7 +35,10 @@ vi.mock('@/lib/accounts.functions', () => ({ getAccountBalances: async () => ({ 
 vi.mock('@/lib/business.functions', () => ({ reissueInvitation: vi.fn(), getMemberPermissions:async()=>({userId:ID.user,denials:[]}), getBusinessAccess: async () => ({ branches: [{ id: ID.br, name: 'Main', is_active: true }] }), listBusinesses: async () => [{ id: ID.biz, name: 'Auraluxe', role: 'owner' }] }));
 vi.mock('@/lib/inventory.functions', () => ({ getInventory: async () => ({
   movements: [{ variant_id: ID.v1, branch_id: ID.br, quantity: 3 }],
-  variants: [{ id: ID.v1, sku: 'AL-001', barcode: '', name: 'Large', unit: 'pcs', selling_price: 1500, reorder_level: 5, is_active: true, products: { name: 'Silk Saree', is_active: true } }],
+  variants: [
+    { id: ID.v1, product_id: ID.prod1, sku: 'AL-001', barcode: '', name: 'Large', unit: 'pcs', selling_price: 1500, reorder_level: 5, is_active: true, products: { name: 'Silk Saree', is_active: true } },
+    { id: ID.v2, product_id: ID.prod2, sku: 'AL-002', barcode: '', name: 'Standard', unit: 'pcs', selling_price: 900, reorder_level: 5, is_active: true, products: { name: 'Cotton Kurti', is_active: true } },
+  ],
   parties: [{ id: ID.p1, name: 'Ram Traders', phone: '9800000000', kind: 'customer', is_active: true }],
 }) }));
 vi.mock('@/lib/inventory-queries', () => ({ businessQuery: { queryKey: ['businesses'], queryFn: async () => [{ id: ID.biz, name: 'Auraluxe', role: 'owner' }] } }));
@@ -263,6 +266,18 @@ describe('Paying an expense from a named account', () => {
 });
 
 describe('Point of sale', () => {
+  it('selects multiple catalogue products and adds them to the cart together', async () => {
+    mount(<Pos />);
+    fireEvent.change(await screen.findByLabelText('Customer name'), { target: { value: 'Walk-in Customer' } });
+    fireEvent.change(await screen.findByLabelText('Customer mobile'), { target: { value: '9812345678' } });
+    fireEvent.click(await screen.findByRole('checkbox', { name: 'Select all visible in-stock variants' }));
+    expect(screen.getByText('2 selected')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Add selected (2)' }));
+    expect(screen.getByLabelText('quantity line 1')).toHaveValue(1);
+    expect(screen.getByLabelText('quantity line 2')).toHaveValue(1);
+    expect(screen.queryByText('2 selected')).not.toBeInTheDocument();
+    expect(confirm).not.toHaveBeenCalled();
+  });
   it('adds repeated barcode entries to one cart line and retains its exact checkout total', async () => {
     mount(<Pos />);
     fireEvent.change(await screen.findByLabelText('Customer name'), { target: { value: 'Walk-in Customer' } }); fireEvent.change(await screen.findByLabelText('Customer mobile'), { target: { value: '9812345678' } });
