@@ -89,9 +89,9 @@ BEGIN
   ASSERT roles @> jsonb_build_array(jsonb_build_object('id',branch_custom_role,'branchId',branch_a)),
     'Branch role definitions are returned with their branch scope';
 
+  -- Position bundles are assigned automatically by set_member_job_title / the membership trigger.
+  -- Only the additional custom branch-scoped role is assigned explicitly.
   PERFORM public.set_member_job_title(v_business,department_manager_id,'department_manager');
-  PERFORM public.assign_business_access_role(v_business,department_manager_id,department_manager_role);
-  PERFORM public.assign_business_access_role(v_business,cashier_id,cashier_role_id);
   PERFORM public.assign_business_access_role(v_business,department_manager_id,branch_custom_role);
   assignments := public.get_business_member_access_roles(v_business);
   ASSERT assignments @> jsonb_build_array(jsonb_build_object('userId',department_manager_id,'roleId',department_manager_role)),
