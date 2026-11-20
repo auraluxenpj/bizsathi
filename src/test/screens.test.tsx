@@ -278,6 +278,20 @@ describe('Point of sale', () => {
     expect(screen.queryByText('2 selected')).not.toBeInTheDocument();
     expect(confirm).not.toHaveBeenCalled();
   });
+  it('stops barcode scans at available branch stock', async () => {
+    mount(<Pos />);
+    fireEvent.change(await screen.findByLabelText('Customer name'), { target: { value: 'Walk-in Customer' } });
+    fireEvent.change(await screen.findByLabelText('Customer mobile'), { target: { value: '9812345678' } });
+    const barcode = await screen.findByLabelText('Barcode input');
+    for (let i = 0; i < 4; i++) {
+      fireEvent.change(barcode, { target: { value: 'AL-001' } });
+      fireEvent.click(screen.getByRole('button', { name: 'Add scanned item' }));
+    }
+    expect(screen.getByLabelText('quantity line 1')).toHaveValue(3);
+    expect(screen.getByText(/No additional stock available for Silk Saree/)).toBeInTheDocument();
+    expect(barcode).toHaveValue('');
+    expect(confirm).not.toHaveBeenCalled();
+  });
   it('adds repeated barcode entries to one cart line and retains its exact checkout total', async () => {
     mount(<Pos />);
     fireEvent.change(await screen.findByLabelText('Customer name'), { target: { value: 'Walk-in Customer' } }); fireEvent.change(await screen.findByLabelText('Customer mobile'), { target: { value: '9812345678' } });
