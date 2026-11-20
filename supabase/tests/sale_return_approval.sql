@@ -7,7 +7,7 @@ DO $tests$
 DECLARE
   owner_id uuid:=gen_random_uuid(); manager_id uuid:=gen_random_uuid(); cashier_id uuid:=gen_random_uuid();
   business_id uuid := 'c0f0ed15-97e4-4859-ac8f-a2d4e81f5b01'; branch_a uuid; branch_b uuid; period_id uuid; variant_id uuid; customer_id uuid;
-  sale_a uuid:=gen_random_uuid(); sale_b uuid:=gen_random_uuid(); request_id uuid; own_request uuid;
+  sale_a uuid:=gen_random_uuid(); sale_b uuid:=gen_random_uuid(); sale_walkin uuid:=gen_random_uuid(); request_id uuid; own_request uuid; walkin_request uuid; walkin_return_id uuid;
   rejected_request uuid; return_id uuid; cashier_session uuid:=gen_random_uuid(); req jsonb; failed boolean; stock_before numeric; stock_after numeric;
 BEGIN
   INSERT INTO auth.users(id,email,email_confirmed_at)
@@ -79,6 +79,29 @@ BEGIN
   PERFORM public.post_commerce_payment(jsonb_build_object('businessId',business_id,'id',gen_random_uuid(),
     'documentId',return_id,'periodId',period_id,'date','2026-11-17','method','cash','amount',200,'sessionId',cashier_session,'reference','Approved return refund'));
   ASSERT (SELECT coalesce(sum(amount),0)=200 FROM public.commerce_payments WHERE document_id=return_id),'Approved return refund is recorded once';
+
+  -- Approved walk-in returns post first; the manager records the refund as a separate payment.
+  RESET ROLE;
+  PERFORM set_config('request.jwt.claims',json_build_object('sub',owner_id,'role','authenticated')::text,true);
+  req:=jsonb_set(req,'{id}',to_jsonb(sale_walkin));
+  req:=jsonb_set(req,'{partyId}','null'::jsonb);
+  req:=jsonb_set(req,'{reference}',to_jsonb('INV-RET-WALKIN'::text));
+  req:=jsonb_set(req,'{lines}',jsonb_build_array(jsonb_build_object('variantId',variant_id,'quantity',2,'price',100,'discount',0,'taxRate',0)));
+  req:=jsonb_set(req,'{payments}',jsonb_build_array(jsonb_build_object('id',gen_random_uuid(),'method','bank','amount',200,'sessionId',NULL,'reference','Walk-in paid invoice')));
+  PERFORM public.post_commerce_document(req);
+
+  SET LOCAL ROLE authenticated;
+  PERFORM set_config('request.jwt.claims',json_build_object('sub',cashier_id,'role','authenticated')::text,true);
+  walkin_request:=public.request_sale_return(business_id,sale_walkin,jsonb_build_array(jsonb_build_object('variantId',variant_id,'quantity',1)),'Walk-in customer returned one item');
+  RESET ROLE;
+  PERFORM set_config('request.jwt.claims',json_build_object('sub',manager_id,'role','authenticated')::text,true);
+  SET LOCAL ROLE authenticated;
+  walkin_return_id:=public.review_sale_return_request(walkin_request,'approve',NULL,period_id,'2026-11-17');
+  ASSERT walkin_return_id IS NOT NULL,'Walk-in return request can be approved before refund payment';
+  ASSERT NOT EXISTS(SELECT 1 FROM public.commerce_payments WHERE document_id=walkin_return_id),'Approval posts the return without silently creating a refund';
+  PERFORM public.post_commerce_payment(jsonb_build_object('businessId',business_id,'id',gen_random_uuid(),
+    'documentId',walkin_return_id,'periodId',period_id,'date','2026-11-17','method','bank','amount',100,'sessionId',NULL,'reference','Separate approved walk-in refund'));
+  ASSERT (SELECT coalesce(sum(amount),0)=100 FROM public.commerce_payments WHERE document_id=walkin_return_id),'Separate payment records the approved walk-in refund';
 
   -- A return in a branch not assigned to this manager is inaccessible.
   failed:=false;
