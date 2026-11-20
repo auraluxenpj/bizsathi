@@ -24,7 +24,7 @@ describe('receiptOperationId', () => {
 });
 describe('applyStockIn', () => {
   const receipts = parseStockInValues([header, ['RCP-1', '', 'AL-KURTI-001', '', '5'], ['RCP-2', '', 'NOPE', '', '1']]).receipts;
-  const base = () => ({ businessId: B, variantsBySku: new Map([['al-kurti-001', ['v1']]]), existing: vi.fn().mockResolvedValue(null), post: vi.fn().mockResolvedValue(undefined) });
+  const base = () => ({ businessId: B, branchId: 'branch-a', variantsBySku: new Map([['al-kurti-001', ['v1']]]), existing: vi.fn().mockResolvedValue(null), post: vi.fn().mockResolvedValue(undefined) });
   it('posts new receipts once and reports unknown SKUs', async () => {
     const d = base(); const r = await applyStockIn(receipts, d);
     expect(d.post).toHaveBeenCalledTimes(1); expect(d.post.mock.calls[0]![0]).toMatchObject({ variantId: 'v1', quantity: 5, reference: 'Sheet Stock In RCP-1' });
