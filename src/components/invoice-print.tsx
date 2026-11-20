@@ -18,6 +18,7 @@ export function useInvoiceLayout(): [InvoiceLayout, (l: InvoiceLayout) => void] 
 
 export type InvoiceData = {
   business: string; pan: string; reference: string; date: string; status: string; kind: string; branch: string;
+  payments?: { method: string; date: string; reference: string; amount: number; direction: string }[];
   businessId?:string; address?:string; partyPan?:string; invoiceFooter?:string; invoiceTerms?:string; invoiceSignatureLabel?:string; party: string; phone: string; lines: InvoiceLine[]; subtotal: number; tax: number; total: number; paid: number; returned: number; outstanding: number; docId: string; loyalty?: { points: number; discount: number } | undefined;
 };
 export const messageFor = (d: InvoiceData) => invoiceMessage({ business: d.business, reference: d.reference, date: d.date, kind: d.kind, party: d.party, lines: d.lines, total: d.total, paid: d.paid, outstanding: d.outstanding });
@@ -50,6 +51,17 @@ function Totals({ d, compact }: { d: InvoiceData; compact?: boolean }) {
   if (d.returned > 0) rows.push(['Returned', d.returned]);
   if (d.outstanding > 0) rows.push([isReturn ? 'Refund due' : 'Balance due', d.outstanding]);
   return <dl className={`space-y-1 ${compact ? 'text-xs' : 'ml-auto max-w-xs text-sm'}`}>{rows.map(([label, value]) => <div key={label} className={`flex justify-between gap-4 ${label === 'Total' ? 'border-t pt-1 font-semibold' : ''}`}><dt>{label}</dt><dd className="tabular-nums">{formatNPR(value)}</dd></div>)}</dl>;
+}
+
+function PaymentDetails({ payments, compact = false }: { payments: NonNullable<InvoiceData['payments']>; compact?: boolean }) {
+  if (!payments.length) return null;
+  return <section aria-label="Payment details" className={compact ? 'mt-2 border-t border-dashed pt-2 text-[8pt]' : 'mt-5 border-t pt-4 text-sm'}>
+    <p className="mb-2 font-semibold">Payment details</p>
+    <div className="space-y-2">{payments.map((p, index) => <div key={index} className="flex flex-wrap justify-between gap-x-3 gap-y-1">
+      <span className="min-w-0"><span className="font-medium capitalize">{p.method}</span> · {formatBsAd(p.date)}{p.direction ? ' · ' + p.direction : ''}{p.method !== 'cash' && p.reference && <span className="block break-all text-neutral-600">Ref: {p.reference}</span>}</span>
+      <span className="shrink-0 tabular-nums">{formatNPR(p.amount)}</span>
+    </div>)}</div>
+  </section>;
 }
 
 export function InvoiceSheet({ data: d, layout, extra }: { data: InvoiceData; layout: InvoiceLayout; extra?: ReactNode }) {
@@ -109,7 +121,7 @@ export function InvoiceSheet({ data: d, layout, extra }: { data: InvoiceData; la
               <td className="thermal-receipt__amount tabular-nums">{l.total.toFixed(2)}</td>
             </tr>)}</tbody>
           </table>
-          <div className="thermal-receipt__totals"><Totals d={d} compact /></div>
+          <div className="thermal-receipt__totals"><Totals d={d} compact /><PaymentDetails payments={d.payments ?? []} compact /></div>
           {extra && <div className="thermal-receipt__extra">{extra}</div>}
           {d.kind==='sale'&&d.businessId&&<div className="thermal-receipt__extra thermal-receipt__qr"><PaymentQr businessId={d.businessId}/></div>}
           {d.invoiceTerms&&<div className="thermal-receipt__extra"><p className="thermal-receipt__label">Terms & conditions</p><p className="whitespace-pre-wrap">{d.invoiceTerms}</p></div>}
@@ -129,7 +141,7 @@ export function InvoiceSheet({ data: d, layout, extra }: { data: InvoiceData; la
         {d.kind==='sale'&&d.businessId&&<PaymentQr businessId={d.businessId}/>}
         <div className="overflow-x-auto"><table className="w-full min-w-[420px] text-left text-sm"><thead><tr className="border-b text-xs uppercase text-neutral-500"><th className="py-2">Item</th><th>Qty</th><th>Rate</th><th className="text-right">Amount</th></tr></thead>
           <tbody>{d.lines.map(l => <tr key={l.sku + l.name} className="border-b"><td className="py-3">{l.name}<span className="block text-xs text-neutral-500">{l.sku}</span></td><td>{l.quantity}</td><td className="tabular-nums">{l.price.toFixed(2)}</td><td className="text-right tabular-nums">{l.total.toFixed(2)}</td></tr>)}</tbody></table></div>
-        <div className="mt-6"><Totals d={d} /></div>
+        <div className="mt-6"><Totals d={d} /><PaymentDetails payments={d.payments ?? []} /></div>
         {d.invoiceTerms&&<div className="mt-8 border-t pt-4 text-xs text-neutral-600"><p className="mb-1 font-semibold uppercase tracking-wide">Terms & conditions</p><p className="whitespace-pre-wrap">{d.invoiceTerms}</p></div>}{d.invoiceSignatureLabel&&<div className="mt-12 ml-auto max-w-52 border-t border-neutral-500 pt-2 text-center text-xs">{d.invoiceSignatureLabel}</div>}<p className="mt-10 text-center text-sm text-neutral-600">{d.invoiceFooter||'Thank you for your business.'}</p>
         <p className="mt-4 break-all text-[10px] text-neutral-400">Document {d.docId}</p>
       </article>
