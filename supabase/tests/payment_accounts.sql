@@ -1,5 +1,6 @@
--- Isolated database only. Final exception deliberately rolls back all fixtures.
--- Pass = error 'PAYMENT ACCOUNT TESTS PASSED'.
+-- Isolated database only. All synthetic records are rolled back.
+-- Pass = notice 'PAYMENT ACCOUNT TESTS PASSED'.
+BEGIN;
 DO $tests$
 DECLARE
   owner_id uuid:=gen_random_uuid(); acc uuid:=gen_random_uuid(); staff uuid:=gen_random_uuid(); viewer uuid:=gen_random_uuid(); other_id uuid:=gen_random_uuid();
@@ -129,5 +130,6 @@ BEGIN
  denied:=false; BEGIN PERFORM public.transfer_between_accounts(jsonb_build_object('businessId',ob,'branchId',br,'periodId',per,'id',gen_random_uuid(),'fromAccountId',bank,'toAccountId',wallet,'amount',1,'date','2026-11-04')); EXCEPTION WHEN OTHERS THEN denied:=true; END; ASSERT denied,'Cannot reach another business';
  PERFORM set_config('request.jwt.claims',json_build_object('sub',other_id,'role','authenticated')::text,true);
  denied:=false; BEGIN PERFORM public.transfer_between_accounts(jsonb_build_object('businessId',ob,'branchId',br,'periodId',per,'id',gen_random_uuid(),'fromAccountId',bank,'toAccountId',wallet,'amount',1,'date','2026-11-04')); EXCEPTION WHEN OTHERS THEN denied:=true; END; ASSERT denied,'Another business owner cannot use these accounts';
- RESET ROLE; RAISE EXCEPTION 'PAYMENT ACCOUNT TESTS PASSED';
+ RESET ROLE; RAISE NOTICE 'PAYMENT ACCOUNT TESTS PASSED';
 END $tests$;
+ROLLBACK;
