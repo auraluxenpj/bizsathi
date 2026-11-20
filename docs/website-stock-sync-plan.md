@@ -1,31 +1,46 @@
 # Auraluxe website stock sync
 
-## Audit findings
-- The website has a POST inventory API with comparison, persistent sale/return acknowledgements, acknowledgement completion, and conditional stock updates.
-- BizSathi currently has no website-sync action. Stock counts must include both existing quantity ledgers.
-- `INVENTORY_SYNC_SECRET` is not configured in BizSathi. Existing differently named website secrets will not be substituted silently. The same shared value must be entered securely in both apps.
-- The website has one quantity per SKU, while BizSathi supports branches. Sync must use an explicitly selected fulfilment branch, not silently combine or distribute quantities across branches.
+## Implementation status
+
+The manual integration is implemented in the migration branch:
+
+- `src/components/website-stock-sync.tsx` adds **Sync with Website** to the stock ledger for authorized managers, with an explicit fulfilment branch, comparison view and confirmation before stock changes.
+- `src/lib/website-sync.functions.ts` exposes authenticated compare and sync server functions.
+- `src/lib/website-sync.run.server.ts` coordinates a leased sync run.
+- `src/lib/website-sync.server.ts` sends bounded HTTPS requests to the exact configured API path, rejects redirects and validates the response.
+- `src/lib/sheet-stock-in.functions.ts` supports Stock In sheet → branch ledger → website.
+- `drizzle/migrations/0022_website_stock_sync.sql` creates the branch binding, lease, append-only acknowledgement evidence and guarded RPCs.
+
+The integration is **implemented but not activated or end-to-end verified against the live website**.
+
+## Current activation checks
+
+- The production AURALUXE database has the `website_stock_sync` table but currently has no website branch binding. The selected Nepalgunj branch must be reviewed and explicitly bound by the first confirmed sync.
+- The existing Cloudflare Worker has an `INVENTORY_SYNC_SECRET` secret binding by name. Secret values are intentionally not readable through the Cloudflare API, and the matching website-side value has not been verified. The same strong secret must be configured securely in both systems.
+- Only one product variant is currently present in the AURALUXE database. Confirm its SKU against the website before the first baseline agreement.
+- First agreement treats the reviewed BizSathi stock as authoritative. The website API cannot reconstruct sales that predate the baseline.
+- No live stock-changing sync has been run as part of this review.
+
+## Data and safety model
+
+- The website has one quantity per SKU, while BizSathi supports branches. Sync uses one explicitly selected fulfilment branch; it never combines or distributes branch stock implicitly.
 - Website acknowledgements represent quantity changes, not invoices. They cannot establish revenue, tax, customer identity or loyalty points.
-- Existing stock retries are bound to the original actor; website acknowledgement recovery needs durable cross-administrator deduplication.
+- Pending website sale/return acknowledgements are recorded once in the existing branch stock ledger with their website reference. The append-only `website_stock_acknowledgements` table and unique operation IDs support deduplication across administrator retries.
+- The website is told an acknowledgement is recorded only after the local stock adjustment has committed.
+- Counts are pushed with expected-current-count checks. Concurrent website sales are reported as skipped/retry-needed, never overwritten blindly.
+- Active SKU matching is case-insensitive and trimmed. Missing, ambiguous, invalid and fractional quantities are reported rather than silently changed.
+- Authenticated server functions verify Auraluxe administrator and branch access before external requests. Secrets and privileged credentials remain server-side.
+- The website connection is pinned to one business and one branch. Existing stock and financial records are preserved.
+- Requests are server-only, HTTPS-only, no-redirect, bounded by response size and timeout. Sync is manual; background syncing is not included.
 
-## What to build
-1. Add **Sync with Website** to the stock ledger for Auraluxe owners/administrators, with an explicit website fulfilment branch selection and confirmation before the first agreement.
-2. Compare active product/variant SKUs using case-insensitive, trimmed matching. Report missing, ambiguous, invalid and unsupported fractional quantities without silently changing them.
-3. Read pending website sale/return quantity acknowledgements and atomically record each once in the existing branch stock ledger with its website reference. Keep pending acknowledgements recoverable if a call fails; do not create financial documents.
-4. Mark an acknowledgement recorded on the website only after its local stock adjustment is durably confirmed.
-5. Re-read stock and push BizSathi counts using the website's expected-current-count checks. Report concurrent sales as skipped/retry-needed, never overwrite them blindly.
-6. Show comparison totals, adjustments recorded, counts updated, skipped SKUs and actionable failure states. Refresh the ledger after changes, including partial success.
+## Remaining verification before activation
 
-## Safeguards and technical details
-- Authenticated server functions verify Auraluxe membership, administrator role and branch access before any external request; no secret or privileged client reaches the browser.
-- Add a tenant-scoped protected sync binding/recovery record through an additive migration, with explicit least-privilege grants, RLS, audit evidence and restricted RPCs.
-- Use the existing business stock lock and append-only stock posting. Acknowledgement IDs are globally unique within this integration; changed payloads, branch reassignment after processing and duplicate retries are rejected.
-- Pin each business to its selected branch; block another business from using the same website connection. Preserve all current stock and financial records.
-- First agreement uses explicitly reviewed BizSathi stock as the authority; the website API cannot reconstruct sales predating its initial baseline.
-- Server-only fetch to the exact supplied HTTPS endpoint, no redirects, bounded responses/timeouts and no automatic retries. Manual sync only; background syncing is not included.
+1. Confirm the website-side shared secret matches the Worker secret without exposing it in chat or source control.
+2. Confirm the website endpoint is live at the configured non-redirecting HTTPS URL.
+3. Review the active SKU mapping and Nepalgunj fulfilment branch.
+4. Run a read-only comparison and reconcile every discrepancy.
+5. Only then approve the first stock-changing baseline sync.
+6. Verify retries, cross-administrator acknowledgement recovery, negative stock rejection, branch/tenant/role isolation and concurrent website changes.
+7. Verify the button, success/partial/error feedback and ledger refresh on desktop and mobile.
 
-## Verification and activation
-- Test combined-ledger counts, active SKU matching, cross-user acknowledgement recovery, negative stock rejection, branch/tenant/role isolation and concurrent website changes.
-- Verify the button, success/partial/error feedback and ledger refresh on desktop and mobile.
-- Request `INVENTORY_SYNC_SECRET` through the secure shared-secret form after approval, then perform an authenticated read-only comparison before enabling the first stock-changing sync.
-- Do not add synthetic business records or modify/publish the separate Auraluxe website. Live stock-changing verification requires confirmed SKU mapping and fulfilment branch.
+Do not add synthetic business records or modify/publish the separate Auraluxe website as part of these checks.
