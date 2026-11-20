@@ -27,6 +27,11 @@ jobs:
         with:
           bun-version: latest
 
+      - name: Set up Node.js for Cloudflare CLI
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22.18"
+
       - name: Install locked dependencies
         run: bun install --frozen-lockfile
 
@@ -39,22 +44,16 @@ jobs:
       - name: Build production application
         run: bun run build
 
-      - name: Verify Cloudflare token is configured
+      - name: Verify Cloudflare token and existing Worker secret access
+        shell: bash
         run: |
+          set -euo pipefail
           if [ -z "$CLOUDFLARE_API_TOKEN" ]; then
             echo "::error::GitHub Actions secret CLOUDFLARE_API_TOKEN is missing."
             exit 1
           fi
-
-      - name: Deploy to the existing Worker while preserving its secrets
-        run: |
-          printf '{}' > /tmp/keep-existing-worker-secrets.json
-          bunx cf deploy --force --secrets-file /tmp/keep-existing-worker-secrets.json
-
-      - name: Verify all existing production secret bindings remain present
-        run: |
-          set -euo pipefail
           response="$(mktemp)"
+          trap 'rm -f "$response"' EXIT
           curl --fail --silent --show-error \
             -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
             "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/workers/scripts/bizsathi-migration/secrets" \
@@ -68,11 +67,43 @@ jobs:
             SUPABASE_SERVICE_ROLE_KEY \
             SUPABASE_URL; do
             jq -e --arg name "$name" '.result | any(.[]; .name == $name)' "$response" >/dev/null || {
-              echo "::error::Expected Worker secret binding is missing: $name"
+              echo "::error::Expected existing Worker secret binding is missing before deployment: $name"
               exit 1
             }
           done
-          echo "All six existing secret bindings are present."
+          echo "Cloudflare authentication and all six existing secret bindings verified before deployment."
+
+      - name: Deploy to the existing Worker while preserving its secrets
+        shell: bash
+        run: |
+          set -euo pipefail
+          printf '{}' > /tmp/keep-existing-worker-secrets.json
+          ./node_modules/.bin/cf deploy --force --secrets-file /tmp/keep-existing-worker-secrets.json
+
+      - name: Verify all existing production secret bindings remain present
+        shell: bash
+        run: |
+          set -euo pipefail
+          response="$(mktemp)"
+          trap 'rm -f "$response"' EXIT
+          curl --fail --silent --show-error \
+            -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
+            "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/workers/scripts/bizsathi-migration/secrets" \
+            -o "$response"
+          jq -e '.success == true' "$response" >/dev/null
+          for name in \
+            GOOGLE_GENERATIVE_AI_API_KEY \
+            GOOGLE_SERVICE_ACCOUNT_JSON \
+            INVENTORY_SYNC_SECRET \
+            SUPABASE_PUBLISHABLE_KEY \
+            SUPABASE_SERVICE_ROLE_KEY \
+            SUPABASE_URL; do
+            jq -e --arg name "$name" '.result | any(.[]; .name == $name)' "$response" >/dev/null || {
+              echo "::error::Expected Worker secret binding is missing after deployment: $name"
+              exit 1
+            }
+          done
+          echo "All six existing secret bindings remain present."
 
       - name: Smoke test production dashboard
         run: |
