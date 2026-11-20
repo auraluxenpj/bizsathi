@@ -41,7 +41,7 @@ export async function readSheetValues(
   if (!response.ok) throw new Error(`The sheet is private or unreachable (${response.status}). Check the sheet URL, tab name and Google Sheets access or link-sharing settings.`);
   const text = await response.text();
   if (text.length > 5_000_000) throw new Error('Sheet data must be smaller than 5 MB.');
-  if (/^\\s*</.test(text)) throw new Error('The sheet is private or unreachable. Check Google Sheets access or link-sharing settings.');
+  if (/^\s*</.test(text)) throw new Error('The sheet is private or unreachable. Check Google Sheets access or link-sharing settings.');
   return Papa.parse<string[]>(text, { skipEmptyLines: false }).data;
 }
 
