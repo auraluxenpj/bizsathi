@@ -42,3 +42,38 @@ describe('payment allocation', () => {
     expect(() => allocatePayment(rows, 10.005)).toThrow();
   });
 });
+
+describe('supplier settlement', () => {
+  it('shows the net amount owed after partial supplier payment and purchase return', () => {
+    const docs = [
+      doc({ id: 'p1-invoice', kind: 'purchase', total: 1000, party_id: 'supplier-1' }),
+      doc({ id: 'p1-return', kind: 'purchase_return', total: 200, party_id: 'supplier-1', source_id: 'p1-invoice', document_date: '2026-10-02' }),
+    ];
+    const payments = [pay({ id: 'supplier-payment', document_id: 'p1-invoice', amount: 300, direction: 'out' })];
+    expect(partyBalance('supplier-1', docs, payments)).toBe(-500);
+    expect(outstandingInvoices('supplier-1', 'purchase', docs, payments).map(r => [r.doc.id, r.outstanding])).toEqual([['p1-invoice', 500]]);
+  });
+
+  it('allocates supplier payments oldest-first and preserves each invoice branch', () => {
+    const docs = [
+      doc({ id: 'newer', kind: 'purchase', total: 600, party_id: 'supplier-2', branch_id: 'branch-b', document_date: '2026-10-05' }),
+      doc({ id: 'older', kind: 'purchase', total: 900, party_id: 'supplier-2', branch_id: 'branch-a', document_date: '2026-10-01' }),
+    ];
+    const payments = [pay({ id: 'prior', document_id: 'older', amount: 200, direction: 'out' })];
+    const rows = outstandingInvoices('supplier-2', 'purchase', docs, payments);
+    expect(allocatePayment(rows, 1000)).toEqual([
+      { documentId: 'older', branchId: 'branch-a', reference: 'older', amount: 700 },
+      { documentId: 'newer', branchId: 'branch-b', reference: 'newer', amount: 300 },
+    ]);
+  });
+
+  it('does not include draft supplier returns or payments against another invoice', () => {
+    const docs = [
+      doc({ id: 'invoice', kind: 'purchase', total: 500, party_id: 'supplier-3' }),
+      doc({ id: 'draft-return', kind: 'purchase_return', total: 100, party_id: 'supplier-3', source_id: 'invoice', status: 'draft' }),
+    ];
+    const payments = [pay({ id: 'other-invoice-payment', document_id: 'different-invoice', amount: 150, direction: 'out' })];
+    expect(outstandingInvoices('supplier-3', 'purchase', docs, payments)[0]?.outstanding).toBe(500);
+    expect(partyBalance('supplier-3', docs, payments)).toBe(-500);
+  });
+});
