@@ -54,6 +54,23 @@ describe('supplier settlement', () => {
     expect(outstandingInvoices('supplier-1', 'purchase', docs, payments).map(r => [r.doc.id, r.outstanding])).toEqual([['p1-invoice', 500]]);
   });
 
+  it('includes cash refunds received against a supplier return in the bill balance and allocation cap', () => {
+    const docs = [
+      doc({ id: 'invoice', kind: 'purchase', total: 1000, party_id: 'supplier-refund' }),
+      doc({ id: 'return', kind: 'purchase_return', total: 200, party_id: 'supplier-refund', source_id: 'invoice', document_date: '2026-10-02' }),
+    ];
+    const payments = [
+      pay({ id: 'supplier-payment', document_id: 'invoice', amount: 300, direction: 'out' }),
+      pay({ id: 'supplier-refund-payment', document_id: 'return', amount: 10, direction: 'in' }),
+    ];
+    const rows = outstandingInvoices('supplier-refund', 'purchase', docs, payments);
+    expect(rows.map(r => [r.doc.id, r.outstanding])).toEqual([['invoice', 510]]);
+    expect(allocatePayment(rows, 510)).toEqual([
+      { documentId: 'invoice', branchId: 'branch-a', reference: 'invoice', amount: 510 },
+    ]);
+    expect(() => allocatePayment(rows, 510.01)).toThrow();
+  });
+
   it('allocates supplier payments oldest-first and preserves each invoice branch', () => {
     const docs = [
       doc({ id: 'newer', kind: 'purchase', total: 600, party_id: 'supplier-2', branch_id: 'branch-b', document_date: '2026-10-05' }),
