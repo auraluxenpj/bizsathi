@@ -225,7 +225,7 @@ describe('Choosing which account a payment goes to', () => {
   it('blocks a non-cash payment without a transaction reference and posts the entered reference', async () => {
     mount(<SaleEditor />); await addSaree();
     fireEvent.click(screen.getByRole('button', { name: /^Bank Transfer$/ })); payFullTestBalance();
-    expect(why()).toHaveTextContent(/transaction reference/);
+    expect(screen.getByLabelText('Why this cannot be confirmed yet')).toHaveTextContent(/transaction reference/);
     expect(screen.getByRole('button', { name: /Confirm sale/ })).toBeDisabled();
     fireEvent.change(screen.getByLabelText('Payment reference 1'), { target: { value: 'BANK-UTR-7788' } });
     await waitFor(() => expect(screen.queryByLabelText('Why this cannot be confirmed yet')).not.toBeInTheDocument());
