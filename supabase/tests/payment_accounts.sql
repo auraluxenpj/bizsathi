@@ -13,8 +13,8 @@ BEGIN
  b:=gen_random_uuid(); ob:=gen_random_uuid();
  INSERT INTO public.businesses(id,name,created_by) VALUES(b,'Accounts A',owner_id),(ob,'Accounts B',other_id);
  INSERT INTO public.business_memberships(business_id,user_id,role_code,status) VALUES
-  (b,owner_id,'owner','active'),(b,acc,'accountant','active'),(b,staff,'staff','active'),(b,viewer,'viewer','active'),
-  (ob,other_id,'owner','active');
+  (b,owner_id,'admin','active'),(b,acc,'accountant','active'),(b,staff,'staff','active'),(b,viewer,'viewer','active'),
+  (ob,other_id,'admin','active');
  PERFORM set_config('request.jwt.claims',json_build_object('sub',owner_id,'role','authenticated')::text,true);
  INSERT INTO public.branches(business_id,code,name) VALUES(b,'A','Main') RETURNING id INTO br;
  INSERT INTO public.financial_periods(business_id,name,start_date,end_date) VALUES(b,'Open','2026-01-01','2026-12-31') RETURNING id INTO per;
@@ -129,7 +129,7 @@ BEGIN
  denied:=false; BEGIN UPDATE public.payment_accounts SET name='Hacked' WHERE id=bank; EXCEPTION WHEN insufficient_privilege THEN denied:=true; END; ASSERT denied,'No direct edits to accounts';
  denied:=false; BEGIN PERFORM public.transfer_between_accounts(jsonb_build_object('businessId',ob,'branchId',br,'periodId',per,'id',gen_random_uuid(),'fromAccountId',bank,'toAccountId',wallet,'amount',1,'date','2026-11-04')); EXCEPTION WHEN OTHERS THEN denied:=true; END; ASSERT denied,'Cannot reach another business';
  PERFORM set_config('request.jwt.claims',json_build_object('sub',other_id,'role','authenticated')::text,true);
- denied:=false; BEGIN PERFORM public.transfer_between_accounts(jsonb_build_object('businessId',ob,'branchId',br,'periodId',per,'id',gen_random_uuid(),'fromAccountId',bank,'toAccountId',wallet,'amount',1,'date','2026-11-04')); EXCEPTION WHEN OTHERS THEN denied:=true; END; ASSERT denied,'Another business owner cannot use these accounts';
+ denied:=false; BEGIN PERFORM public.transfer_between_accounts(jsonb_build_object('businessId',ob,'branchId',br,'periodId',per,'id',gen_random_uuid(),'fromAccountId',bank,'toAccountId',wallet,'amount',1,'date','2026-11-04')); EXCEPTION WHEN OTHERS THEN denied:=true; END; ASSERT denied,'Another business admin cannot use these accounts';
  RESET ROLE; RAISE NOTICE 'PAYMENT ACCOUNT TESTS PASSED';
 END $tests$;
 ROLLBACK;
