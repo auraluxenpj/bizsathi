@@ -186,19 +186,21 @@ BEGIN
 
   RESET ROLE;
 
-  -- Change the HR designation without changing assigned access roles.
+  -- Changing the employee position updates the default access bundle and authority tier.
   PERFORM set_config('request.jwt.claims',json_build_object('sub',admin_id,'role','authenticated')::text,true);
   PERFORM public.set_member_job_title(v_business_id,manager_id,'sales_person');
 
   SET LOCAL ROLE authenticated;
   PERFORM set_config('request.jwt.claims',json_build_object('sub',manager_id,'role','authenticated')::text,true);
-  ASSERT public.has_permission(v_business_id,'stock.edit'),
-    'Changing the HR designation does not silently remove the Branch Manager access role';
-  ASSERT public.can_approve_inventory_count(v_business_id,v_branch_a),
-    'Branch Manager approval follows the assigned access role, not the HR title';
+  ASSERT NOT public.has_business_role(v_business_id,'branch_manager'),
+    'Changing the position to Sales Person removes Branch Manager authority';
+  ASSERT NOT public.can_approve_inventory_count(v_business_id,v_branch_a),
+    'Sales Person position cannot approve inventory counts';
+  ASSERT public.has_permission(v_business_id,'sales.create'),
+    'Sales Person position retains POS sales permission';
   RESET ROLE;
 
-  -- Remove the Branch Manager authority role. The HR title alone must not restore it.
+  -- Confirm the lower authority tier remains in force until an administrator explicitly restores it.
   PERFORM set_config('request.jwt.claims',json_build_object('sub',admin_id,'role','authenticated')::text,true);
   UPDATE public.business_memberships
   SET role_code='staff'
