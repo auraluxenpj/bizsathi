@@ -42,9 +42,15 @@ export function outstandingInvoices(partyId: string, kind: 'sale' | 'purchase', 
   return docs
     .filter(d => d.party_id === partyId && d.kind === kind && d.status === 'confirmed')
     .map(doc => {
-      const returned = docs.filter(r => r.source_id === doc.id && r.kind === returnKind && r.status === 'confirmed').reduce((s, r) => s.plus(r.total), new Decimal(0));
+      const linkedReturns = docs.filter(r => r.source_id === doc.id && r.kind === returnKind && r.status === 'confirmed');
+      const returned = linkedReturns.reduce((s, r) => s.plus(r.total), new Decimal(0));
       const paid = payments.filter(p => p.document_id === doc.id).reduce((s, p) => s.plus(p.amount), new Decimal(0));
-      return { doc, outstanding: Decimal.max(0, new Decimal(doc.total).minus(returned).minus(paid)).toNumber() };
+      // A refund paid/received against a return settles that return's credit in cash.
+      // For supplier returns, money received back from the supplier increases the
+      // remaining bill settlement amount; for customer returns it cannot create
+      // a positive receivable once the invoice has been fully settled.
+      const refunds = payments.filter(p => linkedReturns.some(r => r.id === p.document_id)).reduce((s, p) => s.plus(p.amount), new Decimal(0));
+      return { doc, outstanding: Decimal.max(0, new Decimal(doc.total).minus(returned).minus(paid).plus(refunds)).toNumber() };
     })
     .filter(o => o.outstanding > 0)
     .sort((a, b) => (a.doc.document_date + a.doc.created_at).localeCompare(b.doc.document_date + b.doc.created_at));
