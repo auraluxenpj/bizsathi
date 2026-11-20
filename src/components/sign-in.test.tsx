@@ -60,6 +60,36 @@ describe("SignIn email OTP", () => {
     sessionStorage.clear();
   });
 
+  it("creates invited accounts with a passwordless email link", async () => {
+    sessionStorage.setItem("bizsathi-team-token", "invite-token-123");
+    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    render(
+      <QueryClientProvider client={queryClient}>
+        <SignIn />
+      </QueryClientProvider>,
+    );
+
+    fireEvent.click(await screen.findByRole("button", { name: "Create account" }));
+    fireEvent.change(screen.getByLabelText("Full name"), { target: { value: "Test Employee" } });
+    fireEvent.change(screen.getByLabelText("Email"), { target: { value: "employee@example.com" } });
+    fireEvent.change(screen.getByLabelText("Mobile number"), { target: { value: "9812345678" } });
+    fireEvent.click(screen.getByRole("button", { name: "Send secure sign-in link" }));
+
+    await waitFor(() => {
+      expect(authMocks.signInWithOtp).toHaveBeenCalledWith({
+        email: "employee@example.com",
+        options: {
+          shouldCreateUser: true,
+          data: { full_name: "Test Employee", mobile: "+9779812345678" },
+          emailRedirectTo: expect.stringMatching(/\/join#token=invite-token-123$/),
+        },
+      });
+    });
+    expect(screen.queryByLabelText("Password")).not.toBeInTheDocument();
+    expect(screen.queryByLabelText("Confirm password")).not.toBeInTheDocument();
+    expect(screen.getByRole("status")).toHaveTextContent("secure link");
+  });
+
   it("sends a passwordless email link and uses the Sutra product name", async () => {
     const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
     render(
