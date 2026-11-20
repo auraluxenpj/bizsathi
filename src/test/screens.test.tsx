@@ -276,6 +276,10 @@ describe('Point of sale', () => {
     expect(screen.getByLabelText('quantity line 1')).toHaveValue(1);
     expect(screen.getByLabelText('quantity line 2')).toHaveValue(1);
     expect(screen.queryByText('2 selected')).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Select all visible in-stock variants' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Add selected (2)' }));
+    expect(screen.getByLabelText('quantity line 1')).toHaveValue(2);
+    expect(screen.getByLabelText('quantity line 2')).toHaveValue(2);
     expect(confirm).not.toHaveBeenCalled();
   });
   it('stops barcode scans at available branch stock', async () => {
