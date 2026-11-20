@@ -9,6 +9,17 @@ export function sourceLines(value: unknown): ReturnLine[] {
     return [{variantId:v.variantId,name:String(v.name??''),sku:String(v.sku??''),quantity:Number(v.quantity),price:Number(v.price),discount:Number(v.discount??0),taxRate:Number(v.taxRate??0)}];
   });
 }
+/** Quantities still available to receive against a confirmed supplier invoice. */
+export function receivableLines(source:ReturnDocument, documents:ReturnDocument[]) {
+  const receipts=documents.filter(d=>d.source_id===source.id&&d.kind==='goods_receipt'&&d.status==='confirmed');
+  return sourceLines(source.lines).map(line=>{
+    const received=receipts.flatMap(d=>sourceLines(d.lines)).filter(row=>row.variantId===line.variantId)
+      .reduce((sum,row)=>sum.plus(row.quantity),new Decimal(0));
+    const remaining=Decimal.max(0,new Decimal(line.quantity).minus(received));
+    return {...line,received:received.toNumber(),remaining:remaining.toNumber(),maximum:remaining.toNumber()};
+  });
+}
+
 export function returnableLines(source:ReturnDocument, documents:ReturnDocument[], stock?:Map<string,number>) {
   const kind=source.kind==='sale'?'sale_return':'purchase_return';
   const linked=documents.filter(d=>d.source_id===source.id&&d.status==='confirmed');
