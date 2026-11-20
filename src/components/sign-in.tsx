@@ -3,12 +3,9 @@ import { useNavigate } from '@tanstack/react-router';
 import { useQueryClient } from '@tanstack/react-query';
 import { ArrowUpRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { lovable } from '@/integrations/lovable';
 import { supabase, isSupabaseConfigured } from '@/integrations/supabase/client';
-import '@lovable.dev/cloud-auth-js/styles.css';
 import { Input } from '@/components/ui/input';
-import { signInWithEmployeeId, signInWithMobile } from '@/lib/mobile-login.functions';
-import { classifyLoginIdentifier, isEmailLoginIdentifier } from '@/lib/login-identifier';
+import { isEmailLoginIdentifier } from '@/lib/login-identifier';
 import { validateSignup } from '@/lib/signup-validation';
 
 export function SignIn() {
@@ -19,18 +16,18 @@ export function SignIn() {
   const [pendingEmail, setPendingEmail] = useState('');
   const [signedIn, setSignedIn] = useState(false);
   const [mode, setMode] = useState<'login'|'signup'|'recovery'>('login'); const [hasInvite, setHasInvite] = useState(false);
-  const [email, setEmail] = useState(''); const [mobile, setMobile] = useState(''); const [fullName, setFullName] = useState(''); const [identifier, setIdentifier] = useState(''); const [password, setPassword] = useState(''); const [confirmPassword, setConfirmPassword] = useState(''); const [message, setMessage] = useState('');
+  const [email, setEmail] = useState(''); const [mobile, setMobile] = useState(''); const [fullName, setFullName] = useState(''); const [identifier, setIdentifier] = useState(''); const [message, setMessage] = useState('');
   useEffect(() => { if (isSupabaseConfigured()) { supabase.auth.getUser().then(({ data }) => setSignedIn(Boolean(data.user))).catch(() => setSignedIn(false)); } setHasInvite(Boolean(sessionStorage.getItem('bizsathi-invite') || sessionStorage.getItem('bizsathi-team-token'))); }, []);
-  async function login(provider: 'google' | 'lovable') {
+  async function loginWithGoogle() {
     if (!isSupabaseConfigured()) return;
     setBusy(true); setError('');
     try {
-      const result = await lovable.auth.signInWithOAuth(provider, { redirect_uri: `${window.location.origin}/auth` });
-      if (result.error) throw result.error;
-      if (result.redirected) return;
-      const { data } = await supabase.auth.getUser();
-      if (data.user) await navigate({ to: sessionStorage.getItem('bizsathi-team-token') ? '/join' : sessionStorage.getItem('bizsathi-invite') ? '/invite' : '/dashboard' });
-    } catch { setError('Sign-in could not be completed. Please try again.'); }
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: { redirectTo: `${window.location.origin}/auth` },
+      });
+      if (error) throw error;
+    } catch { setError('Google sign-in could not be completed. Please try again.'); }
     finally { setBusy(false); }
   }
   async function emailLogin() {
@@ -45,29 +42,34 @@ export function SignIn() {
       } else {
         if (mode === 'signup') {
           if (!hasInvite) throw new Error('invitation required');
-          const values = validateSignup({ fullName, email, mobile, password, confirmPassword });
+          const values = validateSignup({ fullName, email, mobile });
           const teamToken = sessionStorage.getItem('bizsathi-team-token');
           const emailRedirectTo = teamToken ? `${window.location.origin}/join#token=${encodeURIComponent(teamToken)}` : `${window.location.origin}/auth`;
-          const { error } = await supabase.auth.signUp({ email: values.email, password, options: { data: { full_name: values.full_name, mobile: values.mobile }, emailRedirectTo } });
+          const { data, error } = await supabase.auth.signInWithOtp({
+            email: values.email,
+            options: {
+              shouldCreateUser: true,
+              data: { full_name: values.full_name, mobile: values.mobile },
+              emailRedirectTo,
+            },
+          });
           if (error) throw error;
-          setPendingEmail(values.email); setPassword(''); setConfirmPassword('');
-          setMessage('Check your email and confirm it, then sign in to verify your mobile number and accept your invitation.');
+          if (data.session) { setSignedIn(true); await navigate({ to: '/join' }); return; }
+          setPendingEmail(values.email);
+          setMessage('Open the secure link in your email to verify your address and continue with your invitation.');
           return;
         } else {
-          const parsed = classifyLoginIdentifier(identifier);
-          if (!parsed || password.length < 8) throw new Error('invalid');
-          if (parsed.type === 'email') {
-            const { error } = await supabase.auth.signInWithPassword({ email: parsed.value, password });
-            if (error) throw error;
-          } else if (parsed.type === 'mobile') {
-            const t = await signInWithMobile({ data: { mobile: parsed.value, password } });
-            const { error } = await supabase.auth.setSession(t);
-            if (error) throw error;
-          } else {
-            const t = await signInWithEmployeeId({ data: { employeeId: parsed.value, password } });
-            const { error } = await supabase.auth.setSession(t);
-            if (error) throw error;
-          }
+          if (!isEmailLoginIdentifier(identifier)) throw new Error('Enter a valid email address.');
+          const { error } = await supabase.auth.signInWithOtp({
+            email: identifier.trim().toLowerCase(),
+            options: {
+              emailRedirectTo: `${window.location.origin}/auth`,
+              shouldCreateUser: false,
+            },
+          });
+          if (error) throw error;
+          setMessage('A secure sign-in link has been sent to your email. Open it on this device to access Sutra.');
+          return;
         }
         await navigate({ to: sessionStorage.getItem('bizsathi-team-token') ? '/join' : sessionStorage.getItem('bizsathi-invite') ? '/invite' : '/dashboard' });
       }
@@ -85,16 +87,13 @@ export function SignIn() {
           <Button variant="outline" className="w-full" onClick={async () => { await queryClient.cancelQueries(); queryClient.clear(); await supabase.auth.signOut(); setSignedIn(false); await navigate({ to: '/auth', replace: true }); }}>Sign out</Button>
         </div> : <>
           <h1 className="brand text-xl font-semibold">{title}</h1>
-          {pendingEmail ? <div className="mt-5 space-y-4"><p className="text-sm">Confirmation email requested for {pendingEmail}.</p><Button className="w-full" disabled={busy} onClick={async () => { setBusy(true); setError(''); try { const token = sessionStorage.getItem('bizsathi-team-token'); const { error } = await supabase.auth.resend({ type: 'signup', email: pendingEmail, options: { emailRedirectTo: token ? `${window.location.origin}/join#token=${encodeURIComponent(token)}` : `${window.location.origin}/auth` } }); if(error) throw error; setMessage('Confirmation email requested again. Check your inbox and spam folder.'); } catch { setError('Could not resend the confirmation email. Please wait before trying again.'); } finally { setBusy(false); } }}>Resend confirmation email</Button><Button variant="outline" className="w-full" onClick={() => { setIdentifier(pendingEmail); setPendingEmail(''); setMode('login'); setMessage(''); }}>Back to sign-in</Button></div> : <form className="mt-5 space-y-4" onSubmit={e => { e.preventDefault(); emailLogin(); }}>
+          {pendingEmail ? <div className="mt-5 space-y-4"><p className="text-sm">Confirmation email requested for {pendingEmail}.</p><Button className="w-full" disabled={busy} onClick={async () => { setBusy(true); setError(''); try { const token = sessionStorage.getItem('bizsathi-team-token'); const { error } = await supabase.auth.signInWithOtp({ email: pendingEmail, options: { shouldCreateUser: true, emailRedirectTo: token ? `${window.location.origin}/join#token=${encodeURIComponent(token)}` : `${window.location.origin}/auth` } }); if(error) throw error; setMessage('A new secure sign-in link was requested. Check your inbox and spam folder.'); } catch { setError('Could not resend the confirmation email. Please wait before trying again.'); } finally { setBusy(false); } }}>Resend confirmation email</Button><Button variant="outline" className="w-full" onClick={() => { setIdentifier(pendingEmail); setPendingEmail(''); setMode('login'); setMessage(''); }}>Back to sign-in</Button></div> : <form className="mt-5 space-y-4" onSubmit={e => { e.preventDefault(); emailLogin(); }}>
             {mode === 'signup' ? <>
               <label className="block text-sm">Full name<Input className="mt-1 h-11" type="text" autoComplete="name" required minLength={2} maxLength={120} value={fullName} onChange={e => setFullName(e.target.value)} /></label>
               <label className="block text-sm">Email<Input className="mt-1 h-11" type="email" autoComplete="email" required maxLength={254} value={email} onChange={e => setEmail(e.target.value)} /></label>
               <label className="block text-sm">Mobile number<Input className="mt-1 h-11" type="tel" inputMode="numeric" autoComplete="tel" required maxLength={20} placeholder="98XXXXXXXX" value={mobile} onChange={e => setMobile(e.target.value)} /></label>
-            </> : <label className="block text-sm">{mode === 'recovery' ? 'Email' : 'Email, mobile, or Employee ID'}<Input className="mt-1 h-11" type={mode === 'recovery' ? 'email' : 'text'} autoComplete="username" required maxLength={254} value={identifier} onChange={e => setIdentifier(e.target.value)} placeholder="Email / +977 mobile / ALEMP0001" /></label>}
-            {mode !== 'recovery' && <label className="block text-sm">Password<Input className="mt-1 h-11" type="password" autoComplete={mode === 'signup' ? 'new-password' : 'current-password'} required minLength={8} maxLength={128} value={password} onChange={e => setPassword(e.target.value)} /></label>}
-            {mode === 'signup' && <label className="block text-sm">Confirm password<Input className="mt-1 h-11" type="password" autoComplete="new-password" required minLength={8} maxLength={128} value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)} /></label>}
-            {mode === 'signup' && password && confirmPassword && password !== confirmPassword && <p className="text-sm text-destructive">Passwords do not match.</p>}
-            <Button className="h-11 w-full" disabled={busy || !isSupabaseConfigured()}>{busy ? 'Please wait…' : mode === 'recovery' ? 'Send recovery link' : mode === 'signup' ? 'Create account' : 'Sign in'}</Button>
+            </> : <label className="block text-sm">{mode === 'recovery' ? 'Email' : 'Email address'}<Input className="mt-1 h-11" type={mode === 'recovery' ? 'email' : 'text'} autoComplete="username" required maxLength={254} value={identifier} onChange={e => setIdentifier(e.target.value)} placeholder="you@example.com" /></label>}
+            <Button className="h-11 w-full" disabled={busy || !isSupabaseConfigured()}>{busy ? 'Please wait…' : mode === 'recovery' ? 'Send recovery link' : mode === 'signup' ? 'Send secure sign-in link' : 'Email me a sign-in link'}</Button>
             <div className="flex flex-wrap justify-between gap-2 text-sm">
               {(hasInvite || mode === 'signup') && <Button type="button" variant="link" className="h-auto p-0" onClick={() => { setMode(mode === 'signup' ? 'login' : 'signup'); setError(''); setMessage(''); }}>{mode === 'signup' ? 'Already have an account?' : 'Create account'}</Button>}
               <Button type="button" variant="link" className="h-auto p-0" onClick={() => { setMode(mode === 'recovery' ? 'login' : 'recovery'); setError(''); setMessage(''); }}>{mode === 'recovery' ? 'Back to sign-in' : 'Forgot password?'}</Button>
@@ -103,8 +102,7 @@ export function SignIn() {
           {mode !== 'recovery' && !pendingEmail && <>
             <div className="my-5 flex items-center gap-3 text-xs text-muted-foreground"><span className="h-px flex-1 bg-border" />or<span className="h-px flex-1 bg-border" /></div>
             <div className="grid gap-2">
-              <Button variant="outline" className="h-11" disabled={busy || !isSupabaseConfigured()} onClick={() => login('google')}>Continue with Google</Button>
-              <Button className="lovable-auth-button h-11" variant="outline" disabled={busy || !isSupabaseConfigured()} onClick={() => login('lovable')}>Continue with Lovable</Button>
+              <Button variant="outline" className="h-11" disabled={busy || !isSupabaseConfigured()} onClick={loginWithGoogle}>Continue with Google</Button>
             </div>
           </>}
         </>}

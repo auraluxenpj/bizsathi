@@ -3,13 +3,12 @@ import { Link } from '@tanstack/react-router';
 import { useServerFn } from '@tanstack/react-start';
 import { useQuery } from '@tanstack/react-query';
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
-import { ArrowDown, ArrowUp, Building2, Eye, Plus, ShoppingCart, Tag, Wallet, Zap, type LucideIcon } from 'lucide-react';
+import { ArrowDown, ArrowUp, Eye, Plus, ShoppingCart, Tag, Wallet, Zap, type LucideIcon } from 'lucide-react';
 import Decimal from 'decimal.js';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { getBusinessAccess, listBusinesses } from '@/lib/business.functions';
-import { authorizedSelection } from '@/lib/dashboard-data';
 import { LowStockSummary, useLowStock } from './low-stock-summary';
 import { getCommerce } from '@/lib/commerce.functions';
 import { commerceTotals } from '@/lib/commerce-totals';
@@ -27,10 +26,10 @@ function StatCard({ label, value, icon: Icon, iconTone, to }: { label: string; v
 export function Dashboard() {
   const list = useServerFn(listBusinesses); const getAccess = useServerFn(getBusinessAccess);
   const businesses = useQuery({ queryKey: ['businesses'], queryFn: () => list() });
-  const [selected, setSelected] = useState(''); const [branch, setBranch] = useState('');
+  const [branch, setBranch] = useState('');
   const [privacy, setPrivacy] = useState(false); const [person, setPerson] = useState('');
   useEffect(() => { supabase.auth.getUser().then(({ data }) => { const u = data.user; setPerson((u?.user_metadata?.['full_name'] as string | undefined) || u?.email?.split('@')[0] || ''); }); }, []);
-  const businessId = authorizedSelection(businesses.data ?? [], selected);
+  const businessId = businesses.data?.[0]?.id ?? '';
   const access = useQuery({ queryKey: ['business-access', businessId], queryFn: () => getAccess({ data: { businessId } }), enabled: Boolean(businessId) });
   const branches = access.data?.branches.filter(b => b.is_active) ?? [];
   const branchId = branches.some(b => b.id === branch) ? branch : '';
@@ -73,11 +72,10 @@ export function Dashboard() {
 
     {(businesses.isPending || (businessId && access.isPending)) && <p role="status" className="py-6 text-sm">Loading your workspace…</p>}
     {(businesses.error || access.error) && <div className="my-6 flex flex-wrap items-center gap-4"><p role="alert" className="text-sm text-destructive">{businesses.error?.message || access.error?.message}</p><Button variant="outline" onClick={() => { businesses.refetch(); if (businessId) access.refetch(); }}>Try again</Button></div>}
-    {(businesses.data?.length ?? 0) > 1 || branches.length > 1 ? <div className="mt-4 grid gap-3 sm:grid-cols-2 md:max-w-xl">
-      <label className="text-xs text-muted-foreground">Business<select aria-label="Dashboard business" className={selectClass} disabled={!businesses.data?.length} value={businessId} onChange={e => { setSelected(e.target.value); setBranch(''); }}>{businesses.data?.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}</select></label>
-      <label className="text-xs text-muted-foreground">Branch<select aria-label="Dashboard branch" className={selectClass} disabled={!branches.length} value={branchId} onChange={e => setBranch(e.target.value)}><option value="">{branches.length ? 'All authorized branches' : 'No authorized branches'}</option>{branches.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}</select></label>
+    {branches.length > 1 ? <div className="mt-4 max-w-xl">
+      <label className="text-xs text-muted-foreground">Branch<select aria-label="Dashboard branch" className={selectClass} disabled={!branches.length} value={branchId} onChange={e => setBranch(e.target.value)}><option value="">All authorized branches</option>{branches.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}</select></label>
     </div> : null}
-    {!businesses.isPending && !businesses.error && !businessId && <section className="my-6 flex flex-wrap items-center justify-between gap-4 rounded-xl border bg-secondary/40 p-5"><div><h2 className="text-xl font-semibold">No business linked yet</h2><p className="mt-2 text-sm text-muted-foreground">Register your business or accept a staff invitation.</p></div><Button asChild><Link to="/businesses"><Building2 />Business setup</Link></Button></section>}
+    {!businesses.isPending && !businesses.error && !businessId && <section className="my-6 rounded-xl border bg-secondary/40 p-5"><h2 className="text-xl font-semibold">AURALUXE workspace access required</h2><p className="mt-2 text-sm text-muted-foreground">Your account is not linked to AURALUXE. Ask an AURALUXE administrator for a staff invitation, then sign in again after accepting it.</p></section>}
     {commerce.error && <p role="alert" className="mt-4 text-sm text-destructive">{commerce.error.message}</p>}
 
     <section aria-label="Summary" className="mt-5 grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-5">

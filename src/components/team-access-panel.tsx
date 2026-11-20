@@ -25,22 +25,20 @@ type MemberRole = { userId: string; roleId: string; roleCode: string; roleName: 
 type LegacyInvitation = { id: string; email: string | null; mobile: string | null; invitee_name: string | null; job_title: string | null; role_code: string; expires_at: string; accepted_at: string | null; revoked_at: string | null; created_at: string };
 
 
-const titleByRole: Record<string, JobTitle[]> = {
-  admin: ['partner'],
-  branch_manager: ['branch_manager'],
-  accountant: ['accountant'],
-  staff: ['department_manager', 'sales_person', 'stock_manager', 'entry_person'],
-  viewer: [],
-};
 const titleLabel: Record<JobTitle, string> = {
-  partner: 'Administrator / Partner',
-  manager: 'Manager (legacy)',
+  partner: 'Partner / Administrator',
+  manager: 'Manager',
   branch_manager: 'Branch Manager',
   accountant: 'Accountant',
   department_manager: 'Department Manager',
   sales_person: 'Cashier / POS',
   stock_manager: 'Inventory Manager',
-  entry_person: 'Store Team',
+  entry_person: 'Store Assistant',
+  viewer: 'Read-only Viewer',
+};
+const roleForTitle: Record<JobTitle, RoleCode> = {
+  partner: 'admin', manager: 'accountant', branch_manager: 'branch_manager', accountant: 'accountant',
+  department_manager: 'staff', sales_person: 'staff', stock_manager: 'staff', entry_person: 'staff', viewer: 'viewer',
 };
 const roleRank: Record<string, number> = { owner: 100, admin: 80, accountant: 60, branch_manager: 50, staff: 40, viewer: 20 };
 
@@ -101,7 +99,6 @@ export function TeamAccessPanel({
   const [inviteeEmail, setInviteeEmail] = useState('');
   const [inviteeMobile, setInviteeMobile] = useState('');
   const [expiryDays, setExpiryDays] = useState(7);
-  const [inviteRole, setInviteRole] = useState<RoleCode>('staff');
   const [jobTitle, setJobTitle] = useState<JobTitle | ''>('sales_person');
   const [label, setLabel] = useState('');
   const [inviteLink, setInviteLink] = useState('');
@@ -118,15 +115,10 @@ export function TeamAccessPanel({
   const maxAllowedDays = currentGrant?.max_invite_days ?? 30;
   const effectiveExpiryDays = Math.min(expiryDays, maxAllowedDays);
   const inviteMobileValid = Boolean(normalizeVerifiedNepalMobile(inviteeMobile));
-  const availableTitles: JobTitle[] = isBranchManager
-    ? (inviteRole === 'staff' ? ['department_manager','sales_person','stock_manager','entry_person'] : [])
-    : isAdmin
-      ? jobTitleCodes.filter((title) => isOwner || title !== 'partner')
-      : (titleByRole[inviteRole] ?? []);
-  const allowedInviteRolesKey = allowedInviteRoles.join('|');
-  useEffect(() => {
-    if (!allowedInviteRoles.includes(inviteRole)) setInviteRole(allowedInviteRoles[0] ?? 'staff');
-  }, [allowedInviteRolesKey, inviteRole]);
+  const availableTitles: JobTitle[] = jobTitleCodes.filter((title) =>
+    allowedInviteRoles.includes(roleForTitle[title]) && (isOwner || title !== 'partner')
+  );
+  const inviteRole: RoleCode = jobTitle ? roleForTitle[jobTitle] : 'staff';
   const availableTitlesKey = availableTitles.join('|');
   useEffect(() => {
     if (!availableTitles.length) setJobTitle('');
@@ -187,14 +179,6 @@ export function TeamAccessPanel({
     onSuccess: () => { setMessage('Employee position updated.'); void client.invalidateQueries({ queryKey: ['business-access', businessId] }); void client.invalidateQueries({ queryKey: ['permissions', businessId] }); },
     onError: (error) => setMessage(error instanceof Error ? error.message : 'Employee position could not be changed.'),
   });
-  const baseRoleMutation = useMutation({
-    mutationFn: (v: { userId: string; role: 'admin' | 'accountant' | 'staff' | 'viewer' }) => {
-      const member = members.find((m) => m.user_id === v.userId);
-      return updateMemberFn({ data: { businessId, userId: v.userId, role: v.role, status: member?.status === 'suspended' ? 'suspended' : 'active' } });
-    },
-    onSuccess: () => { setMessage('Employee base access role updated.'); void client.invalidateQueries({ queryKey: ['business-access', businessId] }); void client.invalidateQueries({ queryKey: ['permissions', businessId] }); },
-    onError: (error) => setMessage(error instanceof Error ? error.message : 'Employee base access could not be changed.'),
-  });
   const revokeInvite = useMutation({
     mutationFn: (invitationId: string) => revokeInviteFn({ data: { invitationId } }),
     onSuccess: () => { setMessage('Invitation revoked.'); setInviteLink(''); refresh(); },
@@ -206,22 +190,16 @@ export function TeamAccessPanel({
       {viewMode !== 'positions' && <>
       <section className="rounded-xl border p-4 md:p-5">
         <div className="mb-3 flex items-center gap-2"><Users className="size-4 text-primary" /><h3 className="font-semibold">Employees & branch access</h3></div>
-        <p className="mb-4 text-sm text-muted-foreground">Base access controls which application screens an employee can use; Staff · POS only is the restricted cashier role. HR position is a separate job designation. Branch membership controls where the employee can work.</p>
-        {members.length ? <div className="overflow-x-auto"><table className="w-full min-w-[820px] text-left text-sm"><thead><tr className="border-b text-xs text-muted-foreground"><th className="py-2 pr-4 font-medium">Employee</th><th className="py-2 pr-4 font-medium">Base access</th><th className="py-2 pr-4 font-medium">HR position</th>{branches.map((b) => <th key={b.id} className="px-3 py-2 text-center font-medium">{b.name}</th>)}</tr></thead><tbody className="divide-y">{members.map((m) => {
+        <p className="mb-4 text-sm text-muted-foreground">Position determines the employee’s default screens, actions and authority tier. Additional custom roles can be assigned for extra responsibilities; branch membership limits where the employee can work.</p>
+        {members.length ? <div className="overflow-x-auto"><table className="w-full min-w-[820px] text-left text-sm"><thead><tr className="border-b text-xs text-muted-foreground"><th className="py-2 pr-4 font-medium">Employee</th><th className="py-2 pr-4 font-medium">Authority tier</th><th className="py-2 pr-4 font-medium">Position</th>{branches.map((b) => <th key={b.id} className="px-3 py-2 text-center font-medium">{b.name}</th>)}</tr></thead><tbody className="divide-y">{members.map((m) => {
           const assignedAuthority = memberRoles.filter((r) => r.userId === m.user_id).reduce((rank, r) => Math.max(rank, r.authorityRank), 0);
           const effectiveAuthority = Math.max(roleRank[m.role_code] ?? 0, assignedAuthority);
           const protectedMember = m.user_id === userId || effectiveAuthority >= (isOwner ? 100 : 80);
           const employeeName = m.profiles?.full_name || m.user_id.slice(0, 8);
-          const permittedPositions: JobTitle[] = isBranchManager ? ['department_manager','sales_person','stock_manager','entry_person'] : jobTitleCodes.filter((title) => isOwner || title !== 'partner');
+          const permittedPositions: JobTitle[] = isBranchManager ? ['department_manager','sales_person','stock_manager','entry_person','viewer'] : jobTitleCodes.filter((title) => isOwner || title !== 'partner');
           return <tr key={m.user_id}>
             <td className="py-3 pr-4 font-medium">{employeeName}</td>
-            <td className="py-3 pr-4">{isAdmin && !isBranchManager && !protectedMember ? <select aria-label={`Base access role for ${employeeName}`} className="h-9 max-w-48 rounded-md border bg-background px-2" value={m.role_code} disabled={baseRoleMutation.isPending} onChange={(e) => baseRoleMutation.mutate({ userId: m.user_id, role: e.target.value as 'admin' | 'accountant' | 'staff' | 'viewer' })}>
-              {isOwner && <option value="admin">Administrator</option>}
-              <option value="accountant">Accountant</option>
-              <option value="staff">Staff · POS only</option>
-              <option value="viewer">Viewer</option>
-              {m.role_code === 'branch_manager' && <option value="branch_manager" disabled>Branch Manager</option>}
-            </select> : ({staff:'Staff · POS only',viewer:'Viewer',accountant:'Accountant',branch_manager:'Branch Manager',admin:'Administrator',owner:'Owner'} as Record<string,string>)[m.role_code] ?? m.role_code}</td>
+            <td className="py-3 pr-4">{({staff:'Staff',viewer:'Viewer',accountant:'Accountant',branch_manager:'Branch Manager',admin:'Administrator',owner:'Owner'} as Record<string,string>)[m.role_code] ?? m.role_code}</td>
             <td className="py-3 pr-4">{isAdmin && !protectedMember ? <select aria-label={`Position for ${employeeName}`} className="h-9 max-w-48 rounded-md border bg-background px-2" value={m.job_title ?? ''} disabled={positionMutation.isPending} onChange={(e) => positionMutation.mutate({ userId: m.user_id, jobTitle: e.target.value as JobTitle, status: m.status })}>
               <option value="" disabled>Select position</option>
               {permittedPositions.map((title) => <option key={title} value={title}>{jobTitles[title].label}</option>)}
@@ -255,7 +233,7 @@ export function TeamAccessPanel({
               <div className="mb-4 space-y-2 text-sm">
                 <p className="font-medium">Positions this manager may invite</p>
                 {(['staff', 'viewer'] as const).map((r) => (
-                  <label key={r} className="flex items-center gap-2"><input type="checkbox" checked={delegatedRoles.includes(r)} onChange={(e) => setDelegatedRoles((old) => e.target.checked ? [...old, r] : old.filter((x) => x !== r))} />{r === 'staff' ? 'Sales Person, Stock Manager and Store Team' : 'Read-only access'}</label>
+                  <label key={r} className="flex items-center gap-2"><input type="checkbox" checked={delegatedRoles.includes(r)} onChange={(e) => setDelegatedRoles((old) => e.target.checked ? [...old, r] : old.filter((x) => x !== r))} />{r === 'staff' ? 'Department Manager, Cashier / POS, Inventory Manager and Store Assistant' : 'Read-only access'}</label>
                 ))}
               </div>
               <Button disabled={!selectedManager || !delegatedRoles.length || grant.isPending} onClick={() => grant.mutate()}><Users className="mr-2 size-4" />{grant.isPending ? 'Saving…' : 'Grant branch delegation'}</Button>
@@ -263,7 +241,7 @@ export function TeamAccessPanel({
           ) : currentGrant ? (
             <div className="rounded-lg bg-muted/50 p-3 text-sm">
               <p className="font-medium">Delegation active for this branch</p>
-              <p className="mt-1 text-muted-foreground">Allowed positions: {currentGrantRoles.map((r) => r === 'staff' ? 'Sales Person, Stock Manager and Store Team' : r === 'viewer' ? 'Read-only access' : r).join('; ')} · Up to {currentGrant.max_invite_uses} registrations · {currentGrant.max_invite_days} days</p>
+              <p className="mt-1 text-muted-foreground">Allowed positions: {currentGrantRoles.map((r) => r === 'staff' ? 'Department Manager, Cashier / POS, Inventory Manager and Store Assistant' : r === 'viewer' ? 'Read-only access' : r).join('; ')} · Up to {currentGrant.max_invite_uses} registrations · {currentGrant.max_invite_days} days</p>
             </div>
           ) : <p className="rounded-lg bg-muted/50 p-3 text-sm text-muted-foreground">No invitation delegation is assigned to your account for this branch. Ask an administrator to grant it.</p>}
           {isAdmin && !isBranchManager && (delegations.data?.grants ?? []).filter((g: { branch_id: string }) => g.branch_id === selectedBranchId).map((g: { id: string; manager_user_id: string; allowed_role_codes: string[] }) => (
@@ -283,17 +261,12 @@ export function TeamAccessPanel({
               {branches.map((b) => <option key={b.id} value={b.id}>{b.name} ({b.code})</option>)}
             </select>
           </label>
-          <label className="mb-3 block text-sm">Base access role
-            <select className="mt-1 h-10 w-full rounded-md border bg-background px-3" value={inviteRole} onChange={(e) => setInviteRole(e.target.value as RoleCode)}>
-              {allowedInviteRoles.map((role) => <option key={role} value={role}>{role === 'staff' ? 'Staff · POS only' : role.replaceAll('_',' ').replace(/\b\w/g,(v) => v.toUpperCase())}</option>)}
-            </select>
-          </label>
-          {availableTitles.length > 0 && <label className="mb-3 block text-sm">HR position
+          {availableTitles.length > 0 && <label className="mb-3 block text-sm">Employee position
             <select className="mt-1 h-10 w-full rounded-md border bg-background px-3" value={jobTitle} onChange={(e) => setJobTitle(e.target.value as JobTitle)}>
               {availableTitles.map((t) => <option key={t} value={t}>{titleLabel[t]}</option>)}
             </select>
           </label>}
-          <p className="mb-4 text-xs text-muted-foreground">Staff is the restricted POS-only base role. Base access controls application permissions; HR position is only the job designation. Assign extra operational roles after the invitation is accepted when the employee needs more screens.</p>
+          <p className="mb-4 text-xs text-muted-foreground">The selected position automatically sets the employee’s default application permissions and authority. Add an extra custom role only when the employee has additional responsibilities; branch access is assigned separately.</p>
           <label className="mb-3 block text-sm">Invitee email address
             <input className="mt-1 h-10 w-full rounded-md border bg-background px-3" type="email" autoComplete="email" maxLength={254} placeholder="staff@example.com" value={inviteeEmail} onChange={(e) => setInviteeEmail(e.target.value)} />
           </label>
@@ -308,7 +281,7 @@ export function TeamAccessPanel({
           <label className="my-3 block text-sm">Invitation label (optional)
             <input className="mt-1 h-10 w-full rounded-md border bg-background px-3" maxLength={120} value={label} onChange={(e) => setLabel(e.target.value)} placeholder="e.g. Nepalgunj cashier team" />
           </label>
-          <Button className="w-full" disabled={!selectedBranchId || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(inviteeEmail.trim()) || !inviteMobileValid || !allowedInviteRoles.includes(inviteRole) || (jobTitle !== '' && !availableTitles.includes(jobTitle)) || createInvite.isPending} onClick={() => createInvite.mutate()}>
+          <Button className="w-full" disabled={!selectedBranchId || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(inviteeEmail.trim()) || !inviteMobileValid || !jobTitle || !availableTitles.includes(jobTitle) || !allowedInviteRoles.includes(inviteRole) || createInvite.isPending} onClick={() => createInvite.mutate()}>
             <UserPlus className="mr-2 size-4" />{createInvite.isPending ? 'Creating link…' : 'Create invitation link'}
           </Button>
           {inviteLink && <div className="mt-3 rounded-lg border p-3">
@@ -348,7 +321,7 @@ export function TeamAccessPanel({
                   <select aria-label={`Change invited position for ${i.invitee_name || i.mobile || i.email || i.id}`} className="h-9 rounded-md border bg-card px-2 text-sm" value={i.job_title ?? ''} disabled={legacyActionsPending} onChange={(e) => { const next = e.target.value as JobTitle; if (next) onLegacyChangeRole?.(i.id, next); }}>
                     {!i.job_title && <option value="" disabled>{i.role_code}</option>}{legacyTitles.map((t) => <option key={t} value={t}>{jobTitles[t].label}</option>)}
                   </select>
-                  <Button size="sm" variant="outline" disabled={legacyActionsPending} onClick={() => onLegacyReissue?.(i.id, i.mobile ?? '')}>New link</Button>
+                  {i.mobile && <Button size="sm" variant="outline" disabled={legacyActionsPending} onClick={() => onLegacyReissue?.(i.id, i.mobile!)}>New link</Button>}
                   <Button size="sm" variant="ghost" disabled={legacyActionsPending} onClick={() => onLegacyRevoke?.(i.id)}><Ban className="mr-1 size-3" />Revoke</Button>
                 </div>}
               </article>;

@@ -5,6 +5,7 @@ import { RouterProvider, createMemoryHistory, createRootRoute, createRouter } fr
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import type { ReactNode } from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+vi.mock('@/components/screen-lock', () => ({ ScreenLockButton: () => null }));
 import { todayAd } from '@/lib/format';
 
 const ID = { biz: '55555555-5555-4555-8555-555555555555', br: '33333333-3333-4333-8333-333333333333', per: '44444444-4444-4444-8444-444444444444', user: '66666666-6666-4666-8666-666666666666', v1: '77777777-7777-4777-8777-777777777777', p1: '88888888-8888-4888-8888-888888888888' };
@@ -41,8 +42,6 @@ vi.mock('@/lib/inventory-queries', () => ({ businessQuery: { queryKey: ['busines
 vi.mock('@/lib/vouchers.functions', () => ({ getVoucherWorkspace: async () => ({ userId: ID.user, role: 'owner', branches: [{ id: ID.br, name: 'Main' }], periods: state.periods, vouchers: [] }), postVoucher: vi.fn(), checkVoucher: vi.fn() }));
 vi.mock('@/components/trading-settings', () => ({ TradingSettings: () => null }));
 vi.mock('@/integrations/supabase/client', () => ({ isSupabaseConfigured: () => true, supabase: { auth: { getUser: async () => ({ data: { user: auth.user } }), signOut: vi.fn() } } }));
-vi.mock('@/integrations/lovable', () => ({ lovable: { auth: { signInWithOAuth: vi.fn() } } }));
-vi.mock('@lovable.dev/cloud-auth-js/styles.css', () => ({}));
 
 import { Dashboard } from '@/components/dashboard';
 import { AppNavigation } from '@/components/app-navigation';
@@ -98,6 +97,7 @@ describe('Dashboard', () => {
 describe('Navigation and sign-in', () => {
   it('has the sidebar sections, and ⌘K opens exactly one search box', async () => {
     mount(<AppNavigation pathname="/dashboard"><p>page body</p></AppNavigation>);
+    fireEvent.click(await screen.findByRole('button', { name: 'Open navigation menu' }));
     const nav = await screen.findByRole('navigation', { name: 'Main navigation' });
     for (const n of ['Dashboard', 'Stock & Inventory', 'CRM', 'Reporting', 'HR & People Management', 'Settings', 'Security']) expect(within(nav).getByText(n)).toBeInTheDocument();
     expect((await screen.findAllByText('Auraluxe', { selector: 'span' })).length).toBeGreaterThan(0);
@@ -108,8 +108,9 @@ describe('Navigation and sign-in', () => {
     auth.user = null;
     mount(<SignIn />);
     expect(await screen.findByRole('heading', { name: 'Sign in' })).toBeInTheDocument();
-    expect(screen.getByLabelText('Email, mobile, or Employee ID')).toBeInTheDocument();
-    expect(screen.getByLabelText('Password')).toBeInTheDocument();
+    expect(screen.getByLabelText('Email address')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Email me a sign-in link/ })).toBeInTheDocument();
+    expect(screen.queryByLabelText('Password')).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: /Continue with Google/ })).toBeInTheDocument();
   });
 });

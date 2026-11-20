@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { supabase } from '@/integrations/supabase/client';
 import { pageHead } from '@/lib/head';
+import { ScreenLockSettings } from '@/components/screen-lock';
 
 export const Route = createFileRoute('/_authenticated/profile')({
   head: () => pageHead('Account profile', 'Manage your Sutra account profile and login security.'),
@@ -215,6 +216,8 @@ function Profile() {
               {passwordMessage && <p role="status" className="text-sm text-muted-foreground">{passwordMessage}</p>}
             </form>
           </section>
+
+          <ScreenLockSettings />
 
           <section className="rounded-xl border bg-card p-5 sm:p-7">
             <div className="mb-4 flex items-center gap-3"><ShieldCheck className="size-5 text-primary" /><div><h2 className="font-semibold">Account information</h2><p className="text-sm text-muted-foreground">Read-only identity and account status.</p></div></div>

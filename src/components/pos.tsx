@@ -9,6 +9,7 @@ import { OfflinePos } from './offline-pos';
 import { supabase } from '@/integrations/supabase/client';
 import { useCan } from './permission-checklist';
 import { isBillingStaff } from '@/lib/workspace-navigation';
+import { SaleReturnRequests } from './sale-return-requests';
 
 // Standalone point of sale: its own full-screen page (no sidebar), selling through the same
 // stock-checked sale editor and server confirmation as the Sales screen.
@@ -17,6 +18,7 @@ export function Pos() {
   const navigate = useNavigate();
   const can = useCan(w.businessId ?? '');
   const billingStaff = isBillingStaff(can);
+  const manager = ['owner', 'admin', 'branch_manager'].includes(w.commerce.data?.role ?? '');
   async function signOut() { await supabase.auth.signOut(); await navigate({ to: '/auth', replace: true }); }
   const [saved, setSaved] = useState('');
   const name = w.commerce.data?.business.name ?? '';
@@ -29,7 +31,7 @@ export function Pos() {
       </div>
       <h1 className="max-w-[48vw] truncate text-center text-sm font-semibold sm:max-w-none sm:text-base">{name ? `${name} · ` : ''}Point of sale</h1>
       <div className="flex min-w-0 justify-end">
-        {billingStaff ? <Button variant="outline" size="sm" onClick={signOut}><LogOut className="size-4" /><span className="hidden sm:inline">Sign out</span></Button> : <Button asChild variant="outline" size="sm"><Link to="/sales">Sales</Link></Button>}
+        <div className="flex items-center gap-2">{(billingStaff || manager) && <Button variant="ghost" size="sm" onClick={() => document.getElementById('sale-return-requests')?.scrollIntoView({ behavior: 'smooth' })}>Returns</Button>}{billingStaff ? <Button variant="outline" size="sm" onClick={signOut}><LogOut className="size-4" /><span className="hidden sm:inline">Sign out</span></Button> : <Button asChild variant="outline" size="sm"><Link to="/sales">Sales</Link></Button>}</div>
       </div>
     </header>
     <main className="pos-main mx-auto w-full max-w-[1800px] px-3 py-4 sm:px-5 md:px-7 lg:px-8">
@@ -39,6 +41,7 @@ export function Pos() {
         : saved ? <section className="py-10"><h2 className="text-xl font-semibold">Sale saved</h2><p className="mt-3 break-all text-sm text-muted-foreground">{saved}</p><div className="mt-5 flex flex-wrap gap-2"><Button onClick={() => setSaved('')}>New sale</Button>{!billingStaff && <Button asChild variant="outline"><Link to="/sales">Sales & receipts</Link></Button>}</div></section>
         : <DocumentEditor key={w.businessId} w={w} kind="sale" standalone onSaved={setSaved} />}
       {ready && !error && w.businessId && <OfflinePos w={w} />}
+      {ready && !error && w.businessId && (billingStaff || manager) && <SaleReturnRequests w={w} manager={manager} cashier={billingStaff} />}
     </main>
   </div>;
 }

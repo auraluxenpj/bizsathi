@@ -1,7 +1,7 @@
 import { Link, useNavigate } from '@tanstack/react-router';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useServerFn } from '@tanstack/react-start';
-import { Banknote, Building2, ScanLine, Image as ImageIcon, NotebookPen, Shapes, Calculator, ChevronRight, LogOut, MessageSquareText, ShieldCheck, ShoppingCart, ArrowLeftRight, BarChart3, UserCog, UsersRound, Upload, Wallet, type LucideIcon } from 'lucide-react';
+import { Banknote, Building2, ScanLine, Image as ImageIcon, NotebookPen, Shapes, Calculator, ChevronRight, LogOut, MessageSquareText, ShieldCheck, ShoppingCart, ArrowLeftRight, BarChart3, UserCog, Upload, Wallet, type LucideIcon } from 'lucide-react';
 import { listBusinesses } from '@/lib/business.functions';
 import { FiscalYearClose } from '@/components/fiscal-year-close';
 import { AppearanceSettings } from '@/components/appearance-settings';
@@ -9,9 +9,8 @@ import { supabase } from '@/integrations/supabase/client';
 
 type Item = { to: string; label: string; icon: LucideIcon; badge?: string };
 const main: Item[] = [
-  { to: '/businesses', label: 'Business Profile', icon: Building2 },
+  { to: '/businesses', label: 'Branches & Staff', icon: Building2 },
   { to: '/credit-reminder', label: 'Credit Reminder', icon: MessageSquareText, badge: 'New' },
-  { to: '/businesses', label: 'Manage Staff', icon: UsersRound },
   { to: '/cash-bank', label: 'Cash & Bank Accounts', icon: Banknote },
   { to: '/categories', label: 'Item Categories', icon: Shapes },
   { to: '/reports', label: 'View Reports', icon: BarChart3 },

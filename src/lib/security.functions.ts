@@ -56,7 +56,7 @@ export const analyzeFinding = createServerFn({ method: 'POST' }).middleware([req
     }
     return result;
   }
-  const { error: saveError } = await context.supabase.from('security_review_events').insert({ business_id: data.businessId, kind: 'analysis', title: `Impact summary: ${finding.title}`.slice(0, 200), details: result.summary.impact.slice(0, 12000), related_id: finding.id, payload: { summary: result.summary, model: 'openai/gpt-6-astra', runId: result.runId ?? null } });
+  const { error: saveError } = await context.supabase.from('security_review_events').insert({ business_id: data.businessId, kind: 'analysis', title: `Impact summary: ${finding.title}`.slice(0, 200), details: result.summary.impact.slice(0, 12000), related_id: finding.id, payload: { summary: result.summary, model: result.model } });
   if (saveError) return { ok: false as const, error: 'The AI summary was generated but could not be saved. No automatic retry was made.' };
   return result;
 });

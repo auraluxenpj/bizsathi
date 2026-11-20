@@ -17,14 +17,16 @@ import { permissionForRoute } from '@/lib/permissions';
 import { isBillingStaff, shouldRedirectBillingStaff, workspaceGroups, workspaceItemActive } from '@/lib/workspace-navigation';
 import { validateReportSearch } from '@/lib/report-filters';
 import { dashboardKind } from '@/lib/dashboard-profile';
+import { ScreenLockButton } from '@/components/screen-lock';
+import './sutra-ui-refresh.css';
 
 export function AppNavigation({ children, pathname }: { children: ReactNode; pathname: string }) {
  useApplyAppearance(); const load = useServerFn(listBusinesses); const client = useQueryClient(); const navigate = useNavigate(); const search = useSearch({ strict: false });
  const [person, setPerson] = useState(''); const [avatar, setAvatar] = useState(''); const [compact, setCompact] = useState(false); const [mobileOpen, setMobileOpen] = useState(false);
  const businesses = useQuery({ queryKey: ['businesses'], queryFn: () => load() });
  const businessId = businesses.data?.[0]?.id ?? '';
- // listBusinesses verifies platform ownership server-side. The Master Owner must never be
- // filtered by employee/business role permissions or hidden route catalogue entries.
+ // Sutra exposes only the fixed AURALUXE workspace. Platform Owner bypass applies inside
+ // that workspace only; it never grants access to another business.
  const platformOwner = businesses.data?.some(b => b.isPlatformOwner) ?? false;
  const permissionsQuery = usePermissionDenials(businessId);
  const permissionsReady = permissionsQuery.isSuccess;
@@ -56,7 +58,7 @@ export function AppNavigation({ children, pathname }: { children: ReactNode; pat
  async function signOut() { await client.cancelQueries(); client.clear(); await supabase.auth.signOut(); await navigate({ to: '/auth', replace: true }); }
  if (businesses.isPending) return <main className="flex min-h-screen items-center justify-center px-6 text-sm text-muted-foreground" role="status">Checking AURALUXE workspace access…</main>;
  if (businesses.error) return <main className="mx-auto flex min-h-screen max-w-lg flex-col items-center justify-center px-6 text-center"><h1 className="brand text-2xl">Workspace access could not be verified</h1><p role="alert" className="mt-3 text-sm text-muted-foreground">{businesses.error.message}</p><Button className="mt-5" onClick={() => client.invalidateQueries({ queryKey: ['businesses'] })}>Try again</Button></main>;
- // Platform owners may retain legacy business records; the app opens the first active business returned by the name-ordered server query.
+ // The server returns only the provisioned AURALUXE workspace; branches remain selectable within it.
  if (!businesses.data?.length) return <main className="mx-auto flex min-h-screen max-w-lg flex-col items-center justify-center px-6 text-center"><Building2 className="size-10 text-primary" /><h1 className="brand mt-5 text-2xl">AURALUXE access required</h1><p className="mt-3 text-sm text-muted-foreground">Your account is not linked to the AURALUXE workspace yet. Ask an AURALUXE administrator for a staff invitation, then sign in again after accepting it.</p><Button variant="outline" className="mt-5" onClick={signOut}>Sign out</Button></main>;
  if (permissionsReady && billingStaff && shouldRedirectBillingStaff(pathname)) return <main className="flex min-h-screen items-center justify-center px-6 text-sm text-muted-foreground" role="status">Opening billing workspace…</main>;
  const extras = [
@@ -81,6 +83,7 @@ export function AppNavigation({ children, pathname }: { children: ReactNode; pat
     {!billingStaff && <>{can('purchases.create') && <Button asChild variant="outline" className="hidden h-10 shrink-0 sm:inline-flex"><Link to="/purchases" search={{ new: '1' }}><Plus className="size-4" />Purchase</Link></Button>}
     {can('sales.create') && <Button asChild className="hidden h-10 shrink-0 sm:inline-flex"><Link to="/sales" search={{ new: '1' }}><Plus className="size-4" />Sale</Link></Button>}</>}
     {workspaceMenu}
+    <ScreenLockButton />
     <DropdownMenu><DropdownMenuTrigger asChild><Button variant="ghost" className="h-10 min-h-10 shrink-0 gap-2 px-1 sm:px-2" aria-label="Account menu"><span className="flex size-8 items-center justify-center overflow-hidden rounded-full bg-primary/10 text-xs font-semibold uppercase text-primary">{avatar ? <img src={avatar} alt="" className="size-full object-cover" /> : person.slice(0, 1) || 'A'}</span><span className="hidden max-w-24 truncate text-xs font-medium md:block">{person}</span><ChevronDown className="hidden size-3 md:block" /></Button></DropdownMenuTrigger><DropdownMenuContent align="end">{!billingStaff && <DropdownMenuItem asChild><Link to="/profile">My account</Link></DropdownMenuItem>}<DropdownMenuItem onSelect={signOut}><LogOut className="size-4" />Sign out</DropdownMenuItem></DropdownMenuContent></DropdownMenu>
    </div>
   </header>

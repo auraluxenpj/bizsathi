@@ -1,6 +1,7 @@
 name: Isolated SQL security validation
 
 on:
+  # Keep this filter aligned with main so migration-branch PRs run this security suite.
   pull_request:
     branches: [main, migration/cloudflare-workers-v2]
     paths:
@@ -69,7 +70,8 @@ jobs:
             supabase/tests/sale_return_approval.sql \
             supabase/tests/hrm_security.sql \
             supabase/tests/multi_role_access_foundation.sql \
-            supabase/tests/branch_manager_role_delegation.sql; do
+            supabase/tests/branch_manager_role_delegation.sql \
+            supabase/tests/invitation_rpc_privileges.sql; do
             echo "::group::Running ${test_file}"
             docker exec -i "${DB_CONTAINER}" psql -U postgres -d postgres --no-psqlrc --set ON_ERROR_STOP=1 < "${test_file}"
             echo "::endgroup::"

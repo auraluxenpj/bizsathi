@@ -5,24 +5,36 @@ import { accessRoleAssignmentInput, accessRoleCreateInput, accessRoleUpdateInput
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const anyDb = (client: unknown) => client as SupabaseClient<any, 'public', any>;
+const AURALUXE_BUSINESS_ID = 'c0f0ed15-97e4-4859-ac8f-a2d4e81f5b01';
 const newToken = async () => { const token = Array.from(crypto.getRandomValues(new Uint8Array(32)), b => b.toString(16).padStart(2, '0')).join(''); const hash = Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(token))), b => b.toString(16).padStart(2, '0')).join(''); return { token, hash }; };
 
 export const listBusinesses = createServerFn({ method: 'GET' }).middleware([requireSupabaseAuth]).handler(async ({ context }) => {
   const { data: isPlatformOwner, error: ownerError } = await anyDb(context.supabase).rpc('is_platform_owner');
   if (ownerError) throw new Error('Business access could not be loaded.');
-  if (isPlatformOwner) {
-    const { data, error } = await context.supabase.from('businesses').select('id,name,archived_at').is('archived_at', null).order('name');
-    if (error) { console.error('Platform business query failed', error.code, error.message); throw new Error('Business access could not be loaded.'); }
-    return (data ?? []).map(b => ({ id: b.id, name: b.name, role: 'owner', jobTitle: null, isPlatformOwner: true, effectiveRank: 100 }));
+  const { data: business, error: businessError } = await context.supabase.from('businesses')
+    .select('id,name,archived_at').eq('id', AURALUXE_BUSINESS_ID).is('archived_at', null).maybeSingle();
+  if (businessError) {
+    console.error('AURALUXE workspace query failed', businessError.code, businessError.message);
+    throw new Error('AURALUXE workspace access could not be loaded.');
   }
-  const { data, error } = await context.supabase.from('business_memberships').select('business_id,role_code,job_title,status,businesses!business_memberships_business_id_fkey(id,name,archived_at)').eq('user_id', context.userId).eq('status', 'active');
-  if (error) { console.error('Business access query failed', error.code, error.message); throw new Error('Business access could not be loaded.'); }
-  const memberships = (data ?? []).filter(m => m.businesses && !m.businesses.archived_at);
-  return await Promise.all(memberships.map(async m => {
-    const { data: effectiveRank, error: rankError } = await anyDb(context.supabase).rpc('business_role_rank', { _business_id: m.business_id, _user_id: context.userId });
-    if (rankError) throw new Error('Business authority could not be verified.');
-    return { id: m.business_id, name: m.businesses?.name ?? '', role: m.role_code, jobTitle: m.job_title ?? null, isPlatformOwner: false, effectiveRank: Number(effectiveRank ?? 0) };
-  }));
+  if (!business) return [];
+  if (isPlatformOwner) {
+    return [{ id: business.id, name: business.name, role: 'owner', jobTitle: null, isPlatformOwner: true, effectiveRank: 100 }];
+  }
+  const { data: membership, error: membershipError } = await context.supabase.from('business_memberships')
+    .select('business_id,role_code,job_title,status')
+    .eq('business_id', AURALUXE_BUSINESS_ID).eq('user_id', context.userId).eq('status', 'active').maybeSingle();
+  if (membershipError) throw new Error('AURALUXE workspace membership could not be verified.');
+  if (!membership) return [];
+  const { data: effectiveRank, error: rankError } = await anyDb(context.supabase).rpc('business_role_rank', {
+    _business_id: AURALUXE_BUSINESS_ID, _user_id: context.userId,
+  });
+  if (rankError) throw new Error('Business authority could not be verified.');
+  return [{
+    id: business.id, name: business.name, role: membership.role_code,
+    jobTitle: membership.job_title ?? null, isPlatformOwner: false,
+    effectiveRank: Number(effectiveRank ?? 0),
+  }];
 });
 
 export const registerBusiness = createServerFn({ method: 'POST' }).middleware([requireSupabaseAuth]).inputValidator(registrationInput).handler(async () => {
@@ -30,6 +42,7 @@ export const registerBusiness = createServerFn({ method: 'POST' }).middleware([r
 });
 
 export const getBusinessAccess = createServerFn({ method: 'GET' }).middleware([requireSupabaseAuth]).inputValidator(tenantInput).handler(async ({ data, context }) => {
+  if (data.businessId !== AURALUXE_BUSINESS_ID) throw new Error('Sutra is available only for the AURALUXE workspace.');
   const [{ data: member, error: memberError }, { data: isPlatformOwner, error: ownerError }] = await Promise.all([
     context.supabase.rpc('is_business_member', { _business_id: data.businessId }),
     anyDb(context.supabase).rpc('is_platform_owner'),
@@ -78,7 +91,7 @@ export const getBusinessAccess = createServerFn({ method: 'GET' }).middleware([r
   if (!manager) return { manager: false, isBusinessAdmin: false, isBranchManager: false, userId: context.userId, branches: branches ?? [], assignedBranchId, members: [], invitations: [], grants: [], memberRoles: [] };
   const [members, invitations, grants, memberRoles] = await Promise.all([
     context.supabase.from('business_memberships').select('user_id,role_code,job_title,status,profiles!business_memberships_user_id_fkey(full_name,phone)').eq('business_id', data.businessId),
-    context.supabase.from('business_invitations').select('id,email,mobile,invitee_name,job_title,role_code,expires_at,accepted_at,revoked_at,created_at').eq('business_id', data.businessId).order('created_at', { ascending: false }),
+    context.supabase.rpc('list_business_invitations', { _business: data.businessId }),
     context.supabase.from('branch_memberships').select('user_id,branch_id').eq('business_id', data.businessId),
     anyDb(context.supabase).rpc('get_business_member_access_roles', { _business: data.businessId }),
   ]);
@@ -90,7 +103,7 @@ export const getBusinessAccess = createServerFn({ method: 'GET' }).middleware([r
     console.error('Business staff access query failed', failed[0], error.code, error.message);
     throw new Error(`Staff access could not be loaded (${failed[0]}).`);
   }
-  return { manager: true, isBusinessAdmin: true, isBranchManager: false, userId: context.userId, branches: branches ?? [], assignedBranchId, members: members.data ?? [], invitations: invitations.data ?? [], grants: grants.data ?? [], memberRoles: memberRoles.data ?? [] };
+  return { manager: true, isBusinessAdmin: true, isBranchManager: false, userId: context.userId, branches: branches ?? [], assignedBranchId, members: members.data ?? [], invitations: (invitations.data ?? []).map((invitation) => ({ ...invitation, mobile: null, invitee_name: null })), grants: grants.data ?? [], memberRoles: memberRoles.data ?? [] };
 });
 
 export const createInvitation = createServerFn({ method: 'POST' }).middleware([requireSupabaseAuth]).inputValidator(inviteInput).handler(async ({ data, context }) => {

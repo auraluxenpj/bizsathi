@@ -36,11 +36,11 @@ export const workspaceGroups: WorkspaceGroup[] = [
  ] },
  { name: 'HR & People Management', icon: UserCog, items: [
   { name: 'HR & People Management', to: '/hrm', icon: UserCog, note: 'Employee records, attendance, leave, shifts and payroll' },
-  { name: 'Employees & Branch Access', to: '/businesses', search: { panel: 'users' }, icon: Users, note: 'Manage employees, positions and branch assignments' },
+  { name: 'Employees & Branch Access', to: '/businesses', search: { panel: 'users' }, icon: Users, note: 'Manage AURALUXE branches, employees and branch assignments' },
   { name: 'Roles & Permissions', to: '/businesses', search: { panel: 'roles' }, icon: ShieldCheck, note: 'Manage custom access roles, employee role assignments and position defaults' },
  ] },
  { name: 'Settings', icon: Settings, items: [
-  { name: 'Business & App Settings', to: '/sales', search: { panel: 'settings' }, icon: Settings },
+  { name: 'Auraluxe & App Settings', to: '/sales', search: { panel: 'settings' }, icon: Settings },
  ] },
  { name: 'Security', icon: LockKeyhole, items: [
   { name: 'Security Findings', to: '/security', icon: ShieldAlert },

@@ -5,7 +5,8 @@ DO $tests$
 DECLARE
   owner_id uuid := gen_random_uuid();
   staff_id uuid := gen_random_uuid();
-  v_business_id uuid;
+  -- Sutra authorization is deliberately restricted to the canonical Auraluxe workspace.
+  v_business_id uuid := 'c0f0ed15-97e4-4859-ac8f-a2d4e81f5b01';
   branch_a uuid;
   branch_b uuid;
   custom_role_id uuid;
@@ -23,9 +24,8 @@ BEGIN
     (owner_id,'multi-role-owner@example.invalid',now()),
     (staff_id,'multi-role-staff@example.invalid',now());
 
-  INSERT INTO public.businesses(name,created_by)
-  VALUES ('Multi-role access foundation test',owner_id)
-  RETURNING id INTO v_business_id;
+  INSERT INTO public.businesses(id,name,created_by)
+  VALUES (v_business_id,'Multi-role access foundation test',owner_id);
 
   INSERT INTO public.branches(business_id,code,name)
   VALUES (v_business_id,'A','Assigned branch') RETURNING id INTO branch_a;
@@ -48,16 +48,16 @@ BEGIN
   WHERE a.business_id=v_business_id AND a.user_id=staff_id AND a.is_default;
 
   ASSERT owner_default='legacy_owner','Owner gets the compatibility permission bundle';
-  ASSERT staff_default='legacy_staff','Base Staff access grants the restricted POS permission bundle independently of HR position';
+  ASSERT staff_default='position_sales_person','Sales Person position selects the restricted POS permission bundle';
   ASSERT EXISTS (
     SELECT 1 FROM public.business_access_role_permissions rp
     JOIN public.business_access_roles r ON r.id=rp.role_id AND r.business_id=rp.business_id
-    WHERE r.business_id=v_business_id AND r.code='legacy_staff' AND rp.permission='sales.create'
+    WHERE r.business_id=v_business_id AND r.code='position_sales_person' AND rp.permission='sales.create'
   ),'Sales Person default grants sale creation';
   ASSERT NOT EXISTS (
     SELECT 1 FROM public.business_access_role_permissions rp
     JOIN public.business_access_roles r ON r.id=rp.role_id AND r.business_id=rp.business_id
-    WHERE r.business_id=v_business_id AND r.code='legacy_staff' AND rp.permission='settings.delete_business'
+    WHERE r.business_id=v_business_id AND r.code='position_sales_person' AND rp.permission='settings.delete_business'
   ),'Sales Person default does not grant destructive business settings';
   SET LOCAL ROLE authenticated;
   PERFORM set_config('request.jwt.claims',json_build_object('sub',owner_id,'role','authenticated')::text,true);
@@ -67,7 +67,7 @@ BEGIN
   FROM public.business_member_access_roles a
   JOIN public.business_access_roles r ON r.business_id=a.business_id AND r.id=a.role_id
   WHERE a.business_id=v_business_id AND a.user_id=staff_id AND a.is_default;
-  ASSERT staff_default='legacy_viewer','Changing base access updates the default permission bundle';
+  ASSERT staff_default='position_sales_person','Changing authority rank preserves the selected position access bundle';
   SET LOCAL ROLE authenticated;
   PERFORM set_config('request.jwt.claims',json_build_object('sub',owner_id,'role','authenticated')::text,true);
   PERFORM public.update_business_member(v_business_id,staff_id,'staff','active');
@@ -76,7 +76,7 @@ BEGIN
   FROM public.business_member_access_roles a
   JOIN public.business_access_roles r ON r.business_id=a.business_id AND r.id=a.role_id
   WHERE a.business_id=v_business_id AND a.user_id=staff_id AND a.is_default;
-  ASSERT staff_default='legacy_staff','Restoring Staff restores the POS-only permission bundle';
+  ASSERT staff_default='position_sales_person','Restoring Staff preserves the selected Sales Person position bundle';
 
   ASSERT (SELECT count(*) FROM public.business_permission_catalog)>=77,
     'Canonical permission catalogue includes application permissions';
@@ -164,7 +164,7 @@ BEGIN
     SELECT r.code FROM public.business_member_access_roles a
     JOIN public.business_access_roles r ON r.id=a.role_id AND r.business_id=a.business_id
     WHERE a.business_id=v_business_id AND a.user_id=staff_id AND a.is_default
-  )='legacy_staff','Changing an HR designation does not silently change the base access role';
+  )='position_stock_manager','Changing an HR designation updates the position-driven default access bundle';
   ASSERT public.business_role_rank(v_business_id,staff_id)=40,'Removing added roles restores the original security rank';
   ASSERT (SELECT count(*) FROM public.branch_memberships WHERE business_id=v_business_id)=1,
     'Role changes preserve the employee branch assignment';

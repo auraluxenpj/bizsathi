@@ -79,7 +79,7 @@ export function BusinessAccessRolesPanel({ businessId, members, isOwner, branche
   const editingRole = roles.find((r) => r.id === editingRoleId);
   const selectedMember = members.find((member) => member.user_id === selectedUserId);
   const availableRoles = useMemo(() => roles.filter((r) =>
-    r.isActive && r.authorityRank < (isOwner ? 100 : 80)
+    r.isActive && !r.code.startsWith('position_') && !r.code.startsWith('legacy_') && r.authorityRank < (isOwner ? 100 : 80)
     && (!isBranchManager || !r.branchId || r.branchId === selectedMember?.branch_id)
     && !assignments.some((a) => a.userId === selectedUserId && a.roleId === r.id)
   ), [roles, assignments, selectedUserId, isOwner, isBranchManager, selectedMember?.branch_id]);
@@ -162,7 +162,7 @@ export function BusinessAccessRolesPanel({ businessId, members, isOwner, branche
     <section className="space-y-6 border-b py-7" aria-labelledby="business-access-roles-heading">
       <div>
         <div className="mb-2 flex items-center gap-2"><ShieldCheck className="size-5 text-primary" /><h3 id="business-access-roles-heading" className="brand text-xl">{isBranchManager ? 'Branch access roles' : 'Business access roles'}</h3></div>
-        <p className="text-sm text-muted-foreground">{isBranchManager ? 'Create and edit custom roles for your assigned branches. Roles are branch-scoped, and you can include only permissions you already hold. Cross-branch employees are excluded.' : 'Create reusable business-wide permission bundles and assign more than one to an employee. HR position remains separate; custom roles cannot elevate administrator authority. Explicit employee denials still win.'}</p>
+        <p className="text-sm text-muted-foreground">{isBranchManager ? 'Create and edit custom roles for your assigned branches. Roles are branch-scoped, and you can include only permissions you already hold. Cross-branch employees are excluded.' : 'Employees receive a default access bundle from their position. Create additional business-wide permission bundles for cross-functional duties and assign more than one when needed. Custom roles cannot elevate administrator authority. Explicit employee denials still win.'}</p>
       </div>
 
       {(rolesQuery.isPending || assignmentsQuery.isPending) && <p role="status" className="text-sm text-muted-foreground">Loading access roles…</p>}
@@ -251,8 +251,8 @@ export function BusinessAccessRolesPanel({ businessId, members, isOwner, branche
                   <div className="flex flex-wrap gap-2">
                     {memberRoles.map((assignment) => (
                       <span key={assignment.roleId} className="inline-flex items-center gap-1 rounded-full border px-3 py-1 text-xs">
-                        {assignment.roleName}{assignment.isDefault ? ' · default' : ''}
-                        {!assignment.isDefault && <button type="button" aria-label={`Remove ${assignment.roleName} from ${member.profiles?.full_name || 'employee'}`} className="ml-1 text-destructive" disabled={unassignRole.isPending} onClick={() => unassignRole.mutate({ userId: member.user_id, roleId: assignment.roleId })}><Trash2 className="size-3" /></button>}
+                        {assignment.roleName}{assignment.roleCode.startsWith('position_') ? ' · position' : assignment.isDefault ? ' · default' : ''}
+                        {!assignment.isDefault && !assignment.roleCode.startsWith('position_') && <button type="button" aria-label={`Remove ${assignment.roleName} from ${member.profiles?.full_name || 'employee'}`} className="ml-1 text-destructive" disabled={unassignRole.isPending} onClick={() => unassignRole.mutate({ userId: member.user_id, roleId: assignment.roleId })}><Trash2 className="size-3" /></button>}
                       </span>
                     ))}
                     {!memberRoles.length && <span className="text-xs text-muted-foreground">No role assignment found.</span>}

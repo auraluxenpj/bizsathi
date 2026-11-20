@@ -7,7 +7,6 @@ import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { businessQuery } from '@/lib/inventory-queries';
 import { HrmDraftEmployeeProfiles } from '@/components/hrm-draft-employee-profiles';
-import { authorizedSelection } from '@/lib/dashboard-data';
 import {
   getHrmWorkspace, getHrmReports, createHrmEmployee, updateHrmEmployee, saveHrmAttendance, saveHrmAttendancePolicy, clockHrmAttendance, createHrmLeaveType, createHrmLeaveRequest,
   reviewHrmLeaveRequest, saveHrmLeaveBalanceEntry, createHrmShift, assignHrmShift, saveHrmSalaryStructure,
@@ -45,8 +44,7 @@ function useHrmMutation(fn: (payload: any) => Promise<any>, onSuccess: () => voi
 
 export function HrmWorkspace() {
   const { data: businesses } = useSuspenseQuery(businessQuery);
-  const [selectedBusiness, setSelectedBusiness] = useState('');
-  const businessId = authorizedSelection(businesses, selectedBusiness);
+  const businessId = businesses[0]?.id ?? '';
   const client = useQueryClient();
   const load = useServerFn(getHrmWorkspace);
   const data = useQuery({ queryKey: ['hrm', businessId], queryFn: () => load({ data: { businessId } }), enabled: Boolean(businessId) });
@@ -118,8 +116,7 @@ export function HrmWorkspace() {
   if (!businessId) return <main className="mx-auto max-w-6xl px-5 py-8"><h1 className="brand text-2xl">HR & People Management</h1><Empty>Link the AURALUXE business workspace to use HRM.</Empty></main>;
   return <main className="mx-auto max-w-7xl px-4 py-6 md:px-8">
     <header className="flex flex-wrap items-end justify-between gap-4 border-b pb-5">
-      <div><p className="text-xs font-semibold tracking-widest text-primary">BIZSATHI · PEOPLE OPERATIONS</p><h1 className="brand mt-2 text-3xl">HR & People Management</h1><p className="mt-1 text-sm text-muted-foreground">Employees, attendance, leave, shifts and payroll in one workspace.</p></div>
-      <Field label="Business"><select aria-label="HRM business" className={inputClass + ' min-w-56'} value={businessId} onChange={e => setSelectedBusiness(e.target.value)}>{businesses.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}</select></Field>
+      <div><p className="text-xs font-semibold tracking-widest text-primary">SUTRA · PEOPLE OPERATIONS</p><h1 className="brand mt-2 text-3xl">HR & People Management</h1><p className="mt-1 text-sm text-muted-foreground">Employees, attendance, leave, shifts and payroll in one workspace.</p></div>
     </header>
     {message && <p role="status" className="mt-4 rounded-lg border p-3 text-sm">{message}</p>}
     {error && <p role="alert" className="mt-4 rounded-lg border border-destructive/40 p-3 text-sm text-destructive">{error}</p>}
