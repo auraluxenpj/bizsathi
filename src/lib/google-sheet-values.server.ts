@@ -51,13 +51,23 @@ export async function writeStatusCells(
   sheetName: string,
   updates: { row: number; bizsathi?: string; website?: string }[],
   credentials: GoogleSheetsCredentials,
+  columns: { bizsathi: number; website: number },
   request: typeof fetch = fetch,
 ): Promise<boolean> {
   if (!credentials.serviceAccountJson || !updates.length) return false;
+  const columnName = (index: number): string => {
+    if (!Number.isInteger(index) || index < 0) return '';
+    let n = index + 1; let name = '';
+    while (n > 0) { const remainder = (n - 1) % 26; name = String.fromCharCode(65 + remainder) + name; n = Math.floor((n - 1) / 26); }
+    return name;
+  };
+  const bizsathiColumn = columnName(columns.bizsathi);
+  const websiteColumn = columnName(columns.website);
   const id = extractSpreadsheetId(spreadsheetIdOrUrl);
   const data = updates.flatMap(update => [
-    ...(update.bizsathi ? [{ range: `${quoted(sheetName)}!I${update.row}`, values: [[update.bizsathi]] }] : []),
-    ...(update.website ? [{ range: `${quoted(sheetName)}!J${update.row}`, values: [[update.website]] }] : []),
+    ...(update.bizsathi && bizsathiColumn ? [{ range: `${quoted(sheetName)}!${bizsathiColumn}${update.row}`, values: [[update.bizsathi]] }] : []),
+    ...(update.website && websiteColumn ? [{ range: `${quoted(sheetName)}!${websiteColumn}${update.row}`, values: [[update.website]] }] : []),
   ]);
+  if (!data.length) return false;
   return writeGoogleSheetRanges(id, data, credentials, request);
 }

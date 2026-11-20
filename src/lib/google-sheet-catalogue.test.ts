@@ -76,7 +76,7 @@ describe('Google Sheets catalogue import', () => {
     const request = vi.fn<typeof fetch>()
       .mockResolvedValueOnce(Response.json({ access_token: 'test-access-token', expires_in: 3600 }))
       .mockResolvedValueOnce(new Response(null, { status: 200 }));
-    const ok = await writeStatusCells('sheet_123', 'Stock In', [{ row: 2, bizsathi: '2026-11-19 08:00 UTC', website: '2026-11-19 08:00 UTC' }], credentials, request);
+    const ok = await writeStatusCells('sheet_123', 'Stock In', [{ row: 2, bizsathi: '2026-11-19 08:00 UTC', website: '2026-11-19 08:00 UTC' }], credentials, { bizsathi: 8, website: 9 }, request);
     expect(ok).toBe(true);
     expect(String(request.mock.calls[1]?.[0])).toContain('sheets.googleapis.com/v4/spreadsheets/sheet_123/values:batchUpdate');
     const body = JSON.parse(String(request.mock.calls[1]?.[1]?.body));
@@ -85,6 +85,28 @@ describe('Google Sheets catalogue import', () => {
       { range: "'Stock In'!I2", values: [['2026-11-19 08:00 UTC']] },
       { range: "'Stock In'!J2", values: [['2026-11-19 08:00 UTC']] },
     ]);
+  });
+
+  it('writes status cells to their actual reordered header columns', async () => {
+    const credentials = { serviceAccountJson: await serviceAccountJson(`reordered-${crypto.randomUUID()}@example.iam.gserviceaccount.com`) };
+    const request = vi.fn<typeof fetch>()
+      .mockResolvedValueOnce(Response.json({ access_token: 'test-access-token', expires_in: 3600 }))
+      .mockResolvedValueOnce(new Response(null, { status: 200 }));
+    const ok = await writeStatusCells('sheet_123', 'Stock In', [{ row: 7, bizsathi: 'done', website: 'synced' }], credentials, { bizsathi: 2, website: 0 }, request);
+    expect(ok).toBe(true);
+    const body = JSON.parse(String(request.mock.calls[1]?.[1]?.body));
+    expect(body.data).toEqual([
+      { range: "'Stock In'!C7", values: [['done']] },
+      { range: "'Stock In'!A7", values: [['synced']] },
+    ]);
+  });
+
+  it('does not write status cells when the corresponding headers are absent', async () => {
+    const credentials = { serviceAccountJson: await serviceAccountJson(`missing-columns-${crypto.randomUUID()}@example.iam.gserviceaccount.com`) };
+    const request = vi.fn<typeof fetch>();
+    const ok = await writeStatusCells('sheet_123', 'Stock In', [{ row: 2, bizsathi: 'done', website: 'synced' }], credentials, { bizsathi: -1, website: -1 }, request);
+    expect(ok).toBe(false);
+    expect(request).not.toHaveBeenCalled();
   });
 
   it('reports private workbook HTML clearly', async () => {

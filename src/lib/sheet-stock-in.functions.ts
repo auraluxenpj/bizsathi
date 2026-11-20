@@ -30,6 +30,11 @@ export const syncSheetStock = createServerFn({ method: 'POST' }).middleware([req
   try { values = await readSheetValues(data.spreadsheetIdOrUrl, STOCK_IN_SHEET, credentials); }
   catch (error) { console.error('Stock In sheet read failed', error); const kind = error instanceof Error ? error.name : ''; throw new Error(kind === 'TimeoutError' ? 'Google Sheets did not answer within 20 seconds. Wait a minute and press the button again; nothing was changed.' : kind === 'TypeError' ? 'Could not connect to Google Sheets just now. Press the button again in a minute; nothing was changed.' : error instanceof Error ? error.message : 'Google Sheets could not be read. Nothing was changed.'); }
   const parsed = parseStockInValues(values);
+  const sheetHeaders = values[0]?.map(value => String(value).trim().toLowerCase()) ?? [];
+  const statusColumns = {
+    bizsathi: sheetHeaders.indexOf('applied in bizsathi'),
+    website: sheetHeaders.indexOf('applied on website'),
+  };
 
   const variantsBySku = new Map<string, string[]>();
   for (let offset = 0; ; offset += 1000) {
@@ -67,6 +72,6 @@ export const syncSheetStock = createServerFn({ method: 'POST' }).middleware([req
     if (website && !website.error && !r.appliedOnWebsite && !blockedSkus.has(r.sku.toLowerCase())) u.website = stamp;
     if (u.bizsathi || u.website) updates.push(u);
   }
-  const sheetStatusUpdated = await writeStatusCells(data.spreadsheetIdOrUrl, STOCK_IN_SHEET, updates, credentials);
+  const sheetStatusUpdated = await writeStatusCells(data.spreadsheetIdOrUrl, STOCK_IN_SHEET, updates, credentials, statusColumns);
   return { stockIn, website, sheetStatusUpdated, sheetIssues: parsed.issues };
 });
