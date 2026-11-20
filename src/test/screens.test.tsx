@@ -338,7 +338,7 @@ describe('Point of sale', () => {
     mount(<Pos />);
     fireEvent.change(await screen.findByLabelText('Customer name'), { target: { value: 'Walk-in Customer' } });
     fireEvent.change(await screen.findByLabelText('Customer mobile'), { target: { value: '9812345678' } });
-    fireEvent.change(await screen.findByLabelText('Product search or barcode'), { target: { value: 'saree' } });
+    fireEvent.change(await screen.findByLabelText('Product search or barcode'), { target: { value: 'a' } });
     fireEvent.click(await screen.findByRole('checkbox', { name: 'Select all visible in-stock variants' }));
     expect(screen.getByText('2 selected')).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Add selected (2)' }));
