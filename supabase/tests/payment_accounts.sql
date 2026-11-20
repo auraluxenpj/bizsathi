@@ -18,8 +18,8 @@ BEGIN
  PERFORM set_config('request.jwt.claims',json_build_object('sub',owner_id,'role','authenticated')::text,true);
  INSERT INTO public.branches(business_id,code,name) VALUES(b,'A','Main') RETURNING id INTO br;
  INSERT INTO public.financial_periods(business_id,name,start_date,end_date) VALUES(b,'Open','2026-01-01','2026-12-31') RETURNING id INTO per;
+ INSERT INTO public.branch_memberships(business_id,branch_id,user_id,granted_by) VALUES(b,br,acc,owner_id);
  SET LOCAL ROLE authenticated;
- PERFORM public.set_branch_access(b,br,acc,true);
  PERFORM public.save_catalogue_variant(b,'[{"product_name":"Saree","sku":"AL-1","selling_price":1500}]'::jsonb);
  SELECT id INTO v FROM public.product_variants WHERE business_id=b;
  PERFORM public.post_stock_operation(b,gen_random_uuid(),v,br,NULL,'opening',50,'OPEN','Opening');
