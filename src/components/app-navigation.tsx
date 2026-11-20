@@ -18,6 +18,7 @@ import { isBillingStaff, shouldRedirectBillingStaff, workspaceGroups, workspaceI
 import { validateReportSearch } from '@/lib/report-filters';
 import { dashboardKind } from '@/lib/dashboard-profile';
 import { ScreenLockButton } from '@/components/screen-lock';
+import './sutra-ui-refresh.css';
 
 export function AppNavigation({ children, pathname }: { children: ReactNode; pathname: string }) {
  useApplyAppearance(); const load = useServerFn(listBusinesses); const client = useQueryClient(); const navigate = useNavigate(); const search = useSearch({ strict: false });
