@@ -75,7 +75,7 @@
   .pos-workspace .pos-billing-checkout .pos-billing-layout .pos-product-card > div:last-child { gap: .55rem; padding: .7rem; }
   .pos-workspace .pos-billing-checkout .pos-billing-layout .pos-product-card h3 { min-height: 2.25rem; font-size: .8rem; }
   .pos-workspace .pos-billing-checkout .pos-billing-layout .pos-category-filters button { min-height: 2.6rem; padding-inline: .7rem; font-size: .75rem; }
-  .pos-workspace .pos-billing-checkout .pos-billing-layout .pos-cart-with-catalogue { grid-column: 2; grid-row: 2 / span 8; position: static; max-height: none; overflow: visible; padding: 1rem; border: 1px solid hsl(var(--border)); border-radius: 1.1rem; background: hsl(var(--card)); box-shadow: 0 14px 35px -32px hsl(var(--foreground) / .5); }
+  .pos-workspace .pos-billing-checkout .pos-billing-layout .pos-cart-with-catalogue { grid-column: 2; grid-row: 2 / span 8; position: sticky; top: 6rem; max-height: calc(100dvh - 7rem); overflow-x: hidden; overflow-y: auto; overscroll-behavior: contain; padding: 1rem; border: 1px solid hsl(var(--border)); border-radius: 1.1rem; background: hsl(var(--card)); box-shadow: 0 14px 35px -32px hsl(var(--foreground) / .5); }
 }
 @container (min-width: 440px) {
   .pos-cart-line-fields { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: .6rem; }
