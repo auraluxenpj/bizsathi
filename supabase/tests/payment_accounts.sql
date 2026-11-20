@@ -9,9 +9,13 @@ DECLARE
   req jsonb;
 BEGIN
  INSERT INTO auth.users(id,email,email_confirmed_at,raw_user_meta_data,created_at,updated_at) SELECT u,'test+'||u||'@example.invalid',now(),'{}',now(),now() FROM unnest(ARRAY[owner_id,acc,staff,viewer,other_id]) u;
+ b:=gen_random_uuid(); ob:=gen_random_uuid();
+ INSERT INTO public.businesses(id,name,created_by) VALUES(b,'Accounts A',owner_id),(ob,'Accounts B',other_id);
+ INSERT INTO public.business_memberships(business_id,user_id,role_code,status) VALUES
+  (b,owner_id,'owner','active'),(b,acc,'accountant','active'),(b,staff,'staff','active'),(b,viewer,'viewer','active'),
+  (ob,other_id,'owner','active');
  SET LOCAL ROLE authenticated;
  PERFORM set_config('request.jwt.claims',json_build_object('sub',owner_id,'role','authenticated')::text,true);
- b:=public.create_business('Accounts A'); PERFORM public.add_business_member(b,acc,'accountant'); PERFORM public.add_business_member(b,staff,'staff'); PERFORM public.add_business_member(b,viewer,'viewer');
  INSERT INTO public.branches(business_id,code,name) VALUES(b,'A','Main') RETURNING id INTO br;
  INSERT INTO public.financial_periods(business_id,name,start_date,end_date) VALUES(b,'Open','2026-01-01','2026-12-31') RETURNING id INTO per;
  PERFORM public.set_branch_access(b,br,acc,true);
@@ -20,8 +24,7 @@ BEGIN
  PERFORM public.post_stock_operation(b,gen_random_uuid(),v,br,NULL,'opening',50,'OPEN','Opening');
  INSERT INTO public.parties(business_id,kind,name) VALUES(b,'supplier','Sup') RETURNING id INTO sup;
  INSERT INTO public.parties(business_id,kind,name) VALUES(b,'customer','Cust') RETURNING id INTO cust;
- PERFORM set_config('request.jwt.claims',json_build_object('sub',other_id,'role','authenticated')::text,true);
- ob:=public.create_business('Accounts B');
+ PERFORM set_config('request.jwt.claims',json_build_object('sub',owner_id,'role','authenticated')::text,true);
 
  -- Before any account exists, bank money from a normal sale is "unassigned" and the books are unchanged.
  PERFORM set_config('request.jwt.claims',json_build_object('sub',owner_id,'role','authenticated')::text,true);
