@@ -312,7 +312,7 @@ describe('Point of sale', () => {
     fireEvent.change(await screen.findByLabelText('Product search or barcode'), { target: { value: 'AL-001' } });
     fireEvent.keyDown(screen.getByLabelText('Product search or barcode'), { key: 'Enter' });
     expect(screen.getByRole('button', { name: /2 Products/ })).toHaveAttribute('aria-current', 'step');
-    fireEvent.click(screen.getByRole('button', { name: /3 Checkout/ }));
+    fireEvent.click(screen.getByRole('button', { name: 'Continue to checkout' }));
     fireEvent.click(screen.getByRole('button', { name: /^Cash$/ })); payFullTestBalance();
     vi.spyOn(window, 'confirm').mockReturnValue(true);
     fireEvent.click(screen.getByRole('button', { name: /Confirm sale/ }));
