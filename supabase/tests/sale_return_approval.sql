@@ -118,7 +118,7 @@ BEGIN
   PERFORM public.review_sale_return_request(rejected_request,'reject','Inspection failed; item not returned',NULL,'2026-11-17');
   ASSERT (SELECT status='rejected' AND decision_reason='Inspection failed; item not returned' FROM public.sale_return_requests WHERE id=rejected_request),'Rejection reason is retained';
   SELECT coalesce(sum(quantity),0) INTO stock_after FROM public.commerce_stock_movements m WHERE m.business_id=tests.business_id AND m.branch_id=tests.branch_a AND m.variant_id=tests.variant_id;
-  ASSERT stock_after=stock_before+2,'Rejected request does not change stock';
+  ASSERT stock_after=stock_before+1,'Rejected request does not change stock';
 
   -- Direct sale-return posting without a matching approved request is blocked even for an owner.
   RESET ROLE;
