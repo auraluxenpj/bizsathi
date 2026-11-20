@@ -177,7 +177,11 @@ describe('Why a sale cannot be confirmed', () => {
     expect(why()).toHaveTextContent(/must be paid in full/);
     expect(screen.getByRole('button', { name: /Confirm sale/ })).toBeDisabled();
     fireEvent.change(screen.getByLabelText('Document contact'), { target: { value: ID.p1 } });
+    expect(why()).toHaveTextContent(/Confirm Customer Credit/);
+    expect(screen.getByRole('button', { name: /Confirm sale/ })).toBeDisabled();
+    fireEvent.click(screen.getByRole('button', { name: 'Customer Credit' }));
     await waitFor(() => expect(screen.queryByLabelText('Why this cannot be confirmed yet')).not.toBeInTheDocument());
+    expect(screen.getByRole('button', { name: /Customer Credit Approved/ })).toBeEnabled();
     expect(screen.getByRole('button', { name: /Confirm sale/ })).toBeEnabled();
   });
   it('cash without an open counter explains it and opens the counter in one tap', async () => {
@@ -208,14 +212,28 @@ describe('Choosing which account a payment goes to', () => {
     fireEvent.click(screen.getByRole('button', { name: /^Bank Transfer$/ }));
     const pick = await screen.findByLabelText('Payment account 1');
     expect(within(pick).getAllByRole('option').map(o => o.textContent)).toEqual(['Not assigned', 'Himalayan Bank', 'NIC Asia']);
-    fireEvent.change(pick, { target: { value: ACC.bank2 } }); payFullTestBalance();
+    fireEvent.change(pick, { target: { value: ACC.bank2 } }); fireEvent.change(screen.getByLabelText('Payment reference 1'), { target: { value: 'FNP-12345' } }); payFullTestBalance();
     vi.spyOn(window, 'confirm').mockReturnValue(true);
     fireEvent.click(screen.getByRole('button', { name: /Confirm sale/ }));
     await waitFor(() => expect(acct.tagged).toHaveBeenCalledTimes(1));
     expect(confirm).not.toHaveBeenCalled();
-    const sent = (acct.tagged.mock.calls[0]![0] as { data: { request: { payments: { id: string; method: string }[] }; accounts: { paymentId: string; accountId: string }[] } }).data;
+    const sent = (acct.tagged.mock.calls[0]![0] as { data: { request: { payments: { id: string; method: string; reference: string }[] }; accounts: { paymentId: string; accountId: string }[] } }).data;
     expect(sent.accounts).toEqual([{ paymentId: sent.request.payments[0]!.id, accountId: ACC.bank2 }]);
+    expect(sent.request.payments[0]!.reference).toBe('FNP-12345');
     expect(localStorage.getItem(`bizsathi.account:${ID.biz}:bank`)).toBe(ACC.bank2);
+  });
+  it('blocks a non-cash payment without a transaction reference and posts the entered reference', async () => {
+    mount(<SaleEditor />); await addSaree();
+    fireEvent.click(screen.getByRole('button', { name: /^Bank Transfer$/ })); payFullTestBalance();
+    expect(why()).toHaveTextContent(/transaction reference/);
+    expect(screen.getByRole('button', { name: /Confirm sale/ })).toBeDisabled();
+    fireEvent.change(screen.getByLabelText('Payment reference 1'), { target: { value: 'BANK-UTR-7788' } });
+    await waitFor(() => expect(screen.queryByLabelText('Why this cannot be confirmed yet')).not.toBeInTheDocument());
+    vi.spyOn(window, 'confirm').mockReturnValue(true);
+    fireEvent.click(screen.getByRole('button', { name: /Confirm sale/ }));
+    await waitFor(() => expect(confirm).toHaveBeenCalledTimes(1));
+    const sent = (confirm.mock.calls[0]![0] as { data: { payments: { reference: string }[] } }).data;
+    expect(sent.payments[0]!.reference).toBe('BANK-UTR-7788');
   });
   it('preselects the last account used, and wallet payments only offer wallet accounts', async () => {
     named(); localStorage.setItem(`bizsathi.account:${ID.biz}:wallet`, ACC.wallet);
