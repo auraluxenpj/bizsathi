@@ -39,12 +39,15 @@ describe('workspace navigation preserves existing workflows', () => {
   const rows = dashboardTrends({ documents: [doc, { ...doc, kind: 'sale_return', total: 20.05 }, { ...doc, status: 'draft', total: 900 }, { ...doc, branch_id: 'two', total: 800 }], journals: [journal, { ...journal, debit: 0.2 }, { ...journal, branch_id: 'two', debit: 99 }] }, 'one', '2026-11-13', '2026-11-14');
   expect(rows).toEqual([{ date: '2026-11-13', revenue: 0, expense: 0 }, { date: '2026-11-14', revenue: 80.05, expense: 0.3 }]);
  });
- it('groups master data under Stock & Inventory and sales workflows under CRM', () => {
-  expect(workspaceGroups.map(group => group.name)).toEqual(['Stock & Inventory', 'CRM', 'Reporting', 'HR & People Management', 'Settings', 'Security']);
+ it('groups daily workflows into dedicated Sales, Purchases, Inventory, Finance and Reporting sections', () => {
+  expect(workspaceGroups.map(group => group.name)).toEqual(['Sales & POS', 'Purchases', 'Stock & Inventory', 'Customers & Loyalty', 'Finance', 'Reporting', 'HR & People Management', 'Settings', 'Security']);
   const items = (group: string) => workspaceGroups.find(entry => entry.name === group)?.items ?? [];
-  expect(items('Stock & Inventory').map(item => item.name)).toEqual(expect.arrayContaining(['Products', 'Categories', 'Suppliers', 'Customer Contacts', 'Barcode Studio', 'Stock Adjustments']));
-  expect(items('CRM').map(item => item.name)).toEqual(expect.arrayContaining(['Customers', 'Barcode POS', 'Sale Invoices', 'Purchase Invoices', 'Purchase Orders', 'Sale Returns', 'Purchase Returns']));
-  expect(items('Reporting').map(item => item.name)).toEqual(expect.arrayContaining(['Customer Ledger', 'Supplier Ledger', 'Payment Vouchers', 'Net Profit P&L', 'Current Stock']));
+  expect(items('Sales & POS').map(item => item.name)).toEqual(expect.arrayContaining(['Barcode POS', 'Sale Invoices', 'Sale Returns', 'Quotations & Estimates']));
+  expect(items('Purchases').map(item => item.name)).toEqual(expect.arrayContaining(['Purchase Invoices', 'Purchase Orders', 'Purchase Returns', 'Suppliers']));
+  expect(items('Stock & Inventory').map(item => item.name)).toEqual(expect.arrayContaining(['Products', 'Categories', 'Barcode Studio', 'Stock Adjustments']));
+  expect(items('Customers & Loyalty').map(item => item.name)).toEqual(expect.arrayContaining(['Customers', 'Customer Contacts', 'Membership & Loyalty']));
+  expect(items('Finance').map(item => item.name)).toEqual(expect.arrayContaining(['Cash Drawer', 'Financial Accounts', 'Operating Expenses', 'Payment Vouchers']));
+  expect(items('Reporting').map(item => item.name)).toEqual(expect.arrayContaining(['Customer Ledger', 'Supplier Ledger', 'Net Profit P&L', 'Current Stock']));
   expect(items('HR & People Management').map(item => item.name)).toEqual(expect.arrayContaining(['HR & People Management', 'Employees & Branch Access', 'Roles & Permissions']));
   expect(items('Settings').map(item => item.name)).toEqual(['Auraluxe & App Settings']);
   expect(items('Security').map(item => item.name)).toEqual(['Security Findings', 'Review History']);
