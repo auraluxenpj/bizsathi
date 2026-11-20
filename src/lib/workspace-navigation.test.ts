@@ -44,8 +44,8 @@ describe('workspace navigation preserves existing workflows', () => {
   const items = (group: string) => workspaceGroups.find(entry => entry.name === group)?.items ?? [];
   expect(items('Sales & POS').map(item => item.name)).toEqual(expect.arrayContaining(['Barcode POS', 'Sale Invoices', 'Sale Returns', 'Quotations & Estimates']));
   expect(items('Purchases').map(item => item.name)).toEqual(expect.arrayContaining(['Purchase Invoices', 'Purchase Orders', 'Purchase Returns', 'Suppliers']));
-  expect(items('Stock & Inventory').map(item => item.name)).toEqual(expect.arrayContaining(['Products', 'Categories', 'Customer Contacts', 'Barcode Studio', 'Stock Adjustments']));
-  expect(items('Customers & Loyalty').map(item => item.name)).toEqual(expect.arrayContaining(['Customers', 'Membership & Loyalty']));
+  expect(items('Stock & Inventory').map(item => item.name)).toEqual(expect.arrayContaining(['Products', 'Categories', 'Barcode Studio', 'Stock Adjustments']));
+  expect(items('Customers & Loyalty').map(item => item.name)).toEqual(expect.arrayContaining(['Customers', 'Customer Contacts', 'Membership & Loyalty']));
   expect(items('Finance').map(item => item.name)).toEqual(expect.arrayContaining(['Cash Drawer', 'Financial Accounts', 'Operating Expenses', 'Payment Vouchers']));
   expect(items('Reporting').map(item => item.name)).toEqual(expect.arrayContaining(['Customer Ledger', 'Supplier Ledger', 'Net Profit P&L', 'Current Stock']));
   expect(items('HR & People Management').map(item => item.name)).toEqual(expect.arrayContaining(['HR & People Management', 'Employees & Branch Access', 'Roles & Permissions']));
