@@ -8,6 +8,7 @@ export type LocalDraft=z.infer<typeof draftInput>;
 export const vaultInput=z.object({cache:cacheInput,drafts:z.array(draftInput)});
 export type DraftVault=z.infer<typeof vaultInput>;
 export function scopeKey(userId:string,businessId:string,branchId:string){return `v1:${userId}:${businessId}:${branchId}`;}
+export function clampOfflineQuantity(quantity:number,stock:number){if(!Number.isFinite(quantity)||!Number.isFinite(stock))return 0;return Math.max(0,Math.min(stock,quantity));}
 export function reviewConflicts(draft:LocalDraft,old:PosCache,current:PosCache){
  const issues:string[]=[];
  if(old.userId!==current.userId||old.businessId!==current.businessId||old.branchId!==current.branchId) return ['Account or branch changed.'];
