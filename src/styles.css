@@ -1594,3 +1594,75 @@ body { background: var(--background); color: var(--foreground); }
 @media (prefers-reduced-motion: reduce) {
   .karobar *, .dashboard-shell * { transition-duration: .01ms !important; animation-duration: .01ms !important; }
 }
+
+
+/* Auraluxe premium POS finish: burgundy + ivory, without changing billing logic. */
+.pos-billing-checkout {
+  --pos-brand: #4a1728;
+  --pos-brand-soft: #f6edf0;
+  --pos-ivory: #fbf8f4;
+}
+.pos-billing-checkout [aria-label="Checkout catalogue"],
+.pos-billing-checkout .pos-billing-cart {
+  border-color: #e8dce0;
+  border-radius: 1.1rem;
+  box-shadow: 0 14px 38px rgb(74 23 40 / 6%);
+}
+.pos-billing-checkout [aria-label="Checkout catalogue"] {
+  background: linear-gradient(155deg, #fff 0%, var(--pos-ivory) 100%);
+}
+.pos-billing-checkout .pos-billing-cart {
+  background: linear-gradient(155deg, #fff 0%, #fcf8f8 100%);
+}
+.pos-billing-checkout .pos-checkout-steps {
+  border-color: #eadde1;
+  background: #fff;
+}
+.pos-billing-checkout .pos-checkout-steps button[aria-current="step"] {
+  background: var(--pos-brand) !important;
+  color: #fff !important;
+}
+.pos-billing-checkout .pos-checkout-steps button:not([aria-current="step"]) {
+  border: 1px solid #eee3e6;
+}
+.pos-billing-checkout .pos-product-card {
+  border-color: #eee3e6;
+  border-radius: 1rem;
+  box-shadow: 0 3px 12px rgb(74 23 40 / 4%);
+}
+.pos-billing-checkout .pos-product-card:hover {
+  border-color: #9b6879;
+  box-shadow: 0 12px 26px rgb(74 23 40 / 10%);
+}
+.pos-billing-checkout .pos-category-filters button[aria-pressed="true"] {
+  background: var(--pos-brand-soft) !important;
+  border-color: #d9c0c9 !important;
+  color: var(--pos-brand) !important;
+}
+.pos-billing-checkout .pos-cart-line {
+  border-color: #eee3e6;
+  border-radius: .85rem;
+  background: #fff;
+}
+.pos-billing-checkout .pos-billing-cart [aria-label="Payment collection"] {
+  border-color: #e5d4db;
+  border-radius: 1rem;
+  background: linear-gradient(145deg, #fbf4f6, #fffaf6);
+}
+.pos-billing-checkout .pos-billing-cart [aria-label="Payment collection"] > div:nth-child(2) {
+  border-color: #eadde1;
+  border-radius: .8rem;
+  background: #fff;
+}
+.pos-billing-checkout .pos-checkout-footer {
+  border-color: #e8dce0;
+  background: rgb(255 252 250 / 96%);
+  box-shadow: 0 -10px 30px rgb(74 23 40 / 8%);
+  backdrop-filter: blur(16px);
+}
+.pos-billing-checkout :where(button, input, select):focus-visible {
+  outline-color: rgb(122 53 75 / 55%);
+}
+@media (prefers-reduced-motion: reduce) {
+  .pos-billing-checkout * { transition-duration: .01ms !important; }
+}
