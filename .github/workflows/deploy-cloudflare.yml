@@ -1,16 +1,6 @@
 name: Deploy Sutra to Cloudflare
 
 on:
-  push:
-    branches: [main]
-    paths:
-      - "src/**"
-      - "public/**"
-      - "cloudflare.config.ts"
-      - "vite.config.ts"
-      - "package.json"
-      - "bun.lock"
-      - ".github/workflows/deploy-cloudflare.yml"
   workflow_dispatch:
 
 permissions:
