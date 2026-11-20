@@ -39,11 +39,11 @@ export const syncSheetStock = createServerFn({ method: 'POST' }).middleware([req
     if ((page.data?.length ?? 0) < 1000) break;
   }
   const stockIn = await applyStockIn(parsed.receipts, {
-    businessId: data.businessId, variantsBySku,
+    businessId: data.businessId, branchId: data.branchId, variantsBySku,
     existing: async reference => {
-      const r = await supabase.from('stock_movements').select('variant_id,quantity').eq('business_id', data.businessId).eq('reference', reference).eq('kind', 'receive').limit(2);
+      const r = await supabase.from('stock_movements').select('variant_id,branch_id,quantity').eq('business_id', data.businessId).eq('reference', reference).eq('kind', 'receive').limit(2);
       if (r.error) throw new Error('Stock history could not be checked.');
-      return r.data?.[0] ? { variantId: r.data[0].variant_id, quantity: Number(r.data[0].quantity) } : null;
+      return r.data?.[0] ? { variantId: r.data[0].variant_id, branchId: r.data[0].branch_id, quantity: Number(r.data[0].quantity) } : null;
     },
     post: async req => {
       const r = await supabase.rpc('post_stock_request', { _request: { businessId: data.businessId, id: req.id, variantId: req.variantId, branchId: data.branchId, destinationBranchId: null, kind: 'receive', quantity: req.quantity, reference: req.reference, reason: req.reason } });
