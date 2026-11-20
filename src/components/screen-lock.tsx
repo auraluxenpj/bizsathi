@@ -16,6 +16,11 @@ type LockContextValue = {
 };
 const ScreenLockContext = createContext<LockContextValue | null>(null);
 const storageKey = (userId: string) => `sutra.screen-lock.v1.${userId}`;
+const lockSignalKey = (userId: string) => `sutra.screen-lock.signal.v1.${userId}`;
+function signalOtherTabs(userId: string) {
+  if (!userId) return;
+  try { localStorage.setItem(lockSignalKey(userId), `${Date.now()}-${Math.random()}`); } catch { /* Cross-tab signalling is best-effort. */ }
+}
 const encoder = new TextEncoder();
 const toHex = (bytes: Uint8Array) => Array.from(bytes, b => b.toString(16).padStart(2, '0')).join('');
 const fromHex = (value: string) => new Uint8Array(value.match(/.{1,2}/g)?.map(part => Number.parseInt(part, 16)) ?? []);
@@ -84,6 +89,19 @@ export function ScreenLockProvider({ children }: { children: ReactNode }) {
     setLoaded(true);
   }, [userId]);
 
+  useEffect(() => {
+    if (!userId) return;
+    const onStorage = (event: StorageEvent) => {
+      if (event.key === lockSignalKey(userId) && config) {
+        setLocked(true);
+        setPin('');
+        setMessage('');
+      }
+    };
+    window.addEventListener('storage', onStorage);
+    return () => window.removeEventListener('storage', onStorage);
+  }, [userId, config]);
+
   const persist = useCallback((next: LockConfig | null) => {
     if (!userId) return;
     try {
@@ -131,7 +149,7 @@ export function ScreenLockProvider({ children }: { children: ReactNode }) {
     return false;
   }, [config, failures, retryAt]);
 
-  const lock = useCallback(() => { if (config) { setLocked(true); setPin(''); setMessage(''); } }, [config]);
+  const lock = useCallback(() => { if (config) { setLocked(true); setPin(''); setMessage(''); signalOtherTabs(userId); } }, [config, userId]);
 
   useEffect(() => {
     if (!retryAt) return;
@@ -146,11 +164,11 @@ export function ScreenLockProvider({ children }: { children: ReactNode }) {
     const timeout = config.idleMinutes * 60 * 1000;
     const reset = () => {
       clearTimeout(timer);
-      timer = setTimeout(() => setLocked(true), timeout);
+      timer = setTimeout(() => { setLocked(true); signalOtherTabs(userId); }, timeout);
     };
     const onVisibility = () => {
       if (document.hidden) { hiddenAt = Date.now(); return; }
-      if (hiddenAt !== null && Date.now() - hiddenAt >= timeout) setLocked(true);
+      if (hiddenAt !== null && Date.now() - hiddenAt >= timeout) { setLocked(true); signalOtherTabs(userId); }
       else reset();
       hiddenAt = null;
     };
@@ -163,7 +181,7 @@ export function ScreenLockProvider({ children }: { children: ReactNode }) {
       events.forEach(event => window.removeEventListener(event, reset));
       document.removeEventListener('visibilitychange', onVisibility);
     };
-  }, [config, locked, loaded]);
+  }, [config, locked, loaded, userId]);
 
   const resetDeviceLock = () => {
     if (userId) {
