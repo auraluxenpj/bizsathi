@@ -43,6 +43,27 @@ BEGIN
  PERFORM set_config('request.jwt.claims',json_build_object('sub',b,'role','authenticated')::text,true);bb:=public.create_business('Commerce B');ASSERT(SELECT count(*)FROM public.commerce_documents WHERE business_id=ba)=0,'Cross tenant documents hidden';ASSERT(SELECT count(*)FROM public.commerce_payments WHERE business_id=ba)=0,'Cross tenant payments hidden';ASSERT(SELECT count(*)FROM public.commerce_journal_entries WHERE business_id=ba)=0,'Cross tenant journals hidden';
  rejected:=false;BEGIN PERFORM public.post_commerce_document(req||jsonb_build_object('id',gen_random_uuid()));EXCEPTION WHEN raise_exception THEN rejected:=true;END;ASSERT rejected,'Cross tenant write denied';
  RESET ROLE;SET LOCAL ROLE anon;rejected:=false;BEGIN PERFORM public.post_commerce_document('{}');EXCEPTION WHEN insufficient_privilege THEN rejected:=true;END;ASSERT rejected,'Anonymous posting denied';RESET ROLE;
+ -- Purchase orders cap aggregate confirmed supplier invoices, including partial bills.
+ po:=gen_random_uuid();bill1:=gen_random_uuid();bill2:=gen_random_uuid();
+ req:=jsonb_build_object('businessId',ba,'id',po,'branchId',br,'periodId',per,'date','2026-10-27',
+   'kind','purchase_order','status','confirmed','partyId',supplier,'reference','PO-CAP-1',
+   'lines',jsonb_build_array(jsonb_build_object('variantId',v,'quantity',3,'price',50)));
+ PERFORM public.post_commerce_document(req);
+ req:=jsonb_build_object('businessId',ba,'id',bill1,'branchId',br,'periodId',per,'date','2026-10-27',
+   'kind','purchase','status','confirmed','partyId',supplier,'sourceId',po,'reference','BILL-CAP-1',
+   'lines',jsonb_build_array(jsonb_build_object('variantId',v,'quantity',2,'price',50)));
+ PERFORM public.post_commerce_document(req);
+ req:=jsonb_build_object('businessId',ba,'id',bill2,'branchId',br,'periodId',per,'date','2026-10-27',
+   'kind','purchase','status','confirmed','partyId',supplier,'sourceId',po,'reference','BILL-CAP-2',
+   'lines',jsonb_build_array(jsonb_build_object('variantId',v,'quantity',2,'price',50)));
+ rejected:=false;
+ BEGIN PERFORM public.post_commerce_document(req);
+ EXCEPTION WHEN raise_exception THEN rejected:=true;
+ END;
+ ASSERT rejected,'Partial supplier bills cannot exceed ordered quantity';
+ ASSERT NOT EXISTS(SELECT 1 FROM public.commerce_documents WHERE id=bill2),'Rejected excess supplier bill leaves no document';
+ ASSERT (SELECT count(*) FROM public.commerce_documents WHERE source_id=po AND kind='purchase' AND status='confirmed')=1,
+   'Previously confirmed partial bill remains unchanged';
  SET CONSTRAINTS ALL IMMEDIATE;RAISE EXCEPTION 'COMMERCE ISOLATION TESTS PASSED';
 END $test$;
 
