@@ -62,6 +62,8 @@ function mount(ui: ReactNode, url = '/') {
   return render(<QueryClientProvider client={client}><RouterProvider router={router} /></QueryClientProvider>);
 }
 async function addCatalogSaree() {
+  const search = await screen.findByLabelText('Product search or barcode');
+  fireEvent.change(search, { target: { value: 'saree' } });
   const heading = await screen.findByRole('heading', { name: 'Silk Saree' });
   const card = heading.closest('article');
   if (!card) throw new Error('Silk Saree product card was not rendered');
@@ -181,7 +183,8 @@ describe('Sale editor', () => {
     mount(<SaleEditor />);
     await screen.findByLabelText('Customer name');
     fireEvent.change(await screen.findByLabelText('Document contact'), { target: { value: ID.p1 } });
-    // Selecting a customer auto-advances to Products; adding an item opens Checkout, where the details remain visible.
+    // Selecting a customer auto-advances to Products; search is required before catalogue items appear.
+    fireEvent.change(await screen.findByLabelText('Product search or barcode'), { target: { value: 'saree' } });
     const heading = await screen.findByRole('heading', { name: 'Silk Saree' });
     const card = heading.closest('article');
     if (!card) throw new Error('Silk Saree product card was not rendered');
@@ -322,10 +325,20 @@ describe('Paying an expense from a named account', () => {
 });
 
 describe('Point of sale', () => {
+  it('keeps the full catalogue hidden until a product search is entered', async () => {
+    mount(<Pos />);
+    fireEvent.change(await screen.findByLabelText('Customer name'), { target: { value: 'Walk-in Customer' } });
+    fireEvent.change(await screen.findByLabelText('Customer mobile'), { target: { value: '9812345678' } });
+    expect(screen.queryByRole('heading', { name: 'Silk Saree' })).not.toBeInTheDocument();
+    expect(screen.getByText('Search or scan to find products')).toBeInTheDocument();
+    fireEvent.change(await screen.findByLabelText('Product search or barcode'), { target: { value: 'saree' } });
+    expect(await screen.findByRole('heading', { name: 'Silk Saree' })).toBeInTheDocument();
+  });
   it('selects multiple catalogue products and adds them to the cart together', async () => {
     mount(<Pos />);
     fireEvent.change(await screen.findByLabelText('Customer name'), { target: { value: 'Walk-in Customer' } });
     fireEvent.change(await screen.findByLabelText('Customer mobile'), { target: { value: '9812345678' } });
+    fireEvent.change(await screen.findByLabelText('Product search or barcode'), { target: { value: 'saree' } });
     fireEvent.click(await screen.findByRole('checkbox', { name: 'Select all visible in-stock variants' }));
     expect(screen.getByText('2 selected')).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Add selected (2)' }));
