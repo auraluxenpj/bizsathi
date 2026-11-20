@@ -56,7 +56,8 @@ export function KarobarHome(p: KarobarHomeProps) {
           <Link to="/parties" search={{tab:'give'}} className="rounded-xl bg-white/10 p-3 text-white"><span className="block text-xs text-white/75">Payables</span><span className="mt-1 block text-lg font-bold tabular-nums">{p.money(p.give)}</span></Link>
         </div>
       </div>
-      <div className="biz-quick-actions mt-4 grid grid-cols-3 gap-3">
+      <div className="biz-quick-actions mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
+        {ok('/pos') && <Link to="/pos" className="flex min-h-24 flex-col items-center justify-center gap-2 rounded-xl border border-primary bg-primary px-3 py-4 text-center font-semibold text-primary-foreground shadow-sm transition-colors hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"><Zap className="size-6" /><span>Open POS</span></Link>}
         {ok('/sales') && <Link to="/sales" search={{new:'1'}} className="biz-quick-action biz-quick-action-new flex flex-col items-center justify-center gap-2 text-center"><Plus /><span>New Bill</span></Link>}
         {ok('/expenses') && <Link to="/expenses" className="biz-quick-action biz-quick-action-expense flex flex-col items-center justify-center gap-2 text-center"><ReceiptText /><span>Add Expense</span></Link>}
         {ok('/parties') && <Link to="/parties" search={{tab:'receive'}} className="biz-quick-action biz-quick-action-collect flex flex-col items-center justify-center gap-2 text-center"><HandCoins /><span>Collect Payment</span></Link>}
