@@ -2,7 +2,7 @@ name: CI
 
 on:
   pull_request:
-    branches: [main, 'feature/**']
+    branches: [main, 'feature/**', 'migration/cloudflare-workers-v2']
   push:
     branches: [main, 'feature/**']
 
