@@ -20,10 +20,14 @@ async function getServerEntry(): Promise<ServerEntry> {
 
 function withSecurityHeaders(response: Response, request: Request): Response {
   const headers = new Headers(response.headers);
+  const contentType = headers.get("content-type") ?? "";
   headers.set("X-Content-Type-Options", "nosniff");
   headers.set("X-Frame-Options", "DENY");
   headers.set("Referrer-Policy", "strict-origin-when-cross-origin");
   headers.set("Permissions-Policy", "camera=(self), microphone=(), geolocation=(), payment=(), usb=()");
+  if (contentType.includes("text/html") || contentType.includes("json")) {
+    headers.set("Cache-Control", "private, no-store, max-age=0");
+  }
   if (new URL(request.url).protocol === "https:") {
     headers.set("Strict-Transport-Security", "max-age=31536000");
   }
