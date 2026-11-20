@@ -1,0 +1,93 @@
+name: Deploy Sutra to Cloudflare
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "src/**"
+      - "public/**"
+      - "cloudflare.config.ts"
+      - "vite.config.ts"
+      - "package.json"
+      - "bun.lock"
+      - ".github/workflows/deploy-cloudflare.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: sutra-cloudflare-production
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Validate and deploy existing production Worker
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: "3ecd048ec38302f3c4718c485b0e76d5"
+    steps:
+      - name: Check out main
+        uses: actions/checkout@v4
+
+      - name: Set up Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install locked dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Run test suite
+        run: bun run test
+
+      - name: Run lint
+        run: bun run lint
+
+      - name: Build production application
+        run: bun run build
+
+      - name: Verify Cloudflare token is configured
+        run: |
+          if [ -z "$CLOUDFLARE_API_TOKEN" ]; then
+            echo "::error::GitHub Actions secret CLOUDFLARE_API_TOKEN is missing."
+            exit 1
+          fi
+
+      - name: Deploy to the existing Worker while preserving its secrets
+        run: |
+          printf '{}' > /tmp/keep-existing-worker-secrets.json
+          bunx cf deploy --force --secrets-file /tmp/keep-existing-worker-secrets.json
+
+      - name: Verify all existing production secret bindings remain present
+        run: |
+          set -euo pipefail
+          response="$(mktemp)"
+          curl --fail --silent --show-error \
+            -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
+            "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/workers/scripts/bizsathi-migration/secrets" \
+            -o "$response"
+          jq -e '.success == true' "$response" >/dev/null
+          for name in \
+            GOOGLE_GENERATIVE_AI_API_KEY \
+            GOOGLE_SERVICE_ACCOUNT_JSON \
+            INVENTORY_SYNC_SECRET \
+            SUPABASE_PUBLISHABLE_KEY \
+            SUPABASE_SERVICE_ROLE_KEY \
+            SUPABASE_URL; do
+            jq -e --arg name "$name" '.result | any(.[]; .name == $name)' "$response" >/dev/null || {
+              echo "::error::Expected Worker secret binding is missing: $name"
+              exit 1
+            }
+          done
+          echo "All six existing secret bindings are present."
+
+      - name: Smoke test production dashboard
+        run: |
+          curl --fail --silent --show-error --location \
+            --retry 5 --retry-all-errors --retry-delay 3 \
+            --output /dev/null \
+            "https://bizsathi-migration.auraluxe26.workers.dev/dashboard"
+          echo "Production dashboard responded successfully."
