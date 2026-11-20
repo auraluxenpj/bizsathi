@@ -7,7 +7,8 @@ DECLARE
   accountant_id uuid := gen_random_uuid();
   manager_id uuid := gen_random_uuid();
   employee_id uuid := gen_random_uuid();
-  v_business_id uuid;
+  -- Sutra authorization is deliberately restricted to the canonical Auraluxe workspace.
+  v_business_id uuid := 'c0f0ed15-97e4-4859-ac8f-a2d4e81f5b01';
   v_branch_id uuid;
   v_leave_type uuid;
   v_run uuid;
@@ -20,9 +21,8 @@ BEGIN
   SELECT u,'hrm-test+'||u||'@example.invalid',now(),'{}'::jsonb,now(),now()
   FROM unnest(ARRAY[owner_id,accountant_id,manager_id,employee_id]) u;
 
-  INSERT INTO public.businesses(name,created_by)
-  VALUES ('Synthetic HRM security test',owner_id)
-  RETURNING id INTO v_business_id;
+  INSERT INTO public.businesses(id,name,created_by)
+  VALUES (v_business_id,'Synthetic HRM security test',owner_id);
 
   INSERT INTO public.branches(business_id,code,name)
   VALUES (v_business_id,'HRM','HRM delegated branch')
