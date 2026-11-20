@@ -16,7 +16,7 @@ export function SignIn() {
   const [pendingEmail, setPendingEmail] = useState('');
   const [signedIn, setSignedIn] = useState(false);
   const [mode, setMode] = useState<'login'|'signup'|'recovery'>('login'); const [hasInvite, setHasInvite] = useState(false);
-  const [email, setEmail] = useState(''); const [mobile, setMobile] = useState(''); const [fullName, setFullName] = useState(''); const [identifier, setIdentifier] = useState(''); const [password, setPassword] = useState(''); const [confirmPassword, setConfirmPassword] = useState(''); const [message, setMessage] = useState('');
+  const [email, setEmail] = useState(''); const [mobile, setMobile] = useState(''); const [fullName, setFullName] = useState(''); const [identifier, setIdentifier] = useState(''); const [message, setMessage] = useState('');
   useEffect(() => { if (isSupabaseConfigured()) { supabase.auth.getUser().then(({ data }) => setSignedIn(Boolean(data.user))).catch(() => setSignedIn(false)); } setHasInvite(Boolean(sessionStorage.getItem('bizsathi-invite') || sessionStorage.getItem('bizsathi-team-token'))); }, []);
   async function loginWithGoogle() {
     if (!isSupabaseConfigured()) return;
@@ -42,13 +42,21 @@ export function SignIn() {
       } else {
         if (mode === 'signup') {
           if (!hasInvite) throw new Error('invitation required');
-          const values = validateSignup({ fullName, email, mobile, password, confirmPassword });
+          const values = validateSignup({ fullName, email, mobile });
           const teamToken = sessionStorage.getItem('bizsathi-team-token');
           const emailRedirectTo = teamToken ? `${window.location.origin}/join#token=${encodeURIComponent(teamToken)}` : `${window.location.origin}/auth`;
-          const { error } = await supabase.auth.signUp({ email: values.email, password, options: { data: { full_name: values.full_name, mobile: values.mobile }, emailRedirectTo } });
+          const { data, error } = await supabase.auth.signInWithOtp({
+            email: values.email,
+            options: {
+              shouldCreateUser: true,
+              data: { full_name: values.full_name, mobile: values.mobile },
+              emailRedirectTo,
+            },
+          });
           if (error) throw error;
-          setPendingEmail(values.email); setPassword(''); setConfirmPassword('');
-          setMessage('Check your email and confirm it, then sign in to verify your mobile number and accept your invitation.');
+          if (data.session) { setSignedIn(true); await navigate({ to: '/join' }); return; }
+          setPendingEmail(values.email);
+          setMessage('Open the secure link in your email to verify your address and continue with your invitation.');
           return;
         } else {
           if (!isEmailLoginIdentifier(identifier)) throw new Error('Enter a valid email address.');
@@ -85,10 +93,7 @@ export function SignIn() {
               <label className="block text-sm">Email<Input className="mt-1 h-11" type="email" autoComplete="email" required maxLength={254} value={email} onChange={e => setEmail(e.target.value)} /></label>
               <label className="block text-sm">Mobile number<Input className="mt-1 h-11" type="tel" inputMode="numeric" autoComplete="tel" required maxLength={20} placeholder="98XXXXXXXX" value={mobile} onChange={e => setMobile(e.target.value)} /></label>
             </> : <label className="block text-sm">{mode === 'recovery' ? 'Email' : 'Email address'}<Input className="mt-1 h-11" type={mode === 'recovery' ? 'email' : 'text'} autoComplete="username" required maxLength={254} value={identifier} onChange={e => setIdentifier(e.target.value)} placeholder="you@example.com" /></label>}
-            {mode === 'signup' && <label className="block text-sm">Password<Input className="mt-1 h-11" type="password" autoComplete="new-password" required minLength={8} maxLength={128} value={password} onChange={e => setPassword(e.target.value)} /></label>}
-            {mode === 'signup' && <label className="block text-sm">Confirm password<Input className="mt-1 h-11" type="password" autoComplete="new-password" required minLength={8} maxLength={128} value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)} /></label>}
-            {mode === 'signup' && password && confirmPassword && password !== confirmPassword && <p className="text-sm text-destructive">Passwords do not match.</p>}
-            <Button className="h-11 w-full" disabled={busy || !isSupabaseConfigured()}>{busy ? 'Please wait…' : mode === 'recovery' ? 'Send recovery link' : mode === 'signup' ? 'Create account' : 'Email me a sign-in link'}</Button>
+            <Button className="h-11 w-full" disabled={busy || !isSupabaseConfigured()}>{busy ? 'Please wait…' : mode === 'recovery' ? 'Send recovery link' : mode === 'signup' ? 'Send secure sign-in link' : 'Email me a sign-in link'}</Button>
             <div className="flex flex-wrap justify-between gap-2 text-sm">
               {(hasInvite || mode === 'signup') && <Button type="button" variant="link" className="h-auto p-0" onClick={() => { setMode(mode === 'signup' ? 'login' : 'signup'); setError(''); setMessage(''); }}>{mode === 'signup' ? 'Already have an account?' : 'Create account'}</Button>}
               <Button type="button" variant="link" className="h-auto p-0" onClick={() => { setMode(mode === 'recovery' ? 'login' : 'recovery'); setError(''); setMessage(''); }}>{mode === 'recovery' ? 'Back to sign-in' : 'Forgot password?'}</Button>
