@@ -56,9 +56,10 @@ export async function receiptOperationId(businessId: string, receipt: string): P
 }
 
 export type StockInReport = { read: number; applied: number; alreadyApplied: number; failed: number; issues: string[]; syncedSkus: string[] };
-type ExistingMovement = { variantId: string; quantity: number };
+type ExistingMovement = { variantId: string; branchId: string; quantity: number };
 type Dependencies = {
   businessId: string;
+  branchId: string;
   /** SKU (any case) -> active variant ids. Exactly one is required. */
   variantsBySku: Map<string, string[]>;
   /** Movement already recorded for this receipt reference, if any. */
@@ -75,8 +76,8 @@ export async function applyStockIn(receipts: StockInReceipt[], d: Dependencies):
     const variantId = variants[0]!; const reference = `${STOCK_IN_REFERENCE_PREFIX}${r.receiptId}`;
     const found = await d.existing(reference);
     if (found) {
-      if (found.variantId === variantId && found.quantity === r.qty) report.alreadyApplied++;
-      else { report.failed++; report.issues.push(`${r.receiptId}: already recorded with different details. Do not edit old rows; add a new receipt (or a stock adjustment) for the difference`); }
+      if (found.variantId === variantId && found.branchId === d.branchId && found.quantity === r.qty) report.alreadyApplied++;
+      else { report.failed++; report.issues.push(`${r.receiptId}: already recorded with different details or in another branch. Do not edit old rows; add a new receipt (or a stock adjustment) for the difference`); }
       continue;
     }
     try {
@@ -85,7 +86,7 @@ export async function applyStockIn(receipts: StockInReceipt[], d: Dependencies):
     } catch {
       // A concurrent run by another administrator may have posted it between the check and the post.
       const again = await d.existing(reference);
-      if (again && again.variantId === variantId && again.quantity === r.qty) report.alreadyApplied++;
+      if (again && again.variantId === variantId && again.branchId === d.branchId && again.quantity === r.qty) report.alreadyApplied++;
       else { report.failed++; report.issues.push(`${r.receiptId}: not recorded. Check branch access and try again; nothing was posted twice`); }
     }
   }
