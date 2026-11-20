@@ -1,6 +1,6 @@
 -- Isolated PostgreSQL only; final exception rolls back all synthetic records.
 DO $test$
-DECLARE a uuid:=gen_random_uuid();b uuid:=gen_random_uuid();s uuid:=gen_random_uuid();viewer uuid:=gen_random_uuid();ba uuid;bb uuid;br uuid;br2 uuid;v uuid;customer uuid;supplier uuid;per uuid;sale uuid:=gen_random_uuid();purchase uuid:=gen_random_uuid();receipt uuid:=gen_random_uuid();ret uuid:=gen_random_uuid();session uuid:=gen_random_uuid();req jsonb;rejected boolean;due numeric;
+DECLARE a uuid:=gen_random_uuid();b uuid:=gen_random_uuid();s uuid:=gen_random_uuid();viewer uuid:=gen_random_uuid();ba uuid;bb uuid;br uuid;br2 uuid;v uuid;customer uuid;supplier uuid;per uuid;sale uuid:=gen_random_uuid();purchase uuid:=gen_random_uuid();receipt uuid:=gen_random_uuid();ret uuid:=gen_random_uuid();session uuid:=gen_random_uuid();po uuid;bill1 uuid;bill2 uuid;req jsonb;rejected boolean;due numeric;
 BEGIN
  INSERT INTO auth.users(id,email,email_confirmed_at,raw_user_meta_data,created_at,updated_at) SELECT u,'test+'||u||'@example.invalid',now(),'{}',now(),now() FROM unnest(ARRAY[a,b,s,viewer])u;
  SET LOCAL ROLE authenticated;PERFORM set_config('request.jwt.claims',json_build_object('sub',a,'role','authenticated')::text,true);
