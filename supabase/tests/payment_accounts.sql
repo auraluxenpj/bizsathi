@@ -1,5 +1,6 @@
--- Isolated database only. Final exception deliberately rolls back all fixtures.
--- Pass = error 'PAYMENT ACCOUNT TESTS PASSED'.
+-- Isolated database only. All synthetic records are rolled back.
+-- Pass = notice 'PAYMENT ACCOUNT TESTS PASSED'.
+BEGIN;
 DO $tests$
 DECLARE
   owner_id uuid:=gen_random_uuid(); acc uuid:=gen_random_uuid(); staff uuid:=gen_random_uuid(); viewer uuid:=gen_random_uuid(); other_id uuid:=gen_random_uuid();
@@ -9,19 +10,25 @@ DECLARE
   req jsonb;
 BEGIN
  INSERT INTO auth.users(id,email,email_confirmed_at,raw_user_meta_data,created_at,updated_at) SELECT u,'test+'||u||'@example.invalid',now(),'{}',now(),now() FROM unnest(ARRAY[owner_id,acc,staff,viewer,other_id]) u;
- SET LOCAL ROLE authenticated;
+ b:='c0f0ed15-97e4-4859-ac8f-a2d4e81f5b01'; ob:=gen_random_uuid();
+ INSERT INTO public.businesses(id,name,created_by) VALUES(b,'Accounts A',owner_id),(ob,'Accounts B',other_id);
+ INSERT INTO public.business_settings(business_id) VALUES(b);
+ PERFORM public.seed_business_access_roles(b);
+ PERFORM public.seed_business_access_roles(ob);
+ INSERT INTO public.business_memberships(business_id,user_id,role_code,status) VALUES
+  (b,owner_id,'admin','active'),(b,acc,'accountant','active'),(b,staff,'staff','active'),(b,viewer,'viewer','active'),
+  (ob,other_id,'admin','active');
  PERFORM set_config('request.jwt.claims',json_build_object('sub',owner_id,'role','authenticated')::text,true);
- b:=public.create_business('Accounts A'); PERFORM public.add_business_member(b,acc,'accountant'); PERFORM public.add_business_member(b,staff,'staff'); PERFORM public.add_business_member(b,viewer,'viewer');
  INSERT INTO public.branches(business_id,code,name) VALUES(b,'A','Main') RETURNING id INTO br;
  INSERT INTO public.financial_periods(business_id,name,start_date,end_date) VALUES(b,'Open','2026-01-01','2026-12-31') RETURNING id INTO per;
- PERFORM public.set_branch_access(b,br,acc,true);
+ INSERT INTO public.branch_memberships(business_id,branch_id,user_id,granted_by) VALUES(b,br,acc,owner_id);
+ SET LOCAL ROLE authenticated;
  PERFORM public.save_catalogue_variant(b,'[{"product_name":"Saree","sku":"AL-1","selling_price":1500}]'::jsonb);
  SELECT id INTO v FROM public.product_variants WHERE business_id=b;
  PERFORM public.post_stock_operation(b,gen_random_uuid(),v,br,NULL,'opening',50,'OPEN','Opening');
  INSERT INTO public.parties(business_id,kind,name) VALUES(b,'supplier','Sup') RETURNING id INTO sup;
  INSERT INTO public.parties(business_id,kind,name) VALUES(b,'customer','Cust') RETURNING id INTO cust;
- PERFORM set_config('request.jwt.claims',json_build_object('sub',other_id,'role','authenticated')::text,true);
- ob:=public.create_business('Accounts B');
+ PERFORM set_config('request.jwt.claims',json_build_object('sub',owner_id,'role','authenticated')::text,true);
 
  -- Before any account exists, bank money from a normal sale is "unassigned" and the books are unchanged.
  PERFORM set_config('request.jwt.claims',json_build_object('sub',owner_id,'role','authenticated')::text,true);
@@ -72,6 +79,8 @@ BEGIN
  exp_id:=public.post_accounting_voucher_with_account(req,safe);
  ASSERT (SELECT coalesce(sum(amount),0) FROM public.account_movements WHERE account_id=safe)=26000,'Expense reduced the safe';
  ASSERT public.post_accounting_voucher_with_account(req,safe)=exp_id AND (SELECT coalesce(sum(amount),0) FROM public.account_movements WHERE account_id=safe)=26000,'Expense replay changes nothing';
+ denied:=false; BEGIN PERFORM public.post_accounting_voucher_with_account(req,bank); EXCEPTION WHEN OTHERS THEN denied:=true; END; ASSERT denied,'An expense cannot be re-tagged to another account';
+ ASSERT (SELECT count(*) FROM public.account_movements WHERE source_type='voucher' AND source_id=exp_id)=1,'Expense retains exactly one named-account movement';
  req:=req||jsonb_build_object('id',gen_random_uuid(),'reference','EL-1','lines',jsonb_build_array(jsonb_build_object('account','expense_utilities','debit','700','credit','0'),jsonb_build_object('account','wallet','debit','0','credit','700')));
  PERFORM public.post_accounting_voucher_with_account(req,wallet); ASSERT (SELECT coalesce(sum(amount),0) FROM public.account_movements WHERE account_id=wallet)=4300,'Expense from the wallet';
  denied:=false; BEGIN PERFORM public.post_accounting_voucher_with_account(req||jsonb_build_object('id',gen_random_uuid(),'reference','EL-2'),bank); EXCEPTION WHEN OTHERS THEN denied:=true; END; ASSERT denied,'A bank account cannot be tagged to a wallet expense';
@@ -93,8 +102,11 @@ BEGIN
  denied:=false; BEGIN PERFORM public.post_commerce_document_with_accounts(jsonb_build_object('id',gen_random_uuid(),'businessId',b,'branchId',br,'periodId',per,'date','2026-11-07','mobile','9812345678','partyId',NULL,'sourceId',NULL,'kind','sale','status','confirmed','reference','S3','lines',jsonb_build_array(jsonb_build_object('variantId',v,'quantity',1,'price',1500,'discount',0,'taxRate',0)),'payments',jsonb_build_array(jsonb_build_object('id',pay2,'method','bank','amount',1500,'sessionId',NULL,'reference','x'))),jsonb_build_array(jsonb_build_object('paymentId',pay2,'accountId',wallet))); EXCEPTION WHEN OTHERS THEN denied:=true; END; ASSERT denied,'Wallet account cannot take a bank payment';
  -- Party payment on credit, and a purchase paid out.
  doc:=public.post_commerce_document(jsonb_build_object('id',gen_random_uuid(),'businessId',b,'branchId',br,'periodId',per,'date','2026-11-08','mobile','9812345678','partyId',cust,'sourceId',NULL,'kind','sale','status','confirmed','reference','CR1','lines',jsonb_build_array(jsonb_build_object('variantId',v,'quantity',2,'price',1500,'discount',0,'taxRate',0)),'payments','[]'::jsonb));
- pay:=public.post_commerce_payment_with_account(jsonb_build_object('id',gen_random_uuid(),'businessId',b,'documentId',doc,'periodId',per,'date','2026-11-09','method','wallet','amount',1000,'sessionId',NULL,'reference','part'),wallet);
+ req:=jsonb_build_object('id',gen_random_uuid(),'businessId',b,'documentId',doc,'periodId',per,'date','2026-11-09','method','wallet','amount',1000,'sessionId',NULL,'reference','part');
+ pay:=public.post_commerce_payment_with_account(req,wallet);
  ASSERT (SELECT coalesce(sum(amount),0) FROM public.account_movements WHERE account_id=wallet)=5300,'Customer payment tagged to the wallet';
+ denied:=false; BEGIN PERFORM public.post_commerce_payment_with_account(req,bank); EXCEPTION WHEN OTHERS THEN denied:=true; END; ASSERT denied,'A payment cannot be re-tagged to another account';
+ ASSERT (SELECT count(*) FROM public.account_movements WHERE source_type='payment' AND source_id=pay)=1,'Payment retains exactly one named-account movement';
  doc:=public.post_commerce_document(jsonb_build_object('id',gen_random_uuid(),'businessId',b,'branchId',br,'periodId',per,'date','2026-11-09','partyId',sup,'sourceId',NULL,'kind','purchase','status','confirmed','reference','P1','lines',jsonb_build_array(jsonb_build_object('variantId',v,'quantity',3,'price',1000,'discount',0,'taxRate',0)),'payments','[]'::jsonb));
  PERFORM public.post_commerce_payment_with_account(jsonb_build_object('id',gen_random_uuid(),'businessId',b,'documentId',doc,'periodId',per,'date','2026-11-09','method','bank','amount',2000,'sessionId',NULL,'reference','supplier'),bank);
  ASSERT (SELECT coalesce(sum(amount),0) FROM public.account_movements WHERE account_id=bank)=31500-2000,'Supplier payment reduces the bank account';
@@ -120,6 +132,7 @@ BEGIN
  denied:=false; BEGIN UPDATE public.payment_accounts SET name='Hacked' WHERE id=bank; EXCEPTION WHEN insufficient_privilege THEN denied:=true; END; ASSERT denied,'No direct edits to accounts';
  denied:=false; BEGIN PERFORM public.transfer_between_accounts(jsonb_build_object('businessId',ob,'branchId',br,'periodId',per,'id',gen_random_uuid(),'fromAccountId',bank,'toAccountId',wallet,'amount',1,'date','2026-11-04')); EXCEPTION WHEN OTHERS THEN denied:=true; END; ASSERT denied,'Cannot reach another business';
  PERFORM set_config('request.jwt.claims',json_build_object('sub',other_id,'role','authenticated')::text,true);
- denied:=false; BEGIN PERFORM public.transfer_between_accounts(jsonb_build_object('businessId',ob,'branchId',br,'periodId',per,'id',gen_random_uuid(),'fromAccountId',bank,'toAccountId',wallet,'amount',1,'date','2026-11-04')); EXCEPTION WHEN OTHERS THEN denied:=true; END; ASSERT denied,'Another business owner cannot use these accounts';
- RESET ROLE; RAISE EXCEPTION 'PAYMENT ACCOUNT TESTS PASSED';
+ denied:=false; BEGIN PERFORM public.transfer_between_accounts(jsonb_build_object('businessId',ob,'branchId',br,'periodId',per,'id',gen_random_uuid(),'fromAccountId',bank,'toAccountId',wallet,'amount',1,'date','2026-11-04')); EXCEPTION WHEN OTHERS THEN denied:=true; END; ASSERT denied,'Another business admin cannot use these accounts';
+ RESET ROLE; RAISE NOTICE 'PAYMENT ACCOUNT TESTS PASSED';
 END $tests$;
+ROLLBACK;
