@@ -6,7 +6,7 @@ DO $tests$
 <<tests>>
 DECLARE
   owner_id uuid:=gen_random_uuid(); manager_id uuid:=gen_random_uuid(); cashier_id uuid:=gen_random_uuid();
-  business_id uuid; branch_a uuid; branch_b uuid; period_id uuid; variant_id uuid; customer_id uuid;
+  business_id uuid := 'c0f0ed15-97e4-4859-ac8f-a2d4e81f5b01'; branch_a uuid; branch_b uuid; period_id uuid; variant_id uuid; customer_id uuid;
   sale_a uuid:=gen_random_uuid(); sale_b uuid:=gen_random_uuid(); request_id uuid; own_request uuid;
   rejected_request uuid; return_id uuid; cashier_session uuid:=gen_random_uuid(); req jsonb; failed boolean; stock_before numeric; stock_after numeric;
 BEGIN
@@ -14,7 +14,7 @@ BEGIN
   VALUES(owner_id,'return-owner@example.invalid',now()),
         (manager_id,'return-manager@example.invalid',now()),
         (cashier_id,'return-cashier@example.invalid',now());
-  INSERT INTO public.businesses(name,created_by) VALUES('Return Approval Test',owner_id) RETURNING id INTO business_id;
+  INSERT INTO public.businesses(id,name,created_by) VALUES(business_id,'Return Approval Test',owner_id);
   INSERT INTO public.branches(business_id,code,name) VALUES(business_id,'A','Assigned') RETURNING id INTO branch_a;
   INSERT INTO public.branches(business_id,code,name) VALUES(business_id,'B','Unassigned') RETURNING id INTO branch_b;
   INSERT INTO public.business_memberships(business_id,user_id,role_code)

@@ -1,8 +1,9 @@
 name: Isolated SQL security validation
 
 on:
+  # Keep this filter aligned with main so migration-branch PRs run this security suite.
   pull_request:
-    branches: [main]
+    branches: [main, migration/cloudflare-workers-v2]
     paths:
       - "drizzle/migrations/**"
       - "supabase/tests/**"

@@ -7,7 +7,8 @@ DECLARE
   admin_id uuid := gen_random_uuid();
   manager_id uuid := gen_random_uuid();
   accountant_id uuid := gen_random_uuid();
-  v_business_id uuid;
+  -- Sutra authorization is deliberately restricted to the canonical Auraluxe workspace.
+  v_business_id uuid := 'c0f0ed15-97e4-4859-ac8f-a2d4e81f5b01';
   v_branch_a uuid;
   v_branch_b uuid;
   v_invitation_id uuid;
@@ -22,9 +23,8 @@ BEGIN
     (manager_id,'bm-manager@example.invalid',now()),
     (accountant_id,'bm-accountant@example.invalid',now());
 
-  INSERT INTO public.businesses(name,created_by)
-  VALUES ('Branch Manager test',owner_id)
-  RETURNING id INTO v_business_id;
+  INSERT INTO public.businesses(id,name,created_by)
+  VALUES (v_business_id,'Branch Manager test',owner_id);
 
   INSERT INTO public.branches(business_id,code,name)
   VALUES (v_business_id,'A','Assigned branch')
@@ -186,19 +186,21 @@ BEGIN
 
   RESET ROLE;
 
-  -- Change the HR designation without changing assigned access roles.
+  -- Changing the employee position updates the default access bundle and authority tier.
   PERFORM set_config('request.jwt.claims',json_build_object('sub',admin_id,'role','authenticated')::text,true);
   PERFORM public.set_member_job_title(v_business_id,manager_id,'sales_person');
 
   SET LOCAL ROLE authenticated;
   PERFORM set_config('request.jwt.claims',json_build_object('sub',manager_id,'role','authenticated')::text,true);
-  ASSERT public.has_permission(v_business_id,'stock.edit'),
-    'Changing the HR designation does not silently remove the Branch Manager access role';
-  ASSERT public.can_approve_inventory_count(v_business_id,v_branch_a),
-    'Branch Manager approval follows the assigned access role, not the HR title';
+  ASSERT NOT public.has_business_role(v_business_id,'branch_manager'),
+    'Changing the position to Sales Person removes Branch Manager authority';
+  ASSERT NOT public.can_approve_inventory_count(v_business_id,v_branch_a),
+    'Sales Person position cannot approve inventory counts';
+  ASSERT public.has_permission(v_business_id,'sales.create'),
+    'Sales Person position retains POS sales permission';
   RESET ROLE;
 
-  -- Remove the Branch Manager authority role. The HR title alone must not restore it.
+  -- Confirm the lower authority tier remains in force until an administrator explicitly restores it.
   PERFORM set_config('request.jwt.claims',json_build_object('sub',admin_id,'role','authenticated')::text,true);
   UPDATE public.business_memberships
   SET role_code='staff'
