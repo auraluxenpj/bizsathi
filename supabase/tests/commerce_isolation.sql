@@ -1,6 +1,6 @@
 -- Isolated PostgreSQL only; final exception rolls back all synthetic records.
 DO $test$
-DECLARE a uuid:=gen_random_uuid();b uuid:=gen_random_uuid();s uuid:=gen_random_uuid();viewer uuid:=gen_random_uuid();ba uuid;bb uuid;br uuid;br2 uuid;v uuid;customer uuid;supplier uuid;per uuid;sale uuid:=gen_random_uuid();purchase uuid:=gen_random_uuid();receipt uuid:=gen_random_uuid();ret uuid:=gen_random_uuid();session uuid:=gen_random_uuid();req jsonb;rejected boolean;due numeric;
+DECLARE a uuid:=gen_random_uuid();b uuid:=gen_random_uuid();s uuid:=gen_random_uuid();viewer uuid:=gen_random_uuid();ba uuid;bb uuid;br uuid;br2 uuid;v uuid;customer uuid;supplier uuid;per uuid;sale uuid:=gen_random_uuid();purchase uuid:=gen_random_uuid();receipt uuid:=gen_random_uuid();ret uuid:=gen_random_uuid();session uuid:=gen_random_uuid();po uuid;bill1 uuid;bill2 uuid;req jsonb;rejected boolean;due numeric;
 BEGIN
  INSERT INTO auth.users(id,email,email_confirmed_at,raw_user_meta_data,created_at,updated_at) SELECT u,'test+'||u||'@example.invalid',now(),'{}',now(),now() FROM unnest(ARRAY[a,b,s,viewer])u;
  SET LOCAL ROLE authenticated;PERFORM set_config('request.jwt.claims',json_build_object('sub',a,'role','authenticated')::text,true);
@@ -43,5 +43,73 @@ BEGIN
  PERFORM set_config('request.jwt.claims',json_build_object('sub',b,'role','authenticated')::text,true);bb:=public.create_business('Commerce B');ASSERT(SELECT count(*)FROM public.commerce_documents WHERE business_id=ba)=0,'Cross tenant documents hidden';ASSERT(SELECT count(*)FROM public.commerce_payments WHERE business_id=ba)=0,'Cross tenant payments hidden';ASSERT(SELECT count(*)FROM public.commerce_journal_entries WHERE business_id=ba)=0,'Cross tenant journals hidden';
  rejected:=false;BEGIN PERFORM public.post_commerce_document(req||jsonb_build_object('id',gen_random_uuid()));EXCEPTION WHEN raise_exception THEN rejected:=true;END;ASSERT rejected,'Cross tenant write denied';
  RESET ROLE;SET LOCAL ROLE anon;rejected:=false;BEGIN PERFORM public.post_commerce_document('{}');EXCEPTION WHEN insufficient_privilege THEN rejected:=true;END;ASSERT rejected,'Anonymous posting denied';RESET ROLE;
+ -- Purchase orders cap aggregate confirmed supplier invoices, including partial bills.
+ po:=gen_random_uuid();bill1:=gen_random_uuid();bill2:=gen_random_uuid();
+ req:=jsonb_build_object('businessId',ba,'id',po,'branchId',br,'periodId',per,'date','2026-10-27',
+   'kind','purchase_order','status','confirmed','partyId',supplier,'reference','PO-CAP-1',
+   'lines',jsonb_build_array(jsonb_build_object('variantId',v,'quantity',3,'price',50)));
+ PERFORM public.post_commerce_document(req);
+ req:=jsonb_build_object('businessId',ba,'id',bill1,'branchId',br,'periodId',per,'date','2026-10-27',
+   'kind','purchase','status','confirmed','partyId',supplier,'sourceId',po,'reference','BILL-CAP-1',
+   'lines',jsonb_build_array(jsonb_build_object('variantId',v,'quantity',2,'price',50)));
+ PERFORM public.post_commerce_document(req);
+ req:=jsonb_build_object('businessId',ba,'id',bill2,'branchId',br,'periodId',per,'date','2026-10-27',
+   'kind','purchase','status','confirmed','partyId',supplier,'sourceId',po,'reference','BILL-CAP-2',
+   'lines',jsonb_build_array(jsonb_build_object('variantId',v,'quantity',2,'price',50)));
+ rejected:=false;
+ BEGIN PERFORM public.post_commerce_document(req);
+ EXCEPTION WHEN raise_exception THEN rejected:=true;
+ END;
+ ASSERT rejected,'Partial supplier bills cannot exceed ordered quantity';
+ ASSERT NOT EXISTS(SELECT 1 FROM public.commerce_documents WHERE id=bill2),'Rejected excess supplier bill leaves no document';
+ ASSERT (SELECT count(*) FROM public.commerce_documents WHERE source_id=po AND kind='purchase' AND status='confirmed')=1,
+   'Previously confirmed partial bill remains unchanged';
  SET CONSTRAINTS ALL IMMEDIATE;RAISE EXCEPTION 'COMMERCE ISOLATION TESTS PASSED';
 END $test$;
+
+-- Purchase orders cap aggregate confirmed supplier invoices, including partial bills.
+DO $po_test$
+DECLARE
+  b uuid;
+  br uuid;
+  per uuid;
+  v uuid;
+  supplier uuid;
+  po uuid := gen_random_uuid();
+  bill1 uuid := gen_random_uuid();
+  bill2 uuid := gen_random_uuid();
+  req jsonb;
+  rejected boolean := false;
+BEGIN
+  SELECT id INTO b FROM public.businesses WHERE name = 'Commerce A' ORDER BY created_at DESC LIMIT 1;
+  IF b IS NULL THEN RAISE EXCEPTION 'Commerce A fixture missing'; END IF;
+  SELECT id INTO br FROM public.branches WHERE business_id=b AND code='A';
+  SELECT id INTO per FROM public.financial_periods WHERE business_id=b AND name='Open';
+  SELECT id INTO v FROM public.product_variants WHERE business_id=b AND sku='W';
+  SELECT id INTO supplier FROM public.parties WHERE business_id=b AND kind='supplier' AND name='Supplier';
+
+  req:=jsonb_build_object('businessId',b,'id',po,'branchId',br,'periodId',per,'date','2026-10-27',
+    'kind','purchase_order','status','confirmed','partyId',supplier,'reference','PO-CAP-1',
+    'lines',jsonb_build_array(jsonb_build_object('variantId',v,'quantity',3,'price',50)));
+  PERFORM public.post_commerce_document(req);
+
+  req:=jsonb_build_object('businessId',b,'id',bill1,'branchId',br,'periodId',per,'date','2026-10-27',
+    'kind','purchase','status','confirmed','partyId',supplier,'sourceId',po,'reference','BILL-CAP-1',
+    'lines',jsonb_build_array(jsonb_build_object('variantId',v,'quantity',2,'price',50)));
+  PERFORM public.post_commerce_document(req);
+
+  req:=jsonb_build_object('businessId',b,'id',bill2,'branchId',br,'periodId',per,'date','2026-10-27',
+    'kind','purchase','status','confirmed','partyId',supplier,'sourceId',po,'reference','BILL-CAP-2',
+    'lines',jsonb_build_array(jsonb_build_object('variantId',v,'quantity',2,'price',50)));
+  BEGIN
+    PERFORM public.post_commerce_document(req);
+  EXCEPTION WHEN raise_exception THEN
+    rejected:=true;
+  END;
+  ASSERT rejected, 'Partial supplier bills cannot exceed ordered quantity';
+  ASSERT NOT EXISTS (SELECT 1 FROM public.commerce_documents WHERE id=bill2),
+    'Rejected excess supplier bill leaves no document';
+  ASSERT (SELECT count(*) FROM public.commerce_documents WHERE source_id=po AND kind='purchase' AND status='confirmed')=1,
+    'Previously confirmed partial bill remains unchanged';
+END
+$po_test$;
