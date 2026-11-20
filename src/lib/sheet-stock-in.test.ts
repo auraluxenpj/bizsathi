@@ -65,6 +65,11 @@ describe('readSheetValues resilience', () => {
     expect(calls).toHaveLength(1);
     expect(calls[0]).toContain('docs.google.com');
   });
+  it('rejects an HTML sign-in page instead of parsing it as an empty stock sheet', async () => {
+    const fake = (async () => new Response('<html><title>Sign in</title></html>', { status: 200 })) as typeof fetch;
+    await expect(readSheetValues('1I4kUw4XJaENcx91RsAjRtjWgER2Iu4AUALhcsb56KDg', 'Stock In', {}, fake))
+      .rejects.toThrow('private or unreachable');
+  });
   it('retries a dropped request once', async () => {
     let n = 0; const fake = (async () => { if (n++ === 0) throw new TypeError('fetch failed'); return new Response(csv, { status: 200 }); }) as typeof fetch;
     expect((await readSheetValues('1I4kUw4XJaENcx91RsAjRtjWgER2Iu4AUALhcsb56KDg', 'Stock In', {}, fake)).length).toBeGreaterThan(1);
