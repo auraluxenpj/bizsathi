@@ -5,7 +5,8 @@ DO $tests$
 DECLARE
   owner_id uuid := gen_random_uuid();
   staff_id uuid := gen_random_uuid();
-  v_business_id uuid;
+  -- Sutra authorization is deliberately restricted to the canonical Auraluxe workspace.
+  v_business_id uuid := 'c0f0ed15-97e4-4859-ac8f-a2d4e81f5b01';
   branch_a uuid;
   branch_b uuid;
   custom_role_id uuid;
@@ -23,9 +24,8 @@ BEGIN
     (owner_id,'multi-role-owner@example.invalid',now()),
     (staff_id,'multi-role-staff@example.invalid',now());
 
-  INSERT INTO public.businesses(name,created_by)
-  VALUES ('Multi-role access foundation test',owner_id)
-  RETURNING id INTO v_business_id;
+  INSERT INTO public.businesses(id,name,created_by)
+  VALUES (v_business_id,'Multi-role access foundation test',owner_id);
 
   INSERT INTO public.branches(business_id,code,name)
   VALUES (v_business_id,'A','Assigned branch') RETURNING id INTO branch_a;
