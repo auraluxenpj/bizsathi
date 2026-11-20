@@ -85,6 +85,7 @@ BEGIN
   PERFORM set_config('request.jwt.claims',json_build_object('sub',owner_id,'role','authenticated')::text,true);
   req:=jsonb_set(req,'{id}',to_jsonb(sale_walkin));
   req:=jsonb_set(req,'{partyId}','null'::jsonb);
+  req:=jsonb_set(req,'{branchId}',to_jsonb(branch_a));
   req:=jsonb_set(req,'{reference}',to_jsonb('INV-RET-WALKIN'::text));
   req:=jsonb_set(req,'{lines}',jsonb_build_array(jsonb_build_object('variantId',variant_id,'quantity',2,'price',100,'discount',0,'taxRate',0)));
   req:=jsonb_set(req,'{payments}',jsonb_build_array(jsonb_build_object('id',gen_random_uuid(),'method','bank','amount',200,'sessionId',NULL,'reference','Walk-in paid invoice')));
