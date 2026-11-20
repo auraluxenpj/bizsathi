@@ -7,7 +7,8 @@ DECLARE
   admin_id uuid := gen_random_uuid();
   manager_id uuid := gen_random_uuid();
   accountant_id uuid := gen_random_uuid();
-  v_business_id uuid;
+  -- Sutra authorization is deliberately restricted to the canonical Auraluxe workspace.
+  v_business_id uuid := 'c0f0ed15-97e4-4859-ac8f-a2d4e81f5b01';
   v_branch_a uuid;
   v_branch_b uuid;
   v_invitation_id uuid;
@@ -22,9 +23,8 @@ BEGIN
     (manager_id,'bm-manager@example.invalid',now()),
     (accountant_id,'bm-accountant@example.invalid',now());
 
-  INSERT INTO public.businesses(name,created_by)
-  VALUES ('Branch Manager test',owner_id)
-  RETURNING id INTO v_business_id;
+  INSERT INTO public.businesses(id,name,created_by)
+  VALUES (v_business_id,'Branch Manager test',owner_id);
 
   INSERT INTO public.branches(business_id,code,name)
   VALUES (v_business_id,'A','Assigned branch')
