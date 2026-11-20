@@ -2,7 +2,7 @@ name: Isolated SQL security validation
 
 on:
   pull_request:
-    branches: [main]
+    branches: [main, migration/cloudflare-workers-v2]
     paths:
       - "drizzle/migrations/**"
       - "supabase/tests/**"
