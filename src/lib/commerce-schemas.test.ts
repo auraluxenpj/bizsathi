@@ -1,5 +1,6 @@
 import {describe,it,expect} from 'vitest';
 import {cartTotal,lineTotals,commerceLine,paymentPart} from './commerce-schemas';
+import {applyRedemption} from './loyalty-redemption';
 const line={variantId:'10000000-0000-4000-8000-000000000001',quantity:1,price:100,discount:10,taxRate:13};
 describe('Commerce amounts',()=>{
  it('rounds each line half up then computes tax on discounted base',()=>expect(lineTotals(line)).toEqual({base:90,tax:11.7,total:101.7}));
@@ -7,5 +8,6 @@ describe('Commerce amounts',()=>{
  it('rejects a discount larger than the rounded line price',()=>expect(commerceLine.safeParse({...line,discount:101}).success).toBe(false));
  it('rejects negative price and quantity',()=>{expect(commerceLine.safeParse({...line,price:-1}).success).toBe(false);expect(commerceLine.safeParse({...line,quantity:-1}).success).toBe(false);});
  it('rejects fractional cents and quantity precision beyond three decimals',()=>{expect(commerceLine.safeParse({...line,price:1.001}).success).toBe(false);expect(commerceLine.safeParse({...line,quantity:1.0001}).success).toBe(false);});
+ it('calculates VAT after loyalty redemption is applied to line discounts',()=>{const redeemed=applyRedemption([{...line,discount:10}],100);expect(redeemed[0]?.discount).toBe(11);expect(lineTotals(redeemed[0]!).tax).toBe(11.57);});
  it('requires a positive payment and reference',()=>expect(paymentPart.safeParse({id:line.variantId,method:'cash',amount:0,reference:''}).success).toBe(false));
 });
