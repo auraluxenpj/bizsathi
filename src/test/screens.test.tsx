@@ -273,6 +273,8 @@ describe('Point of sale', () => {
     }
     expect(screen.getByLabelText('quantity line 1')).toHaveValue(2);
     expect(screen.queryByLabelText('quantity line 2')).not.toBeInTheDocument();
+    expect(screen.getByLabelText('Barcode input')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Continue to checkout' }));
     fireEvent.click(screen.getByRole('button', { name: 'Preview' }));
     const receipt = screen.getByRole('article', { name: 'Receipt preview' });
     expect(within(receipt).getAllByText('Rs. 3,000.00').length).toBeGreaterThan(0);
@@ -309,6 +311,8 @@ describe('Point of sale', () => {
     fireEvent.change(await screen.findByLabelText('Customer name'), { target: { value: 'Walk-in Customer' } }); fireEvent.change(await screen.findByLabelText('Customer mobile'), { target: { value: '9812345678' } });
     fireEvent.change(await screen.findByLabelText('Product search or barcode'), { target: { value: 'AL-001' } });
     fireEvent.keyDown(screen.getByLabelText('Product search or barcode'), { key: 'Enter' });
+    expect(screen.getByRole('button', { name: /2 Products/ })).toHaveAttribute('aria-current', 'step');
+    fireEvent.click(screen.getByRole('button', { name: 'Continue to checkout' }));
     fireEvent.click(screen.getByRole('button', { name: /^Cash$/ })); payFullTestBalance();
     vi.spyOn(window, 'confirm').mockReturnValue(true);
     fireEvent.click(screen.getByRole('button', { name: /Confirm sale/ }));
