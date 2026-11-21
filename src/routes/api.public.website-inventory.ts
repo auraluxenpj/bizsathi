@@ -79,6 +79,7 @@ async function publishPendingOutbox(db: InventoryRpcClient): Promise<void> {
         headers: { Authorization: `Bearer ${secret}`, 'Content-Type': 'application/json', Accept: 'application/json' },
         body: JSON.stringify({ items }),
         redirect: 'error',
+        signal: AbortSignal.timeout(5000),
       });
       const result = await response.json().catch(() => null) as { ok?: boolean } | null;
       if (!response.ok || result?.ok !== true) {
