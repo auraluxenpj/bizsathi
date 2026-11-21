@@ -4,11 +4,11 @@
 
 The legacy manual sync remains available for comparison only. The transactional foundation is now implemented in this feature branch:
 
-- `drizzle/migrations/0107_website_inventory_reservations.sql` adds SKU-only atomic reservations, idempotent commit/cancel/status RPCs, a committed website movement ledger included in BizSathi stock balances, stock guards that protect active reservations from native BizSathi deductions, and a durable publication outbox.
+- `drizzle/migrations/0107_website_inventory_reservations.sql` adds SKU-only atomic reservations, idempotent commit/cancel/status RPCs, a committed website movement ledger included in BizSathi stock balances, stock guards that protect active reservations from native BizSathi deductions, and a durable publication outbox. Migration `0110_website_inventory_serialization.sql` makes native deductions use the same business transaction lock as reservations.
 - `src/routes/api.public.website-inventory.ts` exposes the service-authenticated reserve/commit/cancel/status/outbox API.
-- The outbox publisher attempts to send revised sellable quantities to the website projection endpoint after each reservation/finalization. Failed publication remains unacknowledged for retry.
+- The outbox publisher attempts to send revised sellable quantities to the website projection endpoint after each reservation/finalization and on a five-minute Cloudflare schedule. Migration `0110` leases only the oldest unpublished event; an active lease, retry backoff, or dead-lettered head blocks later absolute projections so an older event cannot overwrite newer stock.
 - The integration binding is seeded disabled. The service route refuses new reservations until the Auraluxe branch binding is explicitly enabled.
-- An isolated SQL regression suite covers reservation retries, oversell prevention, commit/cancel, and native stock guards. Its latest run is pending final verification.
+- An isolated SQL regression suite covers reservation retries, oversell prevention, commit/cancel, native stock guards, and FIFO outbox leasing. The new serialization migration and strengthened tests require a fresh CI run.
 
 The existing **manual legacy sync** is implemented in this branch:
 
@@ -49,18 +49,16 @@ SKU is the only mapping key. Every orderable website SKU must map one-to-one to 
 
 - The legacy endpoint acknowledges website quantity deltas and pushes absolute stock values with expected-current-count checks. It is useful only as a manually operated comparison/transition tool, not as the new transactional protocol.
 - Acknowledgements represent quantity evidence, not invoices. They cannot establish revenue, tax, customer identity or loyalty points.
-- The existing website checkout, POS, admin inventory and restock functions still write website stock columns. They must be migrated to the BizSathi reservation/ledger path or safely disabled for activated mappings before cutover.
+- Auraluxe's draft PR #27 implements reserve-first website checkout and POS, blocks legacy stock edits when the authority switch is enabled, and disables website-side restocking in authority mode. It is not merged or activated; verify its latest authorization and recovery fixes before cutover.
 - Do not run the legacy absolute-push path for a SKU after it is activated under the transactional protocol. There must be one stock authority and one mutation path.
 
 ## Remaining implementation work
 
-1. Complete the website-side integration and validate it against the BizSathi service contract: checkout reservation, order confirmation commit, pending-order cancellation release, website POS reserve/commit, and guarded stock projection updates.
-2. Add an accepted-return workflow in BizSathi. A committed sale cannot be undone by cancelling its reservation; returned quantities must reference the original sale and be bounded by sold quantity less prior returns.
-3. Add a durable scheduled retry/reconciliation worker for unacknowledged website outbox events. The current publisher retries opportunistically on subsequent API operations; it is not yet a periodic worker.
-4. Add admin mapping review, mismatch queue, uncertain-operation recovery, and stock revision visibility.
-5. Test concurrent last-unit checkout, checkout vs POS race, duplicate requests, lost responses, cancellation, partial returns, webhook replay, SKU mismatch, stale publication, authorization and branch isolation.
-6. Reconcile migration history and obtain fresh recovery evidence before any database migration.
-7. Produce a read-only cutover discrepancy report. Baseline mapping and live activation require separate explicit owner approval.
+1. Add a BizSathi admin workflow for accepting website returns. The service-only return RPC exists, but staff need a controlled receive/inspect/sellable-or-damaged/accept workflow. Restock only after physical receipt.
+2. Add admin SKU mapping review, mismatch/exception queue, uncertain-operation recovery, and stock revision visibility. Do not auto-map existing website products.
+3. Complete cross-system verification against the Auraluxe PR #27 branch: checkout and POS last-unit races, order commit/cancel retries, lost responses, customer-versus-admin authorization, projection ordering, and return handoff. The Auraluxe change remains draft.
+4. Reconcile migration history and obtain fresh recovery evidence before any database migration. Confirm migration sequence across both repositories.
+5. Produce a read-only cutover discrepancy report. Re-read the live catalogue and stock, map every orderable SKU one-to-one, reconcile physical stock, and obtain separate approval for baseline mapping and activation.
 
 ## Runtime configuration required at cutover
 
