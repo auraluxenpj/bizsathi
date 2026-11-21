@@ -44,6 +44,7 @@ export const syncWebsiteCatalogueDrafts = createServerFn({ method: 'POST' })
       name: string;
       category: string;
       variant_name: string;
+      model_code: string | null;
       sku: string;
       selling_price: number;
     }[] = [];
@@ -51,7 +52,7 @@ export const syncWebsiteCatalogueDrafts = createServerFn({ method: 'POST' })
     for (let offset = 0; ; offset += 500) {
       const page = await context.supabase
         .from('product_variants')
-        .select('id,product_id,name,sku,selling_price,is_active,products!product_variants_business_id_product_id_fkey(name,category,is_active)')
+        .select('id,product_id,name,sku,model_code,selling_price,is_active,products!product_variants_business_id_product_id_fkey(name,category,is_active)')
         .eq('business_id', data.businessId)
         .eq('is_active', true)
         .order('id')
@@ -71,6 +72,7 @@ export const syncWebsiteCatalogueDrafts = createServerFn({ method: 'POST' })
           name: product.name,
           category: product.category ?? '',
           variant_name: variant.name,
+          model_code: variant.model_code,
           sku: variant.sku,
           selling_price: sellingPrice,
         });
