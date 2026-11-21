@@ -37,7 +37,7 @@ BEGIN
   VALUES(business_id,'Open','2026-01-01','2026-12-31') RETURNING id INTO period_id;
   INSERT INTO public.business_settings(business_id) VALUES(business_id);
 
-  SET LOCAL ROLE authenticated;
+  -- Keep fixture creation under the database owner; exercise authenticated RLS only after setup.
   PERFORM set_config('request.jwt.claims',json_build_object('sub',owner_id,'role','authenticated')::text,true);
   PERFORM public.save_catalogue_variant(business_id,'[{"product_name":"RLS Test Item","sku":"RLS-1","selling_price":100}]');
   SELECT id INTO variant_id FROM public.product_variants pv WHERE pv.business_id=business_id AND pv.sku='RLS-1';
