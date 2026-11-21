@@ -257,7 +257,7 @@ USING (
     OR public.is_cashier_sale_or_return(business_id,branch_id,document_id)
     OR (
       method='cash' AND session_id IS NOT NULL
-      AND public.can_approve_inventory_count(business_id,branch_id)
+      AND public.can_approve_inventory_count(commerce_payments.business_id,commerce_payments.branch_id)
     )
     OR EXISTS (
       SELECT 1
@@ -271,7 +271,7 @@ USING (
         AND d.kind='sale_return'
         AND rr.status='approved'
         AND rr.reviewed_by=auth.uid()
-        AND public.can_approve_inventory_count(business_id,branch_id)
+        AND public.can_approve_inventory_count(commerce_payments.business_id,commerce_payments.branch_id)
     )
     OR EXISTS (
       SELECT 1
@@ -280,14 +280,14 @@ USING (
         AND d.business_id=commerce_payments.business_id
         AND d.branch_id=commerce_payments.branch_id
         AND (
-          (d.kind IN ('sale','sale_return') AND public.has_permission(business_id,'sales.view'))
-          OR (d.kind IN ('purchase','purchase_return') AND public.has_permission(business_id,'purchases.view'))
+          (d.kind IN ('sale','sale_return') AND public.has_permission(commerce_payments.business_id,'sales.view'))
+          OR (d.kind IN ('purchase','purchase_return') AND public.has_permission(commerce_payments.business_id,'purchases.view'))
         )
         AND (
-          public.has_business_access_role(business_id,'position_entry_person')
-          OR public.has_business_access_role(business_id,'position_stock_manager')
-          OR public.has_business_access_role(business_id,'legacy_entry_person')
-          OR public.has_business_access_role(business_id,'legacy_stock_manager')
+          public.has_business_access_role(commerce_payments.business_id,'position_entry_person')
+          OR public.has_business_access_role(commerce_payments.business_id,'position_stock_manager')
+          OR public.has_business_access_role(commerce_payments.business_id,'legacy_entry_person')
+          OR public.has_business_access_role(commerce_payments.business_id,'legacy_stock_manager')
           OR EXISTS (
             SELECT 1 FROM public.business_memberships viewer
             WHERE viewer.business_id=commerce_payments.business_id
