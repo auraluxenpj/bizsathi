@@ -27,7 +27,8 @@ CREATE FUNCTION public.claim_website_inventory_outbox(
   _business_id uuid,
   _lease_token uuid,
   _limit integer DEFAULT 10
-) RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path=public AS $$
+) RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path=public AS $
+DECLARE result jsonb;
 BEGIN
   PERFORM public.website_inventory_require_service();
   IF _business_id IS NULL OR _lease_token IS NULL OR _limit NOT BETWEEN 1 AND 50 THEN
@@ -48,43 +49,43 @@ BEGIN
      AND attempt_count>=10
      AND (lease_until IS NULL OR lease_until<=now());
 
-  RETURN coalesce((
-    WITH candidates AS (
-      SELECT id
-        FROM public.website_inventory_outbox
-       WHERE business_id=_business_id
-         AND published_at IS NULL
-         AND dead_lettered_at IS NULL
-         AND attempt_count<10
-         AND next_attempt_at<=now()
-         AND (lease_until IS NULL OR lease_until<=now())
-       ORDER BY id
-       LIMIT _limit
-       FOR UPDATE SKIP LOCKED
-    ),
-    claimed AS (
-      UPDATE public.website_inventory_outbox o
-         SET lease_token=_lease_token,
-             lease_until=now()+interval '2 minutes',
-             attempt_count=o.attempt_count+1,
-             last_attempt_at=now()
-        FROM candidates c
-       WHERE o.id=c.id
-       RETURNING o.*
-    )
-    SELECT jsonb_agg(jsonb_build_object(
-      'id',id,
-      'branchId',branch_id,
-      'reservationId',reservation_id,
-      'eventType',event_type,
-      'payload',payload,
-      'createdAt',created_at,
-      'attemptCount',attempt_count,
-      'lastError',last_error,
-      'lastAttemptAt',last_attempt_at
-    ) ORDER BY id)
-    FROM claimed
-  ),'[]'::jsonb);
+  WITH candidates AS (
+    SELECT id
+      FROM public.website_inventory_outbox
+     WHERE business_id=_business_id
+       AND published_at IS NULL
+       AND dead_lettered_at IS NULL
+       AND attempt_count<10
+       AND next_attempt_at<=now()
+       AND (lease_until IS NULL OR lease_until<=now())
+     ORDER BY id
+     LIMIT _limit
+     FOR UPDATE SKIP LOCKED
+  ),
+  claimed AS (
+    UPDATE public.website_inventory_outbox o
+       SET lease_token=_lease_token,
+           lease_until=now()+interval '2 minutes',
+           attempt_count=o.attempt_count+1,
+           last_attempt_at=now()
+      FROM candidates c
+     WHERE o.id=c.id
+     RETURNING o.*
+  )
+  SELECT coalesce(jsonb_agg(jsonb_build_object(
+    'id',id,
+    'branchId',branch_id,
+    'reservationId',reservation_id,
+    'eventType',event_type,
+    'payload',payload,
+    'createdAt',created_at,
+    'attemptCount',attempt_count,
+    'lastError',last_error,
+    'lastAttemptAt',last_attempt_at
+  ) ORDER BY id),'[]'::jsonb)
+    INTO result
+    FROM claimed;
+  RETURN result;
 END $$;
 
 CREATE FUNCTION public.ack_website_inventory_outbox_event(
