@@ -128,7 +128,16 @@ DECLARE
   delta numeric;
   can_manage boolean;
 BEGIN
-  IF NOT public.has_business_role(b,'staff') OR NOT public.can_access_branch(b,br) THEN
+  IF NOT public.can_access_branch(b,br) OR NOT (
+    public.has_business_role(b,'admin')
+    OR public.has_business_role(b,'accountant')
+    OR public.can_approve_inventory_count(b,br)
+    OR (
+      (public.has_business_access_role(b,'position_sales_person')
+       OR public.has_business_access_role(b,'legacy_staff'))
+      AND public.has_permission(b,'sales.create')
+    )
+  ) THEN
     RAISE EXCEPTION 'Counter access denied';
   END IF;
 
