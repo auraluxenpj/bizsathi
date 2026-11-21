@@ -271,33 +271,40 @@
     {
       "idx": 38,
       "version": "7",
+      "when": 1795237128000,
+      "tag": "0106_shared_branch_cash_counter",
+      "breakpoints": true
+    },
+    {
+      "idx": 39,
+      "version": "7",
       "when": 1795279560000,
       "tag": "0053_website_sync_business_id_fix",
       "breakpoints": true
     },
     {
-      "idx": 39,
+      "idx": 40,
       "version": "7",
       "when": 1795303000000,
       "tag": "0107_website_inventory_reservations",
       "breakpoints": true
     },
     {
-      "idx": 40,
+      "idx": 41,
       "version": "7",
       "when": 1795303001000,
       "tag": "0108_website_inventory_accepted_returns",
       "breakpoints": true
     },
     {
-      "idx": 41,
+      "idx": 42,
       "version": "7",
       "when": 1795303002000,
       "tag": "0109_website_inventory_outbox_retries",
       "breakpoints": true
     },
     {
-      "idx": 42,
+      "idx": 43,
       "version": "7",
       "when": 1795303003000,
       "tag": "0110_website_inventory_serialization",
