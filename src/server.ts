@@ -64,7 +64,43 @@ function isH3SwallowedErrorBody(body: string): boolean {
   }
 }
 
+type ScheduledEnv = { WEBSITE_INVENTORY_SYNC_SECRET?: string };
+type ScheduledController = { cron: string; scheduledTime: number };
+
 export default {
+  async scheduled(controller: ScheduledController, env: ScheduledEnv, ctx: unknown) {
+    const secret = env.WEBSITE_INVENTORY_SYNC_SECRET;
+    if (!secret) {
+      console.warn('[website-inventory] scheduled publisher skipped: service secret is not configured');
+      return;
+    }
+    const handler = await getServerEntry();
+    const request = new Request('https://bizsathi.internal/api/public/website-inventory', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${secret}`,
+        'Content-Type': 'application/json',
+        Accept: 'application/json',
+      },
+      body: JSON.stringify({ action: 'publish_outbox' }),
+    });
+    const response = await handler.fetch(request, env, ctx);
+    if (!response.ok) {
+      throw new Error(`Website inventory outbox publisher returned HTTP ${response.status}`);
+    }
+    const result = await response.json() as { ok?: boolean; skipped?: boolean; published?: number; blocked?: boolean };
+    if (result.ok !== true) {
+      throw new Error('Website inventory outbox publisher did not confirm completion');
+    }
+    console.info('[website-inventory] scheduled outbox run', {
+      cron: controller.cron,
+      scheduledTime: controller.scheduledTime,
+      skipped: result.skipped === true,
+      published: result.published ?? 0,
+      blocked: result.blocked === true,
+    });
+  },
+
   async fetch(request: Request, env: unknown, ctx: unknown) {
     try {
       const handler = await getServerEntry();
