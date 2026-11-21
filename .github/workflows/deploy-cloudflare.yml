@@ -68,13 +68,14 @@ jobs:
             INVENTORY_SYNC_SECRET \
             SUPABASE_PUBLISHABLE_KEY \
             SUPABASE_SERVICE_ROLE_KEY \
-            SUPABASE_URL; do
+            SUPABASE_URL \
+            WEBSITE_INVENTORY_SYNC_SECRET; do
             jq -e --arg name "$name" '.result | any(.[]; .name == $name)' "$response" >/dev/null || {
               echo "::error::Expected existing Worker secret binding is missing before deployment: $name"
               exit 1
             }
           done
-          echo "Cloudflare authentication and all six existing secret bindings verified before deployment."
+          echo "Cloudflare authentication and all seven existing secret bindings verified before deployment."
 
       - name: Deploy to the existing Worker while preserving its secrets
         shell: bash
@@ -106,7 +107,7 @@ jobs:
               exit 1
             }
           done
-          echo "All six existing secret bindings remain present."
+          echo "All seven existing secret bindings remain present."
 
       - name: Smoke test production dashboard
         run: |
