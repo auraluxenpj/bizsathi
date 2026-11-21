@@ -24,6 +24,7 @@ describe('scopeCommerceForCashier', () => {
       { id: 'manager-cash-in-own-session', actor_id: manager, session_id: 'session-own', kind: 'in' },
       { id: 'close-own', actor_id: cashier, session_id: 'session-own', kind: 'close' },
       { id: 'open-other', actor_id: 'cashier-2', session_id: 'session-other', kind: 'open' },
+      { id: 'close-other', actor_id: 'manager-2', session_id: 'session-other', kind: 'close' },
     ],
     journals: [{ id: 'journal-private' }],
     memberships: [{ id: 'membership-private' }],
