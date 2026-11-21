@@ -8,10 +8,14 @@ SET LOCAL ROLE authenticated;
 SELECT set_config('request.jwt.claims','{"sub":"e1070000-0000-4000-8000-000000000001","role":"authenticated"}',true);
 
 DO $setup$
-DECLARE b uuid; br uuid; v uuid;
+DECLARE b uuid:='e1070000-0000-4000-8000-000000000101'; br uuid; v uuid;
 BEGIN
-  b:=public.create_business('Website reservation fixture');
-  INSERT INTO public.branches(business_id,code,name) VALUES(b,'WEB','Website test branch') RETURNING id INTO br;
+  INSERT INTO public.businesses(id,name,created_by)
+    VALUES(b,'Website reservation fixture','e1070000-0000-4000-8000-000000000001');
+  INSERT INTO public.business_memberships(business_id,user_id,role_code,status)
+    VALUES(b,'e1070000-0000-4000-8000-000000000001','owner','active');
+  INSERT INTO public.branches(business_id,code,name)
+    VALUES(b,'WEB','Website test branch') RETURNING id INTO br;
   PERFORM public.save_catalogue_variant(b,'[{"product_name":"Reservation test item","sku":"SKU-WEB-RESERVATION-TEST","selling_price":100}]');
   SELECT id INTO v FROM public.product_variants WHERE business_id=b AND sku='SKU-WEB-RESERVATION-TEST';
   PERFORM public.post_stock_operation(b,'e1070000-0000-4000-8000-000000000011',v,br,NULL,'opening',5,'WEB-OPEN','Test opening stock');
