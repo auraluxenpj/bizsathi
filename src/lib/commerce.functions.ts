@@ -38,7 +38,7 @@ export const getCommerce=createServerFn({method:'GET'}).middleware([requireSupab
  if(!user.data&&!platformOwner.data)throw new Error('Business membership could not be verified.');
  const role=user.data?.role_code??(platformOwner.data?'owner':null);
  const jobTitle=user.data?.job_title??(platformOwner.data?'Platform Owner':null);
- const [salesRole,legacyStaffRole,branchManagerRole,legacyBranchManagerRole,accountantRole,adminRole,stockEdit] = await Promise.all([
+ const [salesRole,legacyStaffRole,branchManagerRole,legacyBranchManagerRole,accountantRole,adminRole,stockEdit,salesCreate] = await Promise.all([
   anyDb(context.supabase).rpc('has_business_access_role',{_business:data.businessId,_role_code:'position_sales_person'}),
   anyDb(context.supabase).rpc('has_business_access_role',{_business:data.businessId,_role_code:'legacy_staff'}),
   anyDb(context.supabase).rpc('has_business_access_role',{_business:data.businessId,_role_code:'position_branch_manager'}),
@@ -46,9 +46,10 @@ export const getCommerce=createServerFn({method:'GET'}).middleware([requireSupab
   anyDb(context.supabase).rpc('has_business_role',{_business_id:data.businessId,_min_role:'accountant'}),
   anyDb(context.supabase).rpc('has_business_role',{_business_id:data.businessId,_min_role:'admin'}),
   anyDb(context.supabase).rpc('has_permission',{_business:data.businessId,_perm:'stock.edit'}),
+  anyDb(context.supabase).rpc('has_permission',{_business:data.businessId,_perm:'sales.create'}),
  ]);
- if([salesRole,legacyStaffRole,branchManagerRole,legacyBranchManagerRole,accountantRole,adminRole,stockEdit].some(result=>result.error)) throw new Error('Cash counter permissions could not be verified.');
- const isCashier=Boolean(salesRole.data||legacyStaffRole.data)||(role==='staff'&&jobTitle==='sales_person');
+ if([salesRole,legacyStaffRole,branchManagerRole,legacyBranchManagerRole,accountantRole,adminRole,stockEdit,salesCreate].some(result=>result.error)) throw new Error('Cash counter permissions could not be verified.');
+ const isCashier=(Boolean(salesRole.data||legacyStaffRole.data)||(role==='staff'&&jobTitle==='sales_person'))&&Boolean(salesCreate.data);
  const canManageCounter=Boolean(accountantRole.data||adminRole.data||((branchManagerRole.data||legacyBranchManagerRole.data)&&stockEdit.data));
  const counterAccess={isCashier,canManage:canManageCounter,canWrite:isCashier||canManageCounter};
  const commerce={memberships,loyalty,redemptions,documents,payments,counters,journals};
