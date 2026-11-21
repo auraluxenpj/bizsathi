@@ -45,28 +45,36 @@ BEGIN
   PERFORM public.post_stock_operation(business_id,gen_random_uuid(),variant_id,branch_id,NULL,'opening',20,'RLS-OPEN','Fixture stock');
 
   SET LOCAL ROLE authenticated;
-  PERFORM set_config('request.jwt.claims',json_build_object('sub',cashier_id,'role','authenticated')::text,true);
+  PERFORM set_config('request.jwt.claims',json_build_object('sub',owner_id,'role','authenticated')::text,true);
   PERFORM public.post_cash_counter_event(jsonb_build_object(
     'businessId',business_id,'id',gen_random_uuid(),'branchId',branch_id,'periodId',period_id,
-    'sessionId',cashier_session,'kind','open','amount',500,'date','2026-11-15','reference','Cashier open'
+    'sessionId',owner_session,'kind','open','amount',700,'date','2026-11-15','reference','Shared branch open'
   ));
+
+  PERFORM set_config('request.jwt.claims',json_build_object('sub',cashier_id,'role','authenticated')::text,true);
+  denied := false;
+  BEGIN
+    PERFORM public.post_cash_counter_event(jsonb_build_object(
+      'businessId',business_id,'id',gen_random_uuid(),'branchId',branch_id,'periodId',period_id,
+      'sessionId',cashier_session,'kind','open','amount',500,'date','2026-11-15','reference','Duplicate cashier open'
+    ));
+  EXCEPTION WHEN raise_exception THEN denied := true;
+  END;
+  ASSERT denied, 'Second cashier cannot open a duplicate branch counter';
+
   req := jsonb_build_object(
     'businessId',business_id,'id',cashier_sale,'branchId',branch_id,'periodId',period_id,
-    'date','2026-11-15','kind','sale','status','confirmed','partyId',customer_id,'mobile','9841234568','mobile','9841234567',
+    'date','2026-11-15','kind','sale','status','confirmed','partyId',customer_id,'mobile','9841234567',
     'reference','CASHIER-SALE','lines',jsonb_build_array(jsonb_build_object(
       'variantId',variant_id,'quantity',1,'price',100,'discount',0,'taxRate',0
     )),
     'payments',jsonb_build_array(jsonb_build_object(
-      'id',gen_random_uuid(),'method','bank','amount',100,'reference','Cashier bank payment'
+      'id',gen_random_uuid(),'method','cash','amount',100,'sessionId',owner_session,'reference','Cashier cash payment'
     ))
   );
   PERFORM public.post_commerce_document(req);
 
   PERFORM set_config('request.jwt.claims',json_build_object('sub',owner_id,'role','authenticated')::text,true);
-  PERFORM public.post_cash_counter_event(jsonb_build_object(
-    'businessId',business_id,'id',gen_random_uuid(),'branchId',branch_id,'periodId',period_id,
-    'sessionId',owner_session,'kind','open','amount',700,'date','2026-11-15','reference','Owner open'
-  ));
   PERFORM public.post_commerce_document(jsonb_build_object(
     'businessId',business_id,'id',owner_sale,'branchId',branch_id,'periodId',period_id,
     'date','2026-11-15','kind','sale','status','confirmed','partyId',customer_id,
@@ -88,7 +96,9 @@ BEGIN
   ASSERT (SELECT count(*) FROM public.commerce_payments t WHERE t.business_id=business_id)=1,
     'Cashier sees only payment on own sale';
   ASSERT (SELECT count(*) FROM public.cash_counter_events t WHERE t.business_id=business_id)=1,
-    'Cashier sees only own drawer session';
+    'Cashier sees the one active shared branch session';
+  ASSERT EXISTS(SELECT 1 FROM public.commerce_payments WHERE document_id=cashier_sale AND session_id=owner_session),
+    'Cashier cash payment is linked to the shared branch session';
   ASSERT (SELECT count(*) FROM public.commerce_journal_entries t WHERE t.business_id=business_id)=0,
     'Cashier cannot read journal ledger';
   ASSERT (SELECT count(*) FROM public.customer_memberships t WHERE t.business_id=business_id)=0,
@@ -110,6 +120,25 @@ BEGIN
   EXCEPTION WHEN raise_exception THEN denied := true;
   END;
   ASSERT denied, 'Entry staff cannot open a cash counter';
+
+  PERFORM set_config('request.jwt.claims',json_build_object('sub',cashier_id,'role','authenticated')::text,true);
+  denied := false;
+  BEGIN
+    PERFORM public.post_cash_counter_event(jsonb_build_object(
+      'businessId',business_id,'id',gen_random_uuid(),'branchId',branch_id,'periodId',period_id,
+      'sessionId',owner_session,'kind','close','amount',600,'date','2026-11-15','reference','Cashier must not close'
+    ));
+  EXCEPTION WHEN raise_exception THEN denied := true;
+  END;
+  ASSERT denied, 'Cashier cannot close the shared branch counter';
+
+  PERFORM set_config('request.jwt.claims',json_build_object('sub',owner_id,'role','authenticated')::text,true);
+  PERFORM public.post_cash_counter_event(jsonb_build_object(
+    'businessId',business_id,'id',gen_random_uuid(),'branchId',branch_id,'periodId',period_id,
+    'sessionId',owner_session,'kind','close','amount',600,'date','2026-11-15','reference','Manager close'
+  ));
+  ASSERT EXISTS(SELECT 1 FROM public.cash_counter_events WHERE session_id=owner_session AND kind='close' AND actor_id=owner_id),
+    'Manager can close the shared branch counter';
 
   RESET ROLE;
 END
