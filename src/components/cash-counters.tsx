@@ -143,7 +143,7 @@ export function CashCounters() {
       };
     });
 
-  const reportSessions = scopeCashCounterReport(dailySessions, data?.role, data?.jobTitle, data?.userId ?? '', cashier);
+  const reportSessions = scopeCashCounterReport(dailySessions, data?.role, data?.jobTitle, data?.userId ?? '', cashier, manager);
   const visibleDailySessions = reportSessions.filter((session) =>
     (!cashier || !session.closed || session.openedById === data?.userId) &&
     (!staffFilter || session.openedById === staffFilter || session.closedById === staffFilter) &&
