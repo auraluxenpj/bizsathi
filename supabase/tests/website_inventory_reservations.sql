@@ -143,7 +143,7 @@ BEGIN
   BEGIN
     PERFORM public.accept_website_inventory_return(
       b,'e1070000-0000-4000-8000-000000000043',r1,'WEB-RETURN-3',
-      '[{"sku":"SKU-WEB-RESERVATION-TEST","quantity":1}]'
+      '[{"sku":"SKU-WEB-RESERVATION-TEST","quantity":1,"restockQuantity":1}]'
     );
   EXCEPTION WHEN raise_exception THEN rejected:=true;
   END;
@@ -153,7 +153,7 @@ BEGIN
   BEGIN
     PERFORM public.accept_website_inventory_return(
       b,'e1070000-0000-4000-8000-000000000044',r3,'WEB-RETURN-CANCELLED',
-      '[{"sku":"SKU-WEB-RESERVATION-TEST","quantity":1}]'
+      '[{"sku":"SKU-WEB-RESERVATION-TEST","quantity":1,"restockQuantity":1}]'
     );
   EXCEPTION WHEN raise_exception THEN rejected:=true;
   END;
