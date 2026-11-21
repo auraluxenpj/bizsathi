@@ -74,6 +74,7 @@ BEGIN
     END IF;
   ELSIF TG_TABLE_NAME='cash_counter_events' THEN
     IF NOT public.has_business_role(NEW.business_id,'accountant')
+       AND NOT public.has_business_role(NEW.business_id,'admin')
        AND NOT (
          public.has_business_access_role(NEW.business_id,'position_sales_person')
          OR public.has_business_access_role(NEW.business_id,'legacy_staff')
