@@ -271,6 +271,13 @@
     {
       "idx": 38,
       "version": "7",
+      "when": 1795237128000,
+      "tag": "0106_shared_branch_cash_counter",
+      "breakpoints": true
+    },
+    {
+      "idx": 39,
+      "version": "7",
       "when": 1795279560000,
       "tag": "0053_website_sync_business_id_fix",
       "breakpoints": true
