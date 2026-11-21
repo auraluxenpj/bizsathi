@@ -337,7 +337,7 @@ BEGIN
   IF _after_id<0 OR _limit NOT BETWEEN 1 AND 500 THEN RAISE EXCEPTION 'Invalid outbox cursor'; END IF;
   RETURN coalesce((SELECT jsonb_agg(jsonb_build_object('id',id,'branchId',branch_id,'reservationId',reservation_id,
     'eventType',event_type,'payload',payload,'createdAt',created_at) ORDER BY id)
-    FROM (SELECT * FROM public.website_inventory_outbox WHERE business_id=_business_id AND id>_after_id ORDER BY id LIMIT _limit) q),'[]'::jsonb);
+    FROM (SELECT * FROM public.website_inventory_outbox WHERE business_id=_business_id AND id>_after_id AND published_at IS NULL ORDER BY id LIMIT _limit) q),'[]'::jsonb);
 END $$;
 
 CREATE FUNCTION public.ack_website_inventory_outbox(_business_id uuid, _through_id bigint)
