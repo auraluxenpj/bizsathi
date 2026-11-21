@@ -262,6 +262,20 @@ USING (
     OR EXISTS (
       SELECT 1
       FROM public.commerce_documents d
+      JOIN public.sale_return_requests rr
+        ON rr.business_id=d.business_id
+       AND rr.return_document_id=d.id
+      WHERE d.id=commerce_payments.document_id
+        AND d.business_id=commerce_payments.business_id
+        AND d.branch_id=commerce_payments.branch_id
+        AND d.kind='sale_return'
+        AND rr.status='approved'
+        AND rr.reviewed_by=auth.uid()
+        AND public.can_approve_inventory_count(business_id,branch_id)
+    )
+    OR EXISTS (
+      SELECT 1
+      FROM public.commerce_documents d
       WHERE d.id=commerce_payments.document_id
         AND d.business_id=commerce_payments.business_id
         AND d.branch_id=commerce_payments.branch_id
