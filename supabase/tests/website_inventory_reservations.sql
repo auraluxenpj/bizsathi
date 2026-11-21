@@ -3,6 +3,7 @@ BEGIN;
 
 INSERT INTO auth.users(id,email,email_confirmed_at,raw_user_meta_data,created_at,updated_at)
 VALUES ('e1070000-0000-4000-8000-000000000001','website-reservation-admin@example.invalid',now(),'{}',now(),now());
+INSERT INTO public.platform_owners(user_id,note) VALUES ('e1070000-0000-4000-8000-000000000001','isolated website reservation regression fixture');
 
 DO $setup_business$
 DECLARE b uuid:='c0f0ed15-97e4-4859-ac8f-a2d4e81f5b01';
