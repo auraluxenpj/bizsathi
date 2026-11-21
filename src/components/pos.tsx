@@ -106,7 +106,7 @@ export function Pos() {
       <div className="flex min-w-0 justify-start">
         {billingStaff ? <span className="truncate text-xs font-semibold text-muted-foreground sm:text-sm">POS-only workspace</span> : <Button asChild variant="ghost" size="sm"><Link to="/dashboard"><ArrowLeft />Dashboard</Link></Button>}
       </div>
-      <h1 className="max-w-[48vw] truncate text-center text-sm font-semibold sm:max-w-none sm:text-base">{name ? `${name} · ` : ''}Point of sale</h1>
+      <h1 className="max-w-[48vw] truncate text-center text-sm font-semibold sm:max-w-none sm:text-base">Point of sale</h1>
       <div className="flex min-w-0 justify-end">
         <div className="flex items-center gap-2">
           {ready && !!activeCounter && branches.length > 1 && <select aria-label="POS branch" className="h-9 max-w-32 rounded-md border bg-background px-2 text-xs sm:max-w-48 sm:text-sm" value={selectedBranch} onChange={(e) => { setBranch(e.target.value); setSaved(''); setCounts({}); setSetupStatus(''); }}><option value="" disabled>Select branch</option>{branches.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select>}
