@@ -348,9 +348,10 @@ describe('Point of sale', () => {
     expect(screen.getByLabelText('quantity line 1')).toHaveValue(1);
     expect(screen.getByLabelText('quantity line 2')).toHaveValue(1);
     expect(screen.queryByRole('button', { name: 'Add selected (2)' })).not.toBeInTheDocument();
-    fireEvent.click(selectableProducts[0]);
-    fireEvent.click(selectableProducts[1]);
-    fireEvent.click(screen.getByRole('button', { name: 'Add selected (2)' }));
+    const refreshedSelectableProducts = await screen.findAllByRole('checkbox');
+    fireEvent.click(refreshedSelectableProducts[0]);
+    fireEvent.click(refreshedSelectableProducts[1]);
+    fireEvent.click(await screen.findByRole('button', { name: 'Add selected (2)' }));
     expect(screen.getByLabelText('quantity line 1')).toHaveValue(2);
     expect(screen.getByLabelText('quantity line 2')).toHaveValue(2);
     expect(confirm).not.toHaveBeenCalled();
