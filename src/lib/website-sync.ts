@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-export const AURALUXE_BUSINESS_ID = '985f4fd7-edcd-41a9-beec-8148fcb29818';
+export const AURALUXE_BUSINESS_ID = 'c0f0ed15-97e4-4859-ac8f-a2d4e81f5b01';
 const key = (sku: string) => sku.trim().toLowerCase();
 const stock = z.number().int().min(0).max(1_000_000);
 export const localSnapshot = z.array(z.object({ id: z.string().uuid(), sku: z.string(), stock: z.string() })).max(2000);
