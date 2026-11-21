@@ -25,6 +25,7 @@ CREATE TABLE public.website_inventory_reservations (
   request jsonb NOT NULL CHECK(jsonb_typeof(request)='array'),
   created_at timestamptz NOT NULL DEFAULT now(),
   finalized_at timestamptz,
+  finalization_reference text,
   UNIQUE(business_id,id),
   FOREIGN KEY(business_id,branch_id) REFERENCES public.branches(business_id,id) ON DELETE RESTRICT
 );
@@ -165,7 +166,7 @@ BEGIN
   PERFORM public.website_inventory_require_service();
   IF _operation_id IS NULL OR _business_id IS NULL OR _branch_id IS NULL
      OR coalesce(length(btrim(_reference)),0) NOT BETWEEN 1 AND 160
-     OR jsonb_typeof(_items)<>'array' OR jsonb_array_length(_items) NOT BETWEEN 1 AND 50 THEN
+     OR _items IS NULL OR jsonb_typeof(_items) IS DISTINCT FROM 'array' OR jsonb_array_length(_items) NOT BETWEEN 1 AND 50 THEN
     RAISE EXCEPTION 'Invalid website reservation request';
   END IF;
   PERFORM pg_advisory_xact_lock(hashtextextended(_business_id::text,0));
@@ -246,7 +247,7 @@ DECLARE
   new_status text;
 BEGIN
   PERFORM public.website_inventory_require_service();
-  IF _action NOT IN ('commit','cancel') OR coalesce(length(btrim(_reference)),0) NOT BETWEEN 1 AND 160 THEN
+  IF _action IS NULL OR _action NOT IN ('commit','cancel') OR coalesce(length(btrim(_reference)),0) NOT BETWEEN 1 AND 160 THEN
     RAISE EXCEPTION 'Invalid reservation finalization';
   END IF;
   PERFORM pg_advisory_xact_lock(hashtextextended(_business_id::text,0));
@@ -254,15 +255,17 @@ BEGIN
     WHERE business_id=_business_id AND id=_operation_id FOR UPDATE;
   IF NOT FOUND THEN RAISE EXCEPTION 'Reservation not found'; END IF;
   IF reservation.status='committed' AND _action='commit' THEN
+    IF reservation.finalization_reference IS DISTINCT FROM btrim(_reference) THEN RAISE EXCEPTION 'Finalization retry payload changed'; END IF;
     RETURN jsonb_build_object('operationId',_operation_id,'status','committed','duplicate',true);
   ELSIF reservation.status='cancelled' AND _action='cancel' THEN
+    IF reservation.finalization_reference IS DISTINCT FROM btrim(_reference) THEN RAISE EXCEPTION 'Finalization retry payload changed'; END IF;
     RETURN jsonb_build_object('operationId',_operation_id,'status','cancelled','duplicate',true);
   ELSIF reservation.status<>'reserved' THEN
     RAISE EXCEPTION 'Reservation already finalized differently';
   END IF;
 
   IF _action='commit' THEN
-    UPDATE public.website_inventory_reservations SET status='committed',finalized_at=now()
+    UPDATE public.website_inventory_reservations SET status='committed',finalized_at=now(),finalization_reference=btrim(_reference)
       WHERE business_id=_business_id AND id=_operation_id;
     FOR item IN SELECT * FROM public.website_inventory_reservation_items
       WHERE business_id=_business_id AND reservation_id=_operation_id ORDER BY variant_id LOOP
@@ -276,7 +279,7 @@ BEGIN
     END LOOP;
     new_status:='committed';
   ELSE
-    UPDATE public.website_inventory_reservations SET status='cancelled',finalized_at=now()
+    UPDATE public.website_inventory_reservations SET status='cancelled',finalized_at=now(),finalization_reference=btrim(_reference)
       WHERE business_id=_business_id AND id=_operation_id;
     FOR item IN SELECT * FROM public.website_inventory_reservation_items
       WHERE business_id=_business_id AND reservation_id=_operation_id ORDER BY variant_id LOOP
@@ -293,6 +296,19 @@ BEGIN
       jsonb_build_object('operationId',_operation_id,'reference',btrim(_reference),'items',event_items));
   RETURN jsonb_build_object('operationId',_operation_id,'status',new_status,'duplicate',false,'items',event_items);
 END $$;
+
+CREATE FUNCTION public.website_inventory_status(_business_id uuid, _operation_id uuid)
+RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path=public AS $
+DECLARE reservation public.website_inventory_reservations;
+BEGIN
+  PERFORM public.website_inventory_require_service();
+  SELECT * INTO reservation FROM public.website_inventory_reservations
+    WHERE business_id=_business_id AND id=_operation_id;
+  IF NOT FOUND THEN RETURN jsonb_build_object('operationId',_operation_id,'status','not_found'); END IF;
+  RETURN jsonb_build_object('operationId',_operation_id,'status',reservation.status,
+    'reference',reservation.reference,'finalizationReference',reservation.finalization_reference,
+    'createdAt',reservation.created_at,'finalizedAt',reservation.finalized_at);
+END $;
 
 CREATE FUNCTION public.read_website_inventory_outbox(
   _business_id uuid, _after_id bigint DEFAULT 0, _limit integer DEFAULT 100
@@ -320,12 +336,14 @@ END $$;
 REVOKE ALL ON FUNCTION public.reserve_website_inventory(uuid,uuid,uuid,text,jsonb),
   public.finalize_website_inventory(uuid,uuid,text,text),
   public.read_website_inventory_outbox(uuid,bigint,integer),
-  public.ack_website_inventory_outbox(uuid,bigint)
+  public.ack_website_inventory_outbox(uuid,bigint),
+  public.website_inventory_status(uuid,uuid)
   FROM PUBLIC, anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.reserve_website_inventory(uuid,uuid,uuid,text,jsonb),
   public.finalize_website_inventory(uuid,uuid,text,text),
   public.read_website_inventory_outbox(uuid,bigint,integer),
-  public.ack_website_inventory_outbox(uuid,bigint)
+  public.ack_website_inventory_outbox(uuid,bigint),
+  public.website_inventory_status(uuid,uuid)
   TO service_role;
 
 COMMENT ON TABLE public.website_inventory_reservations IS
