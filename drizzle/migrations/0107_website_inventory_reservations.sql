@@ -297,6 +297,16 @@ BEGIN
   RETURN jsonb_build_object('operationId',_operation_id,'status',new_status,'duplicate',false,'items',event_items);
 END $$;
 
+CREATE FUNCTION public.website_inventory_branch(_business_id uuid)
+RETURNS uuid LANGUAGE plpgsql SECURITY DEFINER SET search_path=public AS $branch$
+DECLARE selected_branch uuid;
+BEGIN
+  PERFORM public.website_inventory_require_service();
+  SELECT branch_id INTO selected_branch FROM public.website_inventory_integrations
+    WHERE business_id=_business_id AND enabled;
+  RETURN selected_branch;
+END $branch$;
+
 CREATE FUNCTION public.website_inventory_status(_business_id uuid, _operation_id uuid)
 RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path=public AS $status$
 DECLARE reservation public.website_inventory_reservations;
@@ -337,13 +347,15 @@ REVOKE ALL ON FUNCTION public.reserve_website_inventory(uuid,uuid,uuid,text,json
   public.finalize_website_inventory(uuid,uuid,text,text),
   public.read_website_inventory_outbox(uuid,bigint,integer),
   public.ack_website_inventory_outbox(uuid,bigint),
-  public.website_inventory_status(uuid,uuid)
+  public.website_inventory_status(uuid,uuid),
+  public.website_inventory_branch(uuid)
   FROM PUBLIC, anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.reserve_website_inventory(uuid,uuid,uuid,text,jsonb),
   public.finalize_website_inventory(uuid,uuid,text,text),
   public.read_website_inventory_outbox(uuid,bigint,integer),
   public.ack_website_inventory_outbox(uuid,bigint),
-  public.website_inventory_status(uuid,uuid)
+  public.website_inventory_status(uuid,uuid),
+  public.website_inventory_branch(uuid)
   TO service_role;
 
 COMMENT ON TABLE public.website_inventory_reservations IS
