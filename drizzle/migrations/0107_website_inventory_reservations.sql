@@ -114,6 +114,7 @@ RETURNS numeric LANGUAGE sql STABLE SECURITY DEFINER SET search_path=public AS $
     + coalesce((SELECT sum(quantity) FROM public.website_inventory_movements WHERE business_id=_business AND branch_id=_branch AND variant_id=_variant),0);
 $$;
 REVOKE ALL ON FUNCTION public.commerce_stock_balance(uuid,uuid,uuid) FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.commerce_stock_balance(uuid,uuid,uuid) TO service_role;
 
 -- Every native BizSathi stock deduction must leave enough stock for outstanding website reservations.
 CREATE FUNCTION public.guard_website_reserved_stock() RETURNS trigger
