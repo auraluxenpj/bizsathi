@@ -102,7 +102,6 @@ BEGIN
   EXCEPTION WHEN raise_exception THEN rejected:=true;
   END;
   ASSERT rejected,'Native BizSathi stock writers cannot consume reserved stock';
-  ASSERT public.commerce_stock_balance(b,br,v)=1,'Rejected native deduction leaves ledger unchanged';
 END
 $native_sale_guard$;
 
@@ -116,6 +115,7 @@ BEGIN
   SELECT id INTO b FROM public.businesses WHERE name='Website reservation fixture';
   SELECT id INTO br FROM public.branches WHERE business_id=b AND code='WEB';
   SELECT id INTO v FROM public.product_variants WHERE business_id=b AND sku='SKU-WEB-RESERVATION-TEST';
+  ASSERT public.commerce_stock_balance(b,br,v)=1,'Rejected native deduction leaves ledger unchanged';
   result:=public.finalize_website_inventory(b,r4,'commit','WEB-ORDER-4-CONFIRMED');
   ASSERT result->>'status'='committed','Commit succeeds after protected reservation';
   ASSERT public.commerce_stock_balance(b,br,v)=0,'Final on-hand is zero, never negative';
