@@ -20,10 +20,11 @@ describe('scopeCommerceForCashier', () => {
       { id: 'payment-other-drawer', document_id: null, session_id: 'session-other' },
     ],
     counters: [
-      { id: 'open-own', actor_id: cashier, session_id: 'session-own' },
-      { id: 'manager-cash-in-own-session', actor_id: manager, session_id: 'session-own' },
-      { id: 'close-own', actor_id: cashier, session_id: 'session-own' },
-      { id: 'open-other', actor_id: 'cashier-2', session_id: 'session-other' },
+      { id: 'open-own', actor_id: cashier, session_id: 'session-own', kind: 'open' },
+      { id: 'manager-cash-in-own-session', actor_id: manager, session_id: 'session-own', kind: 'in' },
+      { id: 'close-own', actor_id: cashier, session_id: 'session-own', kind: 'close' },
+      { id: 'open-other', actor_id: 'cashier-2', session_id: 'session-other', kind: 'open' },
+      { id: 'close-other', actor_id: 'manager-2', session_id: 'session-other', kind: 'close' },
     ],
     journals: [{ id: 'journal-private' }],
     memberships: [{ id: 'membership-private' }],
@@ -35,9 +36,9 @@ describe('scopeCommerceForCashier', () => {
     expect(scopeCommerceForCashier(data, cashier).documents.map((row) => row.id)).toEqual(['sale-own', 'return-own-sale']);
   });
 
-  it('returns only payments for the cashier documents or own drawer sessions', () => {
+  it('returns payments for the cashier documents only, keeping shared-session cash totals manager-only', () => {
     expect(scopeCommerceForCashier(data, cashier).payments.map((row) => row.id)).toEqual([
-      'payment-own-sale', 'payment-own-return', 'payment-own-drawer',
+      'payment-own-sale', 'payment-own-return',
     ]);
   });
 
@@ -58,5 +59,26 @@ describe('scopeCommerceForCashier', () => {
     const originalCount = data.documents.length;
     scopeCommerceForCashier(data, cashier);
     expect(data.documents).toHaveLength(originalCount);
+  });
+
+  it('includes all events and cash payments in the active shared session, but not its history after close', () => {
+    const shared = {
+      ...data,
+      counters: [
+        { id: 'shared-open', actor_id: 'cashier-2', session_id: 'shared', kind: 'open' },
+        { id: 'shared-cash-in', actor_id: manager, session_id: 'shared', kind: 'in' },
+        { id: 'closed-open', actor_id: 'cashier-2', session_id: 'closed', kind: 'open' },
+        { id: 'closed-close', actor_id: manager, session_id: 'closed', kind: 'close' },
+      ],
+      payments: [
+        ...data.payments,
+        { id: 'shared-cash-payment', document_id: null, session_id: 'shared' },
+        { id: 'closed-cash-payment', document_id: null, session_id: 'closed' },
+      ],
+    };
+    const scoped = scopeCommerceForCashier(shared, cashier);
+    expect(scoped.counters.map((row) => row.id)).toEqual(['shared-open', 'shared-cash-in']);
+    expect(scoped.payments.map((row) => row.id)).not.toContain('shared-cash-payment');
+    expect(scoped.payments.map((row) => row.id)).not.toContain('closed-cash-payment');
   });
 });

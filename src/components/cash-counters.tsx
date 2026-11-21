@@ -73,15 +73,15 @@ export function CashCounters() {
   const own = events.find(
     (e) =>
       e.kind === 'open' &&
-      e.actor_id === data?.userId &&
+      e.branch_id === selectedBranch &&
       !events.some((c) => c.session_id === e.session_id && c.kind === 'close'),
   );
-  const manager = ['owner', 'admin'].includes(data?.role ?? '');
-  const cashier = data?.role === 'staff' && data?.jobTitle === 'sales_person';
-  const canWrite = ['owner', 'admin', 'accountant'].includes(data?.role ?? '') || cashier;
+  const manager = !!data?.counterAccess?.canManage || ['owner', 'admin', 'accountant'].includes(data?.role ?? '');
+  const cashier = !manager && !!data?.counterAccess?.isCashier;
+  const canWrite = !!data?.counterAccess?.canWrite || ['owner', 'admin', 'accountant'].includes(data?.role ?? '') || cashier;
   // Staff count blind: no expected figure while a counter is open. The close result (expected and
   // difference) still appears in the history once they submit.
-  const showExpected = canSeeExpectedCash(data?.role);
+  const showExpected = canSeeExpectedCash(data?.role) || manager;
 
   // Preview only; the server recomputes expected cash when the counter is closed.
   const expected = own
@@ -143,9 +143,9 @@ export function CashCounters() {
       };
     });
 
-  const reportSessions = scopeCashCounterReport(dailySessions, data?.role, data?.jobTitle, data?.userId ?? '');
+  const reportSessions = scopeCashCounterReport(dailySessions, data?.role, data?.jobTitle, data?.userId ?? '', cashier, manager);
   const visibleDailySessions = reportSessions.filter((session) =>
-    (!cashier || session.openedById === data?.userId) &&
+    (!cashier || !session.closed || session.openedById === data?.userId) &&
     (!staffFilter || session.openedById === staffFilter || session.closedById === staffFilter) &&
     (!reportBranch || session.branchId === reportBranch),
   );
@@ -232,7 +232,7 @@ export function CashCounters() {
   return (
     <CommerceFrame w={w} title="Cash counters" active="/cash-counters">
       <section className="border-b py-7">
-        <h2 className="brand text-xl">Your counter</h2>
+        <h2 className="brand text-xl">Shared branch counter</h2>
         <p className="mt-3 text-sm text-muted-foreground">
           {own ? `Open · ${w.access.data?.branches.find((b) => b.id === own.branch_id)?.name}` : 'No open counter'}
         </p>
@@ -245,10 +245,10 @@ export function CashCounters() {
           </div>
         ) : own ? (
           <p className="mt-4 text-sm text-muted-foreground">
-            Count the cash in your drawer and enter it below to close. The expected amount is shown after you submit.
+            {manager ? "Count the branch cash and complete the closing reconciliation below." : "The shared branch counter is open. A manager will complete the day closing."}
           </p>
         ) : null}
-        {canWrite && (
+        {canWrite && (!own || manager) && (
           <form
             className="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-3"
             onSubmit={(e) => {
@@ -414,7 +414,7 @@ export function CashCounters() {
                 {branches.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}
               </select>
             </label>
-            <Button type="button" variant="outline" className="h-10 self-end" onClick={() => downloadCsv(`sutra-cash-closing-${date}.csv`, buildCashClosingCsv(visibleDailySessions.map((session) => ({
+            {!cashier && <Button type="button" variant="outline" className="h-10 self-end" onClick={() => downloadCsv(`sutra-cash-closing-${date}.csv`, buildCashClosingCsv(visibleDailySessions.map((session) => ({
               date,
               branch: session.branch,
               status: session.closed ? 'Closed' : 'Open',
@@ -443,10 +443,12 @@ export function CashCounters() {
               difference: dailyTotals.difference.toFixed(2),
             }))}>
               Export CSV
-            </Button>
+            </Button>}
           </div>
         </div>
-        {!visibleDailySessions.length ? (
+        {cashier ? (
+          <p className="py-6 text-sm text-muted-foreground">The shared branch closing report and cash reconciliation are manager-controlled. Ask your manager for the final closing report.</p>
+        ) : !visibleDailySessions.length ? (
           <p className="py-6 text-sm text-muted-foreground">{dailySessions.length ? 'No sessions match the selected filters.' : 'No counter sessions opened on this date.'}</p>
         ) : (
           <>

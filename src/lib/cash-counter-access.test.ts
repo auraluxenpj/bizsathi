@@ -19,18 +19,24 @@ describe('canSeeExpectedCash', () => {
   });
 });
 
-
 describe('scopeCashCounterReport', () => {
   const sessions = [
-    { id: 'own', openedById: 'cashier-1' },
-    { id: 'other', openedById: 'cashier-2' },
+    { id: 'own-closed', openedById: 'cashier-1', closed: true },
+    { id: 'other-closed', openedById: 'cashier-2', closed: true },
+    { id: 'shared-open', openedById: 'cashier-2', closed: false },
   ];
-  it('limits billing staff to sessions they opened', () => {
-    expect(scopeCashCounterReport(sessions, 'staff', 'sales_person', 'cashier-1').map((s) => s.id)).toEqual(['own']);
+  it('lets cashiers see the active shared counter and their own historical sessions only', () => {
+    expect(scopeCashCounterReport(sessions, 'staff', 'sales_person', 'cashier-1').map((s) => s.id))
+      .toEqual(['own-closed', 'shared-open']);
+  });
+  it('uses verified multi-role cashier access even when the legacy job title is empty', () => {
+    expect(scopeCashCounterReport(sessions, 'staff', null, 'cashier-1', true).map((s) => s.id))
+      .toEqual(['own-closed', 'shared-open']);
   });
   it('keeps the full authorized report for managers and accountants', () => {
     expect(scopeCashCounterReport(sessions, 'admin', 'manager', 'manager-1')).toEqual(sessions);
     expect(scopeCashCounterReport(sessions, 'accountant', 'accountant', 'accountant-1')).toEqual(sessions);
+    expect(scopeCashCounterReport(sessions, 'staff', 'manager', 'manager-1', false, true)).toEqual(sessions);
   });
   it('does not treat other staff job titles as cashiers', () => {
     expect(scopeCashCounterReport(sessions, 'staff', 'stock_manager', 'cashier-1')).toEqual([]);
