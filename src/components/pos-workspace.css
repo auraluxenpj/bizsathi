@@ -294,3 +294,47 @@
  .pos-checkout-footer-inner > div:last-child button { min-width:0; white-space:normal; }
  .pos-desktop-cart-actions { display:none; }
 }
+
+
+/* Desktop checkout usability: keep the catalogue and cart independently
+   scrollable, and prevent payment controls from disappearing below the cart. */
+@media (min-width: 1280px) {
+  .pos-workspace .pos-billing-checkout {
+    min-height: calc(100dvh - 8rem);
+    padding-bottom: 1rem;
+  }
+  .pos-workspace .pos-billing-checkout .pos-billing-layout {
+    align-items: start;
+  }
+  .pos-workspace .pos-billing-checkout .pos-billing-catalogue {
+    max-height: calc(100dvh - 11rem);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    scrollbar-gutter: stable;
+    padding-right: .75rem;
+  }
+  .pos-workspace .pos-billing-checkout .pos-billing-cart {
+    max-height: calc(100dvh - 9rem);
+    overflow-x: hidden;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    scrollbar-gutter: stable;
+    position: sticky !important;
+    top: 1rem;
+    align-self: start;
+  }
+  .pos-workspace .pos-billing-checkout .pos-cart-lines {
+    max-height: min(42vh, 24rem);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    padding-right: .2rem;
+  }
+  .pos-workspace .pos-billing-checkout .pos-payment-collection {
+    position: sticky;
+    bottom: 0;
+    z-index: 6;
+    background: #fff;
+    box-shadow: 0 -8px 18px rgb(61 16 33 / 8%);
+    margin-top: .75rem;
+  }
+}
