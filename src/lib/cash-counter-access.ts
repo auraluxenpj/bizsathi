@@ -1,5 +1,5 @@
 // Who may see expected drawer cash while a counter is open.
-const EXPECTED_CASH_ROLES = ['owner', 'admin', 'accountant', 'branch_manager'];
+const EXPECTED_CASH_ROLES = ['owner', 'admin', 'accountant'];
 
 /** Unknown, missing or still-loading roles fail closed (blind). */
 export function canSeeExpectedCash(role: string | null | undefined): boolean {
@@ -19,5 +19,5 @@ export function scopeCashCounterReport<T extends { openedById: string; closed?: 
   if (isCashier || (role === 'staff' && jobTitle === 'sales_person')) {
     return sessions.filter((session) => !session.closed || session.openedById === userId);
   }
-  return role && [...EXPECTED_CASH_ROLES, 'branch_manager'].includes(role) ? sessions : [];
+  return role && EXPECTED_CASH_ROLES.includes(role) ? sessions : [];
 }
