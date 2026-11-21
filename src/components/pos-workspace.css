@@ -240,7 +240,7 @@
 .pos-desktop-cart-actions button { flex:1 1 auto; min-width:0; }
 .pos-checkout-footer { background:#fffaf6; border-color:var(--auraluxe-line); }
 .pos-noncheckout-details { display:contents; }
-@media (min-width:768px) and (max-width:1439px) {
+@media (min-width:768px) and (max-width:1279px) {
  .pos-billing-layout { grid-template-columns:minmax(235px,.8fr) minmax(0,1.2fr); gap:1rem; }
  .pos-checkout-steps { grid-column:1 / -1; }
  .pos-checkout-details { grid-column:1; }
@@ -252,8 +252,8 @@
  .pos-checkout-footer-app,.pos-checkout-footer-standalone { display:none !important; }
  .pos-billing-checkout { padding-bottom:2rem; }
 }
-@media (min-width:1440px) {
- .pos-billing-layout { grid-template-columns:minmax(245px,.82fr) minmax(390px,1.28fr) minmax(330px,1fr) !important; gap:1rem !important; align-items:start; }
+@media (min-width:1280px) {
+ .pos-billing-layout { grid-template-columns:minmax(210px,.82fr) minmax(330px,1.28fr) minmax(280px,1fr) !important; gap:1rem !important; align-items:start; }
  .pos-checkout-steps { grid-column:1 / -1 !important; }
  .pos-checkout-details { grid-column:1 !important; }
  .pos-billing-catalogue { grid-column:2 !important; display:block !important; }
