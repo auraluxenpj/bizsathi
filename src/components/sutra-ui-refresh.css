@@ -212,9 +212,6 @@
   .app-workspace .app-topbar > div > * {
     flex: 0 0 auto;
   }
-  .app-workspace .app-topbar > div > .xl\\:hidden {
-    display: block;
-  }
 
   /* The fixed tab bar must not hide the last row of page content. */
   .app-workspace > .min-w-0 {
