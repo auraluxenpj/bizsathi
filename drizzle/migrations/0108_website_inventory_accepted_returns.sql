@@ -261,7 +261,7 @@ BEGIN
 
   INSERT INTO public.website_inventory_outbox(business_id,branch_id,reservation_id,event_type,payload)
     VALUES(_business_id,reservation.branch_id,_reservation_id,'returned',
-      jsonb_build_object('returnId',_return_id,'operationId',_reservation_id,'reference',btrim(_reference),'items',result_items));
+      jsonb_build_object('returnId',_return_id,'operationId',_return_id,'reservationId',_reservation_id,'reference',btrim(_reference),'items',result_items));
 
   RETURN jsonb_build_object(
     'returnId',_return_id,'reservationId',_reservation_id,
