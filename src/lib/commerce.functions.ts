@@ -35,10 +35,23 @@ export const getCommerce=createServerFn({method:'GET'}).middleware([requireSupab
  if(!user.data&&!platformOwner.data)throw new Error('Business membership could not be verified.');
  const role=user.data?.role_code??(platformOwner.data?'owner':null);
  const jobTitle=user.data?.job_title??(platformOwner.data?'Platform Owner':null);
+ const [salesRole,legacyStaffRole,branchManagerRole,legacyBranchManagerRole,accountantRole,adminRole,salesView] = await Promise.all([
+  context.supabase.rpc('has_business_access_role',{_business:data.businessId,_role_code:'position_sales_person'}),
+  context.supabase.rpc('has_business_access_role',{_business:data.businessId,_role_code:'legacy_staff'}),
+  context.supabase.rpc('has_business_access_role',{_business:data.businessId,_role_code:'position_branch_manager'}),
+  context.supabase.rpc('has_business_access_role',{_business:data.businessId,_role_code:'legacy_branch_manager'}),
+  context.supabase.rpc('has_business_role',{_business_id:data.businessId,_min_role:'accountant'}),
+  context.supabase.rpc('has_business_role',{_business_id:data.businessId,_min_role:'admin'}),
+  context.supabase.rpc('has_permission',{_business_id:data.businessId,_permission:'sales.view'}),
+ ]);
+ if([salesRole,legacyStaffRole,branchManagerRole,legacyBranchManagerRole,accountantRole,adminRole,salesView].some(result=>result.error)) throw new Error('Cash counter permissions could not be verified.');
+ const isCashier=Boolean(salesRole.data||legacyStaffRole.data)||(role==='staff'&&jobTitle==='sales_person');
+ const canManageCounter=Boolean(accountantRole.data||adminRole.data||((branchManagerRole.data||legacyBranchManagerRole.data)&&salesView.data));
+ const counterAccess={isCashier,canManage:canManageCounter,canWrite:isCashier||canManageCounter};
  const commerce={memberships,loyalty,redemptions,documents,payments,counters,journals};
  // The base Staff role is the POS-level role; scope its commerce history to the signed-in cashier.
  const scoped=role==='staff'?scopeCommerceForCashier(commerce,context.userId):commerce;
- return{...scoped,periods:periods.data,settings:settings.data,business:business.data,userId:context.userId,role,jobTitle};
+ return{...scoped,periods:periods.data,settings:settings.data,business:business.data,userId:context.userId,role,jobTitle,counterAccess};
 });
 export const confirmDocument=createServerFn({method:'POST'}).middleware([requireSupabaseAuth]).inputValidator(storedDocumentInput).handler(async({data,context})=>{const r=await context.supabase.rpc('post_commerce_document',{_request:data});if(r.error)throw new Error(friendlyCommerceError(r.error.message)??'Document not confirmed. Check customer mobile, branch permissions, open period, stock, source quantities, payment amounts and counter access. Your request is retained for checking or retry.');return{id:r.data};});
 export const recordPayment=createServerFn({method:'POST'}).middleware([requireSupabaseAuth]).inputValidator(paymentInput).handler(async({data,context})=>{const r=await context.supabase.rpc('post_commerce_payment',{_request:data});if(r.error)throw new Error(friendlyCommerceError(r.error.message)??'Payment not confirmed. Check outstanding balance, refund limit, open period and cash counter.');return{id:r.data};});
