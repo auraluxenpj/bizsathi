@@ -11,7 +11,7 @@ BEGIN
   INSERT INTO public.businesses(id,name,created_by)
     VALUES(b,'Website reservation fixture','e1070000-0000-4000-8000-000000000001');
   INSERT INTO public.business_memberships(business_id,user_id,role_code,status)
-    VALUES(b,'e1070000-0000-4000-8000-000000000001','owner','active');
+    VALUES(b,'e1070000-0000-4000-8000-000000000001','admin','active');
   INSERT INTO public.branches(business_id,code,name)
     VALUES(b,'WEB','Website test branch');
 END
