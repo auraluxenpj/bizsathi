@@ -6,7 +6,10 @@ const row = { id, sku: 'AL-1', stock: '10' };
 const local = [row];
 const remote = { sku: 'AL-1', match: 'variant' as const, current: 8, last: 10, pending: 0 };
 const state = { items: [remote] };
-describe('website stock sync', () => {\n  it('targets the verified Auraluxe business tenant', () => {\n    expect(AURALUXE_BUSINESS_ID).toBe('c0f0ed15-97e4-4859-ac8f-a2d4e81f5b01');\n  });
+describe('website stock sync', () => {
+  it('targets the verified Auraluxe business tenant', () => {
+    expect(AURALUXE_BUSINESS_ID).toBe('c0f0ed15-97e4-4859-ac8f-a2d4e81f5b01');
+  });
   it('matches trimmed active SKU input case-insensitively and compares stock', () => {
     expect(compareStock(eligibleStock([{ ...row, sku: ' AL-1 ' }]).valid, [{ ...remote, sku: 'al-1' }])[0]).toMatchObject({ sku: 'AL-1', local: 10, website: 8, matched: true });
   });
