@@ -16,8 +16,8 @@ const requestSchema = z.discriminatedUnion('action', [
   z.object({ action: z.literal('commit'), operationId, reference }).strict(),
   z.object({ action: z.literal('cancel'), operationId, reference }).strict(),
   z.object({ action: z.literal('status'), operationId }).strict(),
-  z.object({ action: z.literal('outbox'), afterId: z.string().regex(/^(0|[1-9]\\d{0,18})$/), limit: z.number().int().min(1).max(500) }).strict(),
-  z.object({ action: z.literal('ack'), throughId: z.string().regex(/^(0|[1-9]\\d{0,18})$/) }).strict(),
+  z.object({ action: z.literal('outbox'), afterId: z.string().regex(/^(0|[1-9]\d{0,18})$/), limit: z.number().int().min(1).max(500) }).strict(),
+  z.object({ action: z.literal('ack'), throughId: z.string().regex(/^(0|[1-9]\d{0,18})$/) }).strict(),
 ]);
 
 function constantTimeEqual(left: string, right: string): boolean {
