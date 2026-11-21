@@ -38,9 +38,9 @@ export function scopeCommerceForCashier<D extends CashierDocument, P extends Cas
     ...data,
     documents,
     counters,
-    payments: data.payments.filter(
-      (payment) => (!!payment.document_id && documentIds.has(payment.document_id)) || (!!payment.session_id && visibleSessionIds.has(payment.session_id)),
-    ),
+    // Cashiers see payments attached to their own sales only. The manager's
+    // shared-counter reconciliation uses the unscoped manager workspace payload.
+    payments: data.payments.filter((payment) => !!payment.document_id && documentIds.has(payment.document_id)),
     journals: [],
     memberships: [],
     loyalty: [],
