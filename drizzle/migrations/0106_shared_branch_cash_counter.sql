@@ -257,7 +257,7 @@ USING (
     OR public.is_cashier_sale_or_return(business_id,branch_id,document_id)
     OR (
       method='cash' AND session_id IS NOT NULL
-      AND public.can_read_cash_counter_session(business_id,branch_id,session_id)
+      AND public.can_approve_inventory_count(business_id,branch_id)
     )
     OR EXISTS (
       SELECT 1
