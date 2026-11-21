@@ -51,33 +51,63 @@ function json(body: unknown, status = 200): Response {
 }
 
 
-async function publishPendingOutbox(db: InventoryRpcClient): Promise<void> {
+async function publishPendingOutbox(db: InventoryRpcClient): Promise<{ published: number; blocked: boolean }> {
   const target = process.env['AURALUXE_WEBSITE_INVENTORY_API_URL'];
   const secret = process.env['WEBSITE_INVENTORY_SYNC_SECRET'];
-  if (!target || !target.startsWith('https://') || !secret) return;
+  if (!target || !target.startsWith('https://') || !secret) return { published: 0, blocked: true };
+
+  let published = 0;
   for (let batch = 0; batch < 10; batch += 1) {
+    const leaseToken = crypto.randomUUID();
     let eventId: string | undefined;
+    const claimed = await db.rpc('claim_website_inventory_outbox', {
+      _business_id: BUSINESS_ID,
+      _lease_token: leaseToken,
+      _limit: 1,
+    });
+    if (claimed.error || !Array.isArray(claimed.data)) {
+      console.warn('[website-inventory] outbox claim unavailable');
+      return { published, blocked: true };
+    }
+    if (claimed.data.length === 0) return { published, blocked: false };
+
+    const event = claimed.data[0];
+    if (!event || typeof event !== 'object' || !('payload' in event) || !('id' in event)) {
+      return { published, blocked: true };
+    }
+    eventId = String(event.id);
+    const fail = async (detail: string) => db.rpc('fail_website_inventory_outbox_event', {
+      _business_id: BUSINESS_ID,
+      _event_id: eventId,
+      _lease_token: leaseToken,
+      _error: detail,
+    });
+
     try {
-      const pending = await db.rpc('read_website_inventory_outbox', {
-        _business_id: BUSINESS_ID,
-        _after_id: '0',
-        _limit: 1,
-      });
-      if (pending.error || !Array.isArray(pending.data) || pending.data.length === 0) return;
-      const event = pending.data[0];
-      if (!event || typeof event !== 'object' || !('payload' in event) || !('id' in event)) return;
-      eventId = String(event.id);
       const payload = event.payload;
-      if (!payload || typeof payload !== 'object' || !('items' in payload) || !Array.isArray(payload.items)) return;
+      if (!payload || typeof payload !== 'object' || !('items' in payload) || !Array.isArray(payload.items)) {
+        await fail('invalid outbox payload');
+        return { published, blocked: true };
+      }
       const items: Array<{ sku: string; stock: number }> = [];
       for (const item of payload.items) {
-        if (!item || typeof item !== 'object' || !('sku' in item) || !('available' in item)) return;
+        if (!item || typeof item !== 'object' || !('sku' in item) || !('available' in item)) {
+          await fail('invalid outbox item');
+          return { published, blocked: true };
+        }
         const sku = String(item.sku);
         const stock = Number(item.available);
-        if (!sku || !Number.isInteger(stock) || stock < 0) return;
+        if (!sku || !Number.isInteger(stock) || stock < 0) {
+          await fail('invalid outbox stock projection');
+          return { published, blocked: true };
+        }
         items.push({ sku, stock });
       }
-      if (items.length === 0 || items.length > 50) return;
+      if (items.length === 0 || items.length > 50) {
+        await fail('outbox item count outside supported bounds');
+        return { published, blocked: true };
+      }
+
       const response = await fetch(target, {
         method: 'POST',
         headers: { Authorization: `Bearer ${secret}`, 'Content-Type': 'application/json', Accept: 'application/json' },
@@ -90,39 +120,28 @@ async function publishPendingOutbox(db: InventoryRpcClient): Promise<void> {
         const detail = result && typeof result === 'object' && 'mismatches' in result
           ? `website SKU mismatch: ${JSON.stringify(result.mismatches)}`
           : `website projection HTTP ${response.status}`;
-        await db.rpc('record_website_inventory_outbox_failure', {
-          _business_id: BUSINESS_ID,
-          _event_id: eventId,
-          _error: detail,
-        });
-        console.warn('[website-inventory] projection not acknowledged; outbox retained');
-        return;
+        await fail(detail);
+        console.warn('[website-inventory] projection not acknowledged; event retained for retry');
+        return { published, blocked: true };
       }
-      const ack = await db.rpc('ack_website_inventory_outbox', {
+
+      const ack = await db.rpc('ack_website_inventory_outbox_event', {
         _business_id: BUSINESS_ID,
-        _through_id: String(event.id),
+        _event_id: eventId,
+        _lease_token: leaseToken,
       });
-      if (ack.error) {
-        await db.rpc('record_website_inventory_outbox_failure', {
-          _business_id: BUSINESS_ID,
-          _event_id: eventId,
-          _error: 'outbox acknowledgement failed',
-        });
-        console.warn('[website-inventory] outbox acknowledgement failed');
-        return;
+      if (ack.error || ack.data !== true) {
+        console.warn('[website-inventory] leased outbox acknowledgement failed');
+        return { published, blocked: true };
       }
+      published += 1;
     } catch (error) {
-      if (eventId) {
-        await db.rpc('record_website_inventory_outbox_failure', {
-          _business_id: BUSINESS_ID,
-          _event_id: eventId,
-          _error: 'website projection request failed',
-        }).catch(() => undefined);
-      }
+      await fail('website projection request failed').catch(() => undefined);
       console.warn('[website-inventory] outbox publish deferred', error);
-      return;
+      return { published, blocked: true };
     }
   }
+  return { published, blocked: true };
 }
 
 export const Route = createFileRoute('/api/public/website-inventory')({
@@ -165,6 +184,14 @@ export const Route = createFileRoute('/api/public/website-inventory')({
             return json({ error: 'Website inventory integration is not enabled' }, 503);
           }
           const branchId = binding.data;
+
+          if (parsed.action === 'publish_outbox') {
+            const enabled = await db.rpc('website_inventory_integration_enabled', { _business_id: BUSINESS_ID });
+            if (enabled.error) return json({ error: 'Inventory integration status unavailable' }, 503);
+            if (enabled.data !== true) return json({ ok: true, skipped: true, published: 0 });
+            const result = await publishPendingOutbox(db);
+            return json({ ok: true, ...result });
+          }
 
           if (parsed.action === 'reserve') {
             const result = await db.rpc('reserve_website_inventory', {
