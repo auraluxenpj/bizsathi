@@ -110,7 +110,7 @@ SET LOCAL ROLE service_role;
 SELECT set_config('request.jwt.claims','{"role":"service_role"}',true);
 
 DO $final_commit$
-DECLARE b uuid; r4 uuid:='e1070000-0000-4000-8000-000000000024'; result jsonb; v uuid; br uuid; events jsonb;
+DECLARE b uuid; r4 uuid:='e1070000-0000-4000-8000-000000000024'; result jsonb; v uuid; br uuid; events jsonb; rejected boolean;
 BEGIN
   SELECT id INTO b FROM public.businesses WHERE name='Website reservation fixture';
   SELECT id INTO br FROM public.branches WHERE business_id=b AND code='WEB';
