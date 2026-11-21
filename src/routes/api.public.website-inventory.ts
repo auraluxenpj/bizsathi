@@ -51,46 +51,50 @@ async function publishPendingOutbox(db: InventoryRpcClient): Promise<void> {
   const target = process.env['AURALUXE_WEBSITE_INVENTORY_API_URL'];
   const secret = process.env['WEBSITE_INVENTORY_SYNC_SECRET'];
   if (!target || !target.startsWith('https://') || !secret) return;
-  try {
-    const pending = await db.rpc('read_website_inventory_outbox', {
-      _business_id: BUSINESS_ID,
-      _after_id: '0',
-      _limit: 100,
-    });
-    if (pending.error || !Array.isArray(pending.data) || pending.data.length === 0) return;
-    const latest = new Map<string, { sku: string; stock: number }>();
-    for (const event of pending.data) {
-      if (!event || typeof event !== 'object' || !('payload' in event)) continue;
+  for (let batch = 0; batch < 10; batch += 1) {
+    try {
+      const pending = await db.rpc('read_website_inventory_outbox', {
+        _business_id: BUSINESS_ID,
+        _after_id: '0',
+        _limit: 1,
+      });
+      if (pending.error || !Array.isArray(pending.data) || pending.data.length === 0) return;
+      const event = pending.data[0];
+      if (!event || typeof event !== 'object' || !('payload' in event) || !('id' in event)) return;
       const payload = event.payload;
-      if (!payload || typeof payload !== 'object' || !('items' in payload) || !Array.isArray(payload.items)) continue;
+      if (!payload || typeof payload !== 'object' || !('items' in payload) || !Array.isArray(payload.items)) return;
+      const items: Array<{ sku: string; stock: number }> = [];
       for (const item of payload.items) {
-        if (!item || typeof item !== 'object' || !('sku' in item) || !('available' in item)) continue;
+        if (!item || typeof item !== 'object' || !('sku' in item) || !('available' in item)) return;
         const sku = String(item.sku);
         const stock = Number(item.available);
-        if (sku && Number.isInteger(stock) && stock >= 0) latest.set(sku.toLowerCase(), { sku, stock });
+        if (!sku || !Number.isInteger(stock) || stock < 0) return;
+        items.push({ sku, stock });
       }
-    }
-    if (latest.size === 0) return;
-    const response = await fetch(target, {
-      method: 'POST',
-      headers: { Authorization: `Bearer ${secret}`, 'Content-Type': 'application/json', Accept: 'application/json' },
-      body: JSON.stringify({ items: [...latest.values()] }),
-      redirect: 'error',
-    });
-    const result = await response.json().catch(() => null) as { ok?: boolean } | null;
-    if (!response.ok || result?.ok !== true) {
-      console.warn('[website-inventory] projection not acknowledged; outbox retained');
+      if (items.length === 0 || items.length > 50) return;
+      const response = await fetch(target, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${secret}`, 'Content-Type': 'application/json', Accept: 'application/json' },
+        body: JSON.stringify({ items }),
+        redirect: 'error',
+      });
+      const result = await response.json().catch(() => null) as { ok?: boolean } | null;
+      if (!response.ok || result?.ok !== true) {
+        console.warn('[website-inventory] projection not acknowledged; outbox retained');
+        return;
+      }
+      const ack = await db.rpc('ack_website_inventory_outbox', {
+        _business_id: BUSINESS_ID,
+        _through_id: String(event.id),
+      });
+      if (ack.error) {
+        console.warn('[website-inventory] outbox acknowledgement failed');
+        return;
+      }
+    } catch (error) {
+      console.warn('[website-inventory] outbox publish deferred', error);
       return;
     }
-    const last = pending[pending.length - 1] as { id?: string | number };
-    if (last?.id === undefined) return;
-    const ack = await db.rpc('ack_website_inventory_outbox', {
-      _business_id: BUSINESS_ID,
-      _through_id: String(last.id),
-    });
-    if (ack.error) console.warn('[website-inventory] outbox acknowledgement failed');
-  } catch (error) {
-    console.warn('[website-inventory] outbox publish deferred', error);
   }
 }
 
