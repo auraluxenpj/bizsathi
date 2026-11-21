@@ -4,7 +4,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useServerFn } from '@tanstack/react-start';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
-import { CommerceFrame, useCommerce } from './commerce-workspace';
+import { useCommerce } from './commerce-workspace';
 import { recordCounter } from '@/lib/commerce.functions';
 import { counterInput } from '@/lib/commerce-schemas';
 import { formatNPR } from '@/lib/format';
