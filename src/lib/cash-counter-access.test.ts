@@ -29,6 +29,10 @@ describe('scopeCashCounterReport', () => {
     expect(scopeCashCounterReport(sessions, 'staff', 'sales_person', 'cashier-1').map((s) => s.id))
       .toEqual(['own-closed', 'shared-open']);
   });
+  it('uses verified multi-role cashier access even when the legacy job title is empty', () => {
+    expect(scopeCashCounterReport(sessions, 'staff', null, 'cashier-1', true).map((s) => s.id))
+      .toEqual(['own-closed', 'shared-open']);
+  });
   it('keeps the full authorized report for managers and accountants', () => {
     expect(scopeCashCounterReport(sessions, 'admin', 'manager', 'manager-1')).toEqual(sessions);
     expect(scopeCashCounterReport(sessions, 'accountant', 'accountant', 'accountant-1')).toEqual(sessions);
