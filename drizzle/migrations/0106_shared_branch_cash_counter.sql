@@ -113,7 +113,7 @@ RETURNS uuid
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path=public
-AS $
+AS $post_cash_counter_event$
 #variable_conflict use_column
 DECLARE
   b uuid:=(_request->>'businessId')::uuid;
@@ -224,7 +224,7 @@ BEGIN
     );
   END IF;
   RETURN i;
-END $$;
+END $post_cash_counter_event$;
 REVOKE ALL ON FUNCTION public.post_cash_counter_event(jsonb) FROM PUBLIC,anon;
 GRANT EXECUTE ON FUNCTION public.post_cash_counter_event(jsonb) TO authenticated;
 
