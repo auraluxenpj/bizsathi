@@ -4,7 +4,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useServerFn } from '@tanstack/react-start';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
-import { useCommerce } from './commerce-workspace';
+import { CommerceFrame, useCommerce } from './commerce-workspace';
 import { recordCounter } from '@/lib/commerce.functions';
 import { counterInput } from '@/lib/commerce-schemas';
 import { formatNPR } from '@/lib/format';
@@ -178,7 +178,7 @@ export function CashCounters({ embedded = false, initialBranch = '' }: { embedde
     setAmount('');
     setCounts({});
     setStatus('');
-  }, [w.businessId]);
+  }, [w.businessId, initialBranch]);
 
   const mutation = useMutation({
     mutationFn: (r: ReturnType<typeof counterInput.parse>) => fn({ data: r }),
@@ -229,8 +229,8 @@ export function CashCounters({ embedded = false, initialBranch = '' }: { embedde
     }
   }
 
-  return (
-    <div className={embedded ? 'w-full' : ''}>
+  const content = (
+    <>
       <section className="border-b py-7">
         <h2 className="brand text-xl">Shared branch counter</h2>
         <p className="mt-3 text-sm text-muted-foreground">
@@ -536,6 +536,12 @@ export function CashCounters({ embedded = false, initialBranch = '' }: { embedde
           {status}
         </p>
       )}
-    </div>
+    </>
+  );
+
+  return embedded ? (
+    <div className="w-full">{content}</div>
+  ) : (
+    <CommerceFrame w={w} title="Cash counters" active="/cash-counters">{content}</CommerceFrame>
   );
 }
