@@ -298,7 +298,7 @@ BEGIN
 END $$;
 
 CREATE FUNCTION public.website_inventory_status(_business_id uuid, _operation_id uuid)
-RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path=public AS $
+RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path=public AS $status$
 DECLARE reservation public.website_inventory_reservations;
 BEGIN
   PERFORM public.website_inventory_require_service();
@@ -308,7 +308,7 @@ BEGIN
   RETURN jsonb_build_object('operationId',_operation_id,'status',reservation.status,
     'reference',reservation.reference,'finalizationReference',reservation.finalization_reference,
     'createdAt',reservation.created_at,'finalizedAt',reservation.finalized_at);
-END $;
+END $status$;
 
 CREATE FUNCTION public.read_website_inventory_outbox(
   _business_id uuid, _after_id bigint DEFAULT 0, _limit integer DEFAULT 100
