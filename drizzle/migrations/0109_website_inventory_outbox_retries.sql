@@ -27,7 +27,7 @@ CREATE FUNCTION public.claim_website_inventory_outbox(
   _business_id uuid,
   _lease_token uuid,
   _limit integer DEFAULT 10
-) RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path=public AS $
+) RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path=public AS $$
 DECLARE result jsonb;
 BEGIN
   PERFORM public.website_inventory_require_service();
