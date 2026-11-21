@@ -7,6 +7,7 @@ VALUES ('e1070000-0000-4000-8000-000000000001','website-reservation-admin@exampl
 DO $setup_business$
 DECLARE b uuid:='e1070000-0000-4000-8000-000000000101';
 BEGIN
+  PERFORM set_config('bizsathi.skip_access_role_sync','on',true);
   INSERT INTO public.businesses(id,name,created_by)
     VALUES(b,'Website reservation fixture','e1070000-0000-4000-8000-000000000001');
   INSERT INTO public.business_memberships(business_id,user_id,role_code,status)
