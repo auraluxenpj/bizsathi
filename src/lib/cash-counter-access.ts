@@ -12,8 +12,9 @@ export function scopeCashCounterReport<T extends { openedById: string; closed?: 
   role: string | null | undefined,
   jobTitle: string | null | undefined,
   userId: string,
+  isCashier = false,
 ): T[] {
-  if (role === 'staff' && jobTitle === 'sales_person') {
+  if (isCashier || (role === 'staff' && jobTitle === 'sales_person')) {
     return sessions.filter((session) => !session.closed || session.openedById === userId);
   }
   return role && [...EXPECTED_CASH_ROLES, 'branch_manager'].includes(role) ? sessions : [];
