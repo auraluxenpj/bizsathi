@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { applyStockIn, bestEffortSheetStatusWrite, parseStockInValues, receiptOperationId } from './sheet-stock-in';
 
 const header = ['Receipt ID', 'Date', 'SKU', 'Product (auto)', 'Qty Received', 'Unit Cost (optional)', 'Supplier / Note', 'Entered By', 'Applied in BizSathi', 'Applied on Website'];
-const B = '985f4fd7-edcd-41a9-beec-8148fcb29818';
+const B = 'c0f0ed15-97e4-4859-ac8f-a2d4e81f5b01';
 
 describe('best-effort sheet status writeback', () => {
   it('returns the write result without changing ledger outcomes', async () => {

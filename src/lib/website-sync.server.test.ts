@@ -1,10 +1,10 @@
 // @vitest-environment node
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { callWebsite, websiteUrl } from './website-sync.server';
+import { callWebsite, callWebsiteCatalogue, websiteUrl } from './website-sync.server';
 
 const SECRET = 'shared-secret-with-enough-length-1234';
 const json = (body: unknown, init: ResponseInit = {}) => new Response(JSON.stringify(body), { status: 200, headers: { 'content-type': 'application/json' }, ...init });
-beforeEach(() => { process.env['INVENTORY_SYNC_SECRET'] = SECRET; delete process.env['WEBSITE_SYNC_URL']; });
+beforeEach(() => { process.env['INVENTORY_SYNC_SECRET'] = SECRET; delete process.env['WEBSITE_SYNC_URL']; delete process.env['WEBSITE_CATALOGUE_SYNC_URL']; });
 afterEach(() => { vi.unstubAllGlobals(); delete process.env['INVENTORY_SYNC_SECRET']; delete process.env['WEBSITE_SYNC_URL']; });
 
 describe('website client', () => {
@@ -36,6 +36,17 @@ describe('website client', () => {
     await expect(callWebsite({})).rejects.toThrow('Website rejected the connection');
     vi.stubGlobal('fetch', vi.fn(async () => new Response('<html></html>', { status: 200, headers: { 'content-type': 'text/html' } })));
     await expect(callWebsite({})).rejects.toThrow('returned a page');
+  });
+  it('sends catalogue drafts to the dedicated HTTPS endpoint', async () => {
+    const fetchMock = vi.fn(async (_u: string, _i: RequestInit) => json({ result: { products_published: false } }));
+    vi.stubGlobal('fetch', fetchMock);
+    const payload = { items: [{ product_id: '00000000-0000-4000-8000-000000000001' }] };
+    expect(await callWebsiteCatalogue(payload)).toEqual({ result: { products_published: false } });
+    const [url, init] = fetchMock.mock.calls[0]!;
+    expect(url).toBe('https://www.auraluxe.com.np/api/public/bizsathi-catalogue');
+    expect(init.redirect).toBe('error');
+    expect((init.headers as Record<string, string>)['Authorization']).toBe(`Bearer ${SECRET}`);
+    expect(JSON.parse(String(init.body))).toEqual(payload);
   });
   it('requires the shared secret', async () => {
     delete process.env['INVENTORY_SYNC_SECRET'];
