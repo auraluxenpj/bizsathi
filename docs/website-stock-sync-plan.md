@@ -2,6 +2,14 @@
 
 ## Implementation status
 
+The legacy manual sync remains available for comparison only. The transactional foundation is now implemented in this feature branch:
+
+- `drizzle/migrations/0107_website_inventory_reservations.sql` adds SKU-only atomic reservations, idempotent commit/cancel/status RPCs, a committed website movement ledger included in BizSathi stock balances, stock guards that protect active reservations from native BizSathi deductions, and a durable publication outbox.
+- `src/routes/api.public.website-inventory.ts` exposes the service-authenticated reserve/commit/cancel/status/outbox API.
+- The outbox publisher attempts to send revised sellable quantities to the website projection endpoint after each reservation/finalization. Failed publication remains unacknowledged for retry.
+- The integration binding is seeded disabled. The service route refuses new reservations until the Auraluxe branch binding is explicitly enabled.
+- An isolated SQL regression suite covers reservation retries, oversell prevention, commit/cancel, and native stock guards. Its latest run is pending final verification.
+
 The existing **manual legacy sync** is implemented in this branch:
 
 - `src/components/website-stock-sync.tsx` adds an admin comparison and confirmed sync flow for a selected fulfilment branch.
@@ -44,18 +52,15 @@ SKU is the only mapping key. Every orderable website SKU must map one-to-one to 
 - The existing website checkout, POS, admin inventory and restock functions still write website stock columns. They must be migrated to the BizSathi reservation/ledger path or safely disabled for activated mappings before cutover.
 - Do not run the legacy absolute-push path for a SKU after it is activated under the transactional protocol. There must be one stock authority and one mutation path.
 
-## Required implementation work
+## Remaining implementation work
 
-1. Add a BizSathi integration identity and reviewed one-to-one SKU mapping registry scoped to the Auraluxe business and Nepalgunj branch.
-2. Add atomic BizSathi reservation, commit, cancellation, accepted-return, receipt and correction operations, with immutable operation evidence and service-to-service authorization.
-3. Add a durable transactional outbox and movement cursor/revision. Cursor semantics must be commit-ordered or use a safe overlap/acknowledgement protocol.
-4. Add the authenticated versioned API and durable retry/reconciliation worker. A lost response must be resolved by the original operation ID.
-5. Change website checkout to reserve before order acceptance; preserve guest checkout and payment lifecycle. Replace website-side stock decrements/restocks with idempotent calls and explicit pending states.
-6. Route BizSathi POS and every other stock writer through the same ledger and publication outbox. Offline drafts must not reserve or deduct.
-7. Add admin mapping review, mismatch queue, uncertain-operation recovery, and stock revision visibility.
-8. Test concurrent last-unit checkout, checkout vs POS race, duplicate requests, lost responses, cancellation, partial returns, webhook replay, SKU mismatch, stale publication, authorization and branch isolation.
-9. Reconcile migration history and obtain fresh recovery evidence before any database migration.
-10. Produce a read-only cutover discrepancy report. Baseline mapping and live activation require separate explicit owner approval.
+1. Complete the website-side integration and validate it against the BizSathi service contract: checkout reservation, order confirmation commit, pending-order cancellation release, website POS reserve/commit, and guarded stock projection updates.
+2. Add an accepted-return workflow in BizSathi. A committed sale cannot be undone by cancelling its reservation; returned quantities must reference the original sale and be bounded by sold quantity less prior returns.
+3. Add a durable scheduled retry/reconciliation worker for unacknowledged website outbox events. The current publisher retries opportunistically on subsequent API operations; it is not yet a periodic worker.
+4. Add admin mapping review, mismatch queue, uncertain-operation recovery, and stock revision visibility.
+5. Test concurrent last-unit checkout, checkout vs POS race, duplicate requests, lost responses, cancellation, partial returns, webhook replay, SKU mismatch, stale publication, authorization and branch isolation.
+6. Reconcile migration history and obtain fresh recovery evidence before any database migration.
+7. Produce a read-only cutover discrepancy report. Baseline mapping and live activation require separate explicit owner approval.
 
 ## Production safety boundary
 
