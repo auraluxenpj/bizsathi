@@ -325,14 +325,14 @@ describe('Paying an expense from a named account', () => {
 });
 
 describe('Point of sale', () => {
-  it('keeps the full catalogue hidden until a product search is entered', async () => {
+  it('shows the full product catalogue immediately and filters it by search', async () => {
     mount(<Pos />);
     fireEvent.change(await screen.findByLabelText('Customer name'), { target: { value: 'Walk-in Customer' } });
     fireEvent.change(await screen.findByLabelText('Customer mobile'), { target: { value: '9812345678' } });
-    expect(screen.queryByRole('heading', { name: 'Silk Saree' })).not.toBeInTheDocument();
-    expect(screen.getByText('Search or scan to find products')).toBeInTheDocument();
-    fireEvent.change(await screen.findByLabelText('Product search or barcode'), { target: { value: 'saree' } });
     expect(await screen.findByRole('heading', { name: 'Silk Saree' })).toBeInTheDocument();
+    fireEvent.change(await screen.findByLabelText('Product search or barcode'), { target: { value: 'kurti' } });
+    expect(await screen.findByRole('heading', { name: 'Cotton Kurti' })).toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: 'Silk Saree' })).not.toBeInTheDocument();
   });
   it('selects multiple catalogue products and adds them to the cart together', async () => {
     mount(<Pos />);
@@ -355,7 +355,7 @@ describe('Point of sale', () => {
     mount(<Pos />);
     fireEvent.change(await screen.findByLabelText('Customer name'), { target: { value: 'Walk-in Customer' } });
     fireEvent.change(await screen.findByLabelText('Customer mobile'), { target: { value: '9812345678' } });
-    const barcode = await screen.findByLabelText('Barcode input');
+    const barcode = await screen.findByLabelText('Product search or barcode');
     fireEvent.change(barcode, { target: { value: 'AL-001' } });
     fireEvent.keyDown(barcode, { key: 'Enter' });
     expect(await screen.findByLabelText('quantity line 1')).toHaveValue(1);
@@ -366,7 +366,7 @@ describe('Point of sale', () => {
     mount(<Pos />);
     fireEvent.change(await screen.findByLabelText('Customer name'), { target: { value: 'Walk-in Customer' } });
     fireEvent.change(await screen.findByLabelText('Customer mobile'), { target: { value: '9812345678' } });
-    const barcode = await screen.findByLabelText('Barcode input');
+    const barcode = await screen.findByLabelText('Product search or barcode');
     fireEvent.change(barcode, { target: { value: 'AL-001' } });
     fireEvent.keyDown(barcode, { key: 'Tab' });
     expect(await screen.findByLabelText('quantity line 1')).toHaveValue(1);
@@ -377,7 +377,7 @@ describe('Point of sale', () => {
     mount(<Pos />);
     fireEvent.change(await screen.findByLabelText('Customer name'), { target: { value: 'Walk-in Customer' } });
     fireEvent.change(await screen.findByLabelText('Customer mobile'), { target: { value: '9812345678' } });
-    const barcode = await screen.findByLabelText('Barcode input');
+    const barcode = await screen.findByLabelText('Product search or barcode');
     for (let i = 0; i < 4; i++) {
       fireEvent.change(barcode, { target: { value: 'AL-001' } });
       fireEvent.click(screen.getByRole('button', { name: 'Add scanned item' }));
@@ -390,18 +390,18 @@ describe('Point of sale', () => {
   it('adds repeated barcode entries to one cart line and retains its exact checkout total', async () => {
     mount(<Pos />);
     fireEvent.change(await screen.findByLabelText('Customer name'), { target: { value: 'Walk-in Customer' } }); fireEvent.change(await screen.findByLabelText('Customer mobile'), { target: { value: '9812345678' } });
-    const barcode = await screen.findByLabelText('Barcode input');
+    const barcode = await screen.findByLabelText('Product search or barcode');
     for (let i=0;i<2;i++) {
       if (i === 1) fireEvent.click(screen.getByRole('button', { name: /Products/ }));
-      const currentBarcode = i === 0 ? barcode : await screen.findByLabelText('Barcode input');
+      const currentBarcode = i === 0 ? barcode : await screen.findByLabelText('Product search or barcode');
       fireEvent.change(currentBarcode, { target: { value: 'AL-001' } });
       fireEvent.click(screen.getByRole('button', { name: 'Add scanned item' }));
     }
     expect(screen.getByLabelText('quantity line 1')).toHaveValue(2);
     expect(screen.queryByLabelText('quantity line 2')).not.toBeInTheDocument();
-    expect(screen.getByLabelText('Barcode input')).toBeInTheDocument();
+    expect(screen.getByLabelText('Product search or barcode')).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Continue to checkout' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Preview' }));
+    fireEvent.click(screen.getAllByRole('button', { name: 'Preview' })[0]);
     const receipt = screen.getByRole('article', { name: 'Receipt preview' });
     expect(within(receipt).getAllByText('Rs. 3,000.00').length).toBeGreaterThan(0);
     expect(confirm).not.toHaveBeenCalled();
@@ -409,7 +409,7 @@ describe('Point of sale', () => {
   it('leaves the cart unchanged for an unknown barcode and adjusts quantity with touch controls', async () => {
     mount(<Pos />);
     fireEvent.change(await screen.findByLabelText('Customer name'), { target: { value: 'Walk-in Customer' } }); fireEvent.change(await screen.findByLabelText('Customer mobile'), { target: { value: '9812345678' } });
-    const barcode = await screen.findByLabelText('Barcode input');
+    const barcode = await screen.findByLabelText('Product search or barcode');
     fireEvent.change(barcode, { target: { value: 'UNKNOWN' } });
     fireEvent.click(screen.getByRole('button', { name: 'Add scanned item' }));
     expect(screen.queryByLabelText('quantity line 1')).not.toBeInTheDocument();
