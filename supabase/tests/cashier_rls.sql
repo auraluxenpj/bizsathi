@@ -6,7 +6,8 @@ DECLARE
   owner_id uuid := gen_random_uuid();
   cashier_id uuid := gen_random_uuid();
   entry_id uuid := gen_random_uuid();
-  business_id uuid;
+  -- Sutra authorization is intentionally bound to the canonical Auraluxe workspace.
+  business_id uuid := 'c0f0ed15-97e4-4859-ac8f-a2d4e81f5b01';
   branch_id uuid;
   period_id uuid;
   variant_id uuid;
@@ -23,8 +24,10 @@ BEGIN
   FROM unnest(ARRAY[owner_id,cashier_id,entry_id]) u;
 
   -- Build isolated fixtures as the database owner; no live business or users are touched.
-  INSERT INTO public.businesses(name,created_by)
-  VALUES('Cashier RLS test',owner_id) RETURNING id INTO business_id;
+  -- The canonical workspace ID is required because migration 0099 deliberately rejects
+  -- authorization checks for every other business ID.
+  INSERT INTO public.businesses(id,name,created_by)
+  VALUES(business_id,'Cashier RLS test',owner_id);
   INSERT INTO public.business_memberships(business_id,user_id,role_code,job_title)
   VALUES
     (business_id,owner_id,'owner',NULL),
@@ -39,7 +42,6 @@ BEGIN
 
   -- Keep fixture creation under the database owner; exercise authenticated RLS only after setup.
   PERFORM set_config('request.jwt.claims',json_build_object('sub',owner_id,'role','authenticated')::text,true);
-  -- Supabase/PostgREST versions differ in which JWT claim setting auth.uid() reads.
   PERFORM set_config('request.jwt.claim.sub',owner_id::text,true);
   PERFORM public.save_catalogue_variant(business_id,'[{"product_name":"RLS Test Item","sku":"RLS-1","selling_price":100}]');
   SELECT id INTO variant_id FROM public.product_variants pv WHERE pv.business_id=business_id AND pv.sku='RLS-1';
