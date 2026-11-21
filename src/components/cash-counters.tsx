@@ -232,7 +232,7 @@ export function CashCounters() {
   return (
     <CommerceFrame w={w} title="Cash counters" active="/cash-counters">
       <section className="border-b py-7">
-        <h2 className="brand text-xl">Your counter</h2>
+        <h2 className="brand text-xl">Shared branch counter</h2>
         <p className="mt-3 text-sm text-muted-foreground">
           {own ? `Open · ${w.access.data?.branches.find((b) => b.id === own.branch_id)?.name}` : 'No open counter'}
         </p>
@@ -245,7 +245,7 @@ export function CashCounters() {
           </div>
         ) : own ? (
           <p className="mt-4 text-sm text-muted-foreground">
-            Count the cash in your drawer and enter it below to close. The expected amount is shown after you submit.
+            {manager ? "Count the branch cash and complete the closing reconciliation below." : "The shared branch counter is open. A manager will complete the day closing."}
           </p>
         ) : null}
         {canWrite && (!own || manager) && (
