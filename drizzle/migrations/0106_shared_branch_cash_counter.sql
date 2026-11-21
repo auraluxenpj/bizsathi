@@ -1,7 +1,29 @@
--- 0081: shared branch cash counter.
+-- 0106: shared branch cash counter.
 -- Additive and ledger-preserving: historical events and payment rows are not rewritten.
 -- All opens still pass through the existing business advisory lock, which serializes
 -- concurrent counter writes before the active-branch check.
+
+-- Do not silently choose between multiple legacy open sessions in one branch.
+DO $shared_counter_preflight$
+BEGIN
+  IF EXISTS (
+    SELECT 1
+    FROM public.cash_counter_events opening
+    WHERE opening.kind='open'
+      AND NOT EXISTS (
+        SELECT 1 FROM public.cash_counter_events closing
+        WHERE closing.business_id=opening.business_id
+          AND closing.branch_id=opening.branch_id
+          AND closing.session_id=opening.session_id
+          AND closing.kind='close'
+      )
+    GROUP BY opening.business_id,opening.branch_id
+    HAVING count(DISTINCT opening.session_id)>1
+  ) THEN
+    RAISE EXCEPTION 'Resolve multiple active cash counter sessions in a branch before enabling shared counters';
+  END IF;
+END
+$shared_counter_preflight$;
 
 CREATE OR REPLACE FUNCTION public.can_read_cash_counter_session(_business_id uuid,_branch_id uuid,_session_id uuid)
 RETURNS boolean
