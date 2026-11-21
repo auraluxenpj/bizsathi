@@ -351,6 +351,28 @@ describe('Point of sale', () => {
     expect(screen.getByLabelText('quantity line 2')).toHaveValue(2);
     expect(confirm).not.toHaveBeenCalled();
   });
+  it('submits keyboard-wedge scans when the scanner sends Enter', async () => {
+    mount(<Pos />);
+    fireEvent.change(await screen.findByLabelText('Customer name'), { target: { value: 'Walk-in Customer' } });
+    fireEvent.change(await screen.findByLabelText('Customer mobile'), { target: { value: '9812345678' } });
+    const barcode = await screen.findByLabelText('Barcode input');
+    fireEvent.change(barcode, { target: { value: 'AL-001' } });
+    fireEvent.keyDown(barcode, { key: 'Enter' });
+    expect(await screen.findByLabelText('quantity line 1')).toHaveValue(1);
+    expect(barcode).toHaveValue('');
+    expect(confirm).not.toHaveBeenCalled();
+  });
+  it('submits keyboard-wedge scans when the scanner sends Tab', async () => {
+    mount(<Pos />);
+    fireEvent.change(await screen.findByLabelText('Customer name'), { target: { value: 'Walk-in Customer' } });
+    fireEvent.change(await screen.findByLabelText('Customer mobile'), { target: { value: '9812345678' } });
+    const barcode = await screen.findByLabelText('Barcode input');
+    fireEvent.change(barcode, { target: { value: 'AL-001' } });
+    fireEvent.keyDown(barcode, { key: 'Tab' });
+    expect(await screen.findByLabelText('quantity line 1')).toHaveValue(1);
+    expect(barcode).toHaveValue('');
+    expect(confirm).not.toHaveBeenCalled();
+  });
   it('stops barcode scans at available branch stock', async () => {
     mount(<Pos />);
     fireEvent.change(await screen.findByLabelText('Customer name'), { target: { value: 'Walk-in Customer' } });
