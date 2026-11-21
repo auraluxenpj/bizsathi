@@ -3,7 +3,7 @@
 .pos-topbar { border-color: hsl(var(--border)); }
 .pos-main { min-width: 0; padding-bottom: calc(2rem + env(safe-area-inset-bottom)); }
 .pos-billing { min-width: 0; padding-top: 1rem; }
-.pos-billing-checkout { min-width: 0; padding-bottom: 15rem; overflow-x: clip; }
+.pos-billing-checkout { min-width: 0; padding-bottom: max(24rem, calc(22rem + env(safe-area-inset-bottom))); overflow-x: clip; }
 .pos-billing-layout { display: grid; grid-template-columns: minmax(0, 1fr); gap: 1rem; align-items: start; min-width: 0; }
 .pos-billing-layout > * { min-width: 0; }
 .pos-checkout-steps { position: sticky; top: 84px; z-index: 10; margin-bottom: 1rem; box-shadow: 0 8px 24px -22px hsl(var(--foreground) / .45); }
