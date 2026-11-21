@@ -17,12 +17,15 @@ const item = z.object({
   sku: z.string().trim().min(1).max(80),
   quantity: z.number().int().min(1).max(1_000_000),
 }).strict();
+const returnItem = item.extend({
+  restockQuantity: z.number().int().min(0).max(1_000_000),
+}).strict();
 
 const requestSchema = z.discriminatedUnion('action', [
   z.object({ action: z.literal('reserve'), operationId, reference, items: z.array(item).min(1).max(50) }).strict(),
   z.object({ action: z.literal('commit'), operationId, reference }).strict(),
   z.object({ action: z.literal('cancel'), operationId, reference }).strict(),
-  z.object({ action: z.literal('accept_return'), operationId, reservationId: operationId, reference, items: z.array(item).min(1).max(50) }).strict(),
+  z.object({ action: z.literal('accept_return'), operationId, reservationId: operationId, reference, items: z.array(returnItem).min(1).max(50) }).strict(),
   z.object({ action: z.literal('status'), operationId }).strict(),
   z.object({ action: z.literal('outbox'), afterId: z.string().regex(/^(0|[1-9]\d{0,18})$/), limit: z.number().int().min(1).max(500) }).strict(),
   z.object({ action: z.literal('ack'), throughId: z.string().regex(/^(0|[1-9]\d{0,18})$/) }).strict(),
