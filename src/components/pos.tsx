@@ -44,7 +44,7 @@ export function Pos() {
     event.kind === 'open' && event.branch_id === selectedBranch &&
     !events.some((candidate) => candidate.session_id === event.session_id && candidate.kind === 'close')
   );
-  const counterCanOpen = !!w.commerce.data?.counterAccess?.canWrite;
+  const counterCanOpen = !!w.commerce.data?.counterAccess?.canWrite || manager;
   const openingFloat = countedTotal(counts);
   const openMutation = useMutation({
     mutationFn: (request: ReturnType<typeof counterInput.parse>) => recordCounterFn({ data: request }),
