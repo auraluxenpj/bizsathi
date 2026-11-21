@@ -62,6 +62,13 @@ SKU is the only mapping key. Every orderable website SKU must map one-to-one to 
 6. Reconcile migration history and obtain fresh recovery evidence before any database migration.
 7. Produce a read-only cutover discrepancy report. Baseline mapping and live activation require separate explicit owner approval.
 
+## Runtime configuration required at cutover
+
+- BizSathi Worker: `WEBSITE_INVENTORY_SYNC_SECRET` (shared server-to-server bearer secret) and `AURALUXE_WEBSITE_INVENTORY_API_URL` (the website projection endpoint).
+- Website server: the same `WEBSITE_INVENTORY_SYNC_SECRET` and `BIZSATHI_INVENTORY_API_URL` (the BizSathi reservation endpoint).
+- Both database switches remain disabled until mapping and cutover checks are complete: BizSathi `website_inventory_integrations.enabled=false`; website `website_inventory_authority.enabled=false`.
+- These names are code requirements only. No production secret values have been read, created, changed, or deployed.
+
 ## Production safety boundary
 
 Implementation approval covers Git branches, tests, and reviewable pull requests only. It does not authorize production migrations, secret changes, deployments, stock writes, product publication, test orders or POS sales, baseline sync, or live activation. Those steps remain separately gated.
