@@ -171,8 +171,8 @@ export const Route = createFileRoute('/api/public/website-inventory')({
             });
             if (result.error) {
               const message = String(result.error.message ?? '');
-              const status = /insufficient|reserved|ambiguous|duplicate sku|identifier already used/i.test(message) ? 409 : 400;
-              return json({ error: status === 409 ? 'Inventory reservation conflict' : 'Inventory reservation rejected' }, status);
+              const status = /integration is not enabled/i.test(message) ? 503 : /insufficient|reserved|ambiguous|duplicate sku|identifier already used/i.test(message) ? 409 : 400;
+              return json({ error: status === 409 ? 'Inventory reservation conflict' : status === 503 ? 'Inventory service is not enabled' : 'Inventory reservation rejected' }, status);
             }
             await publishPendingOutbox(db);
             return json(result.data);
