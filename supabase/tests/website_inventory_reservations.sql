@@ -46,7 +46,8 @@ BEGIN
   SELECT id INTO b FROM public.businesses WHERE name='Website reservation fixture';
   SELECT id INTO br FROM public.branches WHERE business_id=b AND code='WEB';
   SELECT id INTO v FROM public.product_variants WHERE business_id=b AND sku='SKU-WEB-RESERVATION-TEST';
-  INSERT INTO public.website_inventory_integrations(business_id,branch_id,enabled) VALUES(b,br,true)\n    ON CONFLICT (business_id) DO UPDATE SET branch_id=EXCLUDED.branch_id,enabled=true;
+  INSERT INTO public.website_inventory_integrations(business_id,branch_id,enabled) VALUES(b,br,true)
+    ON CONFLICT (business_id) DO UPDATE SET branch_id=EXCLUDED.branch_id,enabled=true;
 
   result:=public.reserve_website_inventory(b,r1,br,'WEB-ORDER-1','[{"sku":"SKU-WEB-RESERVATION-TEST","quantity":4}]');
   ASSERT result->>'status'='reserved' AND result->>'duplicate'='false','Reservation is created';
