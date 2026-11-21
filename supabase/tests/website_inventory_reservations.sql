@@ -56,7 +56,7 @@ BEGIN
 
   rejected:=false;
   BEGIN
-    PERFORM public.reserve_website_inventory(b,r2,br,'WEB-ORDER-2','[{"sku":"SKU-WEB-RESERVATION-TEST","quantity":2}]');
+    PERFORM public.reserve_website_inventory(b,r2,br,'WEB-ORDER-2','[{"sku":"SKU-WEB-RESERVATION-TEST","quantity":2,"restockQuantity":1}]');
   EXCEPTION WHEN raise_exception THEN rejected:=true;
   END;
   ASSERT rejected,'Reservations cannot exceed available stock';
@@ -74,7 +74,7 @@ BEGIN
   END;
   ASSERT rejected,'Changed commit retry is rejected';
 
-  result:=public.reserve_website_inventory(b,r3,br,'WEB-ORDER-3','[{"sku":"SKU-WEB-RESERVATION-TEST","quantity":1}]');
+  result:=public.reserve_website_inventory(b,r3,br,'WEB-ORDER-3','[{"sku":"SKU-WEB-RESERVATION-TEST","quantity":1,"restockQuantity":1}]');
   ASSERT result->>'status'='reserved','Remaining unit can be reserved';
   result:=public.finalize_website_inventory(b,r3,'cancel','WEB-ORDER-3-CANCELLED');
   ASSERT result->>'status'='cancelled','Cancellation releases reservation';
@@ -122,13 +122,13 @@ BEGIN
 
   result:=public.accept_website_inventory_return(
     b,'e1070000-0000-4000-8000-000000000041',r1,'WEB-RETURN-1',
-    '[{"sku":"SKU-WEB-RESERVATION-TEST","quantity":2}]'
+    '[{"sku":"SKU-WEB-RESERVATION-TEST","quantity":2,"restockQuantity":0}]'
   );
   ASSERT result->>'status'='accepted' AND result->>'duplicate'='false','Partial return is accepted once';
-  ASSERT public.commerce_stock_balance(b,br,v)=2,'Accepted return restores on-hand stock';
+  ASSERT public.commerce_stock_balance(b,br,v)=1,'Only sellable returned units are restocked';
   result:=public.accept_website_inventory_return(
     b,'e1070000-0000-4000-8000-000000000041',r1,'WEB-RETURN-1',
-    '[{"sku":"sku-web-reservation-test","quantity":2}]'
+    '[{"sku":"sku-web-reservation-test","quantity":2,"restockQuantity":1}]'
   );
   ASSERT result->>'duplicate'='true','Return replay is idempotent and does not add stock twice';
 
@@ -137,7 +137,7 @@ BEGIN
     '[{"sku":"SKU-WEB-RESERVATION-TEST","quantity":2}]'
   );
   ASSERT result->>'status'='accepted','Second partial return can complete the sold quantity';
-  ASSERT public.commerce_stock_balance(b,br,v)=4,'Second partial return posts once';
+  ASSERT public.commerce_stock_balance(b,br,v)=1,'Damaged returned units are recorded but not restocked';
 
   rejected:=false;
   BEGIN
