@@ -36,9 +36,9 @@ describe('scopeCommerceForCashier', () => {
     expect(scopeCommerceForCashier(data, cashier).documents.map((row) => row.id)).toEqual(['sale-own', 'return-own-sale']);
   });
 
-  it('returns only payments for the cashier documents or own drawer sessions', () => {
+  it('returns payments for the cashier documents only, keeping shared-session cash totals manager-only', () => {
     expect(scopeCommerceForCashier(data, cashier).payments.map((row) => row.id)).toEqual([
-      'payment-own-sale', 'payment-own-return', 'payment-own-drawer',
+      'payment-own-sale', 'payment-own-return',
     ]);
   });
 
@@ -78,7 +78,7 @@ describe('scopeCommerceForCashier', () => {
     };
     const scoped = scopeCommerceForCashier(shared, cashier);
     expect(scoped.counters.map((row) => row.id)).toEqual(['shared-open', 'shared-cash-in']);
-    expect(scoped.payments.map((row) => row.id)).toContain('shared-cash-payment');
+    expect(scoped.payments.map((row) => row.id)).not.toContain('shared-cash-payment');
     expect(scoped.payments.map((row) => row.id)).not.toContain('closed-cash-payment');
   });
 });
