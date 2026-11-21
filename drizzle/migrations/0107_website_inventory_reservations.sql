@@ -93,6 +93,9 @@ CREATE TABLE public.website_inventory_outbox (
   payload jsonb NOT NULL CHECK(jsonb_typeof(payload)='object'),
   created_at timestamptz NOT NULL DEFAULT now(),
   published_at timestamptz,
+  attempt_count integer NOT NULL DEFAULT 0 CHECK(attempt_count>=0),
+  last_error text,
+  last_attempt_at timestamptz,
   FOREIGN KEY(business_id,branch_id) REFERENCES public.branches(business_id,id) ON DELETE RESTRICT,
   FOREIGN KEY(business_id,reservation_id) REFERENCES public.website_inventory_reservations(business_id,id) ON DELETE RESTRICT
 );
@@ -336,9 +339,18 @@ BEGIN
   PERFORM public.website_inventory_require_service();
   IF _after_id<0 OR _limit NOT BETWEEN 1 AND 500 THEN RAISE EXCEPTION 'Invalid outbox cursor'; END IF;
   RETURN coalesce((SELECT jsonb_agg(jsonb_build_object('id',id,'branchId',branch_id,'reservationId',reservation_id,
-    'eventType',event_type,'payload',payload,'createdAt',created_at) ORDER BY id)
+    'eventType',event_type,'payload',payload,'createdAt',created_at,'attemptCount',attempt_count,'lastError',last_error,'lastAttemptAt',last_attempt_at) ORDER BY id)
     FROM (SELECT * FROM public.website_inventory_outbox WHERE business_id=_business_id AND id>_after_id AND published_at IS NULL ORDER BY id LIMIT _limit) q),'[]'::jsonb);
 END $$;
+
+CREATE FUNCTION public.record_website_inventory_outbox_failure(_business_id uuid,_event_id bigint,_error text)
+RETURNS void LANGUAGE plpgsql SECURITY DEFINER SET search_path=public AS $failure$
+BEGIN
+  PERFORM public.website_inventory_require_service();
+  UPDATE public.website_inventory_outbox
+    SET attempt_count=attempt_count+1,last_error=left(coalesce(_error,'publication failed'),500),last_attempt_at=now()
+    WHERE business_id=_business_id AND id=_event_id AND published_at IS NULL;
+END $failure$;
 
 CREATE FUNCTION public.ack_website_inventory_outbox(_business_id uuid, _through_id bigint)
 RETURNS integer LANGUAGE plpgsql SECURITY DEFINER SET search_path=public AS $$
@@ -346,7 +358,7 @@ DECLARE affected integer;
 BEGIN
   PERFORM public.website_inventory_require_service();
   IF _through_id<0 THEN RAISE EXCEPTION 'Invalid outbox cursor'; END IF;
-  UPDATE public.website_inventory_outbox SET published_at=now()
+  UPDATE public.website_inventory_outbox SET published_at=now(),last_error=NULL
     WHERE business_id=_business_id AND id<=_through_id AND published_at IS NULL;
   GET DIAGNOSTICS affected=ROW_COUNT;
   RETURN affected;
@@ -357,14 +369,16 @@ REVOKE ALL ON FUNCTION public.reserve_website_inventory(uuid,uuid,uuid,text,json
   public.read_website_inventory_outbox(uuid,bigint,integer),
   public.ack_website_inventory_outbox(uuid,bigint),
   public.website_inventory_status(uuid,uuid),
-  public.website_inventory_branch(uuid)
+  public.website_inventory_branch(uuid),
+  public.record_website_inventory_outbox_failure(uuid,bigint,text)
   FROM PUBLIC, anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.reserve_website_inventory(uuid,uuid,uuid,text,jsonb),
   public.finalize_website_inventory(uuid,uuid,text,text),
   public.read_website_inventory_outbox(uuid,bigint,integer),
   public.ack_website_inventory_outbox(uuid,bigint),
   public.website_inventory_status(uuid,uuid),
-  public.website_inventory_branch(uuid)
+  public.website_inventory_branch(uuid),
+  public.record_website_inventory_outbox_failure(uuid,bigint,text)
   TO service_role;
 
 -- Preserve website movements in stock reports and physical-count snapshots.
