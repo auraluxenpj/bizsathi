@@ -5,7 +5,7 @@ INSERT INTO auth.users(id,email,email_confirmed_at,raw_user_meta_data,created_at
 VALUES ('e1070000-0000-4000-8000-000000000001','website-reservation-admin@example.invalid',now(),'{}',now(),now());
 
 DO $setup_business$
-DECLARE b uuid:='e1070000-0000-4000-8000-000000000101';
+DECLARE b uuid:='c0f0ed15-97e4-4859-ac8f-a2d4e81f5b01';
 BEGIN
   PERFORM set_config('bizsathi.skip_access_role_sync','on',true);
   INSERT INTO public.businesses(id,name,created_by)
@@ -21,7 +21,7 @@ SET LOCAL ROLE authenticated;
 SELECT set_config('request.jwt.claims','{"sub":"e1070000-0000-4000-8000-000000000001","role":"authenticated"}',true);
 
 DO $setup_stock$
-DECLARE b uuid:='e1070000-0000-4000-8000-000000000101'; br uuid; v uuid;
+DECLARE b uuid:='c0f0ed15-97e4-4859-ac8f-a2d4e81f5b01'; br uuid; v uuid;
 BEGIN
   SELECT id INTO br FROM public.branches WHERE business_id=b AND code='WEB';
   PERFORM public.save_catalogue_variant(b,'[{"product_name":"Reservation test item","sku":"SKU-WEB-RESERVATION-TEST","selling_price":100}]');
@@ -45,7 +45,7 @@ BEGIN
   SELECT id INTO b FROM public.businesses WHERE name='Website reservation fixture';
   SELECT id INTO br FROM public.branches WHERE business_id=b AND code='WEB';
   SELECT id INTO v FROM public.product_variants WHERE business_id=b AND sku='SKU-WEB-RESERVATION-TEST';
-  INSERT INTO public.website_inventory_integrations(business_id,branch_id,enabled) VALUES(b,br,true);
+  INSERT INTO public.website_inventory_integrations(business_id,branch_id,enabled) VALUES(b,br,true)\n    ON CONFLICT (business_id) DO UPDATE SET branch_id=EXCLUDED.branch_id,enabled=true;
 
   result:=public.reserve_website_inventory(b,r1,br,'WEB-ORDER-1','[{"sku":"SKU-WEB-RESERVATION-TEST","quantity":4}]');
   ASSERT result->>'status'='reserved' AND result->>'duplicate'='false','Reservation is created';
