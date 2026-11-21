@@ -99,6 +99,8 @@ BEGIN
     'Cashier sees the one active shared branch session';
   ASSERT EXISTS(SELECT 1 FROM public.commerce_payments WHERE document_id=cashier_sale AND session_id=owner_session),
     'Cashier cash payment is linked to the shared branch session';
+  ASSERT EXISTS(SELECT 1 FROM public.commerce_payments WHERE document_id=cashier_sale AND actor_id=cashier_id),
+    'Shared counter payment retains the actual cashier as its actor';
   ASSERT (SELECT count(*) FROM public.commerce_journal_entries t WHERE t.business_id=business_id)=0,
     'Cashier cannot read journal ledger';
   ASSERT (SELECT count(*) FROM public.customer_memberships t WHERE t.business_id=business_id)=0,
