@@ -230,6 +230,9 @@ BEGIN
       'onHand',public.commerce_stock_balance(_business_id,_branch_id,(row_item->>'variantId')::uuid),
       'reserved',coalesce((SELECT sum(i.quantity) FROM public.website_inventory_reservation_items i
         JOIN public.website_inventory_reservations r ON r.business_id=i.business_id AND r.id=i.reservation_id
+        WHERE i.business_id=_business_id AND i.variant_id=(row_item->>'variantId')::uuid AND r.branch_id=_branch_id AND r.status='reserved'),0),
+      'available',public.commerce_stock_balance(_business_id,_branch_id,(row_item->>'variantId')::uuid)-coalesce((SELECT sum(i.quantity) FROM public.website_inventory_reservation_items i
+        JOIN public.website_inventory_reservations r ON r.business_id=i.business_id AND r.id=i.reservation_id
         WHERE i.business_id=_business_id AND i.variant_id=(row_item->>'variantId')::uuid AND r.branch_id=_branch_id AND r.status='reserved'),0)));
   END LOOP;
   INSERT INTO public.website_inventory_outbox(business_id,branch_id,reservation_id,event_type,payload)
@@ -274,6 +277,9 @@ BEGIN
       event_items:=event_items||jsonb_build_array(jsonb_build_object('sku',item.sku,'quantity',item.quantity,
         'onHand',public.commerce_stock_balance(_business_id,reservation.branch_id,item.variant_id),
         'reserved',coalesce((SELECT sum(i.quantity) FROM public.website_inventory_reservation_items i
+          JOIN public.website_inventory_reservations r ON r.business_id=i.business_id AND r.id=i.reservation_id
+          WHERE i.business_id=_business_id AND i.variant_id=item.variant_id AND r.branch_id=reservation.branch_id AND r.status='reserved'),0),
+        'available',public.commerce_stock_balance(_business_id,reservation.branch_id,item.variant_id)-coalesce((SELECT sum(i.quantity) FROM public.website_inventory_reservation_items i
           JOIN public.website_inventory_reservations r ON r.business_id=i.business_id AND r.id=i.reservation_id
           WHERE i.business_id=_business_id AND i.variant_id=item.variant_id AND r.branch_id=reservation.branch_id AND r.status='reserved'),0)));
     END LOOP;
