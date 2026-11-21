@@ -44,7 +44,7 @@ describe('Branch stock CSV parsing', () => {
   it('reads qty as the target quantity for the selected branch', () => {
     const rows = parseCatalogueCsv(
       'product_name,variant_name,sku,model_code,qty,selling_price,purchase_price,mrp,wholesale_price\nKurti,M,AL-100,MODEL-1,12,1500,900,1800,1300',
-      '985f4fd7-edcd-41a9-beec-8148fcb29818',
+      'c0f0ed15-97e4-4859-ac8f-a2d4e81f5b01',
     );
     expect(rows[0]?.opening_stock).toBe(12);
     expect(rows[0]?.selling_price).toBe(1500);
