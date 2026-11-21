@@ -44,6 +44,7 @@ export function Pos() {
     event.kind === 'open' && event.branch_id === selectedBranch &&
     !events.some((candidate) => candidate.session_id === event.session_id && candidate.kind === 'close')
   );
+  const activeSessionId = activeCounter?.session_id ?? null;
   const counterCanOpen = !!w.commerce.data?.counterAccess?.canWrite || manager;
   const openingFloat = countedTotal(counts);
   const openMutation = useMutation({
@@ -57,13 +58,13 @@ export function Pos() {
   });
 
   useEffect(() => {
-    if (activeCounter) {
+    if (activeSessionId) {
       setSetupStatus('Shared branch counter is open. Billing is ready.');
       setCounts({});
     } else {
       setSetupStatus('');
     }
-  }, [activeCounter?.session_id]);
+  }, [activeSessionId]);
 
   function setCount(denomination: number, raw: string) {
     setCounts((current) => ({ ...current, [denomination]: sanitizeCount(raw) }));
