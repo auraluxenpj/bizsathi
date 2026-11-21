@@ -154,7 +154,7 @@ DECLARE
   integration public.website_inventory_integrations;
   existing public.website_inventory_reservations;
   row_item jsonb;
-  variant_id uuid;
+  v_variant_id uuid;
   normalized_sku text;
   qty integer;
   matched integer;
@@ -189,7 +189,7 @@ BEGIN
       RAISE EXCEPTION 'Invalid SKU or quantity';
     END IF;
     qty:=(row_item->>'quantity')::integer;
-    SELECT count(*),(array_agg(v.id))[1] INTO matched,variant_id
+    SELECT count(*),(array_agg(v.id))[1] INTO matched,v_variant_id
     FROM public.product_variants v
     JOIN public.products p ON p.business_id=v.business_id AND p.id=v.product_id
     WHERE v.business_id=_business_id AND lower(btrim(v.sku))=normalized_sku
@@ -211,13 +211,13 @@ BEGIN
   END IF;
 
   FOR row_item IN SELECT value FROM jsonb_array_elements(normalized_items) LOOP
-    variant_id:=(row_item->>'variantId')::uuid;
+    v_variant_id:=(row_item->>'variantId')::uuid;
     qty:=(row_item->>'quantity')::integer;
-    on_hand:=public.commerce_stock_balance(_business_id,_branch_id,variant_id);
+    on_hand:=public.commerce_stock_balance(_business_id,_branch_id,v_variant_id);
     SELECT coalesce(sum(i.quantity),0) INTO reserved
     FROM public.website_inventory_reservation_items i
     JOIN public.website_inventory_reservations r ON r.business_id=i.business_id AND r.id=i.reservation_id
-    WHERE i.business_id=_business_id AND i.variant_id=variant_id AND r.branch_id=_branch_id AND r.status='reserved';
+    WHERE i.business_id=_business_id AND i.variant_id=v_variant_id AND r.branch_id=_branch_id AND r.status='reserved';
     IF on_hand-reserved<qty THEN RAISE EXCEPTION 'Insufficient available stock for SKU %',row_item->>'sku'; END IF;
   END LOOP;
 
