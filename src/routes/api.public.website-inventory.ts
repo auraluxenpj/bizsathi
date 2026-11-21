@@ -128,7 +128,7 @@ export const Route = createFileRoute('/api/public/website-inventory')({
         const expectedSecret = process.env['WEBSITE_INVENTORY_SYNC_SECRET'];
         const authorization = request.headers.get('authorization') ?? '';
         const suppliedSecret = authorization.startsWith('Bearer ') ? authorization.slice(7) : '';
-        if (!expectedSecret || !suppliedSecret || !constantTimeEqual(suppliedSecret, expectedSecret)) {
+        if (!expectedSecret || expectedSecret.length < 24 || !suppliedSecret || !constantTimeEqual(suppliedSecret, expectedSecret)) {
           return json({ error: 'Unauthorized' }, 401);
         }
         const contentLength = Number(request.headers.get('content-length') ?? 0);
