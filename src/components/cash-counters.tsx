@@ -49,11 +49,11 @@ function Difference({ value }: { value: unknown }) {
   );
 }
 
-export function CashCounters() {
+export function CashCounters({ embedded = false, initialBranch = '' }: { embedded?: boolean; initialBranch?: string }) {
   const w = useCommerce();
   const client = useQueryClient();
   const fn = useServerFn(recordCounter);
-  const [branch, setBranch] = useState('');
+  const [branch, setBranch] = useState(initialBranch);
   const [date, setDate] = useState(new Date().toLocaleDateString('en-CA'));
   const [staffFilter, setStaffFilter] = useState('');
   const [reportBranch, setReportBranch] = useState('');
@@ -174,7 +174,7 @@ export function CashCounters() {
 
   useEffect(() => {
     setRequest(null);
-    setBranch('');
+    setBranch(initialBranch);
     setAmount('');
     setCounts({});
     setStatus('');
@@ -230,7 +230,7 @@ export function CashCounters() {
   }
 
   return (
-    <CommerceFrame w={w} title="Cash counters" active="/cash-counters">
+    <div className={embedded ? 'w-full' : ''}>
       <section className="border-b py-7">
         <h2 className="brand text-xl">Shared branch counter</h2>
         <p className="mt-3 text-sm text-muted-foreground">
@@ -536,6 +536,6 @@ export function CashCounters() {
           {status}
         </p>
       )}
-    </CommerceFrame>
+    </div>
   );
 }
