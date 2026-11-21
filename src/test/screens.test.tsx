@@ -145,6 +145,7 @@ describe('Billing journey: VAT and split tender', () => {
     fireEvent.change(await screen.findByLabelText('Customer mobile'), { target: { value: '9812345678' } });
     await addCatalogSaree();
     fireEvent.click(screen.getByRole('button', { name: /^Cash$/ }));
+    fireEvent.click(screen.getByRole('button', { name: 'Split Payment' }));
     fireEvent.change(screen.getByLabelText('Payment amount 1'), { target: { value: '500' } });
     fireEvent.click(screen.getByRole('button', { name: /^Bank Transfer$/ }));
     fireEvent.change(screen.getByLabelText('Payment amount 2'), { target: { value: '1000' } });
