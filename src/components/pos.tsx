@@ -163,8 +163,8 @@ export function Pos() {
           </section>
         : saved ? <section className="py-10"><h2 className="text-xl font-semibold">Sale saved</h2><p className="mt-3 break-all text-sm text-muted-foreground">{saved}</p><div className="mt-5 flex flex-wrap gap-2"><Button onClick={() => setSaved('')}>New sale</Button>{!billingStaff && <Button asChild variant="outline"><Link to="/sales">Sales & receipts</Link></Button>}</div></section>
         : <DocumentEditor key={`${w.businessId}:${selectedBranch}`} w={w} kind="sale" standalone initialBranch={selectedBranch} onSaved={setSaved} />}
-      {ready && !error && w.businessId && <OfflinePos w={w} />}
-      {ready && !error && w.businessId && (billingStaff || manager) && <SaleReturnRequests w={w} manager={manager} cashier={billingStaff} />}
+      {!cashClosing && ready && !error && w.businessId && <OfflinePos w={w} />}
+      {!cashClosing && ready && !error && w.businessId && (billingStaff || manager) && <SaleReturnRequests w={w} manager={manager} cashier={billingStaff} />}
     </main>
   </div>;
 }
