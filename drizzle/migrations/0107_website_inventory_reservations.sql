@@ -293,6 +293,9 @@ BEGIN
         'onHand',public.commerce_stock_balance(_business_id,reservation.branch_id,item.variant_id),
         'reserved',coalesce((SELECT sum(i.quantity) FROM public.website_inventory_reservation_items i
           JOIN public.website_inventory_reservations r ON r.business_id=i.business_id AND r.id=i.reservation_id
+          WHERE i.business_id=_business_id AND i.variant_id=item.variant_id AND r.branch_id=reservation.branch_id AND r.status='reserved'),0),
+        'available',public.commerce_stock_balance(_business_id,reservation.branch_id,item.variant_id)-coalesce((SELECT sum(i.quantity) FROM public.website_inventory_reservation_items i
+          JOIN public.website_inventory_reservations r ON r.business_id=i.business_id AND r.id=i.reservation_id
           WHERE i.business_id=_business_id AND i.variant_id=item.variant_id AND r.branch_id=reservation.branch_id AND r.status='reserved'),0)));
     END LOOP;
     new_status:='cancelled';
