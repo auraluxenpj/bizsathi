@@ -414,7 +414,7 @@ export function CashCounters() {
                 {branches.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}
               </select>
             </label>
-            <Button type="button" variant="outline" className="h-10 self-end" onClick={() => downloadCsv(`sutra-cash-closing-${date}.csv`, buildCashClosingCsv(visibleDailySessions.map((session) => ({
+            {!cashier && <Button type="button" variant="outline" className="h-10 self-end" onClick={() => downloadCsv(`sutra-cash-closing-${date}.csv`, buildCashClosingCsv(visibleDailySessions.map((session) => ({
               date,
               branch: session.branch,
               status: session.closed ? 'Closed' : 'Open',
@@ -443,10 +443,12 @@ export function CashCounters() {
               difference: dailyTotals.difference.toFixed(2),
             }))}>
               Export CSV
-            </Button>
+            </Button>}
           </div>
         </div>
-        {!visibleDailySessions.length ? (
+        {cashier ? (
+          <p className="py-6 text-sm text-muted-foreground">The shared branch closing report and cash reconciliation are manager-controlled. Ask your manager for the final closing report.</p>
+        ) : !visibleDailySessions.length ? (
           <p className="py-6 text-sm text-muted-foreground">{dailySessions.length ? 'No sessions match the selected filters.' : 'No counter sessions opened on this date.'}</p>
         ) : (
           <>
