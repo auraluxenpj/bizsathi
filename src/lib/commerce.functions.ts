@@ -42,7 +42,7 @@ export const getCommerce=createServerFn({method:'GET'}).middleware([requireSupab
   context.supabase.rpc('has_business_access_role',{_business:data.businessId,_role_code:'legacy_branch_manager'}),
   context.supabase.rpc('has_business_role',{_business_id:data.businessId,_min_role:'accountant'}),
   context.supabase.rpc('has_business_role',{_business_id:data.businessId,_min_role:'admin'}),
-  context.supabase.rpc('has_permission',{_business_id:data.businessId,_permission:'sales.view'}),
+  context.supabase.rpc('has_permission',{_business:data.businessId,_perm:'sales.view'}),
  ]);
  if([salesRole,legacyStaffRole,branchManagerRole,legacyBranchManagerRole,accountantRole,adminRole,salesView].some(result=>result.error)) throw new Error('Cash counter permissions could not be verified.');
  const isCashier=Boolean(salesRole.data||legacyStaffRole.data)||(role==='staff'&&jobTitle==='sales_person');
