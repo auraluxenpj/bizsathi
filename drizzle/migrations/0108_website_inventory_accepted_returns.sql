@@ -147,7 +147,12 @@ BEGIN
       RAISE EXCEPTION 'Invalid return SKU or quantity';
     END IF;
     qty := (row_item->>'quantity')::integer;
-    IF (row_item->>'restockQuantity') IS NULL OR (row_item->>'restockQuantity') !~ '^(0|[1-9][0-9]{0,6})
+    IF (row_item->>'restockQuantity') IS NULL OR (row_item->>'restockQuantity') !~ '^(0|[1-9][0-9]{0,6})$' THEN
+      RAISE EXCEPTION 'Invalid return restock quantity';
+    END IF;
+    restock_qty := (row_item->>'restockQuantity')::integer;
+    IF restock_qty > qty THEN RAISE EXCEPTION 'Restock quantity cannot exceed returned quantity'; END IF;
+    SELECT ri.variant_id,ri.quantity INTO matched_variant,sold_qty
       FROM public.website_inventory_reservation_items ri
      WHERE ri.business_id=_business_id AND ri.reservation_id=_reservation_id
        AND lower(btrim(ri.sku))=normalized_sku;
