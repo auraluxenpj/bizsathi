@@ -1,5 +1,5 @@
 // Isolated migration target; do not attach production domains until acceptance is complete.
-import { defineConfig } from "cf/config";
+import { defineConfig, triggers } from "cf/config";
 
 export default defineConfig({
   worker: {
@@ -10,5 +10,6 @@ export default defineConfig({
     observability: {
       enabled: true,
     },
+    triggers: [triggers.scheduled({ schedule: "*/5 * * * *" })],
   },
 });
