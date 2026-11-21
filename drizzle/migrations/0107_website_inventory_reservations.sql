@@ -195,7 +195,7 @@ BEGIN
     WHERE v.business_id=_business_id AND lower(btrim(v.sku))=normalized_sku
       AND v.is_active AND p.is_active;
     IF matched<>1 THEN RAISE EXCEPTION 'SKU is missing or ambiguous: %',normalized_sku; END IF;
-    normalized_items:=normalized_items||jsonb_build_array(jsonb_build_object('sku',normalized_sku,'quantity',qty,'variantId',variant_id));
+    normalized_items:=normalized_items||jsonb_build_array(jsonb_build_object('sku',normalized_sku,'quantity',qty,'variantId',v_variant_id));
   END LOOP;
   SELECT coalesce(jsonb_agg(value ORDER BY value->>'sku'),'[]'::jsonb)
     INTO normalized_items FROM jsonb_array_elements(normalized_items);
