@@ -33,6 +33,10 @@ BEGIN
     (business_id,owner_id,'owner',NULL),
     (business_id,cashier_id,'staff','sales_person'),
     (business_id,entry_id,'staff','entry_person');
+
+  -- Entry staff can enter records, but this fixture intentionally denies sales visibility.
+  INSERT INTO public.member_permission_denials(business_id,user_id,permission,granted_by)
+  VALUES (business_id,entry_id,'sales.view',owner_id);
   INSERT INTO public.branches(business_id,code,name) VALUES(business_id,'MAIN','Main') RETURNING id INTO branch_id;
   INSERT INTO public.branch_memberships(business_id,branch_id,user_id,granted_by)
   VALUES (business_id,branch_id,cashier_id,owner_id),(business_id,branch_id,entry_id,owner_id);
