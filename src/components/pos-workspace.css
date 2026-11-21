@@ -377,7 +377,7 @@
 /* Exact Auraluxe reference layout: compact three-panel POS workstation. */
 @media (min-width: 1280px) {
   .pos-workspace {
-    --pos-reference-height: calc(100dvh - 7.25rem);
+    --pos-reference-height: calc(100dvh - 3rem);
   }
   .pos-workspace .pos-main {
     height: var(--pos-reference-height);
