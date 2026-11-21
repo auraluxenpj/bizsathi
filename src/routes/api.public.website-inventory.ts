@@ -52,6 +52,7 @@ async function publishPendingOutbox(db: InventoryRpcClient): Promise<void> {
   const secret = process.env['WEBSITE_INVENTORY_SYNC_SECRET'];
   if (!target || !target.startsWith('https://') || !secret) return;
   for (let batch = 0; batch < 10; batch += 1) {
+    let eventId: string | undefined;
     try {
       const pending = await db.rpc('read_website_inventory_outbox', {
         _business_id: BUSINESS_ID,
@@ -61,6 +62,7 @@ async function publishPendingOutbox(db: InventoryRpcClient): Promise<void> {
       if (pending.error || !Array.isArray(pending.data) || pending.data.length === 0) return;
       const event = pending.data[0];
       if (!event || typeof event !== 'object' || !('payload' in event) || !('id' in event)) return;
+      eventId = String(event.id);
       const payload = event.payload;
       if (!payload || typeof payload !== 'object' || !('items' in payload) || !Array.isArray(payload.items)) return;
       const items: Array<{ sku: string; stock: number }> = [];
@@ -80,6 +82,14 @@ async function publishPendingOutbox(db: InventoryRpcClient): Promise<void> {
       });
       const result = await response.json().catch(() => null) as { ok?: boolean } | null;
       if (!response.ok || result?.ok !== true) {
+        const detail = result && typeof result === 'object' && 'mismatches' in result
+          ? `website SKU mismatch: ${JSON.stringify(result.mismatches)}`
+          : `website projection HTTP ${response.status}`;
+        await db.rpc('record_website_inventory_outbox_failure', {
+          _business_id: BUSINESS_ID,
+          _event_id: eventId,
+          _error: detail,
+        });
         console.warn('[website-inventory] projection not acknowledged; outbox retained');
         return;
       }
@@ -88,10 +98,22 @@ async function publishPendingOutbox(db: InventoryRpcClient): Promise<void> {
         _through_id: String(event.id),
       });
       if (ack.error) {
+        await db.rpc('record_website_inventory_outbox_failure', {
+          _business_id: BUSINESS_ID,
+          _event_id: eventId,
+          _error: 'outbox acknowledgement failed',
+        });
         console.warn('[website-inventory] outbox acknowledgement failed');
         return;
       }
     } catch (error) {
+      if (eventId) {
+        await db.rpc('record_website_inventory_outbox_failure', {
+          _business_id: BUSINESS_ID,
+          _event_id: eventId,
+          _error: 'website projection request failed',
+        }).catch(() => undefined);
+      }
       console.warn('[website-inventory] outbox publish deferred', error);
       return;
     }
