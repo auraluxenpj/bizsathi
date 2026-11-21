@@ -37,6 +37,17 @@ BEGIN
     RETURN '[]'::jsonb;
   END IF;
 
+  UPDATE public.website_inventory_outbox
+     SET dead_lettered_at=now(),
+         last_error=coalesce(last_error,'publisher lease expired too many times'),
+         lease_token=NULL,
+         lease_until=NULL
+   WHERE business_id=_business_id
+     AND published_at IS NULL
+     AND dead_lettered_at IS NULL
+     AND attempt_count>=10
+     AND (lease_until IS NULL OR lease_until<=now());
+
   RETURN coalesce((
     WITH candidates AS (
       SELECT id
@@ -44,6 +55,7 @@ BEGIN
        WHERE business_id=_business_id
          AND published_at IS NULL
          AND dead_lettered_at IS NULL
+         AND attempt_count<10
          AND next_attempt_at<=now()
          AND (lease_until IS NULL OR lease_until<=now())
        ORDER BY id
