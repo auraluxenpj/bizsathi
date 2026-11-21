@@ -1,13 +1,9 @@
-<!-- LOVABLE:BEGIN -->
+<!-- PLATFORM:BEGIN -->
 > [!IMPORTANT]
-> This project is connected to [Lovable](https://lovable.dev). Avoid rewriting
-> published git history — force pushing, or rebasing/amending/squashing commits
-> that are already pushed — as it rewrites history on Lovable's side and the
-> user will likely lose their project history.
->
-> Commits you push to the connected branch sync back to Lovable and show up in
-> the editor, so keep the branch in a working state.
-<!-- LOVABLE:END -->
+> GitHub `main` is the source of truth. Use GitHub pull requests for reviewed changes,
+> Cloudflare Workers for deployment, and the connected Supabase project for data/auth.
+> Do not rewrite published git history or expose production secrets.
+<!-- PLATFORM:END -->
 
 - Sales bundle and catalogue CSV rules are in src/lib/AGENTS.md; Cloud build config rules in lib/AGENTS.md.
 - Sidebar layout CSS selects the explicit data-sidebar-compact state rather than escaped Tailwind width classes. Why: avoid malformed bracket selectors breaking the entire stylesheet transform.
@@ -16,7 +12,7 @@
 - After any new table, REVOKE platform default grants and grant least privilege explicitly. Why: defaults give authenticated full write access.
 - Financial/posted records use ON DELETE RESTRICT, never CASCADE. Why: accounting history must not vanish.
 - Security review history uses append-only tenant events with administrator RLS and server-side membership verification; findings, analyses, and decisions remain separate evidence. Why: preserve attribution and prevent AI advice from becoming an approval.
-- AI reviews use server-only Lovable Gateway Responses streaming with persisted access pauses and no automatic retries. Why: keep secrets private and avoid repeated billing or denied calls.
+- AI reviews use the server-only Google Generative AI API with persisted access pauses and no automatic retries. Why: keep credentials private and avoid repeated billing or denied calls.
 - Business onboarding reuses the atomic create_business RPC; invitations store only hashed email-bound tokens and accept through a locked database operation that rechecks inviter authority. Why: prevent duplicate infrastructure and stale invitation privilege grants.
 - Branch-scoped data uses can_access_branch plus operation-specific role checks; administrators have manager access and lower roles require explicit branch_memberships. Why: business membership alone must not expose every branch.
 - Shared workspace navigation lives around the root Outlet; dashboard uses existing authorized business/branch queries and null financial values until operational sources exist. Why: preserve public routes and avoid fabricated balances or duplicate data structures.
