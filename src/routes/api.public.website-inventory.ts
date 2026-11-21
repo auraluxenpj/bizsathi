@@ -160,6 +160,7 @@ export const Route = createFileRoute('/api/public/website-inventory')({
               _reference: parsed.reference,
             });
             if (result.error) return json({ error: 'Reservation could not be finalized' }, 409);
+            await publishPendingOutbox(db);
             return json(result.data);
           }
 
