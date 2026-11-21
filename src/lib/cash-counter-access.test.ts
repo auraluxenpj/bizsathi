@@ -36,7 +36,7 @@ describe('scopeCashCounterReport', () => {
   it('keeps the full authorized report for managers and accountants', () => {
     expect(scopeCashCounterReport(sessions, 'admin', 'manager', 'manager-1')).toEqual(sessions);
     expect(scopeCashCounterReport(sessions, 'accountant', 'accountant', 'accountant-1')).toEqual(sessions);
-    expect(scopeCashCounterReport(sessions, 'branch_manager', 'manager', 'manager-1')).toEqual(sessions);
+    expect(scopeCashCounterReport(sessions, 'staff', 'manager', 'manager-1', false, true)).toEqual(sessions);
   });
   it('does not treat other staff job titles as cashiers', () => {
     expect(scopeCashCounterReport(sessions, 'staff', 'stock_manager', 'cashier-1')).toEqual([]);
