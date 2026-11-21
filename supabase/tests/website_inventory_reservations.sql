@@ -165,6 +165,11 @@ BEGIN
   claimed:=public.claim_website_inventory_outbox(b,token1,1);
   ASSERT jsonb_array_length(claimed)=1,'A publisher can lease the oldest pending event';
   event_id:=(claimed->0->>'id')::bigint;
+  -- Keep the other pending events out of this focused lease test: a second
+  -- publisher may legitimately claim a different event in the same batch.
+  UPDATE public.website_inventory_outbox
+     SET next_attempt_at=now()+interval '1 day'
+   WHERE business_id=b AND published_at IS NULL AND id<>event_id;
   claimed:=public.claim_website_inventory_outbox(b,token2,1);
   ASSERT jsonb_array_length(claimed)=0,'A concurrent publisher cannot claim an active lease';
   ok:=public.ack_website_inventory_outbox_event(b,event_id,token2);
