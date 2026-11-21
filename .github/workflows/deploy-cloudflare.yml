@@ -101,7 +101,8 @@ jobs:
             INVENTORY_SYNC_SECRET \
             SUPABASE_PUBLISHABLE_KEY \
             SUPABASE_SERVICE_ROLE_KEY \
-            SUPABASE_URL; do
+            SUPABASE_URL \
+            WEBSITE_INVENTORY_SYNC_SECRET; do
             jq -e --arg name "$name" '.result | any(.[]; .name == $name)' "$response" >/dev/null || {
               echo "::error::Expected Worker secret binding is missing after deployment: $name"
               exit 1
