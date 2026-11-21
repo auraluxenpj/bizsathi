@@ -43,6 +43,18 @@ CREATE INDEX website_inventory_return_items_sold
 REVOKE ALL ON public.website_inventory_return_items FROM PUBLIC, anon, authenticated;
 GRANT ALL ON public.website_inventory_return_items TO service_role;
 ALTER TABLE public.website_inventory_return_items ENABLE ROW LEVEL SECURITY;
+CREATE TRIGGER website_inventory_returns_immutable
+  BEFORE UPDATE OR DELETE ON public.website_inventory_returns
+  FOR EACH ROW EXECUTE FUNCTION public.block_mutation();
+CREATE TRIGGER website_inventory_returns_audit
+  AFTER INSERT ON public.website_inventory_returns
+  FOR EACH ROW EXECUTE FUNCTION public.audit_row();
+CREATE TRIGGER website_inventory_return_items_immutable
+  BEFORE UPDATE OR DELETE ON public.website_inventory_return_items
+  FOR EACH ROW EXECUTE FUNCTION public.block_mutation();
+CREATE TRIGGER website_inventory_return_items_audit
+  AFTER INSERT ON public.website_inventory_return_items
+  FOR EACH ROW EXECUTE FUNCTION public.audit_row();
 
 CREATE TABLE public.website_inventory_return_movements (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
