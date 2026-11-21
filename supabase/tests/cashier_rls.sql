@@ -32,7 +32,7 @@ BEGIN
   VALUES
     (business_id,owner_id,'owner',NULL),
     (business_id,cashier_id,'staff','sales_person'),
-    (business_id,entry_id,'staff',NULL);
+    (business_id,entry_id,'staff','entry_person');
   INSERT INTO public.branches(business_id,code,name) VALUES(business_id,'MAIN','Main') RETURNING id INTO branch_id;
   INSERT INTO public.branch_memberships(business_id,branch_id,user_id,granted_by)
   VALUES (business_id,branch_id,cashier_id,owner_id),(business_id,branch_id,entry_id,owner_id);
@@ -42,7 +42,6 @@ BEGIN
 
   -- Keep fixture creation under the database owner; exercise authenticated RLS only after setup.
   PERFORM set_config('request.jwt.claims',json_build_object('sub',owner_id,'role','authenticated')::text,true);
-  PERFORM set_config('request.jwt.claim.sub',owner_id::text,true);
   PERFORM set_config('request.jwt.claim.sub',owner_id::text,true);
   PERFORM public.save_catalogue_variant(business_id,'[{"product_name":"RLS Test Item","sku":"RLS-1","selling_price":100}]');
   SELECT id INTO variant_id FROM public.product_variants pv WHERE pv.business_id=business_id AND pv.sku='RLS-1';
