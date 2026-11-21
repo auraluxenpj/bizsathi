@@ -39,6 +39,8 @@ BEGIN
 
   -- Keep fixture creation under the database owner; exercise authenticated RLS only after setup.
   PERFORM set_config('request.jwt.claims',json_build_object('sub',owner_id,'role','authenticated')::text,true);
+  -- Supabase/PostgREST versions differ in which JWT claim setting auth.uid() reads.
+  PERFORM set_config('request.jwt.claim.sub',owner_id::text,true);
   PERFORM public.save_catalogue_variant(business_id,'[{"product_name":"RLS Test Item","sku":"RLS-1","selling_price":100}]');
   SELECT id INTO variant_id FROM public.product_variants pv WHERE pv.business_id=business_id AND pv.sku='RLS-1';
   INSERT INTO public.parties(business_id,kind,name) VALUES(business_id,'customer','RLS Test Customer') RETURNING id INTO customer_id;
