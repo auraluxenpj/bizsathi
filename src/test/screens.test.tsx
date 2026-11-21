@@ -54,6 +54,7 @@ import { CashCounters } from '@/components/cash-counters';
 import { VoucherWorkspace } from '@/components/voucher-workspace';
 import { useCommerce } from '@/components/commerce-workspace';
 import { Pos } from '@/components/pos';
+import { BarcodeStickers } from '@/components/barcode-stickers';
 
 function mount(ui: ReactNode, url = '/') {
   const root = createRootRoute({ component: () => <>{ui}</> });
@@ -465,6 +466,33 @@ describe('Other screens have no period dropdown', () => {
     mount(<VoucherWorkspace businessId={ID.biz} />);
     await screen.findByLabelText('Voucher date');
     noOpenPeriodLabel();
+  });
+});
+
+describe('Barcode Studio bulk selection', () => {
+  it('selects and unselects only products visible under the current search', async () => {
+    const products = [
+      { id: 'sku-1', sku: 'AL-001', name: 'Silk Saree', price: 1500, stock: 3 },
+      { id: 'sku-2', sku: 'AL-002', name: 'Cotton Kurti', price: 900, stock: 4 },
+      { id: 'sku-3', sku: 'AL-003', name: 'Summer Dress', price: 1200, stock: 2 },
+    ];
+    render(<BarcodeStickers products={products} />);
+    fireEvent.click(screen.getByRole('button', { name: /Print barcode labels/ }));
+    expect(screen.getByText(/3 SKUs · 9 labels/)).toBeInTheDocument();
+
+    const search = screen.getByLabelText('Search label products');
+    fireEvent.change(search, { target: { value: 'Silk' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Unselect all visible' }));
+    expect(screen.getByText(/2 SKUs · 6 labels/)).toBeInTheDocument();
+
+    fireEvent.change(search, { target: { value: '' } });
+    expect(screen.getByLabelText('Label copies AL-001')).toHaveValue(0);
+    expect(screen.getByLabelText('Label copies AL-002')).toHaveValue(4);
+    expect(screen.getByLabelText('Label copies AL-003')).toHaveValue(2);
+
+    fireEvent.change(search, { target: { value: 'Silk' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Select all visible' }));
+    expect(screen.getByText(/3 SKUs · 9 labels/)).toBeInTheDocument();
   });
 });
 
