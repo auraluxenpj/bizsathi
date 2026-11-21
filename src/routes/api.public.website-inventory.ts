@@ -4,6 +4,13 @@ import { z } from 'zod';
 const BUSINESS_ID = 'c0f0ed15-97e4-4859-ac8f-a2d4e81f5b01';
 const MAX_BODY_BYTES = 64 * 1024;
 
+type InventoryRpcClient = {
+  rpc: (name: string, args: Record<string, unknown>) => Promise<{
+    data: unknown;
+    error: { message: string } | null;
+  }>;
+};
+
 const operationId = z.string().uuid();
 const reference = z.string().trim().min(1).max(160);
 const item = z.object({
@@ -73,16 +80,12 @@ export const Route = createFileRoute('/api/public/website-inventory')({
 
         try {
           const { supabaseAdmin } = await import('@/integrations/supabase/client.server');
-          const db = supabaseAdmin as any;
-          const binding = await db.from('website_inventory_integrations')
-            .select('branch_id')
-            .eq('business_id', BUSINESS_ID)
-            .eq('enabled', true)
-            .maybeSingle();
-          if (binding.error || !binding.data?.branch_id) {
+          const db = supabaseAdmin as unknown as InventoryRpcClient;
+          const binding = await db.rpc('website_inventory_branch', { _business_id: BUSINESS_ID });
+          if (binding.error || typeof binding.data !== 'string') {
             return json({ error: 'Website inventory integration is not enabled' }, 503);
           }
-          const branchId = binding.data.branch_id as string;
+          const branchId = binding.data;
 
           if (parsed.action === 'reserve') {
             const result = await db.rpc('reserve_website_inventory', {
