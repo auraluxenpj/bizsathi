@@ -338,3 +338,37 @@
     margin-top: .75rem;
   }
 }
+
+
+/* Keep payment-entry controls inside the Order Summary column. The payment
+   panel can be much narrower than the viewport at the three-column desktop
+   breakpoint, so viewport-based xl grid columns overflow its actual width. */
+@media (min-width: 768px) {
+  .pos-workspace .pos-billing-checkout .pos-payment-row {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) !important;
+    gap: .75rem;
+  }
+  .pos-workspace .pos-billing-checkout .pos-payment-row input[type="number"] {
+    min-width: 0;
+    width: 100%;
+  }
+  .pos-workspace .pos-billing-checkout .pos-payment-row > div:nth-child(3) {
+    grid-column: 1;
+    min-width: 0;
+  }
+  .pos-workspace .pos-billing-checkout .pos-payment-row > div:nth-child(4) {
+    grid-column: 2;
+    justify-content: flex-end;
+  }
+  .pos-workspace .pos-billing-checkout .pos-payment-row > div:nth-child(3) > button {
+    display: block;
+    width: 100%;
+    max-width: 100%;
+    height: auto;
+    min-height: 2rem;
+    padding: .35rem .25rem;
+    white-space: normal;
+    text-align: left;
+    line-height: 1.25;
+  }
+}
