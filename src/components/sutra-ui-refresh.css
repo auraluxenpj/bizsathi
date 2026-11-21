@@ -170,3 +170,74 @@
 @media (max-width: 1023px) {
   .app-workspace .app-topbar { min-height: 60px !important; }
 }
+
+
+/* Mobile shell repair: keep the page title and actions on separate rows,
+   and reserve space for the fixed bottom navigation. Desktop is unchanged. */
+@media (max-width: 639px) {
+  .app-workspace .app-topbar {
+    display: flex !important;
+    flex-wrap: wrap !important;
+    align-content: center;
+    align-items: center !important;
+    gap: 4px 8px !important;
+    min-height: 0 !important;
+    height: auto !important;
+    padding: 8px 12px !important;
+  }
+  .app-workspace .app-topbar > button:first-child {
+    order: 0;
+    flex: 0 0 40px;
+  }
+  .app-workspace .app-topbar > span {
+    order: 1;
+    flex: 1 1 calc(100% - 56px);
+    min-width: 0;
+    line-height: 1.25;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .app-workspace .app-topbar > div {
+    order: 2;
+    display: flex;
+    flex: 1 1 100%;
+    min-width: 0;
+    width: 100%;
+    margin-left: 0 !important;
+    justify-content: flex-end;
+    flex-wrap: nowrap;
+    gap: 4px !important;
+  }
+  .app-workspace .app-topbar > div > * {
+    flex: 0 0 auto;
+  }
+  .app-workspace .app-topbar > div > .xl\\:hidden {
+    display: block;
+  }
+
+  /* The fixed tab bar must not hide the last row of page content. */
+  .app-workspace > .min-w-0 {
+    padding-bottom: calc(4.75rem + env(safe-area-inset-bottom));
+  }
+  .app-workspace .mobile-tab-bar {
+    min-height: 64px;
+    padding-bottom: max(8px, env(safe-area-inset-bottom));
+    box-sizing: border-box;
+    background: var(--card);
+  }
+  .app-workspace .mobile-tab-bar a {
+    min-width: 0;
+    min-height: 64px;
+    padding-inline: 2px;
+    padding-top: 8px;
+    padding-bottom: 8px;
+    text-align: center;
+    white-space: nowrap;
+  }
+}
+
+@media (max-width: 359px) {
+  .app-workspace .app-topbar > div { gap: 1px !important; }
+  .app-workspace .app-topbar > div > button { transform: scale(.94); transform-origin: right center; }
+}
