@@ -97,10 +97,6 @@ export function DocumentEditor({w,kind,sourceId,onSaved,standalone=false,initial
   {cameraOpen&&<CameraBarcodeScanner onDetected={value=>{setBarcode(value);scan(value);setCameraOpen(false);}} onClose={()=>setCameraOpen(false)}/>}
   {scanStatus&&<p role="status" className="mt-2 text-sm text-muted-foreground">{scanStatus}</p>}
   <>
-  <div className="my-3 flex flex-wrap items-center justify-between gap-2 rounded-lg border bg-card p-3">
-   <label className="flex min-h-10 cursor-pointer items-center gap-2 text-sm font-medium"><input type="checkbox" className="size-4 accent-primary" checked={allVisibleSelected} ref={el=>{if(el)el.indeterminate=selectedVisibleCount>0&&!allVisibleSelected;}} disabled={!visibleSelectableVariants.length} onChange={toggleAllVisible} aria-label="Select all visible in-stock variants"/>Select all visible ({visibleSelectableVariants.length})</label>
-   <span className="text-xs text-muted-foreground">{selectedVariants.length} selected</span>
-  </div>
   <div role="group" aria-label="Product categories" className="pos-category-filters my-4 flex w-full min-w-0 flex-row flex-nowrap gap-2 overflow-x-auto overscroll-x-contain whitespace-nowrap pb-2 touch-pan-x snap-x snap-proximity [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
    <Button variant={!category?'secondary':'outline'} className="min-h-10 shrink-0 snap-start rounded-full px-4" aria-pressed={!category} onClick={()=>setCategory('')}>All items</Button>{categories.map(c=><Button key={c} className="min-h-10 shrink-0 snap-start rounded-full px-4" variant={category===c?'secondary':'outline'} aria-pressed={category===c} onClick={()=>setCategory(c)}>{c}</Button>)}
   </div>
