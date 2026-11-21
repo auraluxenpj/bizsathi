@@ -427,7 +427,12 @@ describe('Point of sale', () => {
     fireEvent.change(await screen.findByLabelText('Customer name'), { target: { value: 'Walk-in Customer' } }); fireEvent.change(await screen.findByLabelText('Customer mobile'), { target: { value: '9812345678' } });
     expect(await screen.findByLabelText('Product search or barcode')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /Camera/ })).toBeInTheDocument();
-    expect(await screen.findByRole('heading', { name: 'Local POS drafts' })).toBeInTheDocument();
+    const draftHeading = screen.getByText('Offline POS / Draft Recovery');
+    const disclosure = draftHeading.closest('details');
+    expect(disclosure).not.toBeNull();
+    expect(disclosure).not.toHaveAttribute('open');
+    fireEvent.click(draftHeading);
+    expect(disclosure).toHaveAttribute('open');
     expect(screen.getByRole('button', { name: 'Unlock device' })).toBeInTheDocument();
     expect(screen.queryByLabelText('Device passphrase')).not.toBeInTheDocument();
     expect(screen.queryByRole('navigation', { name: 'Main navigation' })).not.toBeInTheDocument();

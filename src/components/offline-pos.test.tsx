@@ -15,7 +15,7 @@ const user='11111111-1111-4111-8111-111111111111',business='22222222-2222-4222-8
 const item={id:product,name:'Test item',sku:'TEST',barcode:null,price:100,stock:10};
 const cache={userId:user,businessId:business,branchId:branch,branchName:'Isolated branch',cachedAt:'2026-10-27T05:00:00Z',currency:'NPR',vatRegistered:false,vatRate:0,products:[item],periods:[{id:period,name:'Open',start:'2026-01-01',end:'2026-12-31'}]};
 const w={businessId:business,access:{data:{userId:user,branches:[{id:branch,name:'Isolated branch',is_active:true}]}},commerce:{data:{userId:user,counters:[]}}} as unknown as CommerceWorkspace;
-function mount(){return render(<QueryClientProvider client={new QueryClient({defaultOptions:{queries:{retry:false}}})}><OfflinePos w={w}/></QueryClientProvider>);}
+function mount(){const view=render(<QueryClientProvider client={new QueryClient({defaultOptions:{queries:{retry:false}}})}><OfflinePos w={w}/></QueryClientProvider>);fireEvent.click(screen.getByText('Offline POS / Draft Recovery'));return view;}
 beforeEach(()=>{Object.defineProperty(globalThis,'crypto',{value:webcrypto,configurable:true});Object.defineProperty(globalThis,'indexedDB',{value:new IDBFactory(),configurable:true});Object.defineProperty(navigator,'onLine',{value:true,configurable:true});mocks.cache.mockReset().mockResolvedValue({ok:true,cache});mocks.check.mockReset().mockResolvedValue(null);mocks.post.mockReset();vi.spyOn(window,'confirm').mockReturnValue(true);});
 afterEach(()=>{cleanup();lockOfflineVaults();vi.restoreAllMocks();});
 async function unlock(){fireEvent.click(screen.getByRole('button',{name:'Unlock device'}));await screen.findByRole('heading',{name:'New local draft'});}
