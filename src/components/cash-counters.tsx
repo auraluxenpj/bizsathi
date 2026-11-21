@@ -76,9 +76,9 @@ export function CashCounters() {
       e.branch_id === selectedBranch &&
       !events.some((c) => c.session_id === e.session_id && c.kind === 'close'),
   );
-  const manager = !!data?.counterAccess?.canManage || ['owner', 'admin', 'accountant', 'branch_manager'].includes(data?.role ?? '');
+  const manager = !!data?.counterAccess?.canManage || ['owner', 'admin', 'accountant'].includes(data?.role ?? '');
   const cashier = !manager && !!data?.counterAccess?.isCashier;
-  const canWrite = !!data?.counterAccess?.canWrite || ['owner', 'admin', 'accountant', 'branch_manager'].includes(data?.role ?? '') || cashier;
+  const canWrite = !!data?.counterAccess?.canWrite || ['owner', 'admin', 'accountant'].includes(data?.role ?? '') || cashier;
   // Staff count blind: no expected figure while a counter is open. The close result (expected and
   // difference) still appears in the history once they submit.
   const showExpected = canSeeExpectedCash(data?.role) || manager;
