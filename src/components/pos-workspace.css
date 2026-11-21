@@ -120,3 +120,88 @@
 @media (prefers-reduced-motion: reduce) {
   .pos-product-card, .pos-product-card img { transition: none; }
 }
+
+
+/* Mobile POS repair: the app shell already supplies the page title. Keep the
+   POS actions in their own scrollable row instead of squeezing three grid
+   columns together; make the fixed checkout bar compact and non-obstructive. */
+@media (max-width: 767px) {
+  .pos-workspace .pos-topbar {
+    display: flex !important;
+    grid-template-columns: none !important;
+    align-items: center !important;
+    min-height: 48px;
+    gap: 0 !important;
+    padding: .25rem .65rem !important;
+  }
+  .pos-workspace .pos-topbar > div:first-child,
+  .pos-workspace .pos-topbar > h1 {
+    display: none !important;
+  }
+  .pos-workspace .pos-topbar > div:last-child {
+    display: block;
+    flex: 1 1 auto;
+    width: 100%;
+    min-width: 0;
+    overflow: hidden;
+  }
+  .pos-workspace .pos-topbar > div:last-child > div {
+    display: flex;
+    width: 100%;
+    min-width: 0;
+    align-items: center;
+    justify-content: flex-start;
+    gap: .4rem !important;
+    overflow-x: auto;
+    overflow-y: hidden;
+    scrollbar-width: none;
+    white-space: nowrap;
+  }
+  .pos-workspace .pos-topbar > div:last-child > div::-webkit-scrollbar {
+    display: none;
+  }
+  .pos-workspace .pos-topbar > div:last-child button,
+  .pos-workspace .pos-topbar > div:last-child a,
+  .pos-workspace .pos-topbar > div:last-child select {
+    flex: 0 0 auto;
+    min-height: 2.25rem;
+    white-space: nowrap;
+  }
+
+  /* Total and primary action share one row; the explanatory status gets
+     its own row. This cuts the overlay height substantially on phones. */
+  .pos-workspace .pos-checkout-footer-inner {
+    display: grid !important;
+    grid-template-columns: minmax(5.5rem, .7fr) minmax(0, 1.5fr) !important;
+    align-items: center;
+    gap: .4rem .65rem !important;
+  }
+  .pos-workspace .pos-checkout-footer-inner > div:first-child {
+    grid-column: 1 !important;
+    grid-row: 1 !important;
+    align-self: center;
+  }
+  .pos-workspace .pos-checkout-footer-inner > div:last-child {
+    grid-column: 2 !important;
+    grid-row: 1 !important;
+    justify-content: flex-end !important;
+    min-width: 0;
+  }
+  .pos-workspace .pos-checkout-footer-inner > div:last-child button {
+    flex: 1 1 auto;
+    min-width: 0;
+    width: 100%;
+    padding-inline: .55rem;
+    white-space: normal;
+    line-height: 1.2;
+  }
+  .pos-workspace .pos-checkout-footer-inner > p[role="status"] {
+    grid-column: 1 / -1 !important;
+    grid-row: 2 !important;
+    font-size: .75rem;
+    padding: .4rem .65rem;
+  }
+  .pos-workspace .pos-checkout-footer {
+    padding: .5rem .7rem !important;
+  }
+}
