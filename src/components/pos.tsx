@@ -18,7 +18,7 @@ export function Pos() {
   const navigate = useNavigate();
   const can = useCan(w.businessId ?? '');
   const billingStaff = isBillingStaff(can);
-  const manager = ['owner', 'admin', 'branch_manager'].includes(w.commerce.data?.role ?? '');
+  const manager = !!w.access.data?.manager || ['owner', 'admin', 'accountant', 'branch_manager'].includes(w.commerce.data?.role ?? '');
   async function signOut() { await supabase.auth.signOut(); await navigate({ to: '/auth', replace: true }); }
   const [saved, setSaved] = useState('');
   const name = w.commerce.data?.business.name ?? '';
@@ -31,7 +31,7 @@ export function Pos() {
       </div>
       <h1 className="max-w-[48vw] truncate text-center text-sm font-semibold sm:max-w-none sm:text-base">{name ? `${name} · ` : ''}Point of sale</h1>
       <div className="flex min-w-0 justify-end">
-        <div className="flex items-center gap-2">{(billingStaff || manager) && <Button variant="ghost" size="sm" onClick={() => document.getElementById('sale-return-requests')?.scrollIntoView({ behavior: 'smooth' })}>Returns</Button>}{billingStaff ? <Button variant="outline" size="sm" onClick={signOut}><LogOut className="size-4" /><span className="hidden sm:inline">Sign out</span></Button> : <Button asChild variant="outline" size="sm"><Link to="/sales">Sales</Link></Button>}</div>
+        <div className="flex items-center gap-2">{manager && <Button asChild variant="ghost" size="sm"><Link to="/cash-counters">Cash closing</Link></Button>}{(billingStaff || manager) && <Button variant="ghost" size="sm" onClick={() => document.getElementById('sale-return-requests')?.scrollIntoView({ behavior: 'smooth' })}>Returns</Button>}{billingStaff ? <Button variant="outline" size="sm" onClick={signOut}><LogOut className="size-4" /><span className="hidden sm:inline">Sign out</span></Button> : <Button asChild variant="outline" size="sm"><Link to="/sales">Sales</Link></Button>}</div>
       </div>
     </header>
     <main className="pos-main mx-auto w-full max-w-[1800px] px-3 py-4 sm:px-5 md:px-7 lg:px-8">
