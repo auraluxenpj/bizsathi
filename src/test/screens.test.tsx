@@ -335,21 +335,22 @@ describe('Point of sale', () => {
     expect(await screen.findByRole('heading', { name: 'Cotton Kurti' })).toBeInTheDocument();
     expect(screen.queryByRole('heading', { name: 'Silk Saree' })).not.toBeInTheDocument();
   });
-  it('selects multiple catalogue products and adds them to the cart together', async () => {
+  it('adds individual catalogue products without a bulk select-all control', async () => {
     mount(<Pos />);
     fireEvent.change(await screen.findByLabelText('Customer name'), { target: { value: 'Walk-in Customer' } });
     fireEvent.change(await screen.findByLabelText('Customer mobile'), { target: { value: '9812345678' } });
-    fireEvent.change(await screen.findByLabelText('Product search or barcode'), { target: { value: 'a' } });
-    fireEvent.click(await screen.findByRole('checkbox', { name: 'Select all visible in-stock variants' }));
-    expect(screen.getByText('2 selected')).toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button', { name: 'Add selected (2)' }));
+    const search = await screen.findByLabelText('Product search or barcode');
+    fireEvent.change(search, { target: { value: 'a' } });
+    const saree = await screen.findByRole('heading', { name: 'Silk Saree' });
+    const kurti = await screen.findByRole('heading', { name: 'Cotton Kurti' });
+    const sareeCard = saree.closest('article');
+    const kurtiCard = kurti.closest('article');
+    if (!sareeCard || !kurtiCard) throw new Error('Expected catalogue product cards were not rendered');
+    fireEvent.click(within(sareeCard).getByRole('button', { name: '+ Add' }));
+    fireEvent.click(within(kurtiCard).getByRole('button', { name: '+ Add' }));
     expect(screen.getByLabelText('quantity line 1')).toHaveValue(1);
     expect(screen.getByLabelText('quantity line 2')).toHaveValue(1);
-    expect(screen.queryByText('2 selected')).not.toBeInTheDocument();
-    fireEvent.click(screen.getByRole('checkbox', { name: 'Select all visible in-stock variants' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Add selected (2)' }));
-    expect(screen.getByLabelText('quantity line 1')).toHaveValue(2);
-    expect(screen.getByLabelText('quantity line 2')).toHaveValue(2);
+    expect(screen.queryByText(/Select all visible/i)).not.toBeInTheDocument();
     expect(confirm).not.toHaveBeenCalled();
   });
   it('submits keyboard-wedge scans when the scanner sends Enter', async () => {
