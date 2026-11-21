@@ -78,7 +78,7 @@ export const syncWebsiteCatalogueDrafts = createServerFn({ method: 'POST' })
       if ((page.data?.length ?? 0) < 500) break;
     }
 
-    if (!rows.length) return { rows: 0, createdProducts: 0, updatedProducts: 0, createdVariants: 0, updatedVariants: 0 };
+    if (!rows.length) return { rows: 0, createdProducts: 0, updatedProducts: 0, createdVariants: 0, updatedVariants: 0, stockImported: false, productsPublished: false };
 
     let createdProducts = 0;
     let updatedProducts = 0;
