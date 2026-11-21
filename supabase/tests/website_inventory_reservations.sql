@@ -110,7 +110,7 @@ SET LOCAL ROLE service_role;
 SELECT set_config('request.jwt.claims','{"role":"service_role"}',true);
 
 DO $final_commit$
-DECLARE b uuid; r1 uuid:='e1070000-0000-4000-8000-000000000021'; r3 uuid:='e1070000-0000-4000-8000-000000000023'; r4 uuid:='e1070000-0000-4000-8000-000000000024'; result jsonb; v uuid; br uuid; events jsonb; rejected boolean;
+DECLARE b uuid; r1 uuid:='e1070000-0000-4000-8000-000000000021'; r3 uuid:='e1070000-0000-4000-8000-000000000023'; r4 uuid:='e1070000-0000-4000-8000-000000000024'; result jsonb; v uuid; br uuid; events jsonb; rejected boolean; claimed jsonb; event_id bigint; token1 uuid:='e1070000-0000-4000-8000-000000000051'; token2 uuid:='e1070000-0000-4000-8000-000000000052'; ok boolean;
 BEGIN
   SELECT id INTO b FROM public.businesses WHERE name='Website reservation fixture';
   SELECT id INTO br FROM public.branches WHERE business_id=b AND code='WEB';
@@ -161,7 +161,27 @@ BEGIN
 
   events:=public.read_website_inventory_outbox(b,0,100);
   ASSERT jsonb_array_length(events)=8,'Reserve, commit, cancel and accepted-return events are retained';
-  ASSERT public.ack_website_inventory_outbox(b,(events->7->>'id')::bigint)=8,'Outbox acknowledgement is cursor-bounded';
+
+  claimed:=public.claim_website_inventory_outbox(b,token1,1);
+  ASSERT jsonb_array_length(claimed)=1,'A publisher can lease the oldest pending event';
+  event_id:=(claimed->0->>'id')::bigint;
+  claimed:=public.claim_website_inventory_outbox(b,token2,1);
+  ASSERT jsonb_array_length(claimed)=0,'A concurrent publisher cannot claim an active lease';
+  ok:=public.ack_website_inventory_outbox_event(b,event_id,token2);
+  ASSERT NOT ok,'An incorrect lease token cannot acknowledge an event';
+  ok:=public.fail_website_inventory_outbox_event(b,event_id,token1,'simulated delivery failure');
+  ASSERT ok,'The lease owner can release a failed event into backoff';
+  claimed:=public.claim_website_inventory_outbox(b,token2,1);
+  ASSERT jsonb_array_length(claimed)=0,'Failed events respect retry backoff';
+  UPDATE public.website_inventory_outbox SET next_attempt_at=now()-interval '1 second'
+   WHERE business_id=b AND id=event_id;
+  claimed:=public.claim_website_inventory_outbox(b,token2,1);
+  ASSERT jsonb_array_length(claimed)=1,'An event becomes claimable after its retry time';
+  ok:=public.ack_website_inventory_outbox_event(b,event_id,token2);
+  ASSERT ok,'The current lease owner can acknowledge a delivered event';
+  events:=public.read_website_inventory_outbox(b,0,100);
+  ASSERT jsonb_array_length(events)=7,'Acknowledged events are removed from the pending view';
+  ASSERT public.ack_website_inventory_outbox(b,(events->6->>'id')::bigint)=7,'Legacy cursor acknowledgement remains compatible';
   ASSERT (public.website_inventory_status(b,r4)->>'status')='committed','Uncertain operation status can be reconciled';
 END
 $final_commit$;
