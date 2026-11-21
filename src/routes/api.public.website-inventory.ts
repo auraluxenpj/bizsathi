@@ -46,6 +46,54 @@ function json(body: unknown, status = 200): Response {
   });
 }
 
+
+async function publishPendingOutbox(db: InventoryRpcClient): Promise<void> {
+  const target = process.env['AURALUXE_WEBSITE_INVENTORY_API_URL'];
+  const secret = process.env['WEBSITE_INVENTORY_SYNC_SECRET'];
+  if (!target || !target.startsWith('https://') || !secret) return;
+  try {
+    const pending = await db.rpc('read_website_inventory_outbox', {
+      _business_id: BUSINESS_ID,
+      _after_id: '0',
+      _limit: 100,
+    });
+    if (pending.error || !Array.isArray(pending.data) || pending.data.length === 0) return;
+    const latest = new Map<string, { sku: string; stock: number }>();
+    for (const event of pending.data) {
+      if (!event || typeof event !== 'object' || !('payload' in event)) continue;
+      const payload = event.payload;
+      if (!payload || typeof payload !== 'object' || !('items' in payload) || !Array.isArray(payload.items)) continue;
+      for (const item of payload.items) {
+        if (!item || typeof item !== 'object' || !('sku' in item) || !('available' in item)) continue;
+        const sku = String(item.sku);
+        const stock = Number(item.available);
+        if (sku && Number.isInteger(stock) && stock >= 0) latest.set(sku.toLowerCase(), { sku, stock });
+      }
+    }
+    if (latest.size === 0) return;
+    const response = await fetch(target, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${secret}`, 'Content-Type': 'application/json', Accept: 'application/json' },
+      body: JSON.stringify({ items: [...latest.values()] }),
+      redirect: 'error',
+    });
+    const result = await response.json().catch(() => null) as { ok?: boolean } | null;
+    if (!response.ok || result?.ok !== true) {
+      console.warn('[website-inventory] projection not acknowledged; outbox retained');
+      return;
+    }
+    const last = pending[pending.length - 1] as { id?: string | number };
+    if (last?.id === undefined) return;
+    const ack = await db.rpc('ack_website_inventory_outbox', {
+      _business_id: BUSINESS_ID,
+      _through_id: String(last.id),
+    });
+    if (ack.error) console.warn('[website-inventory] outbox acknowledgement failed');
+  } catch (error) {
+    console.warn('[website-inventory] outbox publish deferred', error);
+  }
+}
+
 export const Route = createFileRoute('/api/public/website-inventory')({
   server: {
     handlers: {
@@ -100,6 +148,7 @@ export const Route = createFileRoute('/api/public/website-inventory')({
               const status = /insufficient|reserved|ambiguous|duplicate sku|identifier already used/i.test(message) ? 409 : 400;
               return json({ error: status === 409 ? 'Inventory reservation conflict' : 'Inventory reservation rejected' }, status);
             }
+            await publishPendingOutbox(db);
             return json(result.data);
           }
 
