@@ -13,6 +13,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useCan } from './permission-checklist';
 import { isBillingStaff } from '@/lib/workspace-navigation';
 import { SaleReturnRequests } from './sale-return-requests';
+import { CashCounters } from './cash-counters';
 import { recordCounter } from '@/lib/commerce.functions';
 import { counterInput } from '@/lib/commerce-schemas';
 import { NPR_DENOMINATIONS, countedTotal, hasAnyCount, sanitizeCount, type DenominationCounts } from '@/lib/cash-denominations';
@@ -30,6 +31,7 @@ export function Pos() {
   const cashManager = !!w.commerce.data?.counterAccess?.canManage || ['owner', 'admin', 'accountant'].includes(w.commerce.data?.role ?? '');
   const recordCounterFn = useServerFn(recordCounter);
   const [saved, setSaved] = useState('');
+  const [cashClosing, setCashClosing] = useState(false);
   const [branch, setBranch] = useState('');
   const [date, setDate] = useState(new Date().toLocaleDateString('en-CA'));
   const [counts, setCounts] = useState<DenominationCounts>({});
@@ -108,7 +110,7 @@ export function Pos() {
       <div className="flex min-w-0 justify-end">
         <div className="flex items-center gap-2">
           {ready && !!activeCounter && branches.length > 1 && <select aria-label="POS branch" className="h-9 max-w-32 rounded-md border bg-background px-2 text-xs sm:max-w-48 sm:text-sm" value={selectedBranch} onChange={(e) => { setBranch(e.target.value); setSaved(''); setCounts({}); setSetupStatus(''); }}><option value="" disabled>Select branch</option>{branches.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select>}
-          {cashManager && <Button asChild variant="ghost" size="sm"><Link to="/cash-counters">Cash closing</Link></Button>}
+          {cashManager && <Button variant={cashClosing ? 'default' : 'ghost'} size="sm" onClick={() => setCashClosing((value) => !value)}>{cashClosing ? 'Back to billing' : 'Close drawer & reports'}</Button>}
           {(billingStaff || manager) && <Button variant="ghost" size="sm" onClick={() => document.getElementById('sale-return-requests')?.scrollIntoView({ behavior: 'smooth' })}>Returns</Button>}
           {billingStaff ? <Button variant="outline" size="sm" onClick={signOut}><LogOut className="size-4" /><span className="hidden sm:inline">Sign out</span></Button> : <Button asChild variant="outline" size="sm"><Link to="/sales">Sales</Link></Button>}
         </div>
@@ -118,6 +120,7 @@ export function Pos() {
       {!w.businessId ? <section className="py-16 text-center"><Building2 className="mx-auto mb-4 size-9 text-primary" /><h2 className="text-xl font-semibold">No business linked yet</h2><Button asChild className="mt-5"><Link to="/businesses">Business setup</Link></Button></section>
         : error ? <div className="py-8"><p role="alert" className="text-sm text-destructive">{error}</p><Button className="mt-4" variant="outline" onClick={() => { w.commerce.refetch(); w.access.refetch(); w.inventory.refetch(); }}>Try again</Button></div>
         : !ready ? <p role="status" className="py-8 text-sm">Loading point of sale…</p>
+        : cashClosing && cashManager ? <CashCounters embedded initialBranch={selectedBranch} />
         : !activeCounter ? <section className="mx-auto max-w-3xl rounded-xl border bg-card p-4 sm:p-6">
             <p className="text-xs font-semibold uppercase tracking-wide text-primary">Step 1 · POS setup</p>
             <h2 className="mt-2 text-xl font-semibold">Open the shared branch counter</h2>
@@ -160,8 +163,8 @@ export function Pos() {
           </section>
         : saved ? <section className="py-10"><h2 className="text-xl font-semibold">Sale saved</h2><p className="mt-3 break-all text-sm text-muted-foreground">{saved}</p><div className="mt-5 flex flex-wrap gap-2"><Button onClick={() => setSaved('')}>New sale</Button>{!billingStaff && <Button asChild variant="outline"><Link to="/sales">Sales & receipts</Link></Button>}</div></section>
         : <DocumentEditor key={`${w.businessId}:${selectedBranch}`} w={w} kind="sale" standalone initialBranch={selectedBranch} onSaved={setSaved} />}
-      {ready && !error && w.businessId && <OfflinePos w={w} />}
-      {ready && !error && w.businessId && (billingStaff || manager) && <SaleReturnRequests w={w} manager={manager} cashier={billingStaff} />}
+      {!cashClosing && ready && !error && w.businessId && <OfflinePos w={w} />}
+      {!cashClosing && ready && !error && w.businessId && (billingStaff || manager) && <SaleReturnRequests w={w} manager={manager} cashier={billingStaff} />}
     </main>
   </div>;
 }
