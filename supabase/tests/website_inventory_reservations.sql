@@ -1,0 +1,116 @@
+-- Isolated PostgreSQL integration test. Rolls back all synthetic fixture data.
+BEGIN;
+
+INSERT INTO auth.users(id,email,email_confirmed_at,raw_user_meta_data,created_at,updated_at)
+VALUES ('e1070000-0000-4000-8000-000000000001','website-reservation-admin@example.invalid',now(),'{}',now(),now());
+
+SET LOCAL ROLE authenticated;
+SELECT set_config('request.jwt.claims','{"sub":"e1070000-0000-4000-8000-000000000001","role":"authenticated"}',true);
+
+DO $setup$
+DECLARE b uuid; br uuid; v uuid;
+BEGIN
+  b:=public.create_business('Website reservation fixture');
+  INSERT INTO public.branches(business_id,code,name) VALUES(b,'WEB','Website test branch') RETURNING id INTO br;
+  PERFORM public.save_catalogue_variant(b,'[{"product_name":"Reservation test item","sku":"SKU-WEB-RESERVATION-TEST","selling_price":100}]');
+  SELECT id INTO v FROM public.product_variants WHERE business_id=b AND sku='SKU-WEB-RESERVATION-TEST';
+  PERFORM public.post_stock_operation(b,'e1070000-0000-4000-8000-000000000011',v,br,NULL,'opening',5,'WEB-OPEN','Test opening stock');
+END
+$setup$;
+
+RESET ROLE;
+SET LOCAL ROLE service_role;
+SELECT set_config('request.jwt.claims','{"role":"service_role"}',true);
+
+DO $reservation$
+DECLARE
+  b uuid; br uuid; v uuid;
+  r1 uuid:='e1070000-0000-4000-8000-000000000021';
+  r2 uuid:='e1070000-0000-4000-8000-000000000022';
+  r3 uuid:='e1070000-0000-4000-8000-000000000023';
+  r4 uuid:='e1070000-0000-4000-8000-000000000024';
+  result jsonb; rejected boolean;
+BEGIN
+  SELECT id INTO b FROM public.businesses WHERE name='Website reservation fixture';
+  SELECT id INTO br FROM public.branches WHERE business_id=b AND code='WEB';
+  SELECT id INTO v FROM public.product_variants WHERE business_id=b AND sku='SKU-WEB-RESERVATION-TEST';
+  INSERT INTO public.website_inventory_integrations(business_id,branch_id,enabled) VALUES(b,br,true);
+
+  result:=public.reserve_website_inventory(b,r1,br,'WEB-ORDER-1','[{"sku":"SKU-WEB-RESERVATION-TEST","quantity":4}]');
+  ASSERT result->>'status'='reserved' AND result->>'duplicate'='false','Reservation is created';
+  result:=public.reserve_website_inventory(b,r1,br,'WEB-ORDER-1','[{"sku":"sku-web-reservation-test","quantity":4}]');
+  ASSERT result->>'duplicate'='true','Equivalent normalized retry is idempotent';
+
+  rejected:=false;
+  BEGIN
+    PERFORM public.reserve_website_inventory(b,r2,br,'WEB-ORDER-2','[{"sku":"SKU-WEB-RESERVATION-TEST","quantity":2}]');
+  EXCEPTION WHEN raise_exception THEN rejected:=true;
+  END;
+  ASSERT rejected,'Reservations cannot exceed available stock';
+
+  result:=public.finalize_website_inventory(b,r1,'commit','WEB-ORDER-1-CONFIRMED');
+  ASSERT result->>'status'='committed' AND result->>'duplicate'='false','Commit finalizes once';
+  ASSERT public.commerce_stock_balance(b,br,v)=1,'Commit posts one on-hand deduction';
+  result:=public.finalize_website_inventory(b,r1,'commit','WEB-ORDER-1-CONFIRMED');
+  ASSERT result->>'duplicate'='true','Commit retry is idempotent';
+
+  rejected:=false;
+  BEGIN
+    PERFORM public.finalize_website_inventory(b,r1,'commit','CHANGED-REFERENCE');
+  EXCEPTION WHEN raise_exception THEN rejected:=true;
+  END;
+  ASSERT rejected,'Changed commit retry is rejected';
+
+  result:=public.reserve_website_inventory(b,r3,br,'WEB-ORDER-3','[{"sku":"SKU-WEB-RESERVATION-TEST","quantity":1}]');
+  ASSERT result->>'status'='reserved','Remaining unit can be reserved';
+  result:=public.finalize_website_inventory(b,r3,'cancel','WEB-ORDER-3-CANCELLED');
+  ASSERT result->>'status'='cancelled','Cancellation releases reservation';
+  ASSERT public.commerce_stock_balance(b,br,v)=1,'Cancellation does not change on-hand';
+  result:=public.finalize_website_inventory(b,r3,'cancel','WEB-ORDER-3-CANCELLED');
+  ASSERT result->>'duplicate'='true','Cancellation retry is idempotent';
+
+  result:=public.reserve_website_inventory(b,r4,br,'WEB-ORDER-4','[{"sku":"SKU-WEB-RESERVATION-TEST","quantity":1}]');
+  ASSERT result->>'status'='reserved','Final unit can be reserved';
+END
+$reservation$;
+
+RESET ROLE;
+SET LOCAL ROLE authenticated;
+SELECT set_config('request.jwt.claims','{"sub":"e1070000-0000-4000-8000-000000000001","role":"authenticated"}',true);
+
+DO $native_sale_guard$
+DECLARE b uuid; br uuid; v uuid; rejected boolean:=false;
+BEGIN
+  SELECT id INTO b FROM public.businesses WHERE name='Website reservation fixture';
+  SELECT id INTO br FROM public.branches WHERE business_id=b AND code='WEB';
+  SELECT id INTO v FROM public.product_variants WHERE business_id=b AND sku='SKU-WEB-RESERVATION-TEST';
+  BEGIN
+    PERFORM public.post_stock_operation(b,'e1070000-0000-4000-8000-000000000031',v,br,NULL,'adjustment',-1,'POS-OVER-RESERVE','Must not consume reserved unit');
+  EXCEPTION WHEN raise_exception THEN rejected:=true;
+  END;
+  ASSERT rejected,'Native BizSathi stock writers cannot consume reserved stock';
+  ASSERT public.commerce_stock_balance(b,br,v)=1,'Rejected native deduction leaves ledger unchanged';
+END
+$native_sale_guard$;
+
+RESET ROLE;
+SET LOCAL ROLE service_role;
+SELECT set_config('request.jwt.claims','{"role":"service_role"}',true);
+
+DO $final_commit$
+DECLARE b uuid; r4 uuid:='e1070000-0000-4000-8000-000000000024'; result jsonb; v uuid; br uuid; events jsonb;
+BEGIN
+  SELECT id INTO b FROM public.businesses WHERE name='Website reservation fixture';
+  SELECT id INTO br FROM public.branches WHERE business_id=b AND code='WEB';
+  SELECT id INTO v FROM public.product_variants WHERE business_id=b AND sku='SKU-WEB-RESERVATION-TEST';
+  result:=public.finalize_website_inventory(b,r4,'commit','WEB-ORDER-4-CONFIRMED');
+  ASSERT result->>'status'='committed','Commit succeeds after protected reservation';
+  ASSERT public.commerce_stock_balance(b,br,v)=0,'Final on-hand is zero, never negative';
+  events:=public.read_website_inventory_outbox(b,0,100);
+  ASSERT jsonb_array_length(events)=6,'Reserve, commit and cancel events are retained in outbox';
+  ASSERT public.ack_website_inventory_outbox(b,(events->5->>'id')::bigint)=6,'Outbox acknowledgement is cursor-bounded';
+  ASSERT (public.website_inventory_status(b,r4)->>'status')='committed','Uncertain operation status can be reconciled';
+END
+$final_commit$;
+
+ROLLBACK;
