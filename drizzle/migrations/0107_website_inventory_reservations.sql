@@ -312,7 +312,7 @@ DECLARE selected_branch uuid;
 BEGIN
   PERFORM public.website_inventory_require_service();
   SELECT branch_id INTO selected_branch FROM public.website_inventory_integrations
-    WHERE business_id=_business_id AND enabled;
+    WHERE business_id=_business_id;
   RETURN selected_branch;
 END $branch$;
 
