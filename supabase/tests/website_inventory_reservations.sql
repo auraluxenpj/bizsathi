@@ -119,9 +119,49 @@ BEGIN
   result:=public.finalize_website_inventory(b,r4,'commit','WEB-ORDER-4-CONFIRMED');
   ASSERT result->>'status'='committed','Commit succeeds after protected reservation';
   ASSERT public.commerce_stock_balance(b,br,v)=0,'Final on-hand is zero, never negative';
+
+  result:=public.accept_website_inventory_return(
+    b,'e1070000-0000-4000-8000-000000000041',r1,'WEB-RETURN-1',
+    '[{"sku":"SKU-WEB-RESERVATION-TEST","quantity":2}]'
+  );
+  ASSERT result->>'status'='accepted' AND result->>'duplicate'='false','Partial return is accepted once';
+  ASSERT public.commerce_stock_balance(b,br,v)=2,'Accepted return restores on-hand stock';
+  result:=public.accept_website_inventory_return(
+    b,'e1070000-0000-4000-8000-000000000041',r1,'WEB-RETURN-1',
+    '[{"sku":"sku-web-reservation-test","quantity":2}]'
+  );
+  ASSERT result->>'duplicate'='true','Return replay is idempotent and does not add stock twice';
+
+  result:=public.accept_website_inventory_return(
+    b,'e1070000-0000-4000-8000-000000000042',r1,'WEB-RETURN-2',
+    '[{"sku":"SKU-WEB-RESERVATION-TEST","quantity":2}]'
+  );
+  ASSERT result->>'status'='accepted','Second partial return can complete the sold quantity';
+  ASSERT public.commerce_stock_balance(b,br,v)=4,'Second partial return posts once';
+
+  rejected:=false;
+  BEGIN
+    PERFORM public.accept_website_inventory_return(
+      b,'e1070000-0000-4000-8000-000000000043',r1,'WEB-RETURN-3',
+      '[{"sku":"SKU-WEB-RESERVATION-TEST","quantity":1}]'
+    );
+  EXCEPTION WHEN raise_exception THEN rejected:=true;
+  END;
+  ASSERT rejected,'Accepted returns cannot exceed the original sold quantity';
+
+  rejected:=false;
+  BEGIN
+    PERFORM public.accept_website_inventory_return(
+      b,'e1070000-0000-4000-8000-000000000044',r3,'WEB-RETURN-CANCELLED',
+      '[{"sku":"SKU-WEB-RESERVATION-TEST","quantity":1}]'
+    );
+  EXCEPTION WHEN raise_exception THEN rejected:=true;
+  END;
+  ASSERT rejected,'Cancelled website orders cannot be returned into stock';
+
   events:=public.read_website_inventory_outbox(b,0,100);
-  ASSERT jsonb_array_length(events)=6,'Reserve, commit and cancel events are retained in outbox';
-  ASSERT public.ack_website_inventory_outbox(b,(events->5->>'id')::bigint)=6,'Outbox acknowledgement is cursor-bounded';
+  ASSERT jsonb_array_length(events)=8,'Reserve, commit, cancel and accepted-return events are retained';
+  ASSERT public.ack_website_inventory_outbox(b,(events->7->>'id')::bigint)=8,'Outbox acknowledgement is cursor-bounded';
   ASSERT (public.website_inventory_status(b,r4)->>'status')='committed','Uncertain operation status can be reconciled';
 END
 $final_commit$;
