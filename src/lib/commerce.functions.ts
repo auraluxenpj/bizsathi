@@ -1,5 +1,6 @@
 import {friendlyCommerceError} from './commerce-errors';
 import type { SupabaseClient } from '@supabase/supabase-js';
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 const anyDb = (client: unknown) => client as SupabaseClient<any, 'public', any>;
 import {scopeCommerceForCashier} from './cashier-data-scope';
 import {createServerFn} from '@tanstack/react-start';
