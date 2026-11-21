@@ -82,7 +82,7 @@ BEGIN
   result:=public.finalize_website_inventory(b,r3,'cancel','WEB-ORDER-3-CANCELLED');
   ASSERT result->>'duplicate'='true','Cancellation retry is idempotent';
 
-  result:=public.reserve_website_inventory(b,r4,br,'WEB-ORDER-4','[{"sku":"SKU-WEB-RESERVATION-TEST","quantity":1}]');
+  result:=public.reserve_website_inventory(b,r4,br,'WEB-ORDER-4','[{"sku":"SKU-WEB-RESERVATION-TEST","quantity":1,"restockQuantity":1}]');
   ASSERT result->>'status'='reserved','Final unit can be reserved';
 END
 $reservation$;
@@ -122,7 +122,7 @@ BEGIN
 
   result:=public.accept_website_inventory_return(
     b,'e1070000-0000-4000-8000-000000000041',r1,'WEB-RETURN-1',
-    '[{"sku":"SKU-WEB-RESERVATION-TEST","quantity":2,"restockQuantity":0}]'
+    '[{"sku":"SKU-WEB-RESERVATION-TEST","quantity":2,"restockQuantity":1}]'
   );
   ASSERT result->>'status'='accepted' AND result->>'duplicate'='false','Partial return is accepted once';
   ASSERT public.commerce_stock_balance(b,br,v)=1,'Only sellable returned units are restocked';
@@ -134,7 +134,7 @@ BEGIN
 
   result:=public.accept_website_inventory_return(
     b,'e1070000-0000-4000-8000-000000000042',r1,'WEB-RETURN-2',
-    '[{"sku":"SKU-WEB-RESERVATION-TEST","quantity":2}]'
+    '[{"sku":"SKU-WEB-RESERVATION-TEST","quantity":2,"restockQuantity":0}]'
   );
   ASSERT result->>'status'='accepted','Second partial return can complete the sold quantity';
   ASSERT public.commerce_stock_balance(b,br,v)=1,'Damaged returned units are recorded but not restocked';
