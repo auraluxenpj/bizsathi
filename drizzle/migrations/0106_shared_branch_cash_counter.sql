@@ -13,11 +13,7 @@ AS $cash_counter_read$
   SELECT public.can_access_branch(_business_id,_branch_id)
     AND (
       public.has_business_role(_business_id,'accountant')
-      OR (
-        (public.has_business_access_role(_business_id,'position_branch_manager')
-         OR public.has_business_access_role(_business_id,'legacy_branch_manager'))
-        AND public.has_permission(_business_id,'sales.view')
-      )
+      OR public.can_approve_inventory_count(_business_id,_branch_id)
       OR (
         (public.has_business_access_role(_business_id,'position_sales_person')
          OR public.has_business_access_role(_business_id,'legacy_staff'))
@@ -78,11 +74,7 @@ BEGIN
        AND NOT (
          public.has_business_access_role(NEW.business_id,'position_sales_person')
          OR public.has_business_access_role(NEW.business_id,'legacy_staff')
-         OR (
-           (public.has_business_access_role(NEW.business_id,'position_branch_manager')
-            OR public.has_business_access_role(NEW.business_id,'legacy_branch_manager'))
-           AND public.has_permission(NEW.business_id,'sales.view')
-         )
+         OR public.can_approve_inventory_count(NEW.business_id,NEW.branch_id)
        ) THEN
       RAISE EXCEPTION 'Cash counter access requires an assigned cashier or branch manager access role';
     END IF;
@@ -136,11 +128,7 @@ BEGIN
   can_manage :=
     public.has_business_role(b,'admin')
     OR public.has_business_role(b,'accountant')
-    OR (
-      (public.has_business_access_role(b,'position_branch_manager')
-       OR public.has_business_access_role(b,'legacy_branch_manager'))
-      AND public.has_permission(b,'sales.view')
-    );
+    OR public.can_approve_inventory_count(b,br);
 
   IF k='open' THEN
     IF EXISTS (
