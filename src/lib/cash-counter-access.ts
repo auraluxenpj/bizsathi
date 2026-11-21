@@ -1,5 +1,5 @@
 // Who may see expected drawer cash while a counter is open.
-const EXPECTED_CASH_ROLES = ['owner', 'admin', 'accountant'];
+const EXPECTED_CASH_ROLES = ['owner', 'admin', 'accountant', 'branch_manager'];
 
 /** Unknown, missing or still-loading roles fail closed (blind). */
 export function canSeeExpectedCash(role: string | null | undefined): boolean {
