@@ -367,6 +367,50 @@ GRANT EXECUTE ON FUNCTION public.reserve_website_inventory(uuid,uuid,uuid,text,j
   public.website_inventory_branch(uuid)
   TO service_role;
 
+-- Preserve website movements in stock reports and physical-count snapshots.
+DO $website_ledger_patch$
+DECLARE
+  body text;
+  marker text;
+  replacement text;
+  function_name text;
+BEGIN
+  function_name := 'public.create_inventory_count_session(uuid,uuid,date,text,jsonb)';
+  SELECT pg_get_functiondef(function_name::regprocedure) INTO body;
+  marker := '      UNION ALL
+      SELECT cm.quantity AS qty FROM public.commerce_stock_movements cm
+       WHERE cm.business_id = _business_id AND cm.branch_id = _branch_id AND cm.variant_id = _variant_id';
+  replacement := marker || '
+      UNION ALL
+      SELECT wm.quantity AS qty FROM public.website_inventory_movements wm
+       WHERE wm.business_id = _business_id AND wm.branch_id = _branch_id AND wm.variant_id = _variant_id';
+  IF position(marker IN body)=0 THEN RAISE EXCEPTION 'Could not extend inventory count creation snapshot'; END IF;
+  EXECUTE replace(body,marker,replacement);
+
+  function_name := 'public.update_inventory_count_session(uuid,date,text,jsonb)';
+  SELECT pg_get_functiondef(function_name::regprocedure) INTO body;
+  marker := '        UNION ALL
+        SELECT cm.quantity AS qty FROM public.commerce_stock_movements cm
+         WHERE cm.business_id=_s.business_id AND cm.branch_id=_s.branch_id AND cm.variant_id=_variant_id';
+  replacement := marker || '
+        UNION ALL
+        SELECT wm.quantity AS qty FROM public.website_inventory_movements wm
+         WHERE wm.business_id=_s.business_id AND wm.branch_id=_s.branch_id AND wm.variant_id=_variant_id';
+  IF position(marker IN body)=0 THEN RAISE EXCEPTION 'Could not extend inventory count edit snapshot'; END IF;
+  EXECUTE replace(body,marker,replacement);
+
+  function_name := 'public.read_business_report_snapshot(uuid,uuid,date)';
+  SELECT pg_get_functiondef(function_name::regprocedure) INTO body;
+  marker := ' UNION ALL
+ SELECT id,business_id,branch_id,variant_id,quantity::text,kind,reference,reason,actor_id,created_at,(created_at AT TIME ZONE zone)::date,document_id::text,''document''::text FROM public.commerce_stock_movements WHERE business_id=_business_id AND (_branch_id IS NULL OR branch_id=_branch_id) AND (created_at AT TIME ZONE zone)::date<=_through';
+  replacement := marker || '
+ UNION ALL
+ SELECT id,business_id,branch_id,variant_id,quantity::text,''website_sale''::text,reference,(''Website reservation ''||reservation_id::text),NULL::uuid,created_at,(created_at AT TIME ZONE zone)::date,reservation_id::text,''website''::text FROM public.website_inventory_movements WHERE business_id=_business_id AND (_branch_id IS NULL OR branch_id=_branch_id) AND (created_at AT TIME ZONE zone)::date<=_through';
+  IF position(marker IN body)=0 THEN RAISE EXCEPTION 'Could not extend business stock report snapshot'; END IF;
+  EXECUTE replace(body,marker,replacement);
+END
+$website_ledger_patch$;
+
 COMMENT ON TABLE public.website_inventory_reservations IS
   'Transactional website order reservations. Reserved stock reduces available quantity but not on-hand until commit. No automatic expiry.';
 COMMENT ON TABLE public.website_inventory_movements IS
