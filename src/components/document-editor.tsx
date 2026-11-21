@@ -96,7 +96,7 @@ export function DocumentEditor({w,kind,sourceId,onSaved,standalone=false,initial
   <form className="pos-barcode-row mt-3 flex min-w-0 flex-wrap items-center gap-2" onSubmit={e=>{e.preventDefault();scan();}}><div className="relative min-w-0 flex-1 basis-[18rem]"><ScanBarcode className="pointer-events-none absolute left-3 top-1/2 size-5 -translate-y-1/2 text-primary"/><Input ref={barcodeRef} aria-label="Barcode input" autoFocus placeholder="Scan barcode or enter SKU" className="h-12 w-full min-w-0 pl-10 font-mono text-base font-semibold" value={barcode} onChange={e=>{setBarcode(e.target.value);setSearch(e.target.value);}} onKeyDown={e=>{if(e.key==="Enter"||e.key==="Tab"){e.preventDefault();scan();}}}/></div><Button type="submit" variant="secondary" className="h-12 w-12 shrink-0" aria-label="Add scanned item" title="Add scanned item"><Plus/></Button><Button type="button" variant="outline" className="h-12 shrink-0" onClick={()=>setCameraOpen(v=>!v)} aria-expanded={cameraOpen}><Camera className="mr-2 size-4"/>Camera</Button></form>
   {cameraOpen&&<CameraBarcodeScanner onDetected={value=>{setBarcode(value);scan(value);setCameraOpen(false);}} onClose={()=>setCameraOpen(false)}/>}
   {scanStatus&&<p role="status" className="mt-2 text-sm text-muted-foreground">{scanStatus}</p>}
-  {search.trim()&&<>
+  <>
   <div className="my-3 flex flex-wrap items-center justify-between gap-2 rounded-lg border bg-card p-3">
    <label className="flex min-h-10 cursor-pointer items-center gap-2 text-sm font-medium"><input type="checkbox" className="size-4 accent-primary" checked={allVisibleSelected} ref={el=>{if(el)el.indeterminate=selectedVisibleCount>0&&!allVisibleSelected;}} disabled={!visibleSelectableVariants.length} onChange={toggleAllVisible} aria-label="Select all visible in-stock variants"/>Select all visible ({visibleSelectableVariants.length})</label>
    <span className="text-xs text-muted-foreground">{selectedVariants.length} selected</span>
@@ -104,7 +104,7 @@ export function DocumentEditor({w,kind,sourceId,onSaved,standalone=false,initial
   <div role="group" aria-label="Product categories" className="pos-category-filters my-4 flex w-full min-w-0 flex-row flex-nowrap gap-2 overflow-x-auto overscroll-x-contain whitespace-nowrap pb-2 touch-pan-x snap-x snap-proximity [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
    <Button variant={!category?'secondary':'outline'} className="min-h-10 shrink-0 snap-start rounded-full px-4" aria-pressed={!category} onClick={()=>setCategory('')}>All items</Button>{categories.map(c=><Button key={c} className="min-h-10 shrink-0 snap-start rounded-full px-4" variant={category===c?'secondary':'outline'} aria-pressed={category===c} onClick={()=>setCategory(c)}>{c}</Button>)}
   </div>
-</>}
+</>
   <>
   <div className="pos-product-grid grid grid-cols-2 gap-3 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">{catalogueGroups.map(group=>{const product=group[0];if(!product)return null;const productName=product.products?.name??"Product";const inCart=group.reduce((n,v)=>n+(lines.find(l=>l.variantId===v.id)?.quantity??0),0);const price=Math.min(...group.map(v=>levelPrice(v,priceLevel)));return <article key={product.product_id} className="pos-product-card min-w-0 overflow-hidden rounded-2xl border bg-card shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg">
    <ProductThumb url={productImages[product.product_id]} name={productName} size="aspect-[3/4] w-full rounded-none border-0"/>
