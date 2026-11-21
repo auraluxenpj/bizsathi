@@ -73,10 +73,10 @@ export function CashCounters() {
   const own = events.find(
     (e) =>
       e.kind === 'open' &&
-      e.actor_id === data?.userId &&
+      e.branch_id === selectedBranch &&
       !events.some((c) => c.session_id === e.session_id && c.kind === 'close'),
   );
-  const manager = ['owner', 'admin'].includes(data?.role ?? '');
+  const manager = ['owner', 'admin', 'accountant', 'branch_manager'].includes(data?.role ?? '');
   const cashier = data?.role === 'staff' && data?.jobTitle === 'sales_person';
   const canWrite = ['owner', 'admin', 'accountant'].includes(data?.role ?? '') || cashier;
   // Staff count blind: no expected figure while a counter is open. The close result (expected and
@@ -145,7 +145,7 @@ export function CashCounters() {
 
   const reportSessions = scopeCashCounterReport(dailySessions, data?.role, data?.jobTitle, data?.userId ?? '');
   const visibleDailySessions = reportSessions.filter((session) =>
-    (!cashier || session.openedById === data?.userId) &&
+    (!cashier || !session.closed || session.openedById === data?.userId) &&
     (!staffFilter || session.openedById === staffFilter || session.closedById === staffFilter) &&
     (!reportBranch || session.branchId === reportBranch),
   );
@@ -248,7 +248,7 @@ export function CashCounters() {
             Count the cash in your drawer and enter it below to close. The expected amount is shown after you submit.
           </p>
         ) : null}
-        {canWrite && (
+        {canWrite && (!own || manager) && (
           <form
             className="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-3"
             onSubmit={(e) => {
