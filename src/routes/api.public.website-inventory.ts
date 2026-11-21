@@ -60,7 +60,6 @@ async function publishPendingOutbox(db: InventoryRpcClient): Promise<{ published
   let published = 0;
   for (let batch = 0; batch < 10; batch += 1) {
     const leaseToken = crypto.randomUUID();
-    let eventId: string | undefined;
     const claimed = await db.rpc('claim_website_inventory_outbox', {
       _business_id: BUSINESS_ID,
       _lease_token: leaseToken,
@@ -76,7 +75,7 @@ async function publishPendingOutbox(db: InventoryRpcClient): Promise<{ published
     if (!event || typeof event !== 'object' || !('payload' in event) || !('id' in event)) {
       return { published, blocked: true };
     }
-    eventId = String(event.id);
+    const eventId = String(event.id);
     const fail = async (detail: string) => db.rpc('fail_website_inventory_outbox_event', {
       _business_id: BUSINESS_ID,
       _event_id: eventId,
