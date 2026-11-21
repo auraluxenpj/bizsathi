@@ -27,6 +27,7 @@ export function Pos() {
   const can = useCan(w.businessId ?? '');
   const billingStaff = isBillingStaff(can);
   const manager = !!w.access.data?.manager || ['owner', 'admin', 'accountant', 'branch_manager'].includes(w.commerce.data?.role ?? '');
+  const cashManager = !!w.commerce.data?.counterAccess?.canManage || ['owner', 'admin', 'accountant'].includes(w.commerce.data?.role ?? '');
   const recordCounterFn = useServerFn(recordCounter);
   const [saved, setSaved] = useState('');
   const [branch, setBranch] = useState('');
@@ -45,7 +46,7 @@ export function Pos() {
     !events.some((candidate) => candidate.session_id === event.session_id && candidate.kind === 'close')
   );
   const activeSessionId = activeCounter?.session_id ?? null;
-  const counterCanOpen = !!w.commerce.data?.counterAccess?.canWrite || manager;
+  const counterCanOpen = !!w.commerce.data?.counterAccess?.canWrite || cashManager;
   const openingFloat = countedTotal(counts);
   const openMutation = useMutation({
     mutationFn: (request: ReturnType<typeof counterInput.parse>) => recordCounterFn({ data: request }),
@@ -107,7 +108,7 @@ export function Pos() {
       <div className="flex min-w-0 justify-end">
         <div className="flex items-center gap-2">
           {ready && !!activeCounter && branches.length > 1 && <select aria-label="POS branch" className="h-9 max-w-32 rounded-md border bg-background px-2 text-xs sm:max-w-48 sm:text-sm" value={selectedBranch} onChange={(e) => { setBranch(e.target.value); setSaved(''); setCounts({}); setSetupStatus(''); }}><option value="" disabled>Select branch</option>{branches.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select>}
-          {manager && <Button asChild variant="ghost" size="sm"><Link to="/cash-counters">Cash closing</Link></Button>}
+          {cashManager && <Button asChild variant="ghost" size="sm"><Link to="/cash-counters">Cash closing</Link></Button>}
           {(billingStaff || manager) && <Button variant="ghost" size="sm" onClick={() => document.getElementById('sale-return-requests')?.scrollIntoView({ behavior: 'smooth' })}>Returns</Button>}
           {billingStaff ? <Button variant="outline" size="sm" onClick={signOut}><LogOut className="size-4" /><span className="hidden sm:inline">Sign out</span></Button> : <Button asChild variant="outline" size="sm"><Link to="/sales">Sales</Link></Button>}
         </div>
