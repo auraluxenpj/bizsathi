@@ -78,7 +78,7 @@ export function CashCounters() {
   );
   const manager = ['owner', 'admin', 'accountant', 'branch_manager'].includes(data?.role ?? '');
   const cashier = data?.role === 'staff' && data?.jobTitle === 'sales_person';
-  const canWrite = ['owner', 'admin', 'accountant'].includes(data?.role ?? '') || cashier;
+  const canWrite = ['owner', 'admin', 'accountant', 'branch_manager'].includes(data?.role ?? '') || cashier;
   // Staff count blind: no expected figure while a counter is open. The close result (expected and
   // difference) still appears in the history once they submit.
   const showExpected = canSeeExpectedCash(data?.role);
