@@ -71,7 +71,7 @@ export function BarcodeStickers({products, autoOpen=false}:{products:LabelProduc
   let pages:(LabelProduct|null)[][]=[];let validation='';
   try{pages=labelPages(selected.map(product=>({product,copies:copies[product.id]??0})),format,start);}catch(e){validation=e instanceof Error?e.message:'Check label quantities.';}
   const f=labelFormats[format];
-  const invalid=selected.some(p=>!/^[\\x20-\\x7E]+$/.test(stickerValue(p)));
+  const invalid=selected.some(p=>!/^[\x20-\x7E]+$/.test(stickerValue(p)));
   const handlePrint=()=>{
     setError('');
     const popup=window.open('about:blank','_blank');
