@@ -22,7 +22,7 @@ BEGIN
   ) THEN
     RAISE EXCEPTION 'Resolve multiple active cash counter sessions in a branch before enabling shared counters';
   END IF;
-END
+END;
 $shared_counter_preflight$;
 
 CREATE OR REPLACE FUNCTION public.can_read_cash_counter_session(_business_id uuid,_branch_id uuid,_session_id uuid)
@@ -242,7 +242,7 @@ BEGIN
   END IF;
   body:=replace(body,old_check,new_check);
   EXECUTE body;
-END
+END;
 $migration$;
 
 -- Share cash-payment visibility only while the branch counter is open. Other cashier
