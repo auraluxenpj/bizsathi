@@ -1,7 +1,7 @@
 import { createServerFn } from '@tanstack/react-start';
 import { z } from 'zod';
 import { requireSupabaseAuth } from '@/integrations/supabase/auth-middleware';
-import { callWebsite } from './website-sync.server';
+import { callWebsite, callWebsiteCatalogue } from './website-sync.server';
 import { AURALUXE_BUSINESS_ID, compareStock, eligibleStock, localSnapshot, websiteState } from './website-sync';
 
 const input = z.object({ businessId: z.literal(AURALUXE_BUSINESS_ID), branchId: z.string().uuid() });
@@ -87,8 +87,7 @@ export const syncWebsiteCatalogueDrafts = createServerFn({ method: 'POST' })
     let createdVariants = 0;
     let updatedVariants = 0;
     for (let offset = 0; offset < rows.length; offset += 500) {
-      const response = catalogueResult.parse(await callWebsite({
-        action: 'catalogue_drafts',
+      const response = catalogueResult.parse(await callWebsiteCatalogue({
         items: rows.slice(offset, offset + 500),
       }));
       createdProducts += response.result.created_products;
