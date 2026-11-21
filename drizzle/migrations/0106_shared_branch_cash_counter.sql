@@ -113,7 +113,8 @@ RETURNS uuid
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path=public
-AS $$
+AS $
+#variable_conflict use_column
 DECLARE
   b uuid:=(_request->>'businessId')::uuid;
   i uuid:=(_request->>'id')::uuid;
