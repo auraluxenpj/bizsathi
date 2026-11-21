@@ -22,6 +22,7 @@ const requestSchema = z.discriminatedUnion('action', [
   z.object({ action: z.literal('reserve'), operationId, reference, items: z.array(item).min(1).max(50) }).strict(),
   z.object({ action: z.literal('commit'), operationId, reference }).strict(),
   z.object({ action: z.literal('cancel'), operationId, reference }).strict(),
+  z.object({ action: z.literal('accept_return'), operationId, reservationId: operationId, reference, items: z.array(item).min(1).max(50) }).strict(),
   z.object({ action: z.literal('status'), operationId }).strict(),
   z.object({ action: z.literal('outbox'), afterId: z.string().regex(/^(0|[1-9]\d{0,18})$/), limit: z.number().int().min(1).max(500) }).strict(),
   z.object({ action: z.literal('ack'), throughId: z.string().regex(/^(0|[1-9]\d{0,18})$/) }).strict(),
@@ -187,6 +188,19 @@ export const Route = createFileRoute('/api/public/website-inventory')({
               _reference: parsed.reference,
             });
             if (result.error) return json({ error: 'Reservation could not be finalized' }, 409);
+            await publishPendingOutbox(db);
+            return json(result.data);
+          }
+
+          if (parsed.action === 'accept_return') {
+            const result = await db.rpc('accept_website_inventory_return', {
+              _business_id: BUSINESS_ID,
+              _return_id: parsed.operationId,
+              _reservation_id: parsed.reservationId,
+              _reference: parsed.reference,
+              _items: parsed.items,
+            });
+            if (result.error) return json({ error: 'Accepted return was rejected' }, 409);
             await publishPendingOutbox(db);
             return json(result.data);
           }
