@@ -43,6 +43,7 @@ BEGIN
   -- Keep fixture creation under the database owner; exercise authenticated RLS only after setup.
   PERFORM set_config('request.jwt.claims',json_build_object('sub',owner_id,'role','authenticated')::text,true);
   PERFORM set_config('request.jwt.claim.sub',owner_id::text,true);
+  PERFORM set_config('request.jwt.claim.sub',owner_id::text,true);
   PERFORM public.save_catalogue_variant(business_id,'[{"product_name":"RLS Test Item","sku":"RLS-1","selling_price":100}]');
   SELECT id INTO variant_id FROM public.product_variants pv WHERE pv.business_id=business_id AND pv.sku='RLS-1';
   INSERT INTO public.parties(business_id,kind,name) VALUES(business_id,'customer','RLS Test Customer') RETURNING id INTO customer_id;
@@ -50,12 +51,14 @@ BEGIN
 
   SET LOCAL ROLE authenticated;
   PERFORM set_config('request.jwt.claims',json_build_object('sub',owner_id,'role','authenticated')::text,true);
+  PERFORM set_config('request.jwt.claim.sub',owner_id::text,true);
   PERFORM public.post_cash_counter_event(jsonb_build_object(
     'businessId',business_id,'id',gen_random_uuid(),'branchId',branch_id,'periodId',period_id,
     'sessionId',owner_session,'kind','open','amount',700,'date','2026-11-15','reference','Shared branch open'
   ));
 
   PERFORM set_config('request.jwt.claims',json_build_object('sub',cashier_id,'role','authenticated')::text,true);
+  PERFORM set_config('request.jwt.claim.sub',cashier_id::text,true);
   denied := false;
   BEGIN
     PERFORM public.post_cash_counter_event(jsonb_build_object(
@@ -79,6 +82,7 @@ BEGIN
   PERFORM public.post_commerce_document(req);
 
   PERFORM set_config('request.jwt.claims',json_build_object('sub',owner_id,'role','authenticated')::text,true);
+  PERFORM set_config('request.jwt.claim.sub',owner_id::text,true);
   PERFORM public.post_commerce_document(jsonb_build_object(
     'businessId',business_id,'id',owner_sale,'branchId',branch_id,'periodId',period_id,
     'date','2026-11-15','kind','sale','status','confirmed','partyId',customer_id,
@@ -91,6 +95,7 @@ BEGIN
   ));
 
   PERFORM set_config('request.jwt.claims',json_build_object('sub',cashier_id,'role','authenticated')::text,true);
+  PERFORM set_config('request.jwt.claim.sub',cashier_id::text,true);
   ASSERT (SELECT count(*) FROM public.commerce_documents t WHERE t.business_id=business_id)=1,
     'Cashier sees only own sale';
   ASSERT EXISTS(SELECT 1 FROM public.commerce_documents WHERE id=cashier_sale),
@@ -113,6 +118,7 @@ BEGIN
     'Cashier cannot read loyalty event ledger';
 
   PERFORM set_config('request.jwt.claims',json_build_object('sub',entry_id,'role','authenticated')::text,true);
+  PERFORM set_config('request.jwt.claim.sub',entry_id::text,true);
   ASSERT (SELECT count(*) FROM public.commerce_documents t WHERE t.business_id=business_id)=0,
     'Entry staff cannot read commerce documents';
   ASSERT (SELECT count(*) FROM public.cash_counter_events t WHERE t.business_id=business_id)=0,
@@ -128,6 +134,7 @@ BEGIN
   ASSERT denied, 'Entry staff cannot open a cash counter';
 
   PERFORM set_config('request.jwt.claims',json_build_object('sub',cashier_id,'role','authenticated')::text,true);
+  PERFORM set_config('request.jwt.claim.sub',cashier_id::text,true);
   denied := false;
   BEGIN
     PERFORM public.post_cash_counter_event(jsonb_build_object(
@@ -139,6 +146,7 @@ BEGIN
   ASSERT denied, 'Cashier cannot close the shared branch counter';
 
   PERFORM set_config('request.jwt.claims',json_build_object('sub',owner_id,'role','authenticated')::text,true);
+  PERFORM set_config('request.jwt.claim.sub',owner_id::text,true);
   PERFORM public.post_cash_counter_event(jsonb_build_object(
     'businessId',business_id,'id',gen_random_uuid(),'branchId',branch_id,'periodId',period_id,
     'sessionId',owner_session,'kind','close','amount',600,'date','2026-11-15','reference','Manager close'
