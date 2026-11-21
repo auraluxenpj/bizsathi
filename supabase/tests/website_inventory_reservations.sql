@@ -102,6 +102,10 @@ BEGIN
   EXCEPTION WHEN raise_exception THEN rejected:=true;
   END;
   ASSERT rejected,'Native BizSathi stock writers cannot consume reserved stock';
+  IF position('pg_advisory_xact_lock(hashtextextended(NEW.business_id::text,0))'
+      IN pg_get_functiondef('public.guard_website_reserved_stock()'::regprocedure))=0 THEN
+    RAISE EXCEPTION 'Native stock guard must share the reservation transaction lock';
+  END IF;
 END
 $native_sale_guard$;
 
@@ -165,13 +169,9 @@ BEGIN
   claimed:=public.claim_website_inventory_outbox(b,token1,1);
   ASSERT jsonb_array_length(claimed)=1,'A publisher can lease the oldest pending event';
   event_id:=(claimed->0->>'id')::bigint;
-  -- Keep the other pending events out of this focused lease test: a second
-  -- publisher may legitimately claim a different event in the same batch.
-  UPDATE public.website_inventory_outbox
-     SET next_attempt_at=now()+interval '1 day'
-   WHERE business_id=b AND published_at IS NULL AND id<>event_id;
+  -- Later events must not leapfrog an active earlier projection.
   claimed:=public.claim_website_inventory_outbox(b,token2,1);
-  ASSERT jsonb_array_length(claimed)=0,'A concurrent publisher cannot claim an active lease';
+  ASSERT jsonb_array_length(claimed)=0,'A concurrent publisher cannot claim a later event while the oldest event is leased';
   ok:=public.ack_website_inventory_outbox_event(b,event_id,token2);
   ASSERT NOT ok,'An incorrect lease token cannot acknowledge an event';
   ok:=public.fail_website_inventory_outbox_event(b,event_id,token1,'simulated delivery failure');
