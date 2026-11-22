@@ -192,3 +192,5 @@ END
 $final_commit$;
 
 ROLLBACK;
+
+-- Regression re-verification: execute this suite only in a disposable isolated database.
