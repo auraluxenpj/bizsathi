@@ -30,7 +30,7 @@ export const Route = createFileRoute('/api/public/website-inventory-auth')({
 
         const authorization = request.headers.get('authorization') ?? '';
         const supplied = /^Bearer ([^\\s,]+)$/.exec(authorization)?.[1] ?? '';
-        if (!supplied || !equalSecret(expected, supplied)) return json({ error: 'Unauthorized' }, 401);
+        if (!supplied || /[\\s,]/.test(supplied) || !equalSecret(expected, supplied)) return json({ error: 'Unauthorized' }, 401);
 
         return json({ ok: true, authenticated: true });
       },
