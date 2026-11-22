@@ -6,7 +6,7 @@ export default defineConfig({
     name: "bizsathi-migration",
     entrypoint: "./src/server.ts",
     compatibilityDate: "2026-11-19",
-    compatibilityFlags: ["nodejs_compat"],
+    compatibilityFlags: ["nodejs_compat", "global_fetch_strictly_public"],
     env: {
       AURALUXE_WEBSITE_INVENTORY_API_URL: bindings.text("https://www.auraluxe.com.np/api/public/bizsathi-inventory"),
     },
