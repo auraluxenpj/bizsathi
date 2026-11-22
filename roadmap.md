@@ -1,3 +1,8 @@
+# Auraluxe transactional inventory integration
+- [ ] Reconcile repository migrations 0107–0110, routes, publisher and admin UI with the live schema and Auraluxe plan; no stock or integration activation.
+- [ ] Add only missing transactional integration pieces additively, preserving existing records and the legacy manual sync path.
+- [ ] Run non-persistent unit/SQL checks and report exact changes, migration state and activation prerequisites.
+
 # Security review workspace
 - [x] Phase 1 secure access audit: live owner binding absent, missing /join page, incomplete verified signup and delegation/identity gaps identified; 539 tests passed; findings and proposed plan prepared without database or production changes.
 - [ ] Implement secure team-access phases 2–8: awaits review of the Phase 1 findings and proposed plan.

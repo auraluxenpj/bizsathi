@@ -45,6 +45,8 @@ import { Route as AuthenticatedSalesRouteImport } from './routes/_authenticated/
 import { Route as AuthenticatedSecurityRouteImport } from './routes/_authenticated/security'
 import { Route as AuthenticatedSecurityHistoryRouteImport } from './routes/_authenticated/security-history'
 import { Route as AuthenticatedTransactionsRouteImport } from './routes/_authenticated/transactions'
+import { Route as ApiPublicWebsiteInventoryRouteImport } from './routes/api.public.website-inventory'
+import { Route as ApiPublicWebsiteInventoryAuthRouteImport } from './routes/api.public.website-inventory-auth'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -233,6 +235,18 @@ const AuthenticatedTransactionsRoute =
     path: '/transactions',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const ApiPublicWebsiteInventoryRoute =
+  ApiPublicWebsiteInventoryRouteImport.update({
+    id: '/api/public/website-inventory',
+    path: '/api/public/website-inventory',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiPublicWebsiteInventoryAuthRoute =
+  ApiPublicWebsiteInventoryAuthRouteImport.update({
+    id: '/api/public/website-inventory-auth',
+    path: '/api/public/website-inventory-auth',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -270,6 +284,8 @@ export interface FileRoutesByFullPath {
   '/security': typeof AuthenticatedSecurityRoute
   '/security-history': typeof AuthenticatedSecurityHistoryRoute
   '/transactions': typeof AuthenticatedTransactionsRoute
+  '/api/public/website-inventory': typeof ApiPublicWebsiteInventoryRoute
+  '/api/public/website-inventory-auth': typeof ApiPublicWebsiteInventoryAuthRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -307,6 +323,8 @@ export interface FileRoutesByTo {
   '/security': typeof AuthenticatedSecurityRoute
   '/security-history': typeof AuthenticatedSecurityHistoryRoute
   '/transactions': typeof AuthenticatedTransactionsRoute
+  '/api/public/website-inventory': typeof ApiPublicWebsiteInventoryRoute
+  '/api/public/website-inventory-auth': typeof ApiPublicWebsiteInventoryAuthRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -346,6 +364,8 @@ export interface FileRoutesById {
   '/_authenticated/security': typeof AuthenticatedSecurityRoute
   '/_authenticated/security-history': typeof AuthenticatedSecurityHistoryRoute
   '/_authenticated/transactions': typeof AuthenticatedTransactionsRoute
+  '/api/public/website-inventory': typeof ApiPublicWebsiteInventoryRoute
+  '/api/public/website-inventory-auth': typeof ApiPublicWebsiteInventoryAuthRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -385,6 +405,8 @@ export interface FileRouteTypes {
     | '/security'
     | '/security-history'
     | '/transactions'
+    | '/api/public/website-inventory'
+    | '/api/public/website-inventory-auth'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -422,6 +444,8 @@ export interface FileRouteTypes {
     | '/security'
     | '/security-history'
     | '/transactions'
+    | '/api/public/website-inventory'
+    | '/api/public/website-inventory-auth'
   id:
     | '__root__'
     | '/'
@@ -460,6 +484,8 @@ export interface FileRouteTypes {
     | '/_authenticated/security'
     | '/_authenticated/security-history'
     | '/_authenticated/transactions'
+    | '/api/public/website-inventory'
+    | '/api/public/website-inventory-auth'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -469,6 +495,8 @@ export interface RootRouteChildren {
   InviteRoute: typeof InviteRoute
   JoinRoute: typeof JoinRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
+  ApiPublicWebsiteInventoryRoute: typeof ApiPublicWebsiteInventoryRoute
+  ApiPublicWebsiteInventoryAuthRoute: typeof ApiPublicWebsiteInventoryAuthRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -725,6 +753,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedTransactionsRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/api/public/website-inventory': {
+      id: '/api/public/website-inventory'
+      path: '/api/public/website-inventory'
+      fullPath: '/api/public/website-inventory'
+      preLoaderRoute: typeof ApiPublicWebsiteInventoryRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/website-inventory-auth': {
+      id: '/api/public/website-inventory-auth'
+      path: '/api/public/website-inventory-auth'
+      fullPath: '/api/public/website-inventory-auth'
+      preLoaderRoute: typeof ApiPublicWebsiteInventoryAuthRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -804,6 +846,8 @@ const rootRouteChildren: RootRouteChildren = {
   InviteRoute: InviteRoute,
   JoinRoute: JoinRoute,
   ResetPasswordRoute: ResetPasswordRoute,
+  ApiPublicWebsiteInventoryRoute: ApiPublicWebsiteInventoryRoute,
+  ApiPublicWebsiteInventoryAuthRoute: ApiPublicWebsiteInventoryAuthRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
