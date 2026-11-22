@@ -75,6 +75,27 @@ export default {
       return;
     }
     const handler = await getServerEntry();
+    const testRequest = new Request('https://bizsathi.internal/api/public/website-inventory', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${secret}`,
+        'Content-Type': 'application/json',
+        Accept: 'application/json',
+      },
+      body: JSON.stringify({ action: 'controlled_inventory_test' }),
+    });
+    const testResponse = await handler.fetch(testRequest, env, ctx);
+    if (!testResponse.ok) {
+      throw new Error(`Controlled inventory test returned HTTP ${testResponse.status}`);
+    }
+    const testResult = await testResponse.json() as { ok?: boolean; skipped?: boolean };
+    if (testResult.ok !== true) {
+      throw new Error('Controlled inventory test did not confirm completion');
+    }
+    console.info('[website-inventory] controlled reserve-cancel test', {
+      skipped: testResult.skipped === true,
+    });
+
     const request = new Request('https://bizsathi.internal/api/public/website-inventory', {
       method: 'POST',
       headers: {
