@@ -3,12 +3,21 @@ import { z } from 'zod';
 
 const BUSINESS_ID = 'c0f0ed15-97e4-4859-ac8f-a2d4e81f5b01';
 const MAX_BODY_BYTES = 64 * 1024;
+const SELF_TEST_SKU = 'AL-KURTI-121';
+
+type InventoryQuery = {
+  select: (columns: string) => InventoryQuery;
+  update: (values: Record<string, unknown>) => InventoryQuery;
+  eq: (column: string, value: unknown) => InventoryQuery;
+  maybeSingle: () => Promise<{ data: Record<string, unknown> | null; error: { message: string } | null }>;
+};
 
 type InventoryRpcClient = {
   rpc: (name: string, args: Record<string, unknown>) => Promise<{
     data: unknown;
     error: { message: string } | null;
   }>;
+  from: (table: string) => InventoryQuery;
 };
 
 const operationId = z.string().uuid();
@@ -30,6 +39,7 @@ const requestSchema = z.discriminatedUnion('action', [
   z.object({ action: z.literal('outbox'), afterId: z.string().regex(/^(0|[1-9]\d{0,18})$/), limit: z.number().int().min(1).max(500) }).strict(),
   z.object({ action: z.literal('ack'), throughId: z.string().regex(/^(0|[1-9]\d{0,18})$/) }).strict(),
   z.object({ action: z.literal('publish_outbox') }).strict(),
+  z.object({ action: z.literal('self_test') }).strict(),
 ]);
 
 function constantTimeEqual(left: string, right: string): boolean {
@@ -144,6 +154,192 @@ async function publishPendingOutbox(db: InventoryRpcClient): Promise<{ published
   return { published, blocked: true };
 }
 
+async function runControlledSelfTest(db: InventoryRpcClient): Promise<Response> {
+  if (process.env['WEBSITE_INVENTORY_SELF_TEST_ENABLED'] !== 'true') {
+    return json({ error: 'Not found' }, 404);
+  }
+
+  const integration = await db.from('website_inventory_integrations')
+    .select('business_id,branch_id,enabled')
+    .eq('business_id', BUSINESS_ID)
+    .maybeSingle();
+  if (integration.error || !integration.data || typeof integration.data['branch_id'] !== 'string') {
+    return json({ error: 'Inventory integration configuration unavailable' }, 503);
+  }
+  const branchId = String(integration.data['branch_id']);
+  if (integration.data['enabled'] === true) {
+    return json({ error: 'Self-test requires the integration to be disabled initially' }, 409);
+  }
+
+  const pendingBefore = await db.rpc('read_website_inventory_outbox', {
+    _business_id: BUSINESS_ID,
+    _after_id: '0',
+    _limit: 1,
+  });
+  if (pendingBefore.error || !Array.isArray(pendingBefore.data)) {
+    return json({ error: 'Could not verify the outbox is clear' }, 503);
+  }
+  if (pendingBefore.data.length > 0) {
+    return json({ error: 'Pending inventory events must be cleared before the self-test' }, 409);
+  }
+
+  const variant = await db.from('product_variants')
+    .select('id')
+    .eq('business_id', BUSINESS_ID)
+    .eq('sku', SELF_TEST_SKU)
+    .eq('is_active', true)
+    .maybeSingle();
+  if (variant.error || !variant.data || typeof variant.data['id'] !== 'string') {
+    return json({ error: 'Self-test SKU is unavailable or ambiguous' }, 409);
+  }
+
+  const stockBeforeResult = await db.rpc('commerce_stock_balance', {
+    _business: BUSINESS_ID,
+    _branch: branchId,
+    _variant: String(variant.data['id']),
+  });
+  const stockBefore = Number(stockBeforeResult.data);
+  if (stockBeforeResult.error || !Number.isFinite(stockBefore) || stockBefore < 1) {
+    return json({ error: 'Self-test requires at least one unit of on-hand stock' }, 409);
+  }
+
+  const enabled = await db.from('website_inventory_integrations')
+    .update({ enabled: true })
+    .eq('business_id', BUSINESS_ID)
+    .eq('branch_id', branchId)
+    .eq('enabled', false)
+    .select('enabled')
+    .maybeSingle();
+  if (enabled.error || enabled.data?.['enabled'] !== true) {
+    return json({ error: 'Could not temporarily enable the inventory integration' }, 503);
+  }
+
+  const operationId = crypto.randomUUID();
+  const reference = `BIZSATHI-SELFTEST-${operationId.slice(0, 8)}`;
+  let reserved = false;
+  let cancelResult: { data: unknown; error: { message: string } | null } | null = null;
+  let publishBlocked = false;
+  let published = 0;
+  let disableError = false;
+
+  try {
+    const binding = await db.rpc('website_inventory_branch', { _business_id: BUSINESS_ID });
+    if (binding.error || binding.data !== branchId) {
+      return json({ error: 'Enabled integration branch does not match the configured branch' }, 503);
+    }
+
+    const reserveResult = await db.rpc('reserve_website_inventory', {
+      _business_id: BUSINESS_ID,
+      _operation_id: operationId,
+      _branch_id: branchId,
+      _reference: reference,
+      _items: [{ sku: SELF_TEST_SKU, quantity: 1 }],
+    });
+    if (reserveResult.error) {
+      return json({ error: 'Self-test reservation was rejected' }, 409);
+    }
+    reserved = true;
+
+    const reservePublish = await publishPendingOutbox(db);
+    published += reservePublish.published;
+    publishBlocked ||= reservePublish.blocked;
+
+    cancelResult = await db.rpc('finalize_website_inventory', {
+      _business_id: BUSINESS_ID,
+      _operation_id: operationId,
+      _action: 'cancel',
+      _reference: reference,
+    });
+    if (cancelResult.error) {
+      cancelResult = await db.rpc('finalize_website_inventory', {
+        _business_id: BUSINESS_ID,
+        _operation_id: operationId,
+        _action: 'cancel',
+        _reference: reference,
+      });
+    }
+
+    if (!cancelResult.error) {
+      const cancelPublish = await publishPendingOutbox(db);
+      published += cancelPublish.published;
+      publishBlocked ||= cancelPublish.blocked;
+    }
+  } finally {
+    const disabled = await db.from('website_inventory_integrations')
+      .update({ enabled: false })
+      .eq('business_id', BUSINESS_ID)
+      .eq('branch_id', branchId)
+      .eq('enabled', true)
+      .select('enabled')
+      .maybeSingle();
+    disableError = Boolean(disabled.error || disabled.data?.['enabled'] !== false);
+  }
+
+  if (!reserved) {
+    return json({ error: 'Self-test did not create a reservation', integrationDisabled: !disableError }, 409);
+  }
+  if (!cancelResult || cancelResult.error) {
+    return json({
+      error: 'Self-test reservation could not be cancelled; manual recovery is required',
+      operationId,
+      integrationDisabled: !disableError,
+    }, 503);
+  }
+  if (disableError) {
+    return json({ error: 'Self-test completed but integration could not be disabled', operationId }, 503);
+  }
+
+  const stockAfterResult = await db.rpc('commerce_stock_balance', {
+    _business: BUSINESS_ID,
+    _branch: branchId,
+    _variant: String(variant.data['id']),
+  });
+  const stockAfter = Number(stockAfterResult.data);
+  const status = await db.rpc('website_inventory_status', {
+    _business_id: BUSINESS_ID,
+    _operation_id: operationId,
+  });
+  const pendingAfter = await db.rpc('read_website_inventory_outbox', {
+    _business_id: BUSINESS_ID,
+    _after_id: '0',
+    _limit: 1,
+  });
+
+  const verified = !stockAfterResult.error
+    && Number.isFinite(stockAfter)
+    && stockAfter === stockBefore
+    && !status.error
+    && Boolean(status.data && typeof status.data === 'object' && 'status' in status.data && status.data.status === 'cancelled')
+    && !pendingAfter.error
+    && Array.isArray(pendingAfter.data)
+    && pendingAfter.data.length === 0
+    && !publishBlocked;
+
+  if (!verified) {
+    return json({
+      error: 'Self-test lifecycle ran, but stock, status, or outbox verification failed',
+      sku: SELF_TEST_SKU,
+      stockBefore,
+      stockAfter: Number.isFinite(stockAfter) ? stockAfter : null,
+      reservationStatus: status.data,
+      published,
+      integrationDisabled: true,
+    }, 503);
+  }
+
+  return json({
+    ok: true,
+    test: 'reserve_then_cancel',
+    sku: SELF_TEST_SKU,
+    quantity: 1,
+    stockBefore,
+    stockAfter,
+    reservationStatus: 'cancelled',
+    published,
+    integrationDisabled: true,
+  });
+}
+
 export const Route = createFileRoute('/api/public/website-inventory')({
   server: {
     handlers: {
@@ -179,6 +375,9 @@ export const Route = createFileRoute('/api/public/website-inventory')({
         try {
           const { supabaseAdmin } = await import('@/integrations/supabase/client.server');
           const db = supabaseAdmin as unknown as InventoryRpcClient;
+          if (parsed.action === 'self_test') {
+            return await runControlledSelfTest(db);
+          }
           const binding = await db.rpc('website_inventory_branch', { _business_id: BUSINESS_ID });
           if (binding.error || typeof binding.data !== 'string') {
             return json({ error: 'Website inventory integration is not enabled' }, 503);
