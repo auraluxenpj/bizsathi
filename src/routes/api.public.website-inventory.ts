@@ -29,7 +29,6 @@ const requestSchema = z.discriminatedUnion('action', [
   z.object({ action: z.literal('status'), operationId }).strict(),
   z.object({ action: z.literal('outbox'), afterId: z.string().regex(/^(0|[1-9]\d{0,18})$/), limit: z.number().int().min(1).max(500) }).strict(),
   z.object({ action: z.literal('ack'), throughId: z.string().regex(/^(0|[1-9]\d{0,18})$/) }).strict(),
-  z.object({ action: z.literal('controlled_inventory_test') }).strict(),
   z.object({ action: z.literal('publish_outbox') }).strict(),
 ]);
 
@@ -180,14 +179,6 @@ export const Route = createFileRoute('/api/public/website-inventory')({
         try {
           const { supabaseAdmin } = await import('@/integrations/supabase/client.server');
           const db = supabaseAdmin as unknown as InventoryRpcClient;
-          if (parsed.action === 'controlled_inventory_test') {
-            const result = await db.rpc('run_controlled_inventory_test', {});
-            if (result.error || !result.data || typeof result.data !== 'object') {
-              return json({ error: 'Controlled inventory test could not be completed' }, 503);
-            }
-            return json(result.data);
-          }
-
           const binding = await db.rpc('website_inventory_branch', { _business_id: BUSINESS_ID });
           if (binding.error || typeof binding.data !== 'string') {
             return json({ error: 'Website inventory integration is not enabled' }, 503);

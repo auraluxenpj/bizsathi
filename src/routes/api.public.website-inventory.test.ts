@@ -107,21 +107,6 @@ describe('BizSathi website inventory worker contract', () => {
     });
   });
 
-  it('runs only the fixed controlled inventory test action', async () => {
-    mocks.rpc.mockResolvedValue({ data: { ok: true, skipped: false, sku: 'AL-KURTI-121', status: 'cancelled', startingStock: 6, endingStock: 6, integrationEnabled: false }, error: null });
-    const response = await invoke({ action: 'controlled_inventory_test' });
-    expect(response.status).toBe(200);
-    expect(await response.json()).toMatchObject({ ok: true, status: 'cancelled', startingStock: 6, endingStock: 6, integrationEnabled: false });
-    expect(mocks.rpc).toHaveBeenCalledTimes(1);
-    expect(mocks.rpc).toHaveBeenCalledWith('run_controlled_inventory_test', {});
-  });
-
-  it('rejects extra parameters on the controlled inventory test action', async () => {
-    const response = await invoke({ action: 'controlled_inventory_test', sku: 'OTHER', quantity: 9 });
-    expect(response.status).toBe(400);
-    expect(mocks.rpc).not.toHaveBeenCalled();
-  });
-
   it('fails closed when the integration branch is not configured', async () => {
     mocks.rpc.mockResolvedValue({ data: null, error: null });
     const response = await invoke({ action: 'status', operationId: OP });
