@@ -20,6 +20,8 @@ const invoke = (body: unknown, token: string | null = SECRET) => handler({ reque
 beforeEach(() => {
   process.env['WEBSITE_INVENTORY_SYNC_SECRET'] = SECRET;
   process.env['AURALUXE_WEBSITE_INVENTORY_API_URL'] = 'https://auraluxe.test/api/public/bizsathi-inventory';
+  process.env['AURALUXE_SUPABASE_URL'] = 'https://auraluxe.test';
+  process.env['AURALUXE_SUPABASE_PUBLISHABLE_KEY'] = 'public-test-key';
   process.env['WEBSITE_INVENTORY_SYNC_SECRET'] = SECRET;
   mocks.from.mockReset();
   mocks.rpc.mockReset().mockImplementation(async (name: string) => {
@@ -37,6 +39,8 @@ afterEach(() => {
   vi.unstubAllGlobals();
   delete process.env['WEBSITE_INVENTORY_SYNC_SECRET'];
   delete process.env['AURALUXE_WEBSITE_INVENTORY_API_URL'];
+  delete process.env['AURALUXE_SUPABASE_URL'];
+  delete process.env['AURALUXE_SUPABASE_PUBLISHABLE_KEY'];
   delete process.env['WEBSITE_INVENTORY_SELF_TEST_ENABLED'];
 });
 
@@ -111,6 +115,7 @@ describe('BizSathi website inventory worker contract', () => {
 
   it('runs the fixed one-unit reserve/cancel self-test and verifies stock restoration', async () => {
     process.env['WEBSITE_INVENTORY_SELF_TEST_ENABLED'] = 'true';
+    vi.stubGlobal('fetch', vi.fn(async () => Response.json(true)));
     const queryResults = [
       { data: { business_id: 'c0f0ed15-97e4-4859-ac8f-a2d4e81f5b01', branch_id: BRANCH, enabled: false }, error: null },
       { data: { id: '44444444-4444-4444-8444-444444444444' }, error: null },
@@ -167,6 +172,18 @@ describe('BizSathi website inventory worker contract', () => {
     expect(mocks.rpc).toHaveBeenCalledWith('finalize_website_inventory', expect.objectContaining({
       _action: 'cancel',
     }));
+  });
+
+  it('refuses the self-test before database access when Auraluxe authority is disabled', async () => {
+    process.env['WEBSITE_INVENTORY_SELF_TEST_ENABLED'] = 'true';
+    vi.stubGlobal('fetch', vi.fn(async () => Response.json(false)));
+    const response = await invoke({ action: 'self_test' });
+    expect(response.status).toBe(409);
+    expect(await response.json()).toEqual({
+      error: 'Auraluxe inventory authority must be enabled before the self-test',
+    });
+    expect(mocks.from).not.toHaveBeenCalled();
+    expect(mocks.rpc).not.toHaveBeenCalled();
   });
 
   it('keeps the controlled self-test disabled unless its explicit server flag is enabled', async () => {
