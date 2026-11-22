@@ -249,47 +249,72 @@ async function runControlledSelfTest(db: InventoryRpcClient): Promise<Response> 
   let published = 0;
   let disableError = false;
 
+  const publishSafely = async () => {
+    try {
+      return await publishPendingOutbox(db);
+    } catch {
+      return { published: 0, blocked: true };
+    }
+  };
+
   try {
     const binding = await db.rpc('website_inventory_branch', { _business_id: BUSINESS_ID });
     if (binding.error || binding.data !== branchId) {
       return json({ error: 'Enabled integration branch does not match the configured branch' }, 503);
     }
 
-    const reserveResult = await db.rpc('reserve_website_inventory', {
-      _business_id: BUSINESS_ID,
-      _operation_id: operationId,
-      _branch_id: branchId,
-      _reference: reference,
-      _items: [{ sku: SELF_TEST_SKU, quantity: 1 }],
-    });
-    if (reserveResult.error) {
-      return json({ error: 'Self-test reservation was rejected' }, 409);
-    }
-    reserved = true;
-
-    const reservePublish = await publishPendingOutbox(db);
-    published += reservePublish.published;
-    publishBlocked ||= reservePublish.blocked;
-
-    cancelResult = await db.rpc('finalize_website_inventory', {
-      _business_id: BUSINESS_ID,
-      _operation_id: operationId,
-      _action: 'cancel',
-      _reference: reference,
-    });
-    if (cancelResult.error) {
-      cancelResult = await db.rpc('finalize_website_inventory', {
+    try {
+      const reserveResult = await db.rpc('reserve_website_inventory', {
         _business_id: BUSINESS_ID,
         _operation_id: operationId,
-        _action: 'cancel',
+        _branch_id: branchId,
         _reference: reference,
+        _items: [{ sku: SELF_TEST_SKU, quantity: 1 }],
       });
+      if (reserveResult.error) {
+        return json({ error: 'Self-test reservation was rejected' }, 409);
+      }
+      reserved = true;
+    } catch {
+      // A transport failure can leave the reservation outcome unknown. Attempt
+      // an idempotent cancel using the same operation ID before cleanup.
+      reserved = true;
+      publishBlocked = true;
     }
 
-    if (!cancelResult.error) {
-      const cancelPublish = await publishPendingOutbox(db);
-      published += cancelPublish.published;
-      publishBlocked ||= cancelPublish.blocked;
+    if (reserved) {
+      const reservePublish = await publishSafely();
+      published += reservePublish.published;
+      publishBlocked ||= reservePublish.blocked;
+
+      try {
+        cancelResult = await db.rpc('finalize_website_inventory', {
+          _business_id: BUSINESS_ID,
+          _operation_id: operationId,
+          _action: 'cancel',
+          _reference: reference,
+        });
+      } catch {
+        cancelResult = { data: null, error: { message: 'Cancellation outcome unknown' } };
+      }
+      if (cancelResult.error) {
+        try {
+          cancelResult = await db.rpc('finalize_website_inventory', {
+            _business_id: BUSINESS_ID,
+            _operation_id: operationId,
+            _action: 'cancel',
+            _reference: reference,
+          });
+        } catch {
+          cancelResult = { data: null, error: { message: 'Cancellation retry failed' } };
+        }
+      }
+
+      if (!cancelResult.error) {
+        const cancelPublish = await publishSafely();
+        published += cancelPublish.published;
+        publishBlocked ||= cancelPublish.blocked;
+      }
     }
   } finally {
     const disabled = await db.from('website_inventory_integrations')
