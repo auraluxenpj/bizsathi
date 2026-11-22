@@ -1,7 +1,15 @@
 import { createFileRoute } from '@tanstack/react-router';
 import { z } from 'zod';
 
-const BUSINESS_ID = 'c0f0ed15-97e4-4859-ac8f-a2d4e81f5b01';
+const DEFAULT_BUSINESS_ID = 'c0f0ed15-97e4-4859-ac8f-a2d4e81f5b01';
+
+function configuredBusinessId(): string {
+  const value = process.env['WEBSITE_INVENTORY_BUSINESS_ID']?.trim() || DEFAULT_BUSINESS_ID;
+  if (!z.string().uuid().safeParse(value).success) {
+    throw new Error('Invalid website inventory business configuration');
+  }
+  return value;
+}
 const MAX_BODY_BYTES = 64 * 1024;
 
 type InventoryRpcClient = {
@@ -52,7 +60,7 @@ function json(body: unknown, status = 200): Response {
 }
 
 
-async function publishPendingOutbox(db: InventoryRpcClient): Promise<{ published: number; blocked: boolean }> {
+async function publishPendingOutbox(db: InventoryRpcClient, businessId: string): Promise<{ published: number; blocked: boolean }> {
   const target = process.env['AURALUXE_WEBSITE_INVENTORY_API_URL'];
   const secret = process.env['WEBSITE_INVENTORY_SYNC_SECRET'];
   if (!target || !target.startsWith('https://') || !secret) return { published: 0, blocked: true };
@@ -61,7 +69,7 @@ async function publishPendingOutbox(db: InventoryRpcClient): Promise<{ published
   for (let batch = 0; batch < 10; batch += 1) {
     const leaseToken = crypto.randomUUID();
     const claimed = await db.rpc('claim_website_inventory_outbox', {
-      _business_id: BUSINESS_ID,
+      _business_id: businessId,
       _lease_token: leaseToken,
       _limit: 1,
     });
@@ -77,7 +85,7 @@ async function publishPendingOutbox(db: InventoryRpcClient): Promise<{ published
     }
     const eventId = String(event.id);
     const fail = async (detail: string) => db.rpc('fail_website_inventory_outbox_event', {
-      _business_id: BUSINESS_ID,
+      _business_id: businessId,
       _event_id: eventId,
       _lease_token: leaseToken,
       _error: detail,
@@ -126,7 +134,7 @@ async function publishPendingOutbox(db: InventoryRpcClient): Promise<{ published
       }
 
       const ack = await db.rpc('ack_website_inventory_outbox_event', {
-        _business_id: BUSINESS_ID,
+        _business_id: businessId,
         _event_id: eventId,
         _lease_token: leaseToken,
       });
@@ -154,6 +162,12 @@ export const Route = createFileRoute('/api/public/website-inventory')({
         if (!expectedSecret || expectedSecret.length < 24 || !suppliedSecret || !constantTimeEqual(suppliedSecret, expectedSecret)) {
           return json({ error: 'Unauthorized' }, 401);
         }
+        let businessId: string;
+        try {
+          businessId = configuredBusinessId();
+        } catch {
+          return json({ error: 'Inventory service is not configured' }, 503);
+        }
         const contentLength = Number(request.headers.get('content-length') ?? 0);
         if (Number.isFinite(contentLength) && contentLength > MAX_BODY_BYTES) {
           return json({ error: 'Request too large' }, 413);
@@ -179,23 +193,23 @@ export const Route = createFileRoute('/api/public/website-inventory')({
         try {
           const { supabaseAdmin } = await import('@/integrations/supabase/client.server');
           const db = supabaseAdmin as unknown as InventoryRpcClient;
-          const binding = await db.rpc('website_inventory_branch', { _business_id: BUSINESS_ID });
+          const binding = await db.rpc('website_inventory_branch', { _business_id: businessId });
           if (binding.error || typeof binding.data !== 'string') {
             return json({ error: 'Website inventory integration is not enabled' }, 503);
           }
           const branchId = binding.data;
 
           if (parsed.action === 'publish_outbox') {
-            const enabled = await db.rpc('website_inventory_integration_enabled', { _business_id: BUSINESS_ID });
+            const enabled = await db.rpc('website_inventory_integration_enabled', { _business_id: businessId });
             if (enabled.error) return json({ error: 'Inventory integration status unavailable' }, 503);
             if (enabled.data !== true) return json({ ok: true, skipped: true, published: 0 });
-            const result = await publishPendingOutbox(db);
+            const result = await publishPendingOutbox(db, businessId);
             return json({ ok: true, ...result });
           }
 
           if (parsed.action === 'reserve') {
             const result = await db.rpc('reserve_website_inventory', {
-              _business_id: BUSINESS_ID,
+              _business_id: businessId,
               _operation_id: parsed.operationId,
               _branch_id: branchId,
               _reference: parsed.reference,
@@ -206,38 +220,38 @@ export const Route = createFileRoute('/api/public/website-inventory')({
               const status = /integration is not enabled/i.test(message) ? 503 : /insufficient|reserved|ambiguous|duplicate sku|identifier already used/i.test(message) ? 409 : 400;
               return json({ error: status === 409 ? 'Inventory reservation conflict' : status === 503 ? 'Inventory service is not enabled' : 'Inventory reservation rejected' }, status);
             }
-            await publishPendingOutbox(db);
+            await publishPendingOutbox(db, businessId);
             return json(result.data);
           }
 
           if (parsed.action === 'commit' || parsed.action === 'cancel') {
             const result = await db.rpc('finalize_website_inventory', {
-              _business_id: BUSINESS_ID,
+              _business_id: businessId,
               _operation_id: parsed.operationId,
               _action: parsed.action,
               _reference: parsed.reference,
             });
             if (result.error) return json({ error: 'Reservation could not be finalized' }, 409);
-            await publishPendingOutbox(db);
+            await publishPendingOutbox(db, businessId);
             return json(result.data);
           }
 
           if (parsed.action === 'accept_return') {
             const result = await db.rpc('accept_website_inventory_return', {
-              _business_id: BUSINESS_ID,
+              _business_id: businessId,
               _return_id: parsed.operationId,
               _reservation_id: parsed.reservationId,
               _reference: parsed.reference,
               _items: parsed.items,
             });
             if (result.error) return json({ error: 'Accepted return was rejected' }, 409);
-            await publishPendingOutbox(db);
+            await publishPendingOutbox(db, businessId);
             return json(result.data);
           }
 
           if (parsed.action === 'status') {
             const result = await db.rpc('website_inventory_status', {
-              _business_id: BUSINESS_ID,
+              _business_id: businessId,
               _operation_id: parsed.operationId,
             });
             if (result.error) return json({ error: 'Reservation status unavailable' }, 503);
@@ -246,7 +260,7 @@ export const Route = createFileRoute('/api/public/website-inventory')({
 
           if (parsed.action === 'outbox') {
             const result = await db.rpc('read_website_inventory_outbox', {
-              _business_id: BUSINESS_ID,
+              _business_id: businessId,
               _after_id: parsed.afterId,
               _limit: parsed.limit,
             });
@@ -255,7 +269,7 @@ export const Route = createFileRoute('/api/public/website-inventory')({
           }
 
           const result = await db.rpc('ack_website_inventory_outbox', {
-            _business_id: BUSINESS_ID,
+            _business_id: businessId,
             _through_id: parsed.throughId,
           });
           if (result.error) return json({ error: 'Inventory update acknowledgement failed' }, 503);
