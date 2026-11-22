@@ -159,6 +159,32 @@ async function runControlledSelfTest(db: InventoryRpcClient): Promise<Response> 
     return json({ error: 'Not found' }, 404);
   }
 
+  const auraluxeSupabaseUrl = process.env['AURALUXE_SUPABASE_URL'];
+  const auraluxePublishableKey = process.env['AURALUXE_SUPABASE_PUBLISHABLE_KEY'];
+  if (!auraluxeSupabaseUrl?.startsWith('https://') || !auraluxePublishableKey) {
+    return json({ error: 'Auraluxe authority preflight is not configured' }, 503);
+  }
+  try {
+    const authorityResponse = await fetch(new URL('/rest/v1/rpc/website_inventory_authority_enabled', auraluxeSupabaseUrl), {
+      method: 'POST',
+      headers: {
+        apikey: auraluxePublishableKey,
+        Authorization: `Bearer ${auraluxePublishableKey}`,
+        'Content-Type': 'application/json',
+        Accept: 'application/json',
+      },
+      body: '{}',
+      redirect: 'manual',
+      signal: AbortSignal.timeout(5000),
+    });
+    const authorityEnabled: unknown = await authorityResponse.json();
+    if (!authorityResponse.ok || authorityEnabled !== true) {
+      return json({ error: 'Auraluxe inventory authority must be enabled before the self-test' }, 409);
+    }
+  } catch {
+    return json({ error: 'Auraluxe authority preflight is unavailable' }, 503);
+  }
+
   const integration = await db.from('website_inventory_integrations')
     .select('business_id,branch_id,enabled')
     .eq('business_id', BUSINESS_ID)
