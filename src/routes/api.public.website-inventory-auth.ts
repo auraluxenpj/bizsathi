@@ -29,8 +29,8 @@ export const Route = createFileRoute('/api/public/website-inventory-auth')({
         if (!expected || expected.length < 24) return json({ error: 'Authentication probe is not configured' }, 503);
 
         const authorization = request.headers.get('authorization') ?? '';
-        const supplied = /^Bearer ([^\\s,]+)$/.exec(authorization)?.[1] ?? '';
-        if (!supplied || /[\\s,]/.test(supplied) || !equalSecret(expected, supplied)) return json({ error: 'Unauthorized' }, 401);
+        const supplied = authorization.startsWith('Bearer ') ? authorization.slice(7) : '';
+        if (!supplied || /[\s,]/.test(supplied) || !equalSecret(expected, supplied)) return json({ error: 'Unauthorized' }, 401);
 
         return json({ ok: true, authenticated: true });
       },
