@@ -22,7 +22,7 @@ export const Route = createFileRoute('/api/public/inventory-peer-auth-check')({
             {
               method: 'GET',
               headers: { Authorization: `Bearer ${secret}`, Accept: 'application/json' },
-              redirect: 'error',
+              redirect: 'manual',
               signal: AbortSignal.timeout(12000),
             },
           );
