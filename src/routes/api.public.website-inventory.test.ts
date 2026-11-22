@@ -36,6 +36,7 @@ afterEach(() => {
   vi.unstubAllGlobals();
   delete process.env['WEBSITE_INVENTORY_SYNC_SECRET'];
   delete process.env['AURALUXE_WEBSITE_INVENTORY_API_URL'];
+  delete process.env['WEBSITE_INVENTORY_SELF_TEST_ENABLED'];
 });
 
 describe('BizSathi website inventory worker contract', () => {
@@ -105,6 +106,14 @@ describe('BizSathi website inventory worker contract', () => {
     expect(mocks.rpc).toHaveBeenCalledWith('ack_website_inventory_outbox_event', {
       _business_id: 'c0f0ed15-97e4-4859-ac8f-a2d4e81f5b01', _event_id: '17', _lease_token: expect.any(String),
     });
+  });
+
+  it('keeps the controlled self-test disabled unless its explicit server flag is enabled', async () => {
+    delete process.env['WEBSITE_INVENTORY_SELF_TEST_ENABLED'];
+    const response = await invoke({ action: 'self_test' });
+    expect(response.status).toBe(404);
+    expect(await response.json()).toEqual({ error: 'Not found' });
+    expect(mocks.rpc).not.toHaveBeenCalled();
   });
 
   it('fails closed when the integration branch is not configured', async () => {
