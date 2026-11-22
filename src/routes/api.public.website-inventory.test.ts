@@ -118,11 +118,17 @@ describe('BizSathi website inventory worker contract', () => {
       { data: { enabled: false }, error: null },
     ];
     mocks.from.mockImplementation(() => {
-      const query = {
+      type MockQuery = {
+        select: (columns?: string) => MockQuery;
+        update: (values: Record<string, unknown>) => MockQuery;
+        eq: (column: string, value: unknown) => MockQuery;
+        maybeSingle: () => Promise<{ data: Record<string, unknown> | null; error: null }>;
+      };
+      const query: MockQuery = {
         select: () => query,
         update: () => query,
         eq: () => query,
-        maybeSingle: async () => queryResults.shift(),
+        maybeSingle: async () => queryResults.shift() ?? { data: null, error: null },
       };
       return query;
     });
