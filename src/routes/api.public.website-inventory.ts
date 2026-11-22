@@ -162,6 +162,7 @@ async function runControlledSelfTest(db: InventoryRpcClient): Promise<Response> 
   const integration = await db.from('website_inventory_integrations')
     .select('business_id,branch_id,enabled')
     .eq('business_id', BUSINESS_ID)
+    .eq('branch_id', '4c534ce0-3ab5-46e4-8804-37cf0d72f8db')
     .maybeSingle();
   if (integration.error || !integration.data || typeof integration.data['branch_id'] !== 'string') {
     return json({ error: 'Inventory integration configuration unavailable' }, 503);
