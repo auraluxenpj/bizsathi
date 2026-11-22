@@ -250,7 +250,6 @@ export type Database = {
         Row: {
           address: string | null
           business_id: string
-          branch_id: string | null
           code: string
           created_at: string
           id: string
@@ -261,7 +260,6 @@ export type Database = {
         Insert: {
           address?: string | null
           business_id: string
-          branch_id?: string | null
           code: string
           created_at?: string
           id?: string
@@ -272,7 +270,6 @@ export type Database = {
         Update: {
           address?: string | null
           business_id?: string
-          branch_id?: string | null
           code?: string
           created_at?: string
           id?: string
@@ -372,13 +369,6 @@ export type Database = {
             columns: ["business_id"]
             isOneToOne: false
             referencedRelation: "businesses"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "business_access_roles_branch_id_fkey"
-            columns: ["branch_id"]
-            isOneToOne: false
-            referencedRelation: "branches"
             referencedColumns: ["id"]
           },
           {
@@ -2477,160 +2467,6 @@ export type Database = {
           },
         ]
       }
-      inventory_count_lines: {
-        Row: {
-          business_id: string
-          cost_price: number | null
-          created_at: string
-          id: string
-          note: string | null
-          physical_quantity: number | null
-          product_name_snapshot: string
-          session_id: string
-          sku_snapshot: string
-          system_quantity: number
-          unit_snapshot: string
-          variant_id: string
-          variant_name_snapshot: string
-        }
-        Insert: {
-          business_id: string
-          cost_price?: number | null
-          created_at?: string
-          id?: string
-          note?: string | null
-          physical_quantity?: number | null
-          product_name_snapshot: string
-          session_id: string
-          sku_snapshot: string
-          system_quantity: number
-          unit_snapshot: string
-          variant_id: string
-          variant_name_snapshot: string
-        }
-        Update: {
-          business_id?: string
-          cost_price?: number | null
-          created_at?: string
-          id?: string
-          note?: string | null
-          physical_quantity?: number | null
-          product_name_snapshot?: string
-          session_id?: string
-          sku_snapshot?: string
-          system_quantity?: number
-          unit_snapshot?: string
-          variant_id?: string
-          variant_name_snapshot?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "inventory_count_lines_business_id_fkey"
-            columns: ["business_id"]
-            isOneToOne: false
-            referencedRelation: "businesses"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "inventory_count_lines_business_id_session_id_fkey"
-            columns: ["business_id", "session_id"]
-            isOneToOne: false
-            referencedRelation: "inventory_count_sessions"
-            referencedColumns: ["business_id", "id"]
-          },
-          {
-            foreignKeyName: "inventory_count_lines_session_id_fkey"
-            columns: ["session_id"]
-            isOneToOne: false
-            referencedRelation: "inventory_count_sessions"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "inventory_count_lines_variant_id_fkey"
-            columns: ["variant_id"]
-            isOneToOne: false
-            referencedRelation: "product_variants"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      inventory_count_sessions: {
-        Row: {
-          branch_id: string
-          business_id: string
-          count_date: string
-          counted_by: string
-          created_at: string
-          created_by: string
-          id: string
-          review_note: string | null
-          reviewed_at: string | null
-          reviewed_by: string | null
-          status: string
-          submitted_at: string | null
-          updated_at: string
-        }
-        Insert: {
-          branch_id: string
-          business_id: string
-          count_date: string
-          counted_by: string
-          created_at?: string
-          created_by: string
-          id?: string
-          review_note?: string | null
-          reviewed_at?: string | null
-          reviewed_by?: string | null
-          status?: string
-          submitted_at?: string | null
-          updated_at?: string
-        }
-        Update: {
-          branch_id?: string
-          business_id?: string
-          count_date?: string
-          counted_by?: string
-          created_at?: string
-          created_by?: string
-          id?: string
-          review_note?: string | null
-          reviewed_at?: string | null
-          reviewed_by?: string | null
-          status?: string
-          submitted_at?: string | null
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "inventory_count_sessions_business_id_branch_id_fkey"
-            columns: ["business_id", "branch_id"]
-            isOneToOne: false
-            referencedRelation: "branches"
-            referencedColumns: ["business_id", "id"]
-          },
-          {
-            foreignKeyName: "inventory_count_sessions_business_id_fkey"
-            columns: ["business_id"]
-            isOneToOne: false
-            referencedRelation: "businesses"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "inventory_count_sessions_created_by_fkey"
-            columns: ["created_by"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "inventory_count_sessions_reviewed_by_fkey"
-            columns: ["reviewed_by"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       job_title_denials: {
         Row: {
           job_title: string
@@ -3915,16 +3751,6 @@ export type Database = {
         }
         Returns: string
       }
-      create_inventory_count_session: {
-        Args: {
-          _branch_id: string
-          _business_id: string
-          _count_date: string
-          _counted_by: string
-          _lines: Json
-        }
-        Returns: string
-      }
       create_payment_account: {
         Args: {
           _branch: string
@@ -4090,25 +3916,6 @@ export type Database = {
       }
       is_platform_owner: { Args: never; Returns: boolean }
       job_title_role: { Args: { _title: string }; Returns: string }
-      list_inventory_count_sessions: {
-        Args: { _business_id: string }
-        Returns: {
-          branch_id: string
-          branch_name: string
-          count_date: string
-          counted_by: string
-          counted_line_count: number
-          created_at: string
-          created_by: string
-          id: string
-          line_count: number
-          review_note: string
-          reviewed_at: string
-          reviewed_by: string
-          status: string
-          submitted_at: string
-        }[]
-      }
       login_clear_failures: { Args: { _bucket: string }; Returns: undefined }
       login_email_for_mobile: { Args: { _mobile: string }; Returns: string }
       login_record_failure: { Args: { _bucket: string }; Returns: undefined }
@@ -4240,10 +4047,6 @@ export type Database = {
           purchase_count: string
         }[]
       }
-      read_inventory_count_session: {
-        Args: { _session_id: string }
-        Returns: Json
-      }
       read_website_stock_snapshot: {
         Args: { _branch_id: string; _business_id: string }
         Returns: Json
@@ -4283,10 +4086,6 @@ export type Database = {
       reset_role_template: {
         Args: { _business: string; _title: string }
         Returns: undefined
-      }
-      review_inventory_count_session: {
-        Args: { _decision: string; _note?: string; _session_id: string }
-        Returns: boolean
       }
       revoke_branch_delegation: {
         Args: { _grant_id: string }
@@ -4343,10 +4142,6 @@ export type Database = {
         Returns: undefined
       }
       shares_business_with: { Args: { _other: string }; Returns: boolean }
-      submit_inventory_count_session: {
-        Args: { _session_id: string }
-        Returns: boolean
-      }
       team_invite_authority: {
         Args: {
           _actor: string
@@ -4383,15 +4178,6 @@ export type Database = {
           _user_id: string
         }
         Returns: undefined
-      }
-      update_inventory_count_session: {
-        Args: {
-          _count_date: string
-          _counted_by: string
-          _lines: Json
-          _session_id: string
-        }
-        Returns: boolean
       }
       write_audit: {
         Args: {
