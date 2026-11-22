@@ -117,3 +117,10 @@ jobs:
             --output /dev/null \
             "https://bizsathi-migration.auraluxe26.workers.dev/dashboard"
           echo "Production dashboard responded successfully."
+
+      - name: Verify BizSathi authenticates to Auraluxe inventory Worker
+        run: |
+          set -euo pipefail
+          response="$(curl --fail --silent --show-error --retry 5 --retry-all-errors --retry-delay 3 https://bizsathi-migration.auraluxe26.workers.dev/api/public/inventory-peer-auth-check)"
+          printf '%s' "$response" | jq -e '.ok == true and .peerAuthenticated == true' >/dev/null
+          echo "BizSathi authenticated to Auraluxe using the deployed Worker secret binding."
