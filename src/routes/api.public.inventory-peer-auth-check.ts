@@ -42,7 +42,8 @@ export const Route = createFileRoute('/api/public/inventory-peer-auth-check')({
           const errorName = typeof detail.name === 'string' ? detail.name.slice(0, 40) : 'UnknownError';
           const causeCode = typeof detail.cause?.code === 'string' ? detail.cause.code.slice(0, 40) : null;
           const causeName = typeof detail.cause?.name === 'string' ? detail.cause.name.slice(0, 40) : null;
-          return json({ ok: false, localSecretConfigured: true, peerHttpStatus: null, peerAuthenticated: false, failure: 'peer_network_or_timeout', errorName, causeCode, causeName }, 503);
+          const errorMessage = error instanceof Error ? error.message.replaceAll(secret, '[redacted]').slice(0, 160) : 'Unknown fetch error';
+          return json({ ok: false, localSecretConfigured: true, peerHttpStatus: null, peerAuthenticated: false, failure: 'peer_network_or_timeout', errorName, causeCode, causeName, errorMessage }, 503);
         }
       },
     },
