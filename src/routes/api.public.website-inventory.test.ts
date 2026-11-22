@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-const mocks = vi.hoisted(() => ({ rpc: vi.fn() }));
-vi.mock('@/integrations/supabase/client.server', () => ({ supabaseAdmin: { rpc: mocks.rpc } }));
+const mocks = vi.hoisted(() => ({ rpc: vi.fn(), from: vi.fn() }));
+vi.mock('@/integrations/supabase/client.server', () => ({ supabaseAdmin: { rpc: mocks.rpc, from: mocks.from } }));
 
 import { Route } from './api.public.website-inventory';
 
@@ -21,6 +21,7 @@ beforeEach(() => {
   process.env['WEBSITE_INVENTORY_SYNC_SECRET'] = SECRET;
   process.env['AURALUXE_WEBSITE_INVENTORY_API_URL'] = 'https://auraluxe.test/api/public/bizsathi-inventory';
   process.env['WEBSITE_INVENTORY_SYNC_SECRET'] = SECRET;
+  mocks.from.mockReset();
   mocks.rpc.mockReset().mockImplementation(async (name: string) => {
     if (name === 'website_inventory_branch') return { data: BRANCH, error: null };
     if (name === 'reserve_website_inventory') return { data: { ok: true, status: 'reserved', reservationId: OP }, error: null };
@@ -106,6 +107,60 @@ describe('BizSathi website inventory worker contract', () => {
     expect(mocks.rpc).toHaveBeenCalledWith('ack_website_inventory_outbox_event', {
       _business_id: 'c0f0ed15-97e4-4859-ac8f-a2d4e81f5b01', _event_id: '17', _lease_token: expect.any(String),
     });
+  });
+
+  it('runs the fixed one-unit reserve/cancel self-test and verifies stock restoration', async () => {
+    process.env['WEBSITE_INVENTORY_SELF_TEST_ENABLED'] = 'true';
+    const queryResults = [
+      { data: { business_id: 'c0f0ed15-97e4-4859-ac8f-a2d4e81f5b01', branch_id: BRANCH, enabled: false }, error: null },
+      { data: { id: '44444444-4444-4444-8444-444444444444' }, error: null },
+      { data: { enabled: true }, error: null },
+      { data: { enabled: false }, error: null },
+    ];
+    mocks.from.mockImplementation(() => {
+      const query = {
+        select: () => query,
+        update: () => query,
+        eq: () => query,
+        maybeSingle: async () => queryResults.shift(),
+      };
+      return query;
+    });
+    let stockRead = 0;
+    mocks.rpc.mockImplementation(async (name: string) => {
+      if (name === 'read_website_inventory_outbox') return { data: [], error: null };
+      if (name === 'commerce_stock_balance') {
+        stockRead += 1;
+        return { data: 6, error: null };
+      }
+      if (name === 'website_inventory_branch') return { data: BRANCH, error: null };
+      if (name === 'reserve_website_inventory') return { data: { ok: true, status: 'reserved' }, error: null };
+      if (name === 'finalize_website_inventory') return { data: { ok: true, status: 'cancelled' }, error: null };
+      if (name === 'website_inventory_status') return { data: { status: 'cancelled' }, error: null };
+      if (name === 'claim_website_inventory_outbox') return { data: [], error: null };
+      return { data: true, error: null };
+    });
+
+    const response = await invoke({ action: 'self_test' });
+    expect(response.status).toBe(200);
+    expect(await response.json()).toMatchObject({
+      ok: true,
+      test: 'reserve_then_cancel',
+      sku: 'AL-KURTI-121',
+      quantity: 1,
+      stockBefore: 6,
+      stockAfter: 6,
+      reservationStatus: 'cancelled',
+      integrationDisabled: true,
+    });
+    expect(stockRead).toBe(2);
+    expect(mocks.rpc).toHaveBeenCalledWith('reserve_website_inventory', expect.objectContaining({
+      _branch_id: BRANCH,
+      _items: [{ sku: 'AL-KURTI-121', quantity: 1 }],
+    }));
+    expect(mocks.rpc).toHaveBeenCalledWith('finalize_website_inventory', expect.objectContaining({
+      _action: 'cancel',
+    }));
   });
 
   it('keeps the controlled self-test disabled unless its explicit server flag is enabled', async () => {
