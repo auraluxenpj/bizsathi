@@ -36,6 +36,7 @@ afterEach(() => {
   vi.unstubAllGlobals();
   delete process.env['WEBSITE_INVENTORY_SYNC_SECRET'];
   delete process.env['AURALUXE_WEBSITE_INVENTORY_API_URL'];
+  delete process.env['WEBSITE_INVENTORY_BUSINESS_ID'];
 });
 
 describe('BizSathi website inventory worker contract', () => {
@@ -105,6 +106,15 @@ describe('BizSathi website inventory worker contract', () => {
     expect(mocks.rpc).toHaveBeenCalledWith('ack_website_inventory_outbox_event', {
       _business_id: 'c0f0ed15-97e4-4859-ac8f-a2d4e81f5b01', _event_id: '17', _lease_token: expect.any(String),
     });
+  });
+
+  it('uses an explicitly configured business id for isolated staging workspaces', async () => {
+    const stagingBusinessId = '44444444-4444-4444-8444-444444444444';
+    process.env['WEBSITE_INVENTORY_BUSINESS_ID'] = stagingBusinessId;
+    const response = await invoke({ action: 'reserve', operationId: OP, reference: 'STAGING-1001', items: [{ sku: 'AL-KURTI-01', quantity: 1 }] });
+    expect(response.status).toBe(200);
+    expect(mocks.rpc).toHaveBeenCalledWith('website_inventory_branch', { _business_id: stagingBusinessId });
+    expect(mocks.rpc).toHaveBeenCalledWith('reserve_website_inventory', expect.objectContaining({ _business_id: stagingBusinessId }));
   });
 
   it('fails closed when the integration branch is not configured', async () => {
