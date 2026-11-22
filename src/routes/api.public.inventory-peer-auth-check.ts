@@ -23,7 +23,7 @@ export const Route = createFileRoute('/api/public/inventory-peer-auth-check')({
               method: 'GET',
               headers: { Authorization: `Bearer ${secret}`, Accept: 'application/json' },
               redirect: 'error',
-              signal: AbortSignal.timeout(5000),
+              signal: AbortSignal.timeout(12000),
             },
           );
           const result: unknown = await response.json().catch(() => null);
@@ -37,8 +37,12 @@ export const Route = createFileRoute('/api/public/inventory-peer-auth-check')({
             peerAuthenticated: authenticated,
             failure: authenticated ? null : response.status === 401 ? 'peer_rejected_secret' : response.status === 503 ? 'peer_secret_unavailable' : 'peer_probe_failed',
           }, authenticated ? 200 : 503);
-        } catch {
-          return json({ ok: false, localSecretConfigured: true, peerHttpStatus: null, peerAuthenticated: false, failure: 'peer_network_or_timeout' }, 503);
+        } catch (error) {
+          const detail = error && typeof error === 'object' ? error as { name?: unknown; cause?: { code?: unknown; name?: unknown } } : {};
+          const errorName = typeof detail.name === 'string' ? detail.name.slice(0, 40) : 'UnknownError';
+          const causeCode = typeof detail.cause?.code === 'string' ? detail.cause.code.slice(0, 40) : null;
+          const causeName = typeof detail.cause?.name === 'string' ? detail.cause.name.slice(0, 40) : null;
+          return json({ ok: false, localSecretConfigured: true, peerHttpStatus: null, peerAuthenticated: false, failure: 'peer_network_or_timeout', errorName, causeCode, causeName }, 503);
         }
       },
     },
