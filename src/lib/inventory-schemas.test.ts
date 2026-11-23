@@ -20,9 +20,12 @@ describe('Master sheet catalogue CSV compatibility', () => {
    {product_name:'Shirt',sizes:'',category:'Clothing',variant_name:'Large',sku:'S1',model_code:'',barcode:'123',unit:'pcs',selling_price:1250.5,reorder_level:2.5,opening_stock:0,purchase_price:0,mrp:0,wholesale_price:0},
   ]);
  });
+ it('parses one SKU with comma-separated size options', () => {
+  expect(parseCatalogueCsv('Item Name,Generated SKU,Sizes,Qty\nKurti,K-001,"S, M, L, XL",12', a)[0]).toMatchObject({product_name:'Kurti',sku:'K-001',sizes:'S, M, L, XL',opening_stock:12});
+ });
  it('parses master sheet headers and formatted currency and quantities', () => {
   expect(parseCatalogueCsv('Item Name,Category,Variant / Size,Generated SKU,Barcode,Primary Unit,Selling Price,Reorder Level\nShirt,Clothing,Large,S1,123,pcs,"NPR 1,250.50","1,000"', a)).toEqual([
-   {product_name:'Shirt',category:'Clothing',variant_name:'Large',sku:'S1',model_code:'',barcode:'123',unit:'pcs',selling_price:1250.5,reorder_level:1000,opening_stock:0,purchase_price:0,mrp:0,wholesale_price:0},
+   {product_name:'Shirt',sizes:'',category:'Clothing',variant_name:'Large',sku:'S1',model_code:'',barcode:'123',unit:'pcs',selling_price:1250.5,reorder_level:1000,opening_stock:0,purchase_price:0,mrp:0,wholesale_price:0},
   ]);
  });
  const aliasSets = [
