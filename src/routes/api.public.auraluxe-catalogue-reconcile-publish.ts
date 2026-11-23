@@ -110,7 +110,8 @@ export const Route = createFileRoute('/api/public/auraluxe-catalogue-reconcile-p
         mappingsSaved += batch.length;
       }
 
-      const { mappings: _mappings, ...reconciliation } = remote.result;
+      const reconciliation = { ...remote.result };
+      delete reconciliation['mappings'];
       return json({ ok: true, snapshot_rows: snapshot.data.length, mappings_saved: mappingsSaved, reconciliation });
     } catch (error) {
       console.error('[auraluxe-catalogue-reconcile-publish] failed', error);
