@@ -23,7 +23,7 @@ describe('Master sheet catalogue CSV compatibility', () => {
   ]);
  });
  it('parses the Master Qty header as the stock target', () => {
-  expect(parseCatalogueCsv('Item Name,Generated SKU,Master Qty\nKurti,K-002,7', a)[0]).toMatchObject({sku:'K-002',opening_stock:7});
+  expect(parseCatalogueCsv('product_name,sku,Master Qty\nKurti,K-002,7', a)[0]).toMatchObject({sku:'K-002',opening_stock:7});
  });
  it('parses one SKU with comma-separated size options', () => {
   expect(parseCatalogueCsv('Item Name,Generated SKU,Sizes,Qty\nKurti,K-001,"S, M, L, XL",12', a)[0]).toMatchObject({product_name:'Kurti',sku:'K-001',sizes:'S, M, L, XL',opening_stock:12});
