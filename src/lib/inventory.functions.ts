@@ -17,11 +17,19 @@ export const fetchGoogleSheetCatalogue = createServerFn({method:'POST'}).middlew
   throw error;
  }
 });
+const websitePublicationInput = z.object({businessId:z.string().uuid(),productId:z.string().uuid(),published:z.boolean()});
+export const setWebsitePublication = createServerFn({method:'POST'}).middleware([requireSupabaseAuth]).inputValidator(websitePublicationInput).handler(async ({data,context})=>{
+ const {data:allowed,error:accessError}=await context.supabase.rpc('has_business_role',{_business_id:data.businessId,_min_role:'admin'});
+ if(accessError || !allowed) throw new Error('Administrator access is required to publish products.');
+ const {data:product,error}=await context.supabase.from('products').update({website_published:data.published}).eq('business_id',data.businessId).eq('id',data.productId).select('id,website_published').single();
+ if(error || !product) throw new Error('Website publication status could not be updated.');
+ return {published:product.website_published};
+});
 export const getInventory = createServerFn({method:'GET'}).middleware([requireSupabaseAuth]).inputValidator(tenantInput).handler(async ({data,context})=>{
  const {data:member,error:accessError}=await context.supabase.rpc('is_business_member',{_business_id:data.businessId});
  if(accessError || !member) throw new Error('Business access is required.');
  const variants=[]; const parties=[];
- for(let offset=0;;offset+=1000){ const page=await context.supabase.from('product_variants').select('*,products!product_variants_business_id_product_id_fkey(name,category,is_active,catalogue_sizes)').eq('business_id',data.businessId).order('catalogue_serial',{ascending:true}).order('id').range(offset,offset+999); if(page.error) throw new Error('Products could not be loaded.'); variants.push(...(page.data ?? [])); if((page.data?.length ?? 0)<1000) break; }
+ for(let offset=0;;offset+=1000){ const page=await context.supabase.from('product_variants').select('*,products!product_variants_business_id_product_id_fkey(name,category,is_active,catalogue_sizes,website_published)').eq('business_id',data.businessId).order('catalogue_serial',{ascending:true}).order('id').range(offset,offset+999); if(page.error) throw new Error('Products could not be loaded.'); variants.push(...(page.data ?? [])); if((page.data?.length ?? 0)<1000) break; }
  for(let offset=0;;offset+=1000){ const page=await context.supabase.from('parties').select('*').eq('business_id',data.businessId).order('id').range(offset,offset+999); if(page.error) throw new Error('Contacts could not be loaded.'); parties.push(...(page.data ?? [])); if((page.data?.length ?? 0)<1000) break; }
  const movements=[];
  for(let offset=0;;offset+=1000){const page=await context.supabase.from('commerce_stock_movements').select('id,variant_id,branch_id,quantity,kind,reference,reason,created_at,document_id').eq('business_id',data.businessId).order('created_at',{ascending:false}).order('id').range(offset,offset+999);if(page.error)throw new Error('Invoice stock history could not be loaded.');movements.push(...(page.data??[]).map(m=>({...m,operation_id:m.document_id})));if((page.data?.length??0)<1000)break;}

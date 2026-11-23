@@ -2907,6 +2907,10 @@ export type Database = {
         Row: {
           business_id: string
           category: string
+          catalogue_sizes: string[]
+          catalogue_notes: string | null
+          website_published: boolean
+          auraluxe_product_id: string | null
           created_at: string
           id: string
           image_path: string | null
@@ -2917,6 +2921,10 @@ export type Database = {
         Insert: {
           business_id: string
           category?: string
+          catalogue_sizes?: string[]
+          catalogue_notes?: string | null
+          website_published?: boolean
+          auraluxe_product_id?: string | null
           created_at?: string
           id?: string
           image_path?: string | null
@@ -2927,6 +2935,10 @@ export type Database = {
         Update: {
           business_id?: string
           category?: string
+          catalogue_sizes?: string[]
+          catalogue_notes?: string | null
+          website_published?: boolean
+          auraluxe_product_id?: string | null
           created_at?: string
           id?: string
           image_path?: string | null
