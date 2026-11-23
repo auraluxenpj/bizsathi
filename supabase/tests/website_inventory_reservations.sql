@@ -22,7 +22,7 @@ SET LOCAL ROLE authenticated;
 SELECT set_config('request.jwt.claims','{"sub":"e1070000-0000-4000-8000-000000000001","role":"authenticated"}',true);
 
 DO $setup_stock$
-DECLARE b uuid:='c0f0ed15-97e4-4859-ac8f-a2d4e81f5b01'; br uuid; v uuid; p uuid;
+DECLARE b uuid:='c0f0ed15-97e4-4859-ac8f-a2d4e81f5b01'; br uuid; v uuid;
 BEGIN
   SELECT id INTO br FROM public.branches WHERE business_id=b AND code='WEB';
   PERFORM public.save_catalogue_variant(b,'[{"product_name":"Reservation test item","sku":"SKU-WEB-RESERVATION-TEST","selling_price":100}]');
@@ -36,7 +36,7 @@ SELECT set_config('request.jwt.claims','{"role":"service_role"}',true);
 
 DO $reservation$
 DECLARE
-  b uuid; br uuid; v uuid;
+  b uuid; br uuid; v uuid; p uuid;
   r1 uuid:='e1070000-0000-4000-8000-000000000021';
   r2 uuid:='e1070000-0000-4000-8000-000000000022';
   r3 uuid:='e1070000-0000-4000-8000-000000000023';
