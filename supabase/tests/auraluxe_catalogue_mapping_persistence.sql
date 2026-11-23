@@ -1,11 +1,12 @@
 -- Executed by .github/workflows/sql-security.yml after the catalogue authority fixture.
--- Snapshot mapping persistence is service-only, validates the owning BizSathi product,
--- and does not depend on the incremental catalogue publisher switch.
+-- Creates and rolls back its own synthetic business, product and SKU fixture.
+BEGIN;
 DO $test$
 DECLARE
   fn text;
-  biz_product uuid;
-  biz_variant uuid;
+  owner_id uuid := gen_random_uuid();
+  biz_product uuid := gen_random_uuid();
+  biz_variant uuid := gen_random_uuid();
   before_movements integer;
   after_movements integer;
   saved integer;
@@ -25,14 +26,16 @@ BEGIN
     RAISE EXCEPTION 'Service role must persist cross-system catalogue mappings';
   END IF;
 
-  SELECT p.id,pv.id INTO biz_product,biz_variant
-    FROM public.products p
-    JOIN public.product_variants pv ON pv.business_id=p.business_id AND pv.product_id=p.id
-   WHERE p.business_id='c0f0ed15-97e4-4859-ac8f-a2d4e81f5b01'::uuid
-     AND pv.sku='SYNC-TEST-ONE';
-  IF biz_product IS NULL OR biz_variant IS NULL THEN
-    RAISE EXCEPTION 'Expected SKU-first catalogue fixture was not created';
-  END IF;
+  INSERT INTO auth.users(id,email,email_confirmed_at,raw_user_meta_data,created_at,updated_at)
+  VALUES(owner_id,'auraluxe-mapping-test+'||owner_id||'@example.invalid',now(),'{}'::jsonb,now(),now());
+  INSERT INTO public.businesses(id,name,created_by)
+  VALUES('c0f0ed15-97e4-4859-ac8f-a2d4e81f5b01'::uuid,'Synthetic Auraluxe mapping test',owner_id)
+  ON CONFLICT (id) DO NOTHING;
+
+  INSERT INTO public.products(id,business_id,name,category)
+  VALUES(biz_product,'c0f0ed15-97e4-4859-ac8f-a2d4e81f5b01'::uuid,'Snapshot mapping test product','Test');
+  INSERT INTO public.product_variants(id,business_id,product_id,name,sku)
+  VALUES(biz_variant,'c0f0ed15-97e4-4859-ac8f-a2d4e81f5b01'::uuid,biz_product,'Standard','SYNC-MAP-TEST-ONE');
 
   SELECT count(*) INTO before_movements FROM public.stock_movements WHERE variant_id=biz_variant;
   UPDATE public.auraluxe_sync_control SET catalogue_enabled=false
@@ -42,7 +45,7 @@ BEGIN
   saved := public.upsert_auraluxe_catalogue_mappings(
     'c0f0ed15-97e4-4859-ac8f-a2d4e81f5b01'::uuid,
     jsonb_build_array(jsonb_build_object(
-      'sku','SYNC-TEST-ONE',
+      'sku','SYNC-MAP-TEST-ONE',
       'auraluxe_product_id','55555555-5555-4555-8555-555555555555',
       'auraluxe_variant_id','66666666-6666-4666-8666-666666666666',
       'bizsathi_product_id',biz_product,
@@ -66,7 +69,7 @@ BEGIN
     PERFORM public.upsert_auraluxe_catalogue_mappings(
       'c0f0ed15-97e4-4859-ac8f-a2d4e81f5b01'::uuid,
       jsonb_build_array(jsonb_build_object(
-        'sku','SYNC-TEST-ONE',
+        'sku','SYNC-MAP-TEST-ONE',
         'auraluxe_product_id','55555555-5555-4555-8555-555555555555',
         'auraluxe_variant_id','66666666-6666-4666-8666-666666666666',
         'bizsathi_product_id','aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
@@ -88,3 +91,4 @@ BEGIN
   END IF;
 END
 $test$;
+ROLLBACK;
