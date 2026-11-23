@@ -1,5 +1,6 @@
 import Papa from 'papaparse';
 import { generateBarcodeFromSkuIfNeeded } from './barcode';
+import { catalogueSizesForVariant } from './commerce-schemas';
 import { catalogueInput, type CatalogueRow } from './inventory-schemas';
 
 export const catalogueColumns = ['product_name','category','variant_name','sizes','sku','model_code','barcode','unit','qty','selling_price','mrp','wholesale_price','purchase_price','reorder_level'];
@@ -50,6 +51,7 @@ export function parseCatalogueCsv(text:string, businessId:string): CatalogueRow[
    ...(()=>{const group=r['description']?.trim(); const sku=r['sku']?.trim() ?? ''; const explicit=r['variant_name']?.trim();
      if(!group || explicit) return {variant_name: explicit || 'Standard'};
      const cut=sku.lastIndexOf('-'); return {product_name: group, variant_name: cut>0 && cut<sku.length-1 ? sku.slice(cut+1) : 'Standard'};})(),
+   sizes: catalogueSizesForVariant(r['variant_name']?.trim() || 'Standard',r['category']).join(', '),
    sku: r['sku']?.trim() || '',
    model_code: r['model_code']?.trim() || '',
    barcode: generateBarcodeFromSkuIfNeeded(r['sku'] ?? '', r['barcode']?.trim() || ''),
