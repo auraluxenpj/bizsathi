@@ -1,3 +1,4 @@
+-- Executed by .github/workflows/sql-security.yml after the catalogue authority fixture.
 -- Snapshot mapping persistence is service-only, validates the owning BizSathi product,
 -- and does not depend on the incremental catalogue publisher switch.
 DO $test$
