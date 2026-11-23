@@ -9,6 +9,7 @@ describe('Inventory integrity',()=>{
  it('rejects zero and negative receiving quantities',()=>{expect(stockInput.safeParse({...stock,quantity:0}).success).toBe(false);expect(stockInput.safeParse({...stock,quantity:-1}).success).toBe(false);});
  it('allows negative correction but requires distinct transfer branches',()=>{expect(stockInput.safeParse({...stock,kind:'adjustment',quantity:-1}).success).toBe(true);expect(stockInput.safeParse({...stock,kind:'transfer',destinationBranchId:a}).success).toBe(false);expect(stockInput.safeParse({...stock,kind:'transfer',destinationBranchId:b}).success).toBe(true);});
  it('sums branch ledger quantities without floating point drift',()=>expect(stockBalances([{variant_id:a,branch_id:a,quantity:0.1},{variant_id:a,branch_id:a,quantity:0.2},{variant_id:a,branch_id:b,quantity:9}]).get(`${a}:${a}`)).toBe(0.3));
+ it('rejects duplicate size options regardless of case',()=>{expect(catalogueRow.safeParse({product_name:'Kurti',sku:'K1',sizes:'S, s'}).success).toBe(false);expect(catalogueRow.safeParse({product_name:'Kurti',sku:'K1',sizes:'S, M, L'}).success).toBe(true);});
  it('rejects negative prices and overprecision quantities',()=>{expect(catalogueRow.safeParse({product_name:'Item',sku:'I',selling_price:-1}).success).toBe(false);expect(stockInput.safeParse({...stock,quantity:1.0001}).success).toBe(false);});
  it('imports quoted CSV and protects exported formula cells',()=>{expect(parseCatalogueCsv('product_name,sku\n"Shirt, red",S1',a)[0]?.product_name).toBe('Shirt, red');expect(makeCsv([{name:'=1+1'}])).toContain("'=1+1");});
 });
@@ -17,12 +18,15 @@ import { catalogueInput as ci } from './inventory-schemas';
 describe('Master sheet catalogue CSV compatibility', () => {
  it('parses the original format with all catalogue values', () => {
   expect(parseCatalogueCsv('product_name,category,variant_name,sku,barcode,unit,selling_price,reorder_level\nShirt,Clothing,Large,S1,123,pcs,1250.50,2.5', a)).toEqual([
-   {product_name:'Shirt',category:'Clothing',variant_name:'Large',sku:'S1',model_code:'',barcode:'123',unit:'pcs',selling_price:1250.5,reorder_level:2.5,opening_stock:0,purchase_price:0,mrp:0,wholesale_price:0},
+   {product_name:'Shirt',sizes:'',category:'Clothing',variant_name:'Large',sku:'S1',model_code:'',barcode:'123',unit:'pcs',selling_price:1250.5,reorder_level:2.5,opening_stock:0,purchase_price:0,mrp:0,wholesale_price:0},
   ]);
+ });
+ it('parses one SKU with comma-separated size options', () => {
+  expect(parseCatalogueCsv('Item Name,Generated SKU,Sizes,Qty\nKurti,K-001,"S, M, L, XL",12', a)[0]).toMatchObject({product_name:'Kurti',sku:'K-001',sizes:'S, M, L, XL',opening_stock:12});
  });
  it('parses master sheet headers and formatted currency and quantities', () => {
   expect(parseCatalogueCsv('Item Name,Category,Variant / Size,Generated SKU,Barcode,Primary Unit,Selling Price,Reorder Level\nShirt,Clothing,Large,S1,123,pcs,"NPR 1,250.50","1,000"', a)).toEqual([
-   {product_name:'Shirt',category:'Clothing',variant_name:'Large',sku:'S1',model_code:'',barcode:'123',unit:'pcs',selling_price:1250.5,reorder_level:1000,opening_stock:0,purchase_price:0,mrp:0,wholesale_price:0},
+   {product_name:'Shirt',sizes:'',category:'Clothing',variant_name:'Large',sku:'S1',model_code:'',barcode:'123',unit:'pcs',selling_price:1250.5,reorder_level:1000,opening_stock:0,purchase_price:0,mrp:0,wholesale_price:0},
   ]);
  });
  const aliasSets = [
