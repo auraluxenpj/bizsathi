@@ -3908,7 +3908,7 @@ export type Database = {
         Returns: string
       }
       import_catalogue_branch_stock: {
-        Args: { _branch_id: string; _business_id: string; _rows: Json }
+        Args: { _branch_id: string; _business_id: string; _rows: Json; _sync_stock: boolean }
         Returns: Json
       }
       inv_sync_push: { Args: { _items: Json }; Returns: Json }
