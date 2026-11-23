@@ -47,12 +47,12 @@ Description, fabric, colours, images, SEO title/description, slug/URL merchandis
 - Do not auto-publish a product merely because it exists in BizSathi.
 
 ## Cutover gates
-1. Deploy schema and code to both systems while every catalogue, stock, checkout-reservation and website-authority switch remains disabled.
-2. Complete and owner-approve the SKU mapping sheet. Do not infer matches from Model Code or numeric suffixes; confirm the physical label, category, style, size and colour. Keep unmatched records untouched.
-3. Enable catalogue sync only after approved mappings exist. Test create/update in each direction with isolated test SKUs and confirm the returned cross-reference IDs.
-4. Physically count each approved SKU. Post any variance as an audited BizSathi stock adjustment so BizSathi's ledger equals the verified count.
-5. Register the Auraluxe baseline for each approved SKU while Auraluxe stock authority and stock-event delivery are still disabled. The RPC requires the physical count and BizSathi ledger quantity to match.
-6. Enable the Auraluxe receiver/authority first, then the BizSathi stock-event publisher and website reservation integration. Enable checkout reservations only after both stock event sides are ready.
-7. Test receipt, native sale, website sale, return, adjustment, transfer, retry, duplicate event, out-of-order event, negative-stock rejection and offline recovery.
-8. Verify SKU and stock parity without changing existing movement history. Keep all unmatched records and dead-letter events visible for review.
-9. Obtain separate owner approval before any baseline write, unmatched-record deactivation, production deployment or sync activation.
+1. Deploy schema and code to both systems while all catalogue, stock, checkout-reservation and website-authority switches remain disabled.
+2. Complete and owner-approve the SKU mapping sheet. Match by exact SKU and verify physical label, category, style, size and colour. Never infer matches from Model Code or numeric suffixes.
+3. Enable only the Auraluxe BizSathi-catalogue receiver switch. Keep BizSathi's incremental catalogue outbox disabled.
+4. Run the explicit full-snapshot publisher from BizSathi to Auraluxe. Review the matched/created/updated counts and the list/count of Auraluxe-only products unpublished by reconciliation. No hard deletes are allowed.
+5. After snapshot parity is confirmed, enable BizSathi's incremental catalogue outbox. From then on, catalogue changes flow only BizSathi → Auraluxe.
+6. Physically count each approved stock SKU. Post any variance as an audited BizSathi stock adjustment so the BizSathi ledger equals the verified count. Register the Auraluxe baseline for each exact SKU while stock event delivery and website checkout authority remain disabled.
+7. Enable the Auraluxe stock-event receiver/authority, then the BizSathi stock-event publisher and website reservation integration. Enable checkout reservations only after both ends are confirmed ready.
+8. Test native receipt, sale, website sale, return, adjustment, transfer, retry, duplicate event, out-of-order event, negative-stock rejection and offline recovery. Verify stock parity and preserve all movement history.
+9. Obtain separate owner approval before any baseline write, full-snapshot unpublishing, production deployment or switch activation. Keep unmatched mappings and dead-letter events visible for review.
