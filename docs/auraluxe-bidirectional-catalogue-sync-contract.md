@@ -28,6 +28,7 @@ Description, fabric, colours, images, SEO title/description, slug/URL merchandis
 - A full BizSathi snapshot is the only operation allowed to reconcile the complete Auraluxe catalogue. Incremental SKU events update matched records but never infer that an omitted SKU is deleted.
 - For each matching SKU, BizSathi overwrites the shared operational fields: product name, category, SKU, unit, sizes, purchase price, MRP, selling price, wholesale price, reorder level, publication state, notes and barcode. Preserve Auraluxe website-only enrichment fields.
 - Any Auraluxe product absent from the full BizSathi snapshot, or containing a variant SKU absent from that snapshot, is unpublished/deactivated from the storefront. Never hard-delete products, variants, orders or historical records.
+- BizSathi product or variant deactivation (`is_active=false`) also sets the Auraluxe publication state to false; activation changes are sent as incremental catalogue events. A product is storefront-published only when BizSathi's website-published flag and both product/variant active flags are true.
 - Auraluxe-only products cannot be republished once the BizSathi catalogue authority switch is enabled.
 - A missing website-only field is allowed and does not block sync. Missing website enrichment does not imply publication.
 - A snapshot must contain unique, non-empty SKUs. Model Code duplicates are allowed. SKU changes require an explicit re-key/reconciliation workflow; never infer a rename.
