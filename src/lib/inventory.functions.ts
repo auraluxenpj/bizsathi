@@ -50,10 +50,11 @@ export const importCatalogueBranchStock = createServerFn({method:'POST'}).middle
   _business_id:data.businessId,
   _branch_id:data.branchId,
   _rows:data.rows.map(({opening_stock,...row})=>({...row,opening_stock})),
+  _sync_stock:data.syncStock,
  });
  if(error) throw new Error(error.message.includes('different model code') ? error.message : 'CSV stock import failed. No rows were applied. Check branch access, duplicate SKUs, prices and quantities.');
  // The import_catalogue_branch_stock RPC persists catalogue_sizes atomically with SKU updates.
- return result as {inserted:number;updated:number;stock_adjusted:number;branch_id:string};
+ return result as {inserted:number;updated:number;stock_adjusted:number;stock_units_added:number;stock_units_removed:number;stock_synced:boolean;branch_id:string};
 });
 export const editVariant = createServerFn({method:'POST'}).middleware([requireSupabaseAuth]).inputValidator(variantEditInput).handler(async ({data,context})=>{
  const {data:allowed,error:accessError}=await context.supabase.rpc('has_business_role',{_business_id:data.businessId,_min_role:'admin'});
