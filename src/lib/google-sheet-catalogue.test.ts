@@ -1,13 +1,13 @@
 import { webcrypto } from 'node:crypto';
 import { describe, it, expect, vi } from 'vitest';
-import { extractSpreadsheetId, googleSheetCatalogueInput, parseGoogleSheetValues } from './google-sheet-catalogue';
+import { defaultCatalogueSheetName, extractSpreadsheetId, googleSheetCatalogueInput, parseGoogleSheetValues } from './google-sheet-catalogue';
 import { readGoogleSheetCatalogue } from './google-sheet-catalogue.server';
 import { writeStatusCells } from './google-sheet-values.server';
 
 Object.defineProperty(globalThis, 'crypto', { value: webcrypto, configurable: true });
 
 const businessId = '10000000-0000-4000-8000-000000000001';
-const input = { businessId, spreadsheetIdOrUrl: 'sheet_123', sheetName: 'Inventory & Catalogue' };
+const input = { businessId, spreadsheetIdOrUrl: 'sheet_123', sheetName: defaultCatalogueSheetName };
 
 async function serviceAccountJson(email: string) {
   const pair = await webcrypto.subtle.generateKey(
@@ -26,7 +26,7 @@ async function serviceAccountJson(email: string) {
 describe('Google Sheets catalogue import', () => {
   it.each([' sheet_123 ', 'https://docs.google.com/spreadsheets/d/sheet_123/edit#gid=0'])('extracts spreadsheet ID from %s', value => expect(extractSpreadsheetId(value)).toBe('sheet_123'));
   it.each(['https://evil.example/spreadsheets/d/sheet_123/edit', 'http://docs.google.com/spreadsheets/d/sheet_123/edit', 'https://docs.google.com.evil.example/spreadsheets/d/sheet_123', '../secret'])('rejects unsafe inputs %s', value => expect(() => extractSpreadsheetId(value)).toThrow());
-  it('defaults to the master tab', () => expect(googleSheetCatalogueInput.parse({ businessId, spreadsheetIdOrUrl: 'sheet_123' }).sheetName).toBe('Inventory & Catalogue'));
+  it('defaults to the master tab', () => expect(googleSheetCatalogueInput.parse({ businessId, spreadsheetIdOrUrl: 'sheet_123' }).sheetName).toBe('aura final'));
   it('normalizes ragged sheet rows using CSV aliases', () => expect(parseGoogleSheetValues([['Item Name', 'Generated SKU', 'Selling Price', 'Primary Unit'], ['Shirt', 'S1', 'NPR 1,250.50']], businessId)[0]).toMatchObject({ product_name: 'Shirt', sku: 'S1', selling_price: 1250.5, unit: 'pcs' }));
   it('rejects missing required sheet data', () => expect(() => parseGoogleSheetValues([['Item Name', 'Generated SKU'], ['Shirt']], businessId)).toThrow());
 
@@ -40,7 +40,7 @@ describe('Google Sheets catalogue import', () => {
     expect(String(request.mock.calls[0]?.[0])).toContain('oauth2.googleapis.com/token');
     const apiUrl = new URL(String(request.mock.calls[1]?.[0]));
     expect(apiUrl.hostname).toBe('sheets.googleapis.com');
-    expect(decodeURIComponent(apiUrl.pathname)).toContain("'Inventory & Catalogue'!A1:Z5002");
+    expect(decodeURIComponent(apiUrl.pathname)).toContain("'aura final'!A1:Z5002");
     expect(new Headers(request.mock.calls[1]?.[1]?.headers).get('Authorization')).toBe('Bearer test-access-token');
   });
 
@@ -65,7 +65,7 @@ describe('Google Sheets catalogue import', () => {
     expect((await readGoogleSheetCatalogue(input, {}, request))[0]?.sku).toBe('S1');
     const url = new URL(String(request.mock.calls[0]?.[0]));
     expect(url.hostname).toBe('docs.google.com');
-    expect(url.searchParams.get('sheet')).toBe('Inventory & Catalogue');
+    expect(url.searchParams.get('sheet')).toBe('aura final');
     expect(request.mock.calls[0]?.[1]?.headers).toBeUndefined();
   });
 
