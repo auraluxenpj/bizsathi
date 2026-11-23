@@ -45,6 +45,20 @@ SKU is the only mapping key. Every orderable website SKU must map one-to-one to 
 - The Cloudflare Worker has an `INVENTORY_SYNC_SECRET` binding by name. Secret values are intentionally not read or printed. The matching website-side value remains unverified.
 - No live stock-changing sync has been run as part of this implementation work.
 
+## Controlled reserve/cancel self-test
+
+The BizSathi inventory API includes a narrowly scoped production diagnostic action, disabled unless `WEBSITE_INVENTORY_SELF_TEST_ENABLED=true` is set on the server. It is still protected by the existing `WEBSITE_INVENTORY_SYNC_SECRET` bearer check. The diagnostic also requires `AURALUXE_SUPABASE_URL` and `AURALUXE_SUPABASE_PUBLISHABLE_KEY` so it can read the Auraluxe `website_inventory_authority_enabled()` flag before making any BizSathi stock mutation.
+
+- It is fixed to Nepalgunj and SKU `AL-KURTI-121`; it always tests exactly one unit and accepts no caller-supplied SKU or quantity.
+- It refuses to start if the integration is already enabled, the SKU/variant is unavailable, on-hand stock is below one, or the unpublished outbox is not clear.
+- It refuses to start unless Auraluxe's separate inventory-authority switch is already enabled. It does not change that Auraluxe switch. The operator must separately approve and temporarily enable it before the test, then disable it immediately after verification.
+- It temporarily enables the BizSathi integration, reserves one unit, publishes the reservation projection, cancels that same operation, publishes the restored projection, and disables the BizSathi integration in a `finally` cleanup path.
+- It verifies the reservation is `cancelled`, on-hand stock returns to its starting value, the outbox is clear, and the integration is disabled.
+- If cancellation, projection, cleanup, or verification fails, the action returns a failure and includes the operation ID when manual recovery may be needed. Do not treat a failed result as a passed test.
+- Set the feature flag only for the approved one-time test and remove/disable it immediately afterwards. Never expose the bearer secret in a browser or chat.
+
+This diagnostic is not a checkout, commit, return, or sales test. It must not be used as a substitute for end-to-end website checkout verification.
+
 ## Legacy protocol boundaries
 
 - The legacy endpoint acknowledges website quantity deltas and pushes absolute stock values with expected-current-count checks. It is useful only as a manually operated comparison/transition tool, not as the new transactional protocol.
