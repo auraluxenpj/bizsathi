@@ -41,7 +41,7 @@ BEGIN
     'sizes',to_jsonb(coalesce(p.catalogue_sizes,'{}'::text[])),
     'purchase_price',v.purchase_price,'mrp',v.mrp,'selling_price',v.selling_price,
     'wholesale_price',v.wholesale_price,'reorder_level',v.reorder_level,
-    'published',p.website_published,'notes',coalesce(v.catalogue_notes,p.catalogue_notes),
+    'published',(p.website_published AND p.is_active AND v.is_active),'notes',coalesce(v.catalogue_notes,p.catalogue_notes),
     'barcode',v.barcode
   ) ORDER BY lower(btrim(v.sku))) INTO result
     FROM public.products p
