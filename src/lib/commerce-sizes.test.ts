@@ -1,5 +1,5 @@
 import {describe,it,expect} from 'vitest';
-import {commerceLine} from './commerce-schemas';
+import {commerceLine,catalogueSizesForVariant} from './commerce-schemas';
 import {returnableLines,returnLine,sourceLines} from './invoice-returns';
 const variant='10000000-0000-4000-8000-000000000001';
 describe('SKU size allocations',()=>{
@@ -18,4 +18,11 @@ describe('SKU size allocations',()=>{
   expect(returnLine(item!,item!.maximum).sizeBreakdown).toEqual([{size:'S',quantity:1},{size:'M',quantity:1}]);
   expect(sourceLines(source.lines)[0]?.sizeBreakdown).toEqual([{size:'S',quantity:1},{size:'M',quantity:2}]);
  });
+});
+
+describe('Auraluxe POS size groups',()=>{
+ it('maps Standard apparel to S through 2XL',()=>expect(catalogueSizesForVariant('Standard','Kurti')).toEqual(['S','M','L','XL','2XL']));
+ it('maps Plus Size apparel to 3XL through 8XL',()=>expect(catalogueSizesForVariant('Plus Size','Kurti Set')).toEqual(['3XL','4XL','5XL','6XL','7XL','8XL']));
+ it.each(['Saree','Purse','Accessories','Unstitched','Bags','Juttis'])('does not show clothing sizes for Standard %s',category=>expect(catalogueSizesForVariant('Standard',category)).toEqual([]));
+ it('does not infer sizes for unknown variant labels',()=>expect(catalogueSizesForVariant('Free Size','Kurti')).toEqual([]));
 });
