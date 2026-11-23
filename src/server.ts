@@ -64,7 +64,7 @@ function isH3SwallowedErrorBody(body: string): boolean {
   }
 }
 
-type ScheduledEnv = { WEBSITE_INVENTORY_SYNC_SECRET?: string; AURALUXE_CATALOGUE_PUBLISH_URL?: string };
+type ScheduledEnv = { WEBSITE_INVENTORY_SYNC_SECRET?: string };
 type ScheduledController = { cron: string; scheduledTime: number };
 
 export default {
@@ -121,31 +121,8 @@ export default {
       throw new Error('BizSathi catalogue publisher did not confirm delivery');
     }
 
-    const remotePublisher = env.AURALUXE_CATALOGUE_PUBLISH_URL
-      ?? 'https://www.auraluxe.com.np/api/public/bizsathi-catalogue-publish';
-    const remoteUrl = new URL(remotePublisher);
-    if (remoteUrl.protocol !== 'https:' || remoteUrl.pathname !== '/api/public/bizsathi-catalogue-publish'
-      || remoteUrl.username || remoteUrl.password || remoteUrl.search || remoteUrl.hash) {
-      throw new Error('AURALUXE_CATALOGUE_PUBLISH_URL must be the final HTTPS publisher endpoint');
-    }
-    const remoteCatalogueResponse = await fetch(remoteUrl, {
-      method: 'POST',
-      redirect: 'manual',
-      signal: AbortSignal.timeout(20000),
-      headers: {
-        Authorization: `Bearer ${secret}`,
-        'Content-Type': 'application/json',
-        Accept: 'application/json',
-      },
-      body: JSON.stringify({ action: 'publish_outbox' }),
-    });
-    const remoteCatalogueResult = await remoteCatalogueResponse.json().catch(() => null) as { ok?: boolean; delivered?: number; blocked?: boolean } | null;
-    if (!remoteCatalogueResponse.ok || remoteCatalogueResult?.ok !== true || remoteCatalogueResult.blocked === true) {
-      throw new Error(`Auraluxe catalogue publisher did not confirm delivery (HTTP ${remoteCatalogueResponse.status})`);
-    }
-    console.info('[shared-catalogue] scheduled outbox run', {
-      localDelivered: localCatalogueResult.delivered ?? 0,
-      remoteDelivered: remoteCatalogueResult.delivered ?? 0,
+    console.info('[shared-catalogue] BizSathi-to-Auraluxe catalogue publisher run', {
+      delivered: localCatalogueResult.delivered ?? 0,
     });
 
     const stockRequest = new Request('https://bizsathi.internal/api/public/auraluxe-stock-publish', {
