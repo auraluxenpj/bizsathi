@@ -20,7 +20,7 @@ async function requireAccountant(context: Ctx, businessId: string) {
 }
 
 export const scanReceipt = createServerFn({ method: 'POST' }).middleware([requireSupabaseAuth])
-  .inputValidator(tenant.extend({ path: z.string().min(1).max(300), fileName: z.string().trim().min(1).max(255), mimeType: z.enum(['image/jpeg', 'image/png', 'application/pdf']) }).refine(v => v.path.startsWith(`${v.businessId}/`) && !v.path.includes('..'), { message: 'Invalid file path.' }))
+  .inputValidator(tenant.extend({ path: z.string().min(1).max(300), fileName: z.string().trim().min(1).max(255), mimeType: z.enum(['image/jpeg', 'image/png', 'image/webp', 'application/pdf']) }).refine(v => v.path.startsWith(`${v.businessId}/`) && !v.path.includes('..'), { message: 'Invalid file path.' }))
   .handler(async ({ data, context }) => {
     await requireAccountant(context, data.businessId);
     const file = await context.supabase.storage.from(BUCKET).download(data.path);
