@@ -44,6 +44,22 @@ describe('Google Sheets catalogue import', () => {
     expect(new Headers(request.mock.calls[1]?.[1]?.headers).get('Authorization')).toBe('Bearer test-access-token');
   });
 
+  it('identifies outbound OAuth network failures', async () => {
+    const credentials = { serviceAccountJson: await serviceAccountJson(`oauth-network-${crypto.randomUUID()}@example.iam.gserviceaccount.com`) };
+    const request = vi.fn<typeof fetch>().mockRejectedValueOnce(new TypeError('fetch failed'));
+    await expect(readGoogleSheetCatalogue(input, credentials, request)).rejects.toThrow('could not connect to Google OAuth');
+    expect(request).toHaveBeenCalledTimes(1);
+  });
+
+  it('identifies outbound Sheets API network failures after OAuth succeeds', async () => {
+    const credentials = { serviceAccountJson: await serviceAccountJson(`sheets-network-${crypto.randomUUID()}@example.iam.gserviceaccount.com`) };
+    const request = vi.fn<typeof fetch>()
+      .mockResolvedValueOnce(Response.json({ access_token: 'test-access-token', expires_in: 3600 }))
+      .mockRejectedValueOnce(new TypeError('fetch failed'));
+    await expect(readGoogleSheetCatalogue(input, credentials, request)).rejects.toThrow('could not connect to the Google Sheets API');
+    expect(request).toHaveBeenCalledTimes(2);
+  });
+
   it('uses link-shared CSV without service-account credentials', async () => {
     const request = vi.fn<typeof fetch>().mockResolvedValue(new Response('Item Name,Generated SKU\nShirt,S1'));
     expect((await readGoogleSheetCatalogue(input, {}, request))[0]?.sku).toBe('S1');

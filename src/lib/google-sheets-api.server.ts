@@ -3,7 +3,7 @@ export type GoogleSheetsCredentials = { serviceAccountJson?: string | undefined 
 export class GoogleSheetsApiError extends Error {
   constructor(
     readonly status: number,
-    readonly stage: 'credentials' | 'oauth' | 'sheets' = 'sheets',
+    readonly stage: 'credentials' | 'signing' | 'oauth' | 'sheets' | 'oauth-network' | 'sheets-network' = 'sheets',
   ) {
     super(`Google Sheets ${stage} request failed (${status}).`);
     this.name = 'GoogleSheetsApiError';
@@ -62,16 +62,26 @@ export async function getGoogleAccessToken(serviceAccountJson: string, request: 
   const now = Date.now();
   if (cachedToken?.email === account.client_email && cachedToken.expiresAt > now + 60_000) return cachedToken.accessToken;
 
-  const assertion = await createAssertion(account);
-  const response = await request('https://oauth2.googleapis.com/token', {
+  let assertion: string;
+  try {
+    assertion = await createAssertion(account);
+  } catch {
+    throw new GoogleSheetsApiError(0, 'signing');
+  }
+  let response: Response;
+  try {
+    response = await request('https://oauth2.googleapis.com/token', {
     method: 'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
     body: new URLSearchParams({
       grant_type: 'urn:ietf:params:oauth:grant-type:jwt-bearer',
       assertion,
     }),
-    signal: AbortSignal.timeout(20_000),
-  });
+      signal: AbortSignal.timeout(20_000),
+    });
+  } catch {
+    throw new GoogleSheetsApiError(0, 'oauth-network');
+  }
   if (!response.ok) throw new GoogleSheetsApiError(response.status, 'oauth');
   const token = await response.json() as { access_token?: unknown; expires_in?: unknown };
   if (typeof token.access_token !== 'string') throw new GoogleSheetsApiError(502);
@@ -90,11 +100,16 @@ export async function readGoogleSheetRange(
   const token = await getGoogleAccessToken(credentials.serviceAccountJson, request);
   const url = new URL(`https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/${encodeURIComponent(range)}`);
   url.searchParams.set('valueRenderOption', 'FORMATTED_VALUE');
-  const response = await request(url, {
-    headers: { Authorization: `Bearer ${token}` },
-    redirect: 'error',
-    signal: AbortSignal.timeout(20_000),
-  });
+  let response: Response;
+  try {
+    response = await request(url, {
+      headers: { Authorization: `Bearer ${token}` },
+      redirect: 'error',
+      signal: AbortSignal.timeout(20_000),
+    });
+  } catch {
+    throw new GoogleSheetsApiError(0, 'sheets-network');
+  }
   if (!response.ok) throw new GoogleSheetsApiError(response.status);
   const result = await response.json() as { values?: unknown[][] };
   return result.values ?? [];
