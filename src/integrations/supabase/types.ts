@@ -4103,6 +4103,23 @@ export type Database = {
         Args: { _business: string; _title: string }
         Returns: string[]
       }
+      preview_unused_product_skus: {
+        Args: { _business_id: string }
+        Returns: {
+          variant_id: string
+          product_id: string
+          product_name: string
+          variant_name: string
+          sku: string
+          stock_quantity: number
+          eligible: boolean
+          reasons: string[]
+        }[]
+      }
+      delete_unused_product_skus: {
+        Args: { _business_id: string; _variant_ids: string[] }
+        Returns: number
+      }
       save_catalogue_variant: {
         Args: { _business_id: string; _rows: Json }
         Returns: number
