@@ -6,7 +6,7 @@ export function sourceLines(value: unknown): ReturnLine[] {
   if(!Array.isArray(value))return [];
   return value.flatMap(v=>{
     if(!v||typeof v!=='object'||typeof v.variantId!=='string')return [];
-    return [{variantId:v.variantId,name:String(v.name??''),sku:String(v.sku??''),quantity:Number(v.quantity),price:Number(v.price),discount:Number(v.discount??0),taxRate:Number(v.taxRate??0)}];
+    return [{variantId:v.variantId,name:String(v.name??''),sku:String(v.sku??''),quantity:Number(v.quantity),price:Number(v.price),discount:Number(v.discount??0),taxRate:Number(v.taxRate??0),...(Array.isArray(v.sizeBreakdown)?{sizeBreakdown:v.sizeBreakdown.flatMap((a:any)=>a&&typeof a.size==='string'&&Number(a.quantity)>0?[{size:a.size,quantity:Number(a.quantity)}]:[])}:{})}];
   });
 }
 /** Quantities still available to receive against a confirmed supplier invoice. */
@@ -30,12 +30,16 @@ export function returnableLines(source:ReturnDocument, documents:ReturnDocument[
     const remaining=Decimal.max(0,new Decimal(l.quantity).minus(returned));
     const available=Decimal.max(0,received.minus(returned));
     const maximum=source.kind==='purchase'?Decimal.min(remaining,available,stock?.get(l.variantId)??available):remaining;
-    return {...l,returned:returned.toNumber(),received:received.toNumber(),remaining:remaining.toNumber(),maximum:maximum.toNumber()};
+    const sizeBreakdown=l.sizeBreakdown?.map(a=>{
+      const used=linked.filter(d=>d.kind===kind).flatMap(d=>sourceLines(d.lines)).filter(r=>r.variantId===l.variantId).flatMap(r=>r.sizeBreakdown??[]).filter(r=>r.size.toLowerCase()===a.size.toLowerCase()).reduce((n,r)=>n.plus(r.quantity),new Decimal(0));
+      return {size:a.size,quantity:Decimal.max(0,new Decimal(a.quantity).minus(used)).toNumber()};
+    }).filter(a=>a.quantity>0);
+    return {...l,...(sizeBreakdown?{sizeBreakdown}:{}),returned:returned.toNumber(),received:received.toNumber(),remaining:remaining.toNumber(),maximum:maximum.toNumber()};
   });
 }
 export function returnLine(original:ReturnLine, quantity:number):CommerceRequest['lines'][number] {
   return {variantId:original.variantId,quantity,price:original.price,taxRate:original.taxRate,
-    discount:new Decimal(original.discount).mul(quantity).div(original.quantity).toDecimalPlaces(2,Decimal.ROUND_HALF_UP).toNumber()};
+    discount:new Decimal(original.discount).mul(quantity).div(original.quantity).toDecimalPlaces(2,Decimal.ROUND_HALF_UP).toNumber(),...(original.sizeBreakdown?{sizeBreakdown:original.sizeBreakdown}: {})};
 }
 export function returnSettlement(originalTotal:number, originalPaid:number, returnedTotal:number, refundsPaid:number, newCredit=0) {
   const total=new Decimal(originalTotal),paid=new Decimal(originalPaid),returned=new Decimal(returnedTotal),credit=new Decimal(newCredit);
