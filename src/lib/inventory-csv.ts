@@ -3,7 +3,7 @@ import { generateBarcodeFromSkuIfNeeded } from './barcode';
 import { catalogueSizesForVariant } from './commerce-schemas';
 import { catalogueInput, type CatalogueRow } from './inventory-schemas';
 
-export const catalogueColumns = ['product_name','category','variant_name','sizes','sku','model_code','barcode','unit','qty','selling_price','mrp','wholesale_price','purchase_price','reorder_level'];
+export const catalogueColumns = ['catalogue_serial','product_name','category','variant_name','sizes','sku','model_code','barcode','unit','qty','selling_price','mrp','wholesale_price','purchase_price','reorder_level'];
 const headerAliases: Record<string, string[]> = {
  sizes: ['sizes','Sizes','Available Sizes','Size Options'],
  product_name: ['product_name', 'Item Name', 'item_name', 'Product Name', 'Product', 'Name'],
