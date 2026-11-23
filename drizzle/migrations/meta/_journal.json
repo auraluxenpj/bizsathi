@@ -337,6 +337,27 @@
       "when": 1795438001000,
       "tag": "0116_bizsathi_single_catalogue_authority",
       "breakpoints": true
+    },
+    {
+      "idx": 48,
+      "version": "7",
+      "when": 1795439001000,
+      "tag": "0117_preserve_commerce_line_sizes",
+      "breakpoints": true
+    },
+    {
+      "idx": 49,
+      "version": "7",
+      "when": 1795439002000,
+      "tag": "0118_sku_identity_and_catalogue_only_import",
+      "breakpoints": true
+    },
+    {
+      "idx": 50,
+      "version": "7",
+      "when": 1795439003000,
+      "tag": "0119_auraluxe_catalogue_mapping_reconcile",
+      "breakpoints": true
     }
   ]
 }
