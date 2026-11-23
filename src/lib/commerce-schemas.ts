@@ -5,15 +5,19 @@ const id=z.string().uuid();
 
 const STANDARD_CLOTHING_SIZES = ['S','M','L','XL','2XL'] as const;
 const PLUS_CLOTHING_SIZES = ['3XL','4XL','5XL','6XL','7XL','8XL'] as const;
-const NON_SIZED_STANDARD_CATEGORIES = ['saree','saris','purse','bag','bags','accessory','accessories','jewellery','jewelry','juttis','jutti','unstitched'];
-/** Resolve POS size choices from the SKU's existing variant label and product category. */
+const NON_SIZED_CATEGORIES = ['saree','saris','purse','bag','bags','accessory','accessories','jewellery','jewelry','juttis','jutti','unstitched'];
+/** Only apparel categories use clothing-size allocations; accessories retain one-size SKU handling. */
+export function isClothingSizeCategory(category:string|null|undefined):boolean{
+ const normalized=(category??'').trim().toLowerCase().replace(/[_-]+/g,' ').replace(/\s+/g,' ');
+ return !NON_SIZED_CATEGORIES.some(item=>normalized===item||normalized.includes(item));
+}
+/** Resolve POS size choices from the SKU's fit/size classification and product category. */
 export function catalogueSizesForVariant(variantName:string, category:string|null|undefined):string[]{
+ if(!isClothingSizeCategory(category))return [];
  const variant=variantName.trim().toLowerCase();
  if(variant==='plus size')return [...PLUS_CLOTHING_SIZES];
- if(variant!=='standard')return [];
- const normalizedCategory=(category??'').trim().toLowerCase().replace(/[_-]+/g,' ').replace(/\s+/g,' ');
- if(NON_SIZED_STANDARD_CATEGORIES.some(item=>normalizedCategory===item||normalizedCategory.includes(item)))return [];
- return [...STANDARD_CLOTHING_SIZES];
+ if(variant==='standard')return [...STANDARD_CLOTHING_SIZES];
+ return [];
 }
 
 const money=z.coerce.number().finite().min(0).max(999999999).refine(n=>new Decimal(n).decimalPlaces()<=2,'Use at most two decimal places.');
