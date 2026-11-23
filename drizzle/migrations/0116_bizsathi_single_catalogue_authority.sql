@@ -20,9 +20,8 @@ BEGIN
      OR _business_id<>'c0f0ed15-97e4-4859-ac8f-a2d4e81f5b01'::uuid THEN
     RAISE EXCEPTION 'BizSathi service authorization required';
   END IF;
-  IF NOT coalesce((SELECT catalogue_enabled FROM public.auraluxe_sync_control WHERE business_id=_business_id),false) THEN
-    RAISE EXCEPTION 'BizSathi catalogue authority is not enabled';
-  END IF;
+  -- Snapshot publication is a separate, explicit cutover operation. It may run
+  -- while the incremental outbox remains disabled.
   SELECT count(*),count(DISTINCT lower(btrim(v.sku)))
     INTO row_count,distinct_count
     FROM public.products p
