@@ -277,6 +277,25 @@ BEGIN
 END $patch_website_ack$;
 
 
+
+-- Cross-reference IDs are immutable once a SKU is mapped. A different remote
+-- product/variant ID requires an explicit remapping workflow, not an upsert overwrite.
+DO $patch_inbound_mapping_conflicts$
+DECLARE body text; changed text;
+BEGIN
+  SELECT pg_get_functiondef('public.upsert_shared_catalogue_from_auraluxe(uuid,jsonb)'::regprocedure) INTO body;
+  changed:=replace(body,
+    E'    ELSE\n      UPDATE public.products SET name=v_name,category=v_category,catalogue_sizes=v_sizes,',
+    E'    ELSE\n      IF EXISTS (SELECT 1 FROM public.products WHERE id=v_product_id AND auraluxe_product_id IS NOT NULL AND v_remote_product_id IS NOT NULL AND auraluxe_product_id<>v_remote_product_id) THEN RAISE EXCEPTION ''SKU is already linked to a different Auraluxe product''; END IF;\n      UPDATE public.products SET name=v_name,category=v_category,catalogue_sizes=v_sizes,');
+  changed:=replace(changed,
+    E'      ELSE\n        UPDATE public.product_variants SET\n          name=coalesce(nullif(r->>''variant_name'',''''),name),',
+    E'      ELSE\n        IF EXISTS (SELECT 1 FROM public.product_variants WHERE id=v_variant_id AND auraluxe_variant_id IS NOT NULL AND v_remote_variant_id IS NOT NULL AND auraluxe_variant_id<>v_remote_variant_id) THEN RAISE EXCEPTION ''SKU is already linked to a different Auraluxe variant''; END IF;\n        UPDATE public.product_variants SET\n          name=coalesce(nullif(r->>''variant_name'',''''),name),');
+  IF changed=body OR position('different Auraluxe product' in changed)=0 OR position('different Auraluxe variant' in changed)=0 THEN
+    RAISE EXCEPTION 'Could not install inbound Auraluxe mapping conflict guards';
+  END IF;
+  EXECUTE changed;
+END $patch_inbound_mapping_conflicts$;
+
 CREATE OR REPLACE FUNCTION public.upsert_auraluxe_catalogue_mappings(_business_id uuid,_items jsonb)
 RETURNS integer LANGUAGE plpgsql SECURITY DEFINER SET search_path=public AS $$
 DECLARE item jsonb; sku text; bp uuid; bv uuid; ap uuid; av uuid; product_id uuid; variant_id uuid; n integer:=0;
