@@ -10,6 +10,38 @@ export const websiteResults = z.object({ results: z.array(z.object({ sku: z.stri
 export type LocalStock = z.infer<typeof localSnapshot>[number];
 export type WebsiteStock = z.infer<typeof websiteState>['items'][number];
 export type SyncReport = { compared: number; recorded: number; updated: number; issues: string[]; error: string | null };
+
+export type CatalogueIdentityRow = {
+  product_id: string;
+  variant_id: string;
+  variant_name: string;
+  model_code: string | null;
+};
+
+/** Validate model-number product identity and model+variant-name uniqueness before sending a catalogue batch. */
+export function validateCatalogueIdentity(rows: CatalogueIdentityRow[]): string | null {
+  const modelToProduct = new Map<string, string>();
+  const productToModel = new Map<string, string>();
+  const variantKeys = new Set<string>();
+  const variantIds = new Set<string>();
+  for (const row of rows) {
+    const model = row.model_code?.trim().toLocaleLowerCase() ?? '';
+    const variant = row.variant_name.trim().toLocaleLowerCase();
+    if (!model || model.length > 64) return `SKU ${row.variant_id}: model number is missing or invalid`;
+    const knownProduct = modelToProduct.get(model);
+    if (knownProduct && knownProduct !== row.product_id) return `Model number ${row.model_code} is assigned to more than one product`;
+    const knownModel = productToModel.get(row.product_id);
+    if (knownModel && knownModel !== model) return `Product ${row.product_id} has inconsistent model numbers`;
+    const variantKey = `${model}::${variant}`;
+    if (!variant || variantKeys.has(variantKey)) return `Model number ${row.model_code} has a missing or duplicate variant name`;
+    if (variantIds.has(row.variant_id)) return `Duplicate variant ID in catalogue batch: ${row.variant_id}`;
+    modelToProduct.set(model, row.product_id);
+    productToModel.set(row.product_id, model);
+    variantKeys.add(variantKey);
+    variantIds.add(row.variant_id);
+  }
+  return null;
+}
 export function eligibleStock(rows: LocalStock[]) {
   const counts = new Map<string, number>();
   for (const r of rows) counts.set(key(r.sku), (counts.get(key(r.sku)) ?? 0) + 1);
