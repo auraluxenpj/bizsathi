@@ -61,7 +61,7 @@ describe('Google Sheets catalogue import', () => {
   });
 
   it('uses link-shared CSV without service-account credentials', async () => {
-    const request = vi.fn<typeof fetch>().mockResolvedValue(new Response('Item Name,Generated SKU\nShirt,S1'));
+    const request = vi.fn<typeof fetch>().mockResolvedValue(new Response('Item Name,Generated SKU,Master Qty\nShirt,S1,2'));
     expect((await readGoogleSheetCatalogue(input, {}, request))[0]?.sku).toBe('S1');
     const url = new URL(String(request.mock.calls[0]?.[0]));
     expect(url.hostname).toBe('docs.google.com');
