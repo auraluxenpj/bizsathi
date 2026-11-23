@@ -54,7 +54,7 @@ function Body({ ctx }: { ctx: WorkspaceContext }) {
       const path = billPath(ctx.businessId, mimeType);
       const up = await supabase.storage.from('bills').upload(path, uploadFile, { contentType: mimeType, upsert: false });
       if (up.error) throw new Error('Upload was not allowed. Your role may not permit uploads.');
-      try { await register({ data: { businessId: ctx.businessId, path, caption: file.name.replace(/\.[^.]+$/, '').slice(0, 200), billDate: todayAd(), mimeType: file.type as BillType, size: file.size } }); }
+      try { await register({ data: { businessId: ctx.businessId, path, caption: file.name.replace(/\.[^.]+$/, '').slice(0, 200), billDate: todayAd(), mimeType, size: uploadFile.size } }); }
       catch (e) { await supabase.storage.from('bills').remove([path]); throw e; }
       setMessage(uploadFile.type === 'application/pdf' ? 'Bill uploaded.' : 'Bill photo compressed to WebP and uploaded.'); await client.invalidateQueries({ queryKey: ['bills', ctx.businessId] });
     } catch (e) { setMessage(e instanceof Error ? e.message : 'Upload failed.'); } finally { setBusy(false); }
