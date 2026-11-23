@@ -16,6 +16,7 @@ DECLARE
   source_allocation jsonb;
   v_product_id uuid;
   v_variant_id uuid;
+  v_catalogue_sizes text[];
   v_size text;
   v_qty numeric;
   v_sum numeric;
@@ -61,6 +62,12 @@ BEGIN
      WHERE business_id=NEW.business_id AND id=v_variant_id;
     IF v_product_id IS NULL THEN
       RAISE EXCEPTION 'Size allocation SKU was not found';
+    END IF;
+    SELECT catalogue_sizes INTO v_catalogue_sizes
+      FROM public.products WHERE business_id=NEW.business_id AND id=v_product_id;
+    IF NEW.kind='sale' AND coalesce(cardinality(v_catalogue_sizes),0)>0
+       AND (request_line IS NULL OR request_line->'sizeBreakdown' IS NULL) THEN
+      RAISE EXCEPTION 'Choose a size for SKU % before confirming the sale', line->>'sku';
     END IF;
 
     v_sum := 0;
