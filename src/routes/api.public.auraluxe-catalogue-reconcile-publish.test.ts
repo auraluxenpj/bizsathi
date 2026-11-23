@@ -82,11 +82,6 @@ describe('BizSathi full Auraluxe catalogue reconciliation publisher', () => {
       auraluxe_product_id: `30000000-0000-4000-8000-${String(i + 1).padStart(12, '0')}`,
       auraluxe_variant_id: `40000000-0000-4000-8000-${String(i + 1).padStart(12, '0')}`,
     }));
-    mocks.rpc.mockImplementation(async (name: string) => {
-      if (name === 'get_auraluxe_catalogue_snapshot') return { data: rows, error: null };
-      if (name === 'upsert_auraluxe_catalogue_mappings') return { data: Array.isArray(arguments[0]) ? 0 : 0, error: null };
-      return { data: null, error: null };
-    });
     mocks.rpc.mockImplementation(async (name: string, args: Record<string, unknown>) => {
       if (name === 'get_auraluxe_catalogue_snapshot') return { data: rows, error: null };
       if (name === 'upsert_auraluxe_catalogue_mappings') return { data: (args['_items'] as unknown[]).length, error: null };
