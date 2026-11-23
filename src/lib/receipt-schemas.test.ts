@@ -23,7 +23,7 @@ describe('receipt values from the AI', () => {
 describe('files', () => {
   it('allows only images and PDFs up to 8 MB', () => {
     expect(checkReceiptFile({ type: 'image/png', size: 1000 })).toBeNull(); expect(checkReceiptFile({ type: 'application/pdf', size: 8 * 1024 * 1024 })).toBeNull();
-    expect(checkReceiptFile({ type: 'image/gif', size: 1000 })).toMatch(/JPG, PNG or PDF/); expect(checkReceiptFile({ type: 'image/png', size: 8 * 1024 * 1024 + 1 })).toMatch(/8 MB/); expect(checkReceiptFile({ type: 'image/png', size: 0 })).toMatch(/empty/);
+    expect(checkReceiptFile({ type: 'image/gif', size: 1000 })).toMatch(/JPG, PNG, WebP images or PDF/); expect(checkReceiptFile({ type: 'image/png', size: 8 * 1024 * 1024 + 1 })).toMatch(/8 MB/); expect(checkReceiptFile({ type: 'image/png', size: 0 })).toMatch(/empty/);
   });
   it('stores files inside the business folder', () => expect(receiptPath(id, 'image/jpeg', 'abc')).toBe(`${id}/abc.jpg`));
 });

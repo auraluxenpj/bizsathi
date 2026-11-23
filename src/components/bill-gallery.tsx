@@ -11,6 +11,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { deleteBill, listBills, registerBill, saveBillMeta } from '@/lib/workspace.functions';
 import { billPath, checkBillFile, type BillRow, type BillType } from '@/lib/workspace-schemas';
 import { formatBsAd, todayAd } from '@/lib/format';
+import { compressImageToWebp } from '@/lib/image-compression';
 
 function Viewer({ ctx, bill, mine, onClose }: { ctx: WorkspaceContext; bill: BillRow; mine: boolean; onClose: () => void }) {
   const client = useQueryClient(); const save = useServerFn(saveBillMeta); const remove = useServerFn(deleteBill);
@@ -46,13 +47,16 @@ function Body({ ctx }: { ctx: WorkspaceContext }) {
     const file = files?.[0]; if (input.current) input.current.value = ''; if (!file) return;
     const problem = checkBillFile(file); if (problem) { setMessage(problem); return; }
     setBusy(true); setMessage('');
-    const path = billPath(ctx.businessId, file.type as BillType);
     try {
-      const up = await supabase.storage.from('bills').upload(path, file, { contentType: file.type, upsert: false });
+      let uploadFile = file;
+      if (file.type.startsWith('image/')) uploadFile = await compressImageToWebp(file);
+      const mimeType = uploadFile.type as BillType;
+      const path = billPath(ctx.businessId, mimeType);
+      const up = await supabase.storage.from('bills').upload(path, uploadFile, { contentType: mimeType, upsert: false });
       if (up.error) throw new Error('Upload was not allowed. Your role may not permit uploads.');
-      try { await register({ data: { businessId: ctx.businessId, path, caption: file.name.replace(/\.[^.]+$/, '').slice(0, 200), billDate: todayAd(), mimeType: file.type as BillType, size: file.size } }); }
+      try { await register({ data: { businessId: ctx.businessId, path, caption: file.name.replace(/\.[^.]+$/, '').slice(0, 200), billDate: todayAd(), mimeType, size: uploadFile.size } }); }
       catch (e) { await supabase.storage.from('bills').remove([path]); throw e; }
-      setMessage('Bill uploaded.'); await client.invalidateQueries({ queryKey: ['bills', ctx.businessId] });
+      setMessage(uploadFile.type === 'application/pdf' ? 'Bill uploaded.' : 'Bill photo compressed to WebP and uploaded.'); await client.invalidateQueries({ queryKey: ['bills', ctx.businessId] });
     } catch (e) { setMessage(e instanceof Error ? e.message : 'Upload failed.'); } finally { setBusy(false); }
   }
 

@@ -25,6 +25,7 @@ vi.mock('@/lib/workspace.functions', () => ({
   listBills: async () => ({ bills, userId: ME }), registerBill: (a: unknown) => fns.registerBill(a), saveBillMeta: (a: unknown) => fns.saveBillMeta(a), deleteBill: (a: unknown) => fns.deleteBill(a),
   listItemCategories: async () => ({ categories: [{ name: '', count: 1 }, { name: 'Accessories', count: 3 }, { name: 'Clothes', count: 5 }] }), renameItemCategory: (a: unknown) => fns.rename(a),
 }));
+vi.mock('@/lib/image-compression', () => ({ compressImageToWebp: async (file: File) => new File([file], 'converted.webp', { type: 'image/webp' }) }));
 vi.mock('@/integrations/supabase/client', () => ({ supabase: { storage: { from: () => ({ upload: (p: string, f: unknown, o: unknown) => fns.upload(p, f, o), remove: (a: unknown) => fns.remove(a) }) } } }));
 
 import { Notebook } from '@/components/notebook';
@@ -85,9 +86,9 @@ describe('Bill Gallery', () => {
     mount(<BillGallery />); await screen.findByText('Supplier bill');
     pick(new File(['img'], 'bill 12.jpg', { type: 'image/jpeg' }));
     await waitFor(() => expect(fns.registerBill).toHaveBeenCalledTimes(1));
-    expect(fns.upload.mock.calls[0]![0]).toMatch(new RegExp(`^${BIZ}/[0-9a-f-]{36}\\.jpg$`));
-    expect((fns.registerBill.mock.calls[0]![0] as { data: Record<string, unknown> }).data).toMatchObject({ businessId: BIZ, mimeType: 'image/jpeg', caption: 'bill 12' });
-    expect(await screen.findByText('Bill uploaded.')).toBeInTheDocument();
+    expect(fns.upload.mock.calls[0]![0]).toMatch(new RegExp(`^${BIZ}/[0-9a-f-]{36}\\.webp$`));
+    expect((fns.registerBill.mock.calls[0]![0] as { data: Record<string, unknown> }).data).toMatchObject({ businessId: BIZ, mimeType: 'image/webp', caption: 'bill 12', size: 3 });
+    expect(await screen.findByText('Bill photo compressed to WebP and uploaded.')).toBeInTheDocument();
   });
   it('removes the file again if the bill could not be recorded', async () => {
     fns.registerBill.mockRejectedValueOnce(new Error('Bill could not be saved.'));

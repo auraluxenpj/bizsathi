@@ -18,6 +18,7 @@ vi.mock('@/lib/inventory-queries', () => ({ businessQuery: { queryKey: ['busines
 vi.mock('@/lib/vouchers.functions', () => ({ getVoucherWorkspace: async () => ({ userId: 'u', role: ctx.role, branches: [{ id: BR, name: 'Main' }], periods: [{ id: PER, name: 'FY', start_date: '2026-01-01', end_date: '2026-12-31' }], vouchers: [] }) }));
 vi.mock('@/lib/receipts.functions', () => ({ listReceipts: async () => ({ receipts: receipts.rows }), scanReceipt: (a: unknown) => fns.scan(a), confirmReceipt: (a: unknown) => fns.confirm(a), rejectReceipt: (a: unknown) => fns.reject(a) }));
 vi.mock('@/integrations/supabase/client', () => ({ supabase: { storage: { from: () => ({ upload: (p: string, f: unknown, o: unknown) => fns.upload(p, f, o), remove: (a: unknown) => fns.remove(a) }) } } }));
+vi.mock('@/lib/image-compression', () => ({ compressImageToWebp: async (file: File) => { const dot = file.name.lastIndexOf('.'); const base = dot > 0 ? file.name.slice(0, dot) : file.name; return new File([file], base + '.webp', { type: 'image/webp' }); } }));
 vi.mock('@/lib/commerce.functions', () => ({ createTradingPeriod: vi.fn() }));
 import { ExpenseReceipts } from '@/components/expense-receipts';
 
@@ -45,14 +46,14 @@ describe('Scan Receipts', () => {
     mount(); await screen.findByText('Nepal Power');
     fireEvent.change(screen.getByLabelText('Receipt files'), { target: { files: [new File(['x'], 'bill.jpg', { type: 'image/jpeg' })] } });
     await waitFor(() => expect(fns.scan).toHaveBeenCalledTimes(1));
-    expect(fns.upload.mock.calls[0]![0]).toMatch(new RegExp(`^${BIZ}/[0-9a-f-]{36}\\.jpg$`));
-    expect((fns.scan.mock.calls[0]![0] as { data: Record<string, unknown> }).data).toMatchObject({ businessId: BIZ, fileName: 'bill.jpg', mimeType: 'image/jpeg' });
+    expect(fns.upload.mock.calls[0]![0]).toMatch(new RegExp(`^${BIZ}/[0-9a-f-]{36}\\.webp$`));
+    expect((fns.scan.mock.calls[0]![0] as { data: Record<string, unknown> }).data).toMatchObject({ businessId: BIZ, fileName: 'bill.webp', mimeType: 'image/webp' });
     expect(await screen.findByText('Ready to review')).toBeInTheDocument();
   });
   it('rejects unsupported files before uploading, and cleans up when reading fails', async () => {
     mount(); await screen.findByText('Nepal Power');
     fireEvent.change(screen.getByLabelText('Receipt files'), { target: { files: [new File(['x'], 'virus.exe', { type: 'application/x-msdownload' })] } });
-    expect(await screen.findByText(/Only JPG, PNG or PDF/)).toBeInTheDocument(); expect(fns.upload).not.toHaveBeenCalled();
+    expect(await screen.findByText(/Only JPG, PNG, WebP images or PDF/)).toBeInTheDocument(); expect(fns.upload).not.toHaveBeenCalled();
     fns.scan.mockRejectedValueOnce(new Error('The receipt could not be saved.'));
     fireEvent.change(screen.getByLabelText('Receipt files'), { target: { files: [new File(['x'], 'a.png', { type: 'image/png' })] } });
     expect(await screen.findByText('The receipt could not be saved.')).toBeInTheDocument(); expect(fns.remove).toHaveBeenCalledTimes(1);

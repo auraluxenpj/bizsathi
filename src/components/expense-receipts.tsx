@@ -16,6 +16,7 @@ import { accountsOfKind, rememberAccount, rememberedAccount } from '@/lib/accoun
 import { confirmReceipt, listReceipts, rejectReceipt, scanReceipt } from '@/lib/receipts.functions';
 import { buildExpenseRequest, checkReceiptFile, emptyExtraction, findDuplicate, normalizeExtraction, normalizeMoney, paymentMethods, receiptCategories, receiptPath, type Extraction, type ReceiptType } from '@/lib/receipt-schemas';
 import { formatBsAd, formatNPR, todayAd } from '@/lib/format';
+import { compressImageToWebp } from '@/lib/image-compression';
 
 type Status = 'needs_review' | 'posted' | 'rejected';
 type Receipt = { id: string; file_name: string; mime_type: string; status: string; ai_extraction: unknown; ai_error: string | null; reviewed: unknown; review_note: string | null; created_at: string; url: string | null };
@@ -99,11 +100,17 @@ function Body({ ctx }: { ctx: WorkspaceContext }) {
     const set = (i: number, patch: Partial<(typeof queue)[number]>) => setQueue(q => q.map((x, j) => (j === i ? { ...x, ...patch } : x)));
     for (const [i, file] of list.entries()) {
       const problem = checkReceiptFile(file); if (problem) { set(i, { state: 'failed', note: problem }); continue; }
-      const path = receiptPath(ctx.businessId, file.type as ReceiptType);
-      const up = await supabase.storage.from('expense-receipts').upload(path, file, { contentType: file.type, upsert: false });
+      let uploadFile = file;
+      if (file.type.startsWith('image/')) {
+        try { uploadFile = await compressImageToWebp(file); }
+        catch (e) { set(i, { state: 'failed', note: e instanceof Error ? e.message : 'Image compression failed.' }); continue; }
+      }
+      const mimeType = uploadFile.type as ReceiptType;
+      const path = receiptPath(ctx.businessId, mimeType);
+      const up = await supabase.storage.from('expense-receipts').upload(path, uploadFile, { contentType: mimeType, upsert: false });
       if (up.error) { set(i, { state: 'failed', note: 'Upload was not allowed. Only accountants and administrators can scan receipts.' }); continue; }
       set(i, { state: 'reading' });
-      try { const r = await scan({ data: { businessId: ctx.businessId, path, fileName: file.name, mimeType: file.type as ReceiptType } }); set(i, { state: 'done', ...(r.aiError ? { note: r.aiError } : {}) }); }
+      try { const r = await scan({ data: { businessId: ctx.businessId, path, fileName: uploadFile.name, mimeType } }); set(i, { state: 'done', ...(r.aiError ? { note: r.aiError } : {}) }); }
       catch (e) { await supabase.storage.from('expense-receipts').remove([path]); set(i, { state: 'failed', note: e instanceof Error ? e.message : 'Could not read this file.' }); }
     }
     await client.invalidateQueries({ queryKey: ['receipts', ctx.businessId] });
@@ -113,9 +120,9 @@ function Body({ ctx }: { ctx: WorkspaceContext }) {
   const all = receipts.data?.receipts ?? []; const shown = all.filter(r => r.status === tab); const posted = all.filter(r => r.status === 'posted');
   const count = (s: Status) => all.filter(r => r.status === s).length;
   return <>
-    <input ref={input} type="file" multiple accept="image/jpeg,image/png,application/pdf" capture="environment" className="sr-only" aria-label="Receipt files" onChange={e => upload(e.target.files)} />
+    <input ref={input} type="file" multiple accept="image/jpeg,image/png,image/webp,application/pdf" capture="environment" className="sr-only" aria-label="Receipt files" onChange={e => upload(e.target.files)} />
     <Button className="mt-5 h-12 w-full" onClick={() => input.current?.click()}><Camera />Scan receipts</Button>
-    <p className="mt-2 text-xs text-muted-foreground">Photos (JPG, PNG) or PDFs up to 8 MB. AI suggests the details; you check and post each one.</p>
+    <p className="mt-2 text-xs text-muted-foreground">Photos (JPG, PNG, WebP) are converted to WebP (max 512 KB); PDFs up to 8 MB. AI suggests the details; you check and post each one.</p>
     {queue.length > 0 && <ul className="mt-3 space-y-1 text-sm" aria-label="Upload progress">{queue.map((q, i) => <li key={i} className="flex justify-between gap-3"><span className="min-w-0 truncate">{q.name}</span><span className={`shrink-0 ${q.state === 'failed' ? 'text-destructive' : q.state === 'done' ? 'text-emerald-600' : 'text-muted-foreground'}`}>{q.state === 'uploading' ? 'Uploading…' : q.state === 'reading' ? 'Reading…' : q.state === 'done' ? (q.note ? 'Added, fill in manually' : 'Ready to review') : (q.note ?? 'Failed')}</span></li>)}</ul>}
     <div className="mt-5 flex rounded-lg border p-0.5 text-sm" role="group" aria-label="Status">{tabs.map(t => <button key={t.id} type="button" aria-pressed={tab === t.id} onClick={() => setTab(t.id)} className={`flex-1 rounded-md px-2 py-1.5 ${tab === t.id ? 'bg-primary text-primary-foreground' : 'text-muted-foreground'}`}>{t.label} ({count(t.id)})</button>)}</div>
     {receipts.error ? <div className="py-8"><p role="alert" className="text-sm text-destructive">{receipts.error.message}</p><Button className="mt-4" variant="outline" onClick={() => receipts.refetch()}>Try again</Button></div>

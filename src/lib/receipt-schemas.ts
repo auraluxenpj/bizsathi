@@ -2,7 +2,7 @@ import Decimal from 'decimal.js';
 import { bsToAd } from './format';
 import { voucherAccounts, voucherInput, type VoucherRequest } from './voucher-schemas';
 
-export const receiptTypes = { 'image/jpeg': 'jpg', 'image/png': 'png', 'application/pdf': 'pdf' } as const;
+export const receiptTypes = { 'image/jpeg': 'jpg', 'image/png': 'png', 'image/webp': 'webp', 'application/pdf': 'pdf' } as const;
 export type ReceiptType = keyof typeof receiptTypes;
 export const MAX_RECEIPT_BYTES = 8 * 1024 * 1024;
 export const receiptCategories = voucherAccounts.filter(([id]) => id.startsWith('expense_')).map(([id, label]) => ({ id, label }));
@@ -10,7 +10,7 @@ export const paymentMethods = [{ id: 'bank', label: 'Bank' }, { id: 'wallet', la
 const categoryIds: readonly string[] = receiptCategories.map(c => c.id);
 
 export function checkReceiptFile(file: { type: string; size: number }): string | null {
-  if (!(file.type in receiptTypes)) return 'Only JPG, PNG or PDF files can be scanned.';
+  if (!(file.type in receiptTypes)) return 'Only JPG, PNG, WebP images or PDF files can be scanned.';
   if (file.size < 1) return 'That file is empty.';
   if (file.size > MAX_RECEIPT_BYTES) return 'Files must be 8 MB or smaller.';
   return null;

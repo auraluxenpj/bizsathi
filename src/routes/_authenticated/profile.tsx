@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input';
 import { supabase } from '@/integrations/supabase/client';
 import { pageHead } from '@/lib/head';
 import { ScreenLockSettings } from '@/components/screen-lock';
+import { compressImageToWebp } from '@/lib/image-compression';
 
 export const Route = createFileRoute('/_authenticated/profile')({
   head: () => pageHead('Account profile', 'Manage your Sutra account profile and login security.'),
@@ -13,7 +14,7 @@ export const Route = createFileRoute('/_authenticated/profile')({
 });
 
 const AVATAR_BUCKET = 'avatars';
-const MAX_AVATAR_BYTES = 2 * 1024 * 1024;
+const MAX_AVATAR_SOURCE_BYTES = 15 * 1024 * 1024;
 const allowedAvatarTypes = ['image/jpeg', 'image/png', 'image/webp'];
 
 function Profile() {
@@ -86,8 +87,8 @@ function Profile() {
       setProfileMessage('Choose a JPG, PNG or WebP image.');
       return;
     }
-    if (file.size > MAX_AVATAR_BYTES) {
-      setProfileMessage('Profile photos must be 2 MB or smaller.');
+    if (file.size > MAX_AVATAR_SOURCE_BYTES) {
+      setProfileMessage('Choose a profile photo smaller than 15 MB. It will be converted to WebP under 512 KB.');
       return;
     }
     setAvatarFile(file);
@@ -104,10 +105,10 @@ function Profile() {
     let profileSaved = false;
     try {
       if (avatarFile) {
-        const extension = avatarFile.type === 'image/png' ? 'png' : avatarFile.type === 'image/webp' ? 'webp' : 'jpg';
-        uploadedPath = `${userId}/${crypto.randomUUID()}.${extension}`;
+        const webp = await compressImageToWebp(avatarFile);
+        uploadedPath = `${userId}/${crypto.randomUUID()}.webp`;
         const { error: uploadError } = await supabase.storage.from(AVATAR_BUCKET)
-          .upload(uploadedPath, avatarFile, { contentType: avatarFile.type, upsert: false });
+          .upload(uploadedPath, webp, { contentType: 'image/webp', upsert: false });
         if (uploadError) throw uploadError;
       }
       const nextAvatar = uploadedPath || avatarPath || null;
@@ -187,7 +188,7 @@ function Profile() {
                     <Camera className="size-4" /> Upload photo
                     <input type="file" accept="image/jpeg,image/png,image/webp" className="sr-only" onChange={chooseAvatar} />
                   </label>
-                  <p className="text-xs text-muted-foreground">JPG, PNG or WebP · Maximum 2 MB</p>
+                  <p className="text-xs text-muted-foreground">JPG, PNG or WebP · Automatically converted to WebP (max 512 KB)</p>
                 </div>
               </div>
               <label className="block text-sm font-medium">Display name<Input className="mt-2 h-11" value={name} maxLength={100} required onChange={e => setName(e.target.value)} /></label>

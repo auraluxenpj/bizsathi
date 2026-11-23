@@ -5,7 +5,8 @@ import { Camera, ImageOff, Search, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
 import { setProductImage } from '@/lib/product-images.functions';
-import { MAX_EDGE, PRODUCT_IMAGE_BUCKET, fitWithin, productImagePath, sourceProblem } from '@/lib/product-images';
+import { PRODUCT_IMAGE_BUCKET, productImagePath, sourceProblem } from '@/lib/product-images';
+import { compressImageToWebp } from '@/lib/image-compression';
 
 /** Small square photo, or a placeholder when the product has none yet. */
 export function ProductThumb({ url, name, size = 'size-12' }: { url?: string | undefined; name: string; size?: string }) {
@@ -14,21 +15,7 @@ export function ProductThumb({ url, name, size = 'size-12' }: { url?: string | u
     : <span role="img" aria-label={`No photo for ${name}`} className={`${size} flex shrink-0 items-center justify-center rounded-md border border-dashed text-muted-foreground`}><ImageOff className="size-4" /></span>;
 }
 
-async function shrink(file: File): Promise<Blob> {
-  const bitmap = await createImageBitmap(file);
-  const { width, height } = fitWithin(bitmap.width, bitmap.height, MAX_EDGE);
-  const canvas = document.createElement('canvas'); canvas.width = width; canvas.height = height;
-  const ctx = canvas.getContext('2d'); if (!ctx) throw new Error('This browser cannot prepare the photo.');
-  ctx.drawImage(bitmap, 0, 0, width, height); bitmap.close();
-  const toBlob = (type: string, quality: number) => new Promise<Blob | null>((r) => canvas.toBlob(r, type, quality));
-  const webp = await toBlob('image/webp', 0.82);
-  if (webp && webp.type === 'image/webp') return webp;
-  const jpeg = await toBlob('image/jpeg', 0.85);
-  if (!jpeg) throw new Error('The photo could not be prepared.');
-  return jpeg;
-}
-
-/** Upload, replace or remove the one photo a product has. Photos are shrunk on the device first. */
+/** Upload, replace or remove the one photo a product has. Photos are converted to WebP <=512 KiB. */
 export function ProductImageField({ businessId, productId, productName, searchQuery, url }: { businessId: string; productId: string; productName: string; searchQuery?: string; url?: string | undefined }) {
   const client = useQueryClient(); const save = useServerFn(setProductImage);
   const cameraInput = useRef<HTMLInputElement>(null); const fileInput = useRef<HTMLInputElement>(null); const [busy, setBusy] = useState(false); const [message, setMessage] = useState('');
@@ -40,15 +27,15 @@ export function ProductImageField({ businessId, productId, productName, searchQu
     setBusy(true); setMessage('');
     let path: string | null = null;
     try {
-      const blob = await shrink(file);
-      path = productImagePath(businessId, productId, crypto.randomUUID(), blob.type);
+      const webp = await compressImageToWebp(file);
+      path = productImagePath(businessId, productId, crypto.randomUUID(), webp.type);
       if (!path) throw new Error('That photo type is not supported.');
-      const up = await supabase.storage.from(PRODUCT_IMAGE_BUCKET).upload(path, blob, { contentType: blob.type, upsert: false });
+      const up = await supabase.storage.from(PRODUCT_IMAGE_BUCKET).upload(path, webp, { contentType: 'image/webp', upsert: false });
       if (up.error) throw new Error('Upload was not allowed. Only administrators can change product photos.');
       await save({ data: { businessId, productId, path } });
-      setMessage('Photo saved.'); await refresh();
+      setMessage('Photo saved as WebP.'); await refresh();
     } catch (e) {
-      if (path) await supabase.storage.from(PRODUCT_IMAGE_BUCKET).remove([path]); // do not leave an unused file behind
+      if (path) await supabase.storage.from(PRODUCT_IMAGE_BUCKET).remove([path]);
       setMessage(e instanceof Error ? e.message : 'Upload failed.');
     } finally { setBusy(false); }
   }
@@ -71,7 +58,7 @@ export function ProductImageField({ businessId, productId, productName, searchQu
         <Button type="button" variant="outline" className="h-11" disabled={busy} onClick={() => fileInput.current?.click()}><ImageOff />{url ? 'Replace from device' : 'Choose from device'}</Button>
         {url && <Button type="button" variant="outline" className="h-11 text-destructive" disabled={busy} onClick={remove}><Trash2 />Remove</Button>}
       </div>
-      {busy && <p role="status" className="text-sm text-muted-foreground">Preparing and saving photo…</p>}
+      {busy && <p role="status" className="text-sm text-muted-foreground">Converting to WebP and saving…</p>}
       {message && <p role="status" className="text-sm text-muted-foreground">{message}</p>}
     </div>
   </div>;
