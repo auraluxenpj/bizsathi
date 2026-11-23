@@ -18,7 +18,7 @@ vi.mock('@/lib/inventory-queries', () => ({ businessQuery: { queryKey: ['busines
 vi.mock('@/lib/vouchers.functions', () => ({ getVoucherWorkspace: async () => ({ userId: 'u', role: ctx.role, branches: [{ id: BR, name: 'Main' }], periods: [{ id: PER, name: 'FY', start_date: '2026-01-01', end_date: '2026-12-31' }], vouchers: [] }) }));
 vi.mock('@/lib/receipts.functions', () => ({ listReceipts: async () => ({ receipts: receipts.rows }), scanReceipt: (a: unknown) => fns.scan(a), confirmReceipt: (a: unknown) => fns.confirm(a), rejectReceipt: (a: unknown) => fns.reject(a) }));
 vi.mock('@/integrations/supabase/client', () => ({ supabase: { storage: { from: () => ({ upload: (p: string, f: unknown, o: unknown) => fns.upload(p, f, o), remove: (a: unknown) => fns.remove(a) }) } } }));
-vi.mock('@/lib/image-compression', () => ({ compressImageToWebp: async (file: File) => new File([file], file.name.replace(/\\.[^.]+$/, '') + '.webp', { type: 'image/webp' }) }));
+vi.mock('@/lib/image-compression', () => ({ compressImageToWebp: async (file: File) => { const dot = file.name.lastIndexOf('.'); const base = dot > 0 ? file.name.slice(0, dot) : file.name; return new File([file], base + '.webp', { type: 'image/webp' }); } }));
 vi.mock('@/lib/commerce.functions', () => ({ createTradingPeriod: vi.fn() }));
 import { ExpenseReceipts } from '@/components/expense-receipts';
 
