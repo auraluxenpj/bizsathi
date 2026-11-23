@@ -51,3 +51,5 @@ BEGIN
 END $$;
 REVOKE ALL ON FUNCTION public.get_auraluxe_catalogue_snapshot(uuid) FROM PUBLIC,anon,authenticated;
 GRANT EXECUTE ON FUNCTION public.get_auraluxe_catalogue_snapshot(uuid) TO service_role;
+
+COMMENT ON FUNCTION public.get_auraluxe_catalogue_snapshot(uuid) IS 'Complete SKU-unique BizSathi snapshot for explicit Auraluxe storefront reconciliation; never used for incremental stock updates.';
