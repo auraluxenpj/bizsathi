@@ -53,13 +53,13 @@ describe('Google Sheets catalogue import', () => {
     expect(request.mock.calls[0]?.[1]?.headers).toBeUndefined();
   });
 
-  it('falls back to public CSV when service-account access is denied', async () => {
-    const credentials = { serviceAccountJson: await serviceAccountJson(`fallback-${crypto.randomUUID()}@example.iam.gserviceaccount.com`) };
+  it('does not fall back to public CSV when service-account access is denied', async () => {
+    const credentials = { serviceAccountJson: await serviceAccountJson(`private-${crypto.randomUUID()}@example.iam.gserviceaccount.com`) };
     const request = vi.fn<typeof fetch>()
-      .mockResolvedValueOnce(new Response('Access denied', { status: 403 }))
-      .mockResolvedValueOnce(new Response('Item Name,Generated SKU\nShirt,S1'));
-    expect((await readGoogleSheetCatalogue(input, credentials, request))[0]?.sku).toBe('S1');
-    expect(request.mock.calls[1]?.[1]?.headers).toBeUndefined();
+      .mockResolvedValueOnce(Response.json({ access_token: 'test-access-token', expires_in: 3600 }))
+      .mockResolvedValueOnce(new Response('Access denied', { status: 403 }));
+    await expect(readGoogleSheetCatalogue(input, credentials, request)).rejects.toThrow('Google Sheets API denied the service account (HTTP 403)');
+    expect(request).toHaveBeenCalledTimes(2);
   });
 
   it('does not bypass Google API quota failures', async () => {
