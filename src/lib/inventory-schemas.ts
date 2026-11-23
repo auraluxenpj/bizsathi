@@ -11,3 +11,5 @@ export function stockBalances(movements: {variant_id:string;branch_id:string;qua
 /** Total quantity on hand per variant across the branches the caller can see, summed in thousandths to avoid float drift. */
 export function variantStockTotals(movements: {variant_id:string;quantity:number}[]) { const totals = new Map<string,number>(); for(const m of movements) totals.set(m.variant_id,(totals.get(m.variant_id) ?? 0)+Math.round(m.quantity*1000)); return new Map([...totals].map(([id,value])=>[id,value/1000])); }
 export type CatalogueRow = z.infer<typeof catalogueRow>;
+/** Render a persistent catalogue serial as a minimum three-digit label. */
+export function formatCatalogueSerial(serial: number): string { return String(serial).padStart(3, '0'); }

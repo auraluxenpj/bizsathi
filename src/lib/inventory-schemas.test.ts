@@ -1,6 +1,6 @@
 import { describe,it,expect } from 'vitest';
 import { readFileSync } from 'node:fs';
-import { stockInput, stockBalances, catalogueRow } from './inventory-schemas';
+import { stockInput, stockBalances, catalogueRow, formatCatalogueSerial } from './inventory-schemas';
 import { makeCsv, makeCatalogueCsv, parseCatalogueCsv } from './inventory-csv';
 const a='10000000-0000-4000-8000-000000000001', b='10000000-0000-4000-8000-000000000002';
 const stock={businessId:a,id:a,variantId:a,branchId:a,kind:'receive',quantity:1,reference:'GRN-1',reason:'Received delivery'};
@@ -8,6 +8,7 @@ describe('Inventory integrity',()=>{
  it('requires traceable reasons and references',()=>{expect(stockInput.safeParse({...stock,reference:''}).success).toBe(false);expect(stockInput.safeParse({...stock,reason:''}).success).toBe(false);});
  it('rejects zero and negative receiving quantities',()=>{expect(stockInput.safeParse({...stock,quantity:0}).success).toBe(false);expect(stockInput.safeParse({...stock,quantity:-1}).success).toBe(false);});
  it('allows negative correction but requires distinct transfer branches',()=>{expect(stockInput.safeParse({...stock,kind:'adjustment',quantity:-1}).success).toBe(true);expect(stockInput.safeParse({...stock,kind:'transfer',destinationBranchId:a}).success).toBe(false);expect(stockInput.safeParse({...stock,kind:'transfer',destinationBranchId:b}).success).toBe(true);});
+ it('formats persistent catalogue serials with at least three digits',()=>{expect(formatCatalogueSerial(1)).toBe('001');expect(formatCatalogueSerial(12)).toBe('012');expect(formatCatalogueSerial(123)).toBe('123');expect(formatCatalogueSerial(1234)).toBe('1234');});
  it('sums branch ledger quantities without floating point drift',()=>expect(stockBalances([{variant_id:a,branch_id:a,quantity:0.1},{variant_id:a,branch_id:a,quantity:0.2},{variant_id:a,branch_id:b,quantity:9}]).get(`${a}:${a}`)).toBe(0.3));
  it('rejects duplicate size options regardless of case',()=>{expect(catalogueRow.safeParse({product_name:'Kurti',sku:'K1',sizes:'S, s'}).success).toBe(false);expect(catalogueRow.safeParse({product_name:'Kurti',sku:'K1',sizes:'S, M, L'}).success).toBe(true);});
  it('rejects negative prices and overprecision quantities',()=>{expect(catalogueRow.safeParse({product_name:'Item',sku:'I',selling_price:-1}).success).toBe(false);expect(stockInput.safeParse({...stock,quantity:1.0001}).success).toBe(false);});
