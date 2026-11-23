@@ -80,7 +80,11 @@ function networkDiagnostic(error: unknown, startedAt: number): GoogleSheetsNetwo
   const value = error instanceof Error ? error : new Error(String(error));
   const cause = value.cause;
   const causeObject = typeof cause === 'object' && cause !== null ? cause as Record<string, unknown> : undefined;
-  const name = value.name || 'Error';
+  const rawName = value.name || 'Error';
+  // Some runtimes wrap DOMException timeout reasons in a plain Error while
+  // preserving the original "TimeoutError:" prefix in the message.
+  const wrappedName = /^(TimeoutError|AbortError):/.exec(value.message)?.[1];
+  const name = rawName === 'Error' && wrappedName ? wrappedName : rawName;
   const category = name === 'TimeoutError'
     ? 'timeout'
     : name === 'AbortError'
@@ -161,7 +165,9 @@ export async function readGoogleSheetRange(
   try {
     response = await request(url, {
       headers: { Authorization: 'Bearer ' + token },
-      redirect: 'error',
+      // Workers do not implement redirect: 'error'; manual preserves the
+      // response so the !response.ok check below rejects unexpected redirects.
+      redirect: 'manual',
       signal: AbortSignal.timeout(20_000),
     });
   } catch (error) {
@@ -187,7 +193,9 @@ export async function writeGoogleSheetRanges(
       method: 'POST',
       headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' },
       body: JSON.stringify({ valueInputOption: 'RAW', data }),
-      redirect: 'error',
+      // Workers do not implement redirect: 'error'; manual preserves the
+      // response so response.ok rejects unexpected redirects.
+      redirect: 'manual',
       signal: AbortSignal.timeout(20_000),
     });
     return response.ok;
