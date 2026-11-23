@@ -24,5 +24,12 @@ export function parseGoogleSheetValues(values: unknown, businessId: string) {
  const header = rows[0];
  if (!header?.length) throw new Error('The sheet tab is empty.');
  const width = header.length;
+ const qtyHeaders = new Set(['opening_stock','opening stock','opening qty','master qty','master quantity','on hand qty','qty on hand','qty','quantity','stock','current stock']);
+ const qtyIndex = header.findIndex(cell => typeof cell === 'string' && qtyHeaders.has(cell.trim().toLowerCase().replace(/[_-]+/g,' ')));
+ if (qtyIndex < 0) throw new Error('The Google Sheet must include a Master Qty / Qty column. Stock cannot be synced without an explicit quantity column.');
+ for (let i=1;i<rows.length;i++) {
+  const quantity = rows[i]?.[qtyIndex];
+  if (quantity === null || quantity === undefined || String(quantity).trim() === '') throw new Error(`Google Sheets row ${i+1} has a blank Master Qty. Fill every SKU quantity before syncing.`);
+ }
  return parseCatalogueCsv(Papa.unparse(rows.map(row => Array.from({length:width}, (_, i) => row[i] ?? ''))), businessId);
 }
