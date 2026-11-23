@@ -53,7 +53,7 @@ describe('Scan Receipts', () => {
   it('rejects unsupported files before uploading, and cleans up when reading fails', async () => {
     mount(); await screen.findByText('Nepal Power');
     fireEvent.change(screen.getByLabelText('Receipt files'), { target: { files: [new File(['x'], 'virus.exe', { type: 'application/x-msdownload' })] } });
-    expect(await screen.findByText(/Only JPG, PNG, WebP or PDF/)).toBeInTheDocument(); expect(fns.upload).not.toHaveBeenCalled();
+    expect(await screen.findByText(/Only JPG, PNG, WebP images or PDF/)).toBeInTheDocument(); expect(fns.upload).not.toHaveBeenCalled();
     fns.scan.mockRejectedValueOnce(new Error('The receipt could not be saved.'));
     fireEvent.change(screen.getByLabelText('Receipt files'), { target: { files: [new File(['x'], 'a.png', { type: 'image/png' })] } });
     expect(await screen.findByText('The receipt could not be saved.')).toBeInTheDocument(); expect(fns.remove).toHaveBeenCalledTimes(1);
