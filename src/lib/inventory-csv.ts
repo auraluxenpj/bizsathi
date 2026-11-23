@@ -5,7 +5,7 @@ import { catalogueInput, type CatalogueRow } from './inventory-schemas';
 
 export const catalogueColumns = ['catalogue_serial','product_name','category','variant_name','sizes','sku','model_code','barcode','unit','qty','selling_price','mrp','wholesale_price','purchase_price','reorder_level'];
 const headerAliases: Record<string, string[]> = {
- sizes: ['sizes','Sizes','Available Sizes','Size Options','Size'],
+ sizes: ['sizes','Available Sizes','Size Options'],
  product_name: ['product_name', 'Item Name', 'item_name', 'Product Name', 'Product', 'Name'],
  category: ['category'],
  variant_name: ['variant_name', 'Variant / Size', 'Variant', 'fit_category', 'Fit / Size Category'],
@@ -25,6 +25,7 @@ const headerAliases: Record<string, string[]> = {
 const canonicalHeaders = new Map(Object.entries(headerAliases).flatMap(([column, aliases]) => aliases.map(alias => [alias.toLowerCase(), column] as const)));
 function normalizeHeader(header: string) {
  const trimmed = header.trim();
+ if(trimmed.toLowerCase()==='size')return 'size_option';
  return canonicalHeaders.get(trimmed.toLowerCase()) ?? trimmed;
 }
 function csvNumber(value: string | undefined): number {
