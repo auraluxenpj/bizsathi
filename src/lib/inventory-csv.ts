@@ -50,9 +50,11 @@ export function parseCatalogueCsv(text:string, businessId:string, googleSheetMod
    // Karobar sheets list one row per size; group them by Description and use the SKU suffix as the size.
    const group=r['description']?.trim(); const sku=r['sku']?.trim() ?? ''; const explicit=r['variant_name']?.trim(); const sizeColumn=r['size_option']?.trim();
    const isSizeLabel=(value:string)=>/^(?:XXS|XS|S|M|L|XL|[2-9]XL|10XL|FREE\s*SIZE|ONE\s*SIZE|\d{2})$/i.test(value.trim());
-   const explicitIsSize=googleSheetMode&&!!explicit&&isSizeLabel(explicit); const columnIsSize=googleSheetMode&&!!sizeColumn&&isSizeLabel(sizeColumn);
+   // Auraluxe's master sheet stores a comma-separated size list in variant_name (for example, "M, L, XL, 2XL"). Treat a list of valid size labels as the product's saved POS sizes, not as one variant label.
+   const explicitSizeList=googleSheetMode&&!!explicit&&explicit.split(',').map(value=>value.trim()).filter(Boolean).length>1&&explicit.split(',').every(value=>isSizeLabel(value));
+   const explicitIsSize=googleSheetMode&&!!explicit&&(isSizeLabel(explicit)||explicitSizeList); const columnIsSize=googleSheetMode&&!!sizeColumn&&isSizeLabel(sizeColumn);
    const variantName=googleSheetMode&&(explicitIsSize||columnIsSize)?'Standard':explicit||sizeColumn||(!group?'Standard':(()=>{const cut=sku.lastIndexOf('-');return cut>0&&cut<sku.length-1?sku.slice(cut+1):'Standard';})());
-   const rowSizes=r['sizes']?.trim() || (googleSheetMode&&explicitIsSize?explicit:'') || (googleSheetMode&&sizeColumn?sizeColumn:'') || catalogueSizesForVariant(variantName,r['category']).join(', ');
+   const rowSizes=r['sizes']?.trim() || (googleSheetMode&&explicitSizeList?explicit.split(',').map(value=>value.trim()).join(', '):'') || (googleSheetMode&&explicitIsSize?explicit:'') || (googleSheetMode&&sizeColumn?sizeColumn:'') || catalogueSizesForVariant(variantName,r['category']).join(', ');
    return {
      ...r,
      ...(group&&!explicit?{product_name:group}:{}),
