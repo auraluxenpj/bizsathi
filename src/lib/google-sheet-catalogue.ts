@@ -33,7 +33,7 @@ export function parseGoogleSheetValues(values: unknown, businessId: string, requ
    if (quantity === null || quantity === undefined || String(quantity).trim() === '') throw new Error(`Google Sheets row ${i+1} has a blank Master Qty. Fill every SKU quantity before syncing.`);
   }
  }
- return parseCatalogueCsv(Papa.unparse(rows.map(row => Array.from({length:width}, (_, i) => row[i] ?? ''))), businessId);
+ return parseCatalogueCsv(Papa.unparse(rows.map(row => Array.from({length:width}, (_, i) => row[i] ?? ''))), businessId, true);
 }
 export function parseGoogleSheetCsv(text: string, businessId: string) {
  const parsed = Papa.parse<string[]>(text, {header:false,skipEmptyLines:'greedy'});

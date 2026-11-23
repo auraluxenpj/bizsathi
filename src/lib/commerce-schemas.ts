@@ -11,8 +11,10 @@ export function isClothingSizeCategory(category:string|null|undefined):boolean{
  const normalized=(category??'').trim().toLowerCase().replace(/[_-]+/g,' ').replace(/\s+/g,' ');
  return !NON_SIZED_CATEGORIES.some(item=>normalized===item||normalized.includes(item));
 }
-/** Resolve POS size choices from the SKU's fit/size classification and product category. */
-export function catalogueSizesForVariant(variantName:string, category:string|null|undefined):string[]{
+/** Resolve POS size choices from the imported product size list; fit labels are only a fallback. */
+export function catalogueSizesForVariant(variantName:string, category:string|null|undefined, savedSizes?:readonly string[]|null):string[]{
+ const explicit=[...new Set((savedSizes??[]).map(size=>size.trim()).filter(Boolean))];
+ if(explicit.length)return explicit;
  if(!isClothingSizeCategory(category))return [];
  const variant=variantName.trim().toLowerCase();
  if(variant==='plus size')return [...PLUS_CLOTHING_SIZES];
