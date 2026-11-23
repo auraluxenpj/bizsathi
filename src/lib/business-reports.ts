@@ -4,7 +4,7 @@ import {snapshotSchema,buildReport,type ReportInput,type ReportRow} from './acco
 
 export const businessSnapshotSchema=snapshotSchema.extend({timezone:z.string(),currency:z.string(),users:z.array(z.object({id:z.string(),name:z.string()})),variants:z.array(z.object({id:z.string(),business_id:z.string(),name:z.string(),sku:z.string(),unit:z.string(),reorder_level:z.string(),is_active:z.boolean()})),movements:z.array(z.object({id:z.string(),business_id:z.string(),branch_id:z.string(),variant_id:z.string(),quantity:z.string(),kind:z.string(),reference:z.string(),reason:z.string(),actor_id:z.string(),created_at:z.string(),movement_date:z.string(),source_id:z.string(),source_type:z.string()}))});
 export type BusinessSnapshot=z.infer<typeof businessSnapshotSchema>;
-export const reportViews=[['sales','Sales register · profit pending'],['purchases','Purchases'],['valuation','Inventory valuation · pending costing'],['stock','Stock movement'],['lowstock','Low stock'],['customer','Customer ledger'],['supplier','Supplier ledger'],['receivables','Receivables'],['payables','Payables'],['expenses','Expenses'],['cashbook','Cash and bank'],['trial','Trial balance'],['profit','Profit and loss · pending costing'],['balance','Balance sheet'],['cashflow','Cash flow'],['vat','Tax summaries'],['staff','Staff report'],['daybook','Day book'],['cash','Cash in hand statement'],['bank','Bank & wallet statement'],['ledger','General ledger'],['accounts','Posting accounts'],['statement','Party statement'],['outstanding','Outstanding balances']] as const;
+export const reportViews=[['sales','Sales register · profit pending'],['sizes','Size-wise sales'],['purchases','Purchases'],['valuation','Inventory valuation · pending costing'],['stock','Stock movement'],['lowstock','Low stock'],['customer','Customer ledger'],['supplier','Supplier ledger'],['receivables','Receivables'],['payables','Payables'],['expenses','Expenses'],['cashbook','Cash and bank'],['trial','Trial balance'],['profit','Profit and loss · pending costing'],['balance','Balance sheet'],['cashflow','Cash flow'],['vat','Tax summaries'],['staff','Staff report'],['daybook','Day book'],['cash','Cash in hand statement'],['bank','Bank & wallet statement'],['ledger','General ledger'],['accounts','Posting accounts'],['statement','Party statement'],['outstanding','Outstanding balances']] as const;
 export const unavailableReports:Partial<Record<ReportInput['view'],string>>={valuation:'Inventory valuation is not available yet. BizSathi has quantity movements, but approved opening stock costs and a validated costing method are not in place. No stock value is estimated.',profit:'Profit and loss is not available yet. A reliable cost-of-goods-sold method, complete opening/purchase costs and validated expense classifications are required before profit can be reported.'};
 export function supportsUser(view:ReportInput['view']){return !['accounts','trial','lowstock','valuation','profit','balance','vat','cash','bank'].includes(view);}
 export function reportContext(f:ReportInput,s:BusinessSnapshot){return{Report:reportViews.find(([id])=>id===f.view)?.[1]??f.view,From:f.from,Through:f.to,'Branch filter':f.branchId?s.branches.find(b=>b.id===f.branchId)?.name??f.branchId:'All authorized branches','Date basis':['valuation','lowstock','balance'].includes(f.view)?'Balances as at Through; earlier postings retained': ['outstanding','receivables','payables'].includes(f.view)?'Invoices dated From–Through; settlements through end date':'Activity From–Through; earlier postings retained for opening balances','User filter':supportsUser(f.view)&&f.userId?s.users.find(u=>u.id===f.userId)?.name??f.userId:'All users',Currency:s.currency,Timezone:s.timezone};}
@@ -12,7 +12,7 @@ export function paginateRows(rows:ReportRow[],page:number,all:boolean){const act
 export function reportColumns(rows:ReportRow[]){return [...new Set(rows.flatMap(r=>Object.keys(r)))];}
 export function exportReportRows(rows:ReportRow[],context:Record<string,string>){const columns=reportColumns(rows);return rows.map(row=>({...context,...Object.fromEntries(columns.map(key=>[key,row[key]??'']))}));}
 export function reportSummary(rows:ReportRow[],view:ReportInput['view']):Record<string,string>{
- const columns:Partial<Record<ReportInput['view'],string[]>>={sales:['Net','Tax','Total'],purchases:['Net','Tax','Total'],outstanding:['Outstanding / credit'],receivables:['Outstanding / credit'],payables:['Outstanding / credit'],expenses:['Net'],stock:['Quantity'],staff:['Invoices','Sales amount','Payments collected'],daybook:['Money in','Money out'],cash:['In','Out'],bank:['In','Out'],ledger:['Debit','Credit'],statement:['Debit','Credit'],customer:['Debit','Credit'],supplier:['Debit','Credit'],cashbook:['Debit','Credit'],cashflow:['Debit','Credit'],trial:['Debit','Credit'],accounts:['Debit','Credit'],vat:['Debit','Credit']};
+ const columns:Partial<Record<ReportInput['view'],string[]>>={sales:['Net','Tax','Total'],purchases:['Net','Tax','Total'],outstanding:['Outstanding / credit'],receivables:['Outstanding / credit'],payables:['Outstanding / credit'],expenses:['Net'],stock:['Quantity'],staff:['Invoices','Sales amount','Payments collected'],sizes:['Net Qty'],daybook:['Money in','Money out'],cash:['In','Out'],bank:['In','Out'],ledger:['Debit','Credit'],statement:['Debit','Credit'],customer:['Debit','Credit'],supplier:['Debit','Credit'],cashbook:['Debit','Credit'],cashflow:['Debit','Credit'],trial:['Debit','Credit'],accounts:['Debit','Credit'],vat:['Debit','Credit']};
  return Object.fromEntries((columns[view]??[]).map(col=>[`${col} total`,rows.filter(r=>r['Type']!=='TOTAL').reduce((n,r)=>n.plus(r[col]||0),new Decimal(0)).toFixed(col==='Quantity'?3:2)]));
 }
 export type DocLines={id:string;kind:string;document_date:string;lines:unknown}[];
@@ -32,6 +32,29 @@ export function buildBusinessReport(s:BusinessSnapshot,f:ReportInput,docLines:Do
  const D=(v:Decimal.Value)=>new Decimal(v).toFixed(2);const done=(rows:ReportRow[],notice:string)=>({rows,totals:{debit:'0.00',credit:'0.00',difference:'0.00'},evidence:[],hasRecords:rows.length>0,notice});
  if(unavailableReports[f.view])return done([],unavailableReports[f.view]!);
  const stockRows=()=>{const bal=new Map<string,Decimal>();for(const m of s.movements.filter(m=>inScope(m)&&m.movement_date<=f.to))bal.set(m.variant_id,(bal.get(m.variant_id)??new Decimal(0)).plus(m.quantity));return s.variants.filter(v=>v.business_id===f.businessId&&v.is_active).map(v=>{const q=bal.get(v.id)??new Decimal(0);return {Product:v.name,SKU:v.sku,'In stock':q.toFixed(3),Unit:v.unit,'Low stock level':new Decimal(v.reorder_level).toFixed(3),Status:q.lte(v.reorder_level)?'LOW STOCK':'OK'};});};
+ if(f.view==='sizes'){
+  const totals=new Map<string,{product:string;sku:string;size:string;sold:Decimal;returned:Decimal}>();
+  const docsById=new Map(s.documents.map(d=>[d.id,d]));
+  for(const doc of docLines){
+   if(!['sale','sale_return'].includes(doc.kind)||doc.document_date<f.from||doc.document_date>f.to)continue;
+   const parent=docsById.get(doc.id);if(!parent||!inScope(parent))continue;
+   for(const line of Array.isArray(doc.lines)?doc.lines:[]){
+    if(!line||typeof line!=='object')continue;
+    const row=line as {variantId?:string;sku?:string;name?:string;sizeBreakdown?:{size?:string;quantity?:number}[]};
+    if(!row.variantId||!Array.isArray(row.sizeBreakdown))continue;
+    for(const allocation of row.sizeBreakdown){
+     const size=String(allocation.size??'').trim();const qty=new Decimal(allocation.quantity??0);
+     if(!size||!qty.gt(0))continue;
+     const key=`${row.variantId}:${size.toLowerCase()}`;
+     if(!totals.has(key))totals.set(key,{product:row.name??row.sku??row.variantId,sku:row.sku??'',size,sold:new Decimal(0),returned:new Decimal(0)});
+     const entry=totals.get(key)!;
+     if(doc.kind==='sale')entry.sold=entry.sold.plus(qty);else entry.returned=entry.returned.plus(qty);
+    }
+   }
+  }
+  const rows=[...totals.values()].map(v=>({Product:v.product,SKU:v.sku,Size:v.size,'Sold Qty':v.sold.toFixed(3),'Returned Qty':v.returned.toFixed(3),'Net Qty':v.sold.minus(v.returned).toFixed(3)})).sort((a,b)=>a.Product.localeCompare(b.Product)||a.SKU.localeCompare(b.SKU)||a.Size.localeCompare(b.Size));
+  return done(rows,'Confirmed sales and returns only. Size quantities are recorded on invoice lines; inventory remains tracked at aggregate SKU level.');
+ }
  if(f.view==='valuation')return done([],unavailableReports.valuation!);
  const J=s.journals.filter(j=>inScope(j));const accBal=(test:(c:string)=>boolean,to=f.to)=>J.filter(j=>test(j.account_code)&&j.entry_date<=to).reduce((n,j)=>n.plus(j.debit).minus(j.credit),new Decimal(0));
  const docsIn=s.documents.filter(d=>inScope(d)&&d.status==='confirmed'&&d.document_date>=f.from&&d.document_date<=f.to);
