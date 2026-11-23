@@ -6,7 +6,7 @@ export function sourceLines(value: unknown): ReturnLine[] {
   if(!Array.isArray(value))return [];
   return value.flatMap(v=>{
     if(!v||typeof v!=='object'||typeof v.variantId!=='string')return [];
-    return [{variantId:v.variantId,name:String(v.name??''),sku:String(v.sku??''),quantity:Number(v.quantity),price:Number(v.price),discount:Number(v.discount??0),taxRate:Number(v.taxRate??0),...(Array.isArray(v.sizeBreakdown)?{sizeBreakdown:v.sizeBreakdown.flatMap(a=>{if(!a||typeof a!=='object'||typeof (a as {size?:unknown}).size!=='string')return[];const size=(a as {size:string}).size;const quantity=Number((a as {quantity?:unknown}).quantity);return quantity>0?[{size,quantity}]:[];})}:{})}];
+    return [{variantId:v.variantId,name:String(v.productName??v.name??''),sku:String(v.sku??''),quantity:Number(v.quantity),price:Number(v.price),discount:Number(v.discount??0),taxRate:Number(v.taxRate??0),...(Array.isArray(v.sizeBreakdown)?{sizeBreakdown:v.sizeBreakdown.flatMap(a=>{if(!a||typeof a!=='object'||typeof (a as {size?:unknown}).size!=='string')return[];const size=(a as {size:string}).size;const quantity=Number((a as {quantity?:unknown}).quantity);return quantity>0?[{size,quantity}]:[];})}:{})}];
   });
 }
 /** Quantities still available to receive against a confirmed supplier invoice. */
