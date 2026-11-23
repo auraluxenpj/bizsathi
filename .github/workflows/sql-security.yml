@@ -74,7 +74,8 @@ jobs:
             supabase/tests/invitation_rpc_privileges.sql \
             supabase/tests/payment_accounts.sql \
             supabase/tests/cashier_rls.sql \
-            supabase/tests/website_inventory_reservations.sql \\\n            supabase/tests/auraluxe_catalogue_authority.sql; do
+            supabase/tests/website_inventory_reservations.sql \
+            supabase/tests/auraluxe_catalogue_authority.sql; do
             echo "::group::Running ${test_file}"
             docker exec -i "${DB_CONTAINER}" psql -U postgres -d postgres --no-psqlrc --set ON_ERROR_STOP=1 < "${test_file}"
             echo "::endgroup::"
