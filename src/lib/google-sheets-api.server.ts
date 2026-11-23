@@ -1,8 +1,11 @@
 export type GoogleSheetsCredentials = { serviceAccountJson?: string | undefined };
 
 export class GoogleSheetsApiError extends Error {
-  constructor(readonly status: number) {
-    super(`Google Sheets API request failed (${status}).`);
+  constructor(
+    readonly status: number,
+    readonly stage: 'credentials' | 'oauth' | 'sheets' = 'sheets',
+  ) {
+    super(`Google Sheets ${stage} request failed (${status}).`);
     this.name = 'GoogleSheetsApiError';
   }
 }
@@ -17,7 +20,7 @@ function parseServiceAccount(json: string): ServiceAccount {
     if (typeof value.client_email !== 'string' || typeof value.private_key !== 'string') throw new Error('missing fields');
     return { client_email: value.client_email, private_key: value.private_key };
   } catch {
-    throw new GoogleSheetsApiError(403);
+    throw new GoogleSheetsApiError(400, 'credentials');
   }
 }
 
@@ -69,7 +72,7 @@ export async function getGoogleAccessToken(serviceAccountJson: string, request: 
     }),
     signal: AbortSignal.timeout(20_000),
   });
-  if (!response.ok) throw new GoogleSheetsApiError(response.status);
+  if (!response.ok) throw new GoogleSheetsApiError(response.status, 'oauth');
   const token = await response.json() as { access_token?: unknown; expires_in?: unknown };
   if (typeof token.access_token !== 'string') throw new GoogleSheetsApiError(502);
   const expiresIn = typeof token.expires_in === 'number' ? token.expires_in : 3600;
