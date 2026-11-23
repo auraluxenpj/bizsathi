@@ -48,6 +48,7 @@ BEGIN
   SELECT id INTO v FROM public.product_variants WHERE business_id=b AND sku='SKU-WEB-RESERVATION-TEST';
   INSERT INTO public.website_inventory_integrations(business_id,branch_id,enabled) VALUES(b,br,true)
     ON CONFLICT (business_id) DO UPDATE SET branch_id=EXCLUDED.branch_id,enabled=true;
+  UPDATE public.auraluxe_sync_control SET catalogue_enabled=true WHERE business_id=b;
   SELECT product_id INTO p FROM public.product_variants WHERE business_id=b AND sku='SKU-WEB-RESERVATION-TEST';
   PERFORM public.upsert_auraluxe_catalogue_mappings(b,jsonb_build_array(jsonb_build_object(
     'sku','SKU-WEB-RESERVATION-TEST',
@@ -73,6 +74,7 @@ BEGIN
   EXCEPTION WHEN raise_exception THEN
     IF SQLERRM NOT LIKE 'SKU is already linked to a different Auraluxe product%' THEN RAISE; END IF;
   END;
+  UPDATE public.auraluxe_sync_control SET catalogue_enabled=false WHERE business_id=b;
   UPDATE public.auraluxe_sync_control SET stock_enabled=true WHERE business_id=b;
 
   result:=public.reserve_website_inventory(b,r1,br,'WEB-ORDER-1','[{"sku":"SKU-WEB-RESERVATION-TEST","quantity":4}]');
