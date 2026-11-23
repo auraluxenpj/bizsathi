@@ -220,6 +220,15 @@ BEGIN
   ASSERT public.ack_website_inventory_outbox(b,(events->6->>'id')::bigint)=7,'Legacy cursor acknowledgement remains compatible';
   ASSERT (public.website_inventory_status(b,r4)->>'status')='committed','Uncertain operation status can be reconciled';
   UPDATE public.auraluxe_sync_control SET stock_enabled=false WHERE business_id=b;
+  BEGIN
+    PERFORM public.reserve_website_inventory(
+      b,'e1070000-0000-4000-8000-000000000081',br,'SYNC-GATE-CHECK',
+      jsonb_build_array(jsonb_build_object('sku','SKU-WEB-RESERVATION-TEST','quantity',1))
+    );
+    RAISE EXCEPTION 'Website reservation must fail when transactional stock sync is disabled';
+  EXCEPTION WHEN raise_exception THEN
+    IF SQLERRM NOT LIKE 'Website stock event sync is not enabled%' THEN RAISE; END IF;
+  END;
 END
 $final_commit$;
 
