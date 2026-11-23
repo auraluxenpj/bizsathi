@@ -2,7 +2,7 @@ import { createServerFn } from '@tanstack/react-start';
 import { z } from 'zod';
 import { requireSupabaseAuth } from '@/integrations/supabase/auth-middleware';
 import { callWebsite, callWebsiteCatalogue, probeWebsiteCatalogueAuth } from './website-sync.server';
-import { AURALUXE_BUSINESS_ID, compareStock, eligibleStock, localSnapshot, websiteState } from './website-sync';
+import { AURALUXE_BUSINESS_ID, compareStock, eligibleStock, localSnapshot, validateCatalogueIdentity, websiteState } from './website-sync';
 
 const input = z.object({ businessId: z.literal(AURALUXE_BUSINESS_ID), branchId: z.string().uuid() });
 export const compareWebsiteStock = createServerFn({ method: 'POST' }).middleware([requireSupabaseAuth]).inputValidator(input).handler(async ({ data, context }) => {
@@ -85,13 +85,16 @@ export const syncWebsiteCatalogueDrafts = createServerFn({ method: 'POST' })
           name: product.name,
           category: product.category ?? '',
           variant_name: variant.name,
-          model_code: variant.model_code,
+          model_code: variant.model_code?.trim() || null,
           sku: variant.sku,
           selling_price: sellingPrice,
         });
       }
       if ((page.data?.length ?? 0) < 500) break;
     }
+
+    const identityError = validateCatalogueIdentity(rows);
+    if (identityError) throw new Error(`Catalogue model-number validation failed: ${identityError}. No catalogue batch was sent.`);
 
     if (!rows.length) return { rows: 0, createdProducts: 0, updatedProducts: 0, createdVariants: 0, updatedVariants: 0, stockImported: false, productsPublished: false };
 
