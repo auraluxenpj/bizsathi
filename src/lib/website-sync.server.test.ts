@@ -1,11 +1,11 @@
 // @vitest-environment node
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { callWebsite, callWebsiteCatalogue, websiteUrl } from './website-sync.server';
+import { callWebsite, callWebsiteCatalogue, probeWebsiteCatalogueAuth, websiteUrl } from './website-sync.server';
 
 const SECRET = 'shared-secret-with-enough-length-1234';
 const json = (body: unknown, init: ResponseInit = {}) => new Response(JSON.stringify(body), { status: 200, headers: { 'content-type': 'application/json' }, ...init });
 beforeEach(() => { process.env['INVENTORY_SYNC_SECRET'] = SECRET; delete process.env['WEBSITE_SYNC_URL']; delete process.env['WEBSITE_CATALOGUE_SYNC_URL']; });
-afterEach(() => { vi.unstubAllGlobals(); delete process.env['INVENTORY_SYNC_SECRET']; delete process.env['WEBSITE_SYNC_URL']; });
+afterEach(() => { vi.unstubAllGlobals(); delete process.env['INVENTORY_SYNC_SECRET']; delete process.env['WEBSITE_SYNC_URL']; delete process.env['WEBSITE_CATALOGUE_SYNC_URL']; });
 
 describe('website client', () => {
   it('uses the saved address when one is set, otherwise the default', () => {
@@ -58,6 +58,27 @@ describe('website client', () => {
   it('reports an invalid catalogue URL separately from a network failure', async () => {
     process.env['WEBSITE_CATALOGUE_SYNC_URL'] = 'http://auraluxe.com.np/api/public/bizsathi-catalogue';
     await expect(callWebsiteCatalogue({ items: [] })).rejects.toThrow(/WEBSITE_CATALOGUE_SYNC_URL must be an https address/);
+  });
+  it('probes Auraluxe with a read-only GET and the catalogue secret', async () => {
+    const fetchMock = vi.fn(async (_u: string, _i: RequestInit) => json({ ok: true, authenticated: true }));
+    vi.stubGlobal('fetch', fetchMock);
+    expect(await probeWebsiteCatalogueAuth()).toEqual({ ok: true, status: 200, message: 'Auraluxe accepted the secret stored in the BizSathi Worker.' });
+    const [url, init] = fetchMock.mock.calls[0]!;
+    expect(url).toBe('https://www.auraluxe.com.np/api/public/bizsathi-inventory-auth');
+    expect(init.method).toBe('GET');
+    expect(init.redirect).toBe('manual');
+    expect((init.headers as Record<string, string>)['Authorization']).toBe(`Bearer ${SECRET}`);
+  });
+  it('reports a rejected BizSathi secret without exposing it', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => new Response(null, { status: 401 })));
+    expect(await probeWebsiteCatalogueAuth()).toEqual({ ok: false, status: 401, message: 'Auraluxe rejected the secret stored in the BizSathi Worker.' });
+  });
+  it('does not make a request when the BizSathi catalogue secret is missing', async () => {
+    delete process.env['INVENTORY_SYNC_SECRET'];
+    const fetchMock = vi.fn();
+    vi.stubGlobal('fetch', fetchMock);
+    expect(await probeWebsiteCatalogueAuth()).toEqual({ ok: false, status: 0, message: 'BizSathi INVENTORY_SYNC_SECRET is missing or too short.' });
+    expect(fetchMock).not.toHaveBeenCalled();
   });
   it('requires the shared secret', async () => {
     delete process.env['INVENTORY_SYNC_SECRET'];

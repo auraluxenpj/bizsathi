@@ -23,6 +23,32 @@ function websiteCatalogueUrl(): string {
   return address.toString();
 }
 
+/** Read-only preflight: tests the exact secret used by the catalogue caller against Auraluxe's auth-only endpoint. */
+export async function probeWebsiteCatalogueAuth() {
+  const secret = process.env['INVENTORY_SYNC_SECRET'];
+  if (!secret || secret.length < 24) {
+    return { ok: false, status: 0, message: 'BizSathi INVENTORY_SYNC_SECRET is missing or too short.' };
+  }
+  const url = new URL('/api/public/bizsathi-inventory-auth', websiteCatalogueUrl()).toString();
+  let response: Response;
+  try {
+    response = await fetch(url, {
+      method: 'GET',
+      redirect: 'manual',
+      signal: AbortSignal.timeout(10000),
+      headers: { Accept: 'application/json', Authorization: `Bearer ${secret}` },
+    });
+  } catch {
+    return { ok: false, status: 0, message: 'Could not reach Auraluxe authentication probe over HTTPS.' };
+  }
+  await response.body?.cancel();
+  if (response.status === 200) return { ok: true, status: 200, message: 'Auraluxe accepted the secret stored in the BizSathi Worker.' };
+  if (response.status === 401) return { ok: false, status: 401, message: 'Auraluxe rejected the secret stored in the BizSathi Worker.' };
+  if (response.status === 503) return { ok: false, status: 503, message: 'Auraluxe authentication probe is not configured.' };
+  if (response.status >= 300 && response.status < 400) return { ok: false, status: response.status, message: 'Auraluxe authentication probe redirected; the secret was not forwarded.' };
+  return { ok: false, status: response.status, message: `Auraluxe authentication probe returned HTTP ${response.status}.` };
+}
+
 export async function callWebsite(request: Record<string, unknown>) {
   const secret = process.env['INVENTORY_SYNC_SECRET'];
   if (!secret) throw new Error('Website sync is not configured. Save INVENTORY_SYNC_SECRET in both apps.');

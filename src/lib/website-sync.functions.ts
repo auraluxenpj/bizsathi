@@ -1,7 +1,7 @@
 import { createServerFn } from '@tanstack/react-start';
 import { z } from 'zod';
 import { requireSupabaseAuth } from '@/integrations/supabase/auth-middleware';
-import { callWebsite, callWebsiteCatalogue } from './website-sync.server';
+import { callWebsite, callWebsiteCatalogue, probeWebsiteCatalogueAuth } from './website-sync.server';
 import { AURALUXE_BUSINESS_ID, compareStock, eligibleStock, localSnapshot, websiteState } from './website-sync';
 
 const input = z.object({ businessId: z.literal(AURALUXE_BUSINESS_ID), branchId: z.string().uuid() });
@@ -17,6 +17,19 @@ export const compareWebsiteStock = createServerFn({ method: 'POST' }).middleware
 });
 
 const catalogueInput = z.object({ businessId: z.literal(AURALUXE_BUSINESS_ID) });
+
+/** Administrator-only, read-only check; does not import products or touch inventory. */
+export const testWebsiteCatalogueConnection = createServerFn({ method: 'POST' })
+  .middleware([requireSupabaseAuth])
+  .inputValidator(catalogueInput)
+  .handler(async ({ data, context }) => {
+    const { data: allowed, error: roleError } = await context.supabase.rpc('has_business_role', {
+      _business_id: data.businessId,
+      _min_role: 'admin',
+    });
+    if (roleError || !allowed) throw new Error('Auraluxe administrator access is required.');
+    return probeWebsiteCatalogueAuth();
+  });
 const catalogueResult = z.object({
   result: z.object({
     created_products: z.number().int().nonnegative(),
