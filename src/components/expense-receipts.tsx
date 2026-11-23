@@ -120,9 +120,9 @@ function Body({ ctx }: { ctx: WorkspaceContext }) {
   const all = receipts.data?.receipts ?? []; const shown = all.filter(r => r.status === tab); const posted = all.filter(r => r.status === 'posted');
   const count = (s: Status) => all.filter(r => r.status === s).length;
   return <>
-    <input ref={input} type="file" multiple accept="image/jpeg,image/png,application/pdf" capture="environment" className="sr-only" aria-label="Receipt files" onChange={e => upload(e.target.files)} />
+    <input ref={input} type="file" multiple accept="image/jpeg,image/png,image/webp,application/pdf" capture="environment" className="sr-only" aria-label="Receipt files" onChange={e => upload(e.target.files)} />
     <Button className="mt-5 h-12 w-full" onClick={() => input.current?.click()}><Camera />Scan receipts</Button>
-    <p className="mt-2 text-xs text-muted-foreground">Photos (JPG, PNG) or PDFs up to 8 MB. AI suggests the details; you check and post each one.</p>
+    <p className="mt-2 text-xs text-muted-foreground">Photos (JPG, PNG, WebP) are converted to WebP (max 512 KB); PDFs up to 8 MB. AI suggests the details; you check and post each one.</p>
     {queue.length > 0 && <ul className="mt-3 space-y-1 text-sm" aria-label="Upload progress">{queue.map((q, i) => <li key={i} className="flex justify-between gap-3"><span className="min-w-0 truncate">{q.name}</span><span className={`shrink-0 ${q.state === 'failed' ? 'text-destructive' : q.state === 'done' ? 'text-emerald-600' : 'text-muted-foreground'}`}>{q.state === 'uploading' ? 'Uploading…' : q.state === 'reading' ? 'Reading…' : q.state === 'done' ? (q.note ? 'Added, fill in manually' : 'Ready to review') : (q.note ?? 'Failed')}</span></li>)}</ul>}
     <div className="mt-5 flex rounded-lg border p-0.5 text-sm" role="group" aria-label="Status">{tabs.map(t => <button key={t.id} type="button" aria-pressed={tab === t.id} onClick={() => setTab(t.id)} className={`flex-1 rounded-md px-2 py-1.5 ${tab === t.id ? 'bg-primary text-primary-foreground' : 'text-muted-foreground'}`}>{t.label} ({count(t.id)})</button>)}</div>
     {receipts.error ? <div className="py-8"><p role="alert" className="text-sm text-destructive">{receipts.error.message}</p><Button className="mt-4" variant="outline" onClick={() => receipts.refetch()}>Try again</Button></div>
