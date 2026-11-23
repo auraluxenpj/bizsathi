@@ -37,7 +37,7 @@ BEGIN
     'sizes',to_jsonb(coalesce(p.catalogue_sizes,'{}'::text[])),
     'purchase_price',v.purchase_price,'mrp',v.mrp,'selling_price',v.selling_price,
     'wholesale_price',v.wholesale_price,'reorder_level',v.reorder_level,
-    'published',p.website_published,'notes',coalesce(v.catalogue_notes,p.catalogue_notes),
+    'published',(p.website_published AND p.is_active AND v.is_active),'notes',coalesce(v.catalogue_notes,p.catalogue_notes),
     'barcode',v.barcode
   ));
 END $$;
@@ -60,10 +60,10 @@ BEGIN
   RETURN NEW;
 END $$;
 CREATE TRIGGER auraluxe_catalogue_variant_outbox
-  AFTER INSERT OR UPDATE OF name,sku,barcode,unit,selling_price,purchase_price,mrp,wholesale_price,reorder_level,model_code,catalogue_notes
+  AFTER INSERT OR UPDATE OF name,sku,barcode,unit,selling_price,purchase_price,mrp,wholesale_price,reorder_level,model_code,catalogue_notes,is_active
   ON public.product_variants FOR EACH ROW EXECUTE FUNCTION public.enqueue_auraluxe_catalogue_from_variant();
 CREATE TRIGGER auraluxe_catalogue_product_outbox
-  AFTER UPDATE OF name,category,catalogue_sizes,catalogue_notes,website_published
+  AFTER UPDATE OF name,category,catalogue_sizes,catalogue_notes,website_published,is_active
   ON public.products FOR EACH ROW EXECUTE FUNCTION public.enqueue_auraluxe_catalogue_from_product();
 
 CREATE OR REPLACE FUNCTION public.claim_auraluxe_catalogue_outbox(_business_id uuid,_lease uuid,_limit integer DEFAULT 50)
