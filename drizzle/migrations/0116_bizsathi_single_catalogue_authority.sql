@@ -6,7 +6,8 @@ LANGUAGE plpgsql SECURITY DEFINER SET search_path=public AS $$
 BEGIN
   RAISE EXCEPTION 'BizSathi is the sole catalogue authority; Auraluxe catalogue writes are not accepted';
 END $$;
-REVOKE ALL ON FUNCTION public.upsert_shared_catalogue_from_auraluxe(uuid,jsonb) FROM PUBLIC,anon,authenticated,service_role;
+REVOKE ALL ON FUNCTION public.upsert_shared_catalogue_from_auraluxe(uuid,jsonb) FROM PUBLIC,anon,authenticated;
+GRANT EXECUTE ON FUNCTION public.upsert_shared_catalogue_from_auraluxe(uuid,jsonb) TO service_role;
 
 -- One-time complete snapshot used for initial Auraluxe reconciliation.
 -- It is deliberately separate from incremental outbox delivery.
