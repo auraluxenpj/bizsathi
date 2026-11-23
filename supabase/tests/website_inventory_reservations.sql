@@ -22,7 +22,7 @@ SET LOCAL ROLE authenticated;
 SELECT set_config('request.jwt.claims','{"sub":"e1070000-0000-4000-8000-000000000001","role":"authenticated"}',true);
 
 DO $setup_stock$
-DECLARE b uuid:='c0f0ed15-97e4-4859-ac8f-a2d4e81f5b01'; br uuid; v uuid;
+DECLARE b uuid:='c0f0ed15-97e4-4859-ac8f-a2d4e81f5b01'; br uuid; v uuid; p uuid;
 BEGIN
   SELECT id INTO br FROM public.branches WHERE business_id=b AND code='WEB';
   PERFORM public.save_catalogue_variant(b,'[{"product_name":"Reservation test item","sku":"SKU-WEB-RESERVATION-TEST","selling_price":100}]');
@@ -48,10 +48,14 @@ BEGIN
   SELECT id INTO v FROM public.product_variants WHERE business_id=b AND sku='SKU-WEB-RESERVATION-TEST';
   INSERT INTO public.website_inventory_integrations(business_id,branch_id,enabled) VALUES(b,br,true)
     ON CONFLICT (business_id) DO UPDATE SET branch_id=EXCLUDED.branch_id,enabled=true;
-  UPDATE public.products SET auraluxe_product_id='e1070000-0000-4000-8000-000000000061'
-   WHERE id=(SELECT product_id FROM public.product_variants WHERE business_id=b AND sku='SKU-WEB-RESERVATION-TEST');
-  UPDATE public.product_variants SET auraluxe_variant_id='e1070000-0000-4000-8000-000000000062'
-   WHERE business_id=b AND sku='SKU-WEB-RESERVATION-TEST';
+  SELECT product_id INTO p FROM public.product_variants WHERE business_id=b AND sku='SKU-WEB-RESERVATION-TEST';
+  PERFORM public.upsert_auraluxe_catalogue_mappings(b,jsonb_build_array(jsonb_build_object(
+    'sku','SKU-WEB-RESERVATION-TEST',
+    'auraluxe_product_id','e1070000-0000-4000-8000-000000000061',
+    'auraluxe_variant_id','e1070000-0000-4000-8000-000000000062',
+    'bizsathi_product_id',p,
+    'bizsathi_variant_id',v
+  )));
   UPDATE public.auraluxe_sync_control SET stock_enabled=true WHERE business_id=b;
 
   result:=public.reserve_website_inventory(b,r1,br,'WEB-ORDER-1','[{"sku":"SKU-WEB-RESERVATION-TEST","quantity":4}]');
