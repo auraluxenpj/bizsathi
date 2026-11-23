@@ -75,7 +75,15 @@ BEGIN
   RETURN QUERY
   WITH picked AS (
     SELECT id FROM public.auraluxe_catalogue_outbox
-     WHERE business_id=_business_id AND ((status='pending' AND available_at<=now()) OR (status='processing' AND locked_until<now()))
+     WHERE business_id=_business_id
+       AND ((status='pending' AND available_at<=now()) OR (status='processing' AND locked_until<now()))
+       AND NOT EXISTS (
+         SELECT 1 FROM public.auraluxe_catalogue_outbox earlier
+          WHERE earlier.business_id=public.auraluxe_catalogue_outbox.business_id
+            AND earlier.sku=public.auraluxe_catalogue_outbox.sku
+            AND earlier.id<public.auraluxe_catalogue_outbox.id
+            AND earlier.status<>'delivered'
+       )
      ORDER BY id FOR UPDATE SKIP LOCKED LIMIT _limit
   )
   UPDATE public.auraluxe_catalogue_outbox o
