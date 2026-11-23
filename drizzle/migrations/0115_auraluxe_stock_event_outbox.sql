@@ -278,20 +278,7 @@ END $patch_website_ack$;
 
 
 
--- Inbound Auraluxe catalogue writes are also blocked unless the owner-approved
--- catalogue switch is enabled; the publisher claim gate alone is not sufficient.
-DO $patch_inbound_catalogue_gate$
-DECLARE body text; changed text;
-BEGIN
-  SELECT pg_get_functiondef('public.upsert_shared_catalogue_from_auraluxe(uuid,jsonb)'::regprocedure) INTO body;
-  changed:=replace(body,
-    E'BEGIN\n  IF auth.uid() IS NOT NULL THEN',
-    E'BEGIN\n  IF NOT coalesce((SELECT catalogue_enabled FROM public.auraluxe_sync_control WHERE business_id=_business_id),false) THEN RAISE EXCEPTION ''Catalogue sync is disabled''; END IF;\n  IF auth.uid() IS NOT NULL THEN');
-  IF changed=body OR position('Catalogue sync is disabled' in changed)=0 THEN
-    RAISE EXCEPTION 'Could not install inbound catalogue approval gate';
-  END IF;
-  EXECUTE changed;
-END $patch_inbound_catalogue_gate$;
+
 
 -- Cross-reference IDs are immutable once a SKU is mapped. A different remote
 -- product/variant ID requires an explicit remapping workflow, not an upsert overwrite.
