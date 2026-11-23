@@ -3565,6 +3565,122 @@ export type Database = {
           },
         ]
       }
+      website_inventory_movements: {
+        Row: {
+          branch_id: string
+          business_id: string
+          created_at: string
+          id: string
+          quantity: number
+          reference: string
+          reservation_id: string
+          sku: string
+          variant_id: string
+        }
+        Insert: {
+          branch_id: string
+          business_id: string
+          created_at?: string
+          id?: string
+          quantity: number
+          reference: string
+          reservation_id: string
+          sku: string
+          variant_id: string
+        }
+        Update: {
+          branch_id?: string
+          business_id?: string
+          created_at?: string
+          id?: string
+          quantity?: number
+          reference?: string
+          reservation_id?: string
+          sku?: string
+          variant_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "website_inventory_movements_business_id_branch_id_fkey"
+            columns: ["business_id", "branch_id"]
+            isOneToOne: false
+            referencedRelation: "branches"
+            referencedColumns: ["business_id", "id"]
+          },
+          {
+            foreignKeyName: "website_inventory_movements_business_id_reservation_id_fkey"
+            columns: ["business_id", "reservation_id"]
+            isOneToOne: false
+            referencedRelation: "website_inventory_reservations"
+            referencedColumns: ["business_id", "id"]
+          },
+          {
+            foreignKeyName: "website_inventory_movements_business_id_variant_id_fkey"
+            columns: ["business_id", "variant_id"]
+            isOneToOne: false
+            referencedRelation: "product_variants"
+            referencedColumns: ["business_id", "id"]
+          },
+        ]
+      }
+      website_inventory_return_movements: {
+        Row: {
+          branch_id: string
+          business_id: string
+          created_at: string
+          id: string
+          quantity: number
+          reference: string
+          return_id: string
+          sku: string
+          variant_id: string
+        }
+        Insert: {
+          branch_id: string
+          business_id: string
+          created_at?: string
+          id?: string
+          quantity: number
+          reference: string
+          return_id: string
+          sku: string
+          variant_id: string
+        }
+        Update: {
+          branch_id?: string
+          business_id?: string
+          created_at?: string
+          id?: string
+          quantity?: number
+          reference?: string
+          return_id?: string
+          sku?: string
+          variant_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "website_inventory_return_movements_business_id_branch_id_fkey"
+            columns: ["business_id", "branch_id"]
+            isOneToOne: false
+            referencedRelation: "branches"
+            referencedColumns: ["business_id", "id"]
+          },
+          {
+            foreignKeyName: "website_inventory_return_movements_business_id_return_id_fkey"
+            columns: ["business_id", "return_id"]
+            isOneToOne: false
+            referencedRelation: "website_inventory_returns"
+            referencedColumns: ["business_id", "id"]
+          },
+          {
+            foreignKeyName: "website_inventory_return_movements_business_id_variant_id_fkey"
+            columns: ["business_id", "variant_id"]
+            isOneToOne: false
+            referencedRelation: "product_variants"
+            referencedColumns: ["business_id", "id"]
+          },
+        ]
+      }
     }
     Views: {
       team_invitations_status: {
