@@ -17,14 +17,15 @@ AS $function$
 DECLARE
   next_number bigint;
 BEGIN
-  IF NEW.kind = 'sale' AND NEW.status = 'confirmed' THEN
+  IF NEW.kind = 'sale' AND NEW.status = 'confirmed'
+     AND EXISTS (SELECT 1 FROM public.businesses b WHERE b.id = NEW.business_id AND upper(b.name) = 'AURALUXE') THEN
     INSERT INTO public.commerce_reference_counters (business_id, last_number)
     VALUES (NEW.business_id, 1)
     ON CONFLICT (business_id)
     DO UPDATE SET last_number = public.commerce_reference_counters.last_number + 1
     RETURNING last_number INTO next_number;
 
-    NEW.reference := 'AL-' || to_char(NEW.document_date, 'DDMMYY') || '-' || lpad(next_number::text, 3, '0');
+    NEW.reference := 'AL-' || to_char(NEW.document_date, 'DDMMYY') || '-' || CASE WHEN next_number < 1000 THEN lpad(next_number::text, 3, '0') ELSE next_number::text END;
   END IF;
   RETURN NEW;
 END;
