@@ -147,6 +147,27 @@ export default {
       localDelivered: localCatalogueResult.delivered ?? 0,
       remoteDelivered: remoteCatalogueResult.delivered ?? 0,
     });
+
+    const stockRequest = new Request('https://bizsathi.internal/api/public/auraluxe-stock-publish', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${secret}`,
+        'Content-Type': 'application/json',
+        Accept: 'application/json',
+      },
+      body: JSON.stringify({ action: 'publish_outbox' }),
+    });
+    const stockResponse = await handler.fetch(stockRequest, env, ctx);
+    if (!stockResponse.ok) {
+      throw new Error(`Auraluxe stock event publisher returned HTTP ${stockResponse.status}`);
+    }
+    const stockResult = await stockResponse.json() as { ok?: boolean; delivered?: number; blocked?: boolean };
+    if (stockResult.ok !== true || stockResult.blocked === true) {
+      throw new Error('Auraluxe stock event publisher did not confirm delivery');
+    }
+    console.info('[shared-stock] scheduled event run', {
+      delivered: stockResult.delivered ?? 0,
+    });
   },
 
   async fetch(request: Request, env: unknown, ctx: unknown) {
