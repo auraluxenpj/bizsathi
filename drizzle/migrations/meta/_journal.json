@@ -358,6 +358,13 @@
       "when": 1795439003000,
       "tag": "0119_auraluxe_catalogue_mapping_reconcile",
       "breakpoints": true
+    },
+    {
+      "idx": 51,
+      "version": "7",
+      "when": 1795460000000,
+      "tag": "0120_catalogue_serial_order",
+      "breakpoints": true
     }
   ]
 }
