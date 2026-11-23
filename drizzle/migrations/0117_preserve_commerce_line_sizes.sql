@@ -17,6 +17,7 @@ DECLARE
   v_product_id uuid;
   v_variant_id uuid;
   v_catalogue_sizes text[];
+  v_product_name text;
   v_size text;
   v_qty numeric;
   v_sum numeric;
@@ -47,27 +48,28 @@ BEGIN
       END IF;
     END IF;
 
+    SELECT product_id INTO v_product_id
+      FROM public.product_variants
+     WHERE business_id=NEW.business_id AND id=v_variant_id;
+    IF v_product_id IS NULL THEN
+      RAISE EXCEPTION 'Commerce line SKU was not found';
+    END IF;
+    SELECT catalogue_sizes,name INTO v_catalogue_sizes,v_product_name
+      FROM public.products WHERE business_id=NEW.business_id AND id=v_product_id;
+
+    IF NEW.kind='sale' AND coalesce(cardinality(v_catalogue_sizes),0)>0
+       AND (request_line IS NULL OR request_line->'sizeBreakdown' IS NULL) THEN
+      RAISE EXCEPTION 'Choose a size for SKU % before confirming the sale', line->>'sku';
+    END IF;
+
     IF request_line IS NULL OR request_line->'sizeBreakdown' IS NULL THEN
-      enriched := enriched || jsonb_build_array(line);
+      enriched := enriched || jsonb_build_array(line || jsonb_build_object('productName',v_product_name));
       CONTINUE;
     END IF;
 
     IF jsonb_typeof(request_line->'sizeBreakdown') <> 'array'
        OR jsonb_array_length(request_line->'sizeBreakdown') = 0 THEN
       RAISE EXCEPTION 'Choose a size and quantity for every size-enabled SKU';
-    END IF;
-
-    SELECT product_id INTO v_product_id
-      FROM public.product_variants
-     WHERE business_id=NEW.business_id AND id=v_variant_id;
-    IF v_product_id IS NULL THEN
-      RAISE EXCEPTION 'Size allocation SKU was not found';
-    END IF;
-    SELECT catalogue_sizes INTO v_catalogue_sizes
-      FROM public.products WHERE business_id=NEW.business_id AND id=v_product_id;
-    IF NEW.kind='sale' AND coalesce(cardinality(v_catalogue_sizes),0)>0
-       AND (request_line IS NULL OR request_line->'sizeBreakdown' IS NULL) THEN
-      RAISE EXCEPTION 'Choose a size for SKU % before confirming the sale', line->>'sku';
     END IF;
 
     v_sum := 0;
@@ -126,7 +128,7 @@ BEGIN
       END LOOP;
     END IF;
 
-    enriched := enriched || jsonb_build_array(line || jsonb_build_object('sizeBreakdown',request_line->'sizeBreakdown'));
+    enriched := enriched || jsonb_build_array(line || jsonb_build_object('sizeBreakdown',request_line->'sizeBreakdown','productName',v_product_name));
   END LOOP;
 
   NEW.lines := enriched;
