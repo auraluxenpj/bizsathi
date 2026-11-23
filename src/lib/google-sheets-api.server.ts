@@ -16,7 +16,7 @@ export class GoogleSheetsApiError extends Error {
     readonly stage: 'credentials' | 'signing' | 'oauth' | 'sheets' | 'oauth-network' | 'sheets-network' = 'sheets',
     readonly diagnostic?: GoogleSheetsNetworkDiagnostic,
   ) {
-    super(\`Google Sheets \${stage} request failed (\${status}).\`);
+    super('Google Sheets ' + stage + ' request failed (' + status + ').');
     this.name = 'GoogleSheetsApiError';
   }
 }
@@ -63,9 +63,9 @@ async function createAssertion(account: ServiceAccount): Promise<string> {
     iat: issuedAt,
     exp: issuedAt + 3600,
   }));
-  const unsigned = \`\${header}.\${payload}\`;
+  const unsigned = header + '.' + payload;
   const signature = new Uint8Array(await crypto.subtle.sign('RSASSA-PKCS1-v1_5', key, new TextEncoder().encode(unsigned)));
-  return \`\${unsigned}.\${base64Url(signature)}\`;
+  return unsigned + '.' + base64Url(signature);
 }
 
 function safeDiagnosticText(value: unknown): string | undefined {
@@ -154,13 +154,13 @@ export async function readGoogleSheetRange(
 ): Promise<unknown[][]> {
   if (!credentials.serviceAccountJson) throw new GoogleSheetsApiError(403);
   const token = await getGoogleAccessToken(credentials.serviceAccountJson, request);
-  const url = new URL(\`https://sheets.googleapis.com/v4/spreadsheets/\${spreadsheetId}/values/\${encodeURIComponent(range)}\`);
+  const url = new URL('https://sheets.googleapis.com/v4/spreadsheets/' + spreadsheetId + '/values/' + encodeURIComponent(range));
   url.searchParams.set('valueRenderOption', 'FORMATTED_VALUE');
   let response: Response;
   const startedAt = Date.now();
   try {
     response = await request(url, {
-      headers: { Authorization: \`Bearer \${token}\` },
+      headers: { Authorization: 'Bearer ' + token },
       redirect: 'error',
       signal: AbortSignal.timeout(20_000),
     });
@@ -183,9 +183,9 @@ export async function writeGoogleSheetRanges(
   if (!credentials.serviceAccountJson || !data.length) return false;
   try {
     const token = await getGoogleAccessToken(credentials.serviceAccountJson, request);
-    const response = await request(\`https://sheets.googleapis.com/v4/spreadsheets/\${spreadsheetId}/values:batchUpdate\`, {
+    const response = await request('https://sheets.googleapis.com/v4/spreadsheets/' + spreadsheetId + '/values:batchUpdate', {
       method: 'POST',
-      headers: { Authorization: \`Bearer \${token}\`, 'Content-Type': 'application/json' },
+      headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' },
       body: JSON.stringify({ valueInputOption: 'RAW', data }),
       redirect: 'error',
       signal: AbortSignal.timeout(20_000),
