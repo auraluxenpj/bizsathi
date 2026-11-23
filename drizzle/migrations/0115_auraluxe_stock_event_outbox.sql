@@ -317,14 +317,6 @@ BEGIN
      WHERE v.business_id=_business_id AND lower(btrim(v.sku))=sku AND v.id=bv
      FOR UPDATE;
     IF NOT FOUND THEN RAISE EXCEPTION 'BizSathi SKU/variant identity changed during Auraluxe mapping'; END IF;
-    IF EXISTS (SELECT 1 FROM public.product_variants WHERE business_id=_business_id AND id=variant_id
-      AND auraluxe_variant_id IS NOT NULL AND auraluxe_variant_id<>av) THEN
-      RAISE EXCEPTION 'SKU already maps to a different Auraluxe variant';
-    END IF;
-    IF EXISTS (SELECT 1 FROM public.products WHERE business_id=_business_id AND id=product_id
-      AND auraluxe_product_id IS NOT NULL AND auraluxe_product_id<>ap) THEN
-      RAISE EXCEPTION 'SKU already maps to a different Auraluxe product';
-    END IF;
     UPDATE public.products SET auraluxe_product_id=ap WHERE business_id=_business_id AND id=product_id;
     UPDATE public.product_variants SET auraluxe_variant_id=av WHERE business_id=_business_id AND id=variant_id;
     n:=n+1;
