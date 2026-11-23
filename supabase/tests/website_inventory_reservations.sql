@@ -41,7 +41,7 @@ DECLARE
   r2 uuid:='e1070000-0000-4000-8000-000000000022';
   r3 uuid:='e1070000-0000-4000-8000-000000000023';
   r4 uuid:='e1070000-0000-4000-8000-000000000024';
-  result jsonb; rejected boolean;
+  result jsonb; rejected boolean; snapshot jsonb;
 BEGIN
   SELECT id INTO b FROM public.businesses WHERE name='Website reservation fixture';
   SELECT id INTO br FROM public.branches WHERE business_id=b AND code='WEB';
@@ -50,6 +50,10 @@ BEGIN
     ON CONFLICT (business_id) DO UPDATE SET branch_id=EXCLUDED.branch_id,enabled=true;
   UPDATE public.auraluxe_sync_control SET catalogue_enabled=true WHERE business_id=b;
   SELECT product_id INTO p FROM public.product_variants WHERE business_id=b AND sku='SKU-WEB-RESERVATION-TEST';
+  snapshot:=public.get_auraluxe_catalogue_snapshot(b);
+  IF jsonb_array_length(snapshot)<>1 OR snapshot->0->>'sku'<>'SKU-WEB-RESERVATION-TEST' THEN
+    RAISE EXCEPTION 'BizSathi full catalogue snapshot must contain the complete authoritative SKU';
+  END IF;
   PERFORM public.upsert_auraluxe_catalogue_mappings(b,jsonb_build_array(jsonb_build_object(
     'sku','SKU-WEB-RESERVATION-TEST',
     'auraluxe_product_id','e1070000-0000-4000-8000-000000000061',
