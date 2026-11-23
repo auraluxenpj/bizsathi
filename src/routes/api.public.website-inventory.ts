@@ -52,96 +52,11 @@ function json(body: unknown, status = 200): Response {
 }
 
 
-async function publishPendingOutbox(db: InventoryRpcClient): Promise<{ published: number; blocked: boolean }> {
-  const target = process.env['AURALUXE_WEBSITE_INVENTORY_API_URL'];
-  const secret = process.env['WEBSITE_INVENTORY_SYNC_SECRET'];
-  if (!target || !target.startsWith('https://') || !secret) return { published: 0, blocked: true };
-
-  let published = 0;
-  for (let batch = 0; batch < 10; batch += 1) {
-    const leaseToken = crypto.randomUUID();
-    const claimed = await db.rpc('claim_website_inventory_outbox', {
-      _business_id: BUSINESS_ID,
-      _lease_token: leaseToken,
-      _limit: 1,
-    });
-    if (claimed.error || !Array.isArray(claimed.data)) {
-      console.warn('[website-inventory] outbox claim unavailable');
-      return { published, blocked: true };
-    }
-    if (claimed.data.length === 0) return { published, blocked: false };
-
-    const event = claimed.data[0];
-    if (!event || typeof event !== 'object' || !('payload' in event) || !('id' in event)) {
-      return { published, blocked: true };
-    }
-    const eventId = String(event.id);
-    const fail = async (detail: string) => db.rpc('fail_website_inventory_outbox_event', {
-      _business_id: BUSINESS_ID,
-      _event_id: eventId,
-      _lease_token: leaseToken,
-      _error: detail,
-    });
-
-    try {
-      const payload = event.payload;
-      if (!payload || typeof payload !== 'object' || !('items' in payload) || !Array.isArray(payload.items)) {
-        await fail('invalid outbox payload');
-        return { published, blocked: true };
-      }
-      const items: Array<{ sku: string; stock: number }> = [];
-      for (const item of payload.items) {
-        if (!item || typeof item !== 'object' || !('sku' in item) || !('available' in item)) {
-          await fail('invalid outbox item');
-          return { published, blocked: true };
-        }
-        const sku = String(item.sku);
-        const stock = Number(item.available);
-        if (!sku || !Number.isInteger(stock) || stock < 0) {
-          await fail('invalid outbox stock projection');
-          return { published, blocked: true };
-        }
-        items.push({ sku, stock });
-      }
-      if (items.length === 0 || items.length > 50) {
-        await fail('outbox item count outside supported bounds');
-        return { published, blocked: true };
-      }
-
-      const response = await fetch(target, {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${secret}`, 'Content-Type': 'application/json', Accept: 'application/json' },
-        body: JSON.stringify({ items }),
-        redirect: 'manual',
-        signal: AbortSignal.timeout(5000),
-      });
-      const result = await response.json().catch(() => null) as { ok?: boolean } | null;
-      if (!response.ok || result?.ok !== true) {
-        const detail = result && typeof result === 'object' && 'mismatches' in result
-          ? `website SKU mismatch: ${JSON.stringify(result.mismatches)}`
-          : `website projection HTTP ${response.status}`;
-        await fail(detail);
-        console.warn('[website-inventory] projection not acknowledged; event retained for retry');
-        return { published, blocked: true };
-      }
-
-      const ack = await db.rpc('ack_website_inventory_outbox_event', {
-        _business_id: BUSINESS_ID,
-        _event_id: eventId,
-        _lease_token: leaseToken,
-      });
-      if (ack.error || ack.data !== true) {
-        console.warn('[website-inventory] leased outbox acknowledgement failed');
-        return { published, blocked: true };
-      }
-      published += 1;
-    } catch (error) {
-      await fail('website projection request failed').catch(() => undefined);
-      console.warn('[website-inventory] outbox publish deferred', error);
-      return { published, blocked: true };
-    }
-  }
-  return { published, blocked: true };
+async function publishPendingOutbox(_db: InventoryRpcClient): Promise<{ published: number; blocked: boolean }> {
+  // Retired: the legacy outbox publishes absolute available-stock snapshots.
+  // The approved stock-event stream now projects immutable movement deltas.
+  // Keep the old reservation outbox readable for audit, but never write stock from it.
+  return { published: 0, blocked: false };
 }
 
 export const Route = createFileRoute('/api/public/website-inventory')({
