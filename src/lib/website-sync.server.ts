@@ -106,9 +106,18 @@ export async function callWebsiteCatalogue(request: Record<string, unknown>) {
     await response.body?.cancel();
     throw new Error(`Website catalogue address redirects to ${host}. Set WEBSITE_CATALOGUE_SYNC_URL to its final HTTPS API address; the shared secret was not forwarded.`);
   }
-  if (!response.ok) throw new Error(response.status === 401
-    ? 'Website rejected the catalogue connection (HTTP 401). Check that INVENTORY_SYNC_SECRET matches in both apps.'
-    : `Website catalogue import failed with HTTP ${response.status}.`);
+  if (!response.ok) {
+    if (response.status === 401) throw new Error('Website rejected the catalogue connection (HTTP 401). Check that INVENTORY_SYNC_SECRET matches in both apps.');
+    const body = await response.text().catch(() => '');
+    let detail = '';
+    try {
+      const parsed = JSON.parse(body) as { error?: unknown };
+      if (typeof parsed.error === 'string') detail = parsed.error.slice(0, 240);
+    } catch { /* Do not surface non-JSON response bodies. */ }
+    throw new Error(detail
+      ? `Website catalogue import failed with HTTP ${response.status}: ${detail}`
+      : `Website catalogue import failed with HTTP ${response.status}.`);
+  }
   if (!(response.headers.get('content-type') ?? '').includes('application/json')) throw new Error('Website returned a non-JSON catalogue response.');
   const result: unknown = await response.json().catch(() => null);
   if (!result || typeof result !== 'object') throw new Error('Website returned invalid catalogue data.');
