@@ -11,7 +11,7 @@ export function catalogueSizesForVariant(variantName:string, category:string|nul
  const variant=variantName.trim().toLowerCase();
  if(variant==='plus size')return [...PLUS_CLOTHING_SIZES];
  if(variant!=='standard')return [];
- const normalizedCategory=(category??'').trim().toLowerCase().replace(/[_-]+/g,' ').replace(/\\s+/g,' ');
+ const normalizedCategory=(category??'').trim().toLowerCase().replace(/[_-]+/g,' ').replace(/\s+/g,' ');
  if(NON_SIZED_STANDARD_CATEGORIES.some(item=>normalizedCategory===item||normalizedCategory.includes(item)))return [];
  return [...STANDARD_CLOTHING_SIZES];
 }
