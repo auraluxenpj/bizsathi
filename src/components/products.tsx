@@ -14,7 +14,7 @@ import { catalogueRow, type CatalogueRow, variantStockTotals, stockBalances } fr
 import { catalogueProblems, makeCatalogueCsv, parseCatalogueCsv } from '@/lib/inventory-csv';
 import { downloadCsv } from '@/lib/download-csv';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { defaultCatalogueSpreadsheet } from '@/lib/google-sheet-catalogue';
+import { defaultCatalogueSheetName, defaultCatalogueSpreadsheet } from '@/lib/google-sheet-catalogue';
 import { BarcodeStickers } from './barcode-stickers';
 import { priceWarnings } from '@/lib/price-levels';
 import { catalogueSizesForVariant, isClothingSizeCategory } from '@/lib/commerce-schemas';
@@ -22,7 +22,7 @@ const blank:CatalogueRow={product_name:'',category:'',variant_name:'Standard',si
 export function Products(){
  const view=useSearch({strict:false});const w=useInventoryWorkspace(); const can=useCan(w.businessId); const save=useServerFn(saveCatalogue);const edit=useServerFn(editVariant);const importStock=useServerFn(importCatalogueBranchStock); const upload=useRef<HTMLInputElement>(null);
  const fetchSheet=useServerFn(fetchGoogleSheetCatalogue);
- const [sheetOpen,setSheetOpen]=useState(false);const [spreadsheet,setSpreadsheet]=useState(defaultCatalogueSpreadsheet);const [sheetName,setSheetName]=useState('Master');const [sheetError,setSheetError]=useState('');const [openingBranch,setOpeningBranch]=useState('');const branches=w.access.data?.branches.filter(b=>b.is_active) ?? [];const stockBranch=openingBranch||branches[0]?.id||'';const selectedBranchName=branches.find(b=>b.id===stockBranch)?.name??'selected branch';
+ const [sheetOpen,setSheetOpen]=useState(false);const [spreadsheet,setSpreadsheet]=useState(defaultCatalogueSpreadsheet);const [sheetName,setSheetName]=useState(defaultCatalogueSheetName);const [sheetError,setSheetError]=useState('');const [openingBranch,setOpeningBranch]=useState('');const branches=w.access.data?.branches.filter(b=>b.is_active) ?? [];const stockBranch=openingBranch||branches[0]?.id||'';const selectedBranchName=branches.find(b=>b.id===stockBranch)?.name??'selected branch';
  const [open,setOpen]=useState(false);const [editing,setEditing]=useState('');const [active,setActive]=useState(true);const [draft,setDraft]=useState(blank);const [search,setSearch]=useState('');const [fitFilter,setFitFilter]=useState('all');const [status,setStatus]=useState('');const [preview,setPreview]=useState<CatalogueRow[]>([]);
  useEffect(()=>{setOpen(false);setSheetOpen(false);setSheetError('');setEditing('');setDraft(blank);setPreview([]);setStatus('');},[w.businessId]);
  const mutation=useMutation({mutationFn:async()=>editing?edit({data:{businessId:w.businessId,id:editing,values:{...catalogueRow.parse(draft),is_active:active}}}):save({data:{businessId:w.businessId,rows:[catalogueRow.parse(draft)]}}),onSuccess:()=>{setStatus('Product saved.');setOpen(false);setDraft(blank);w.inventory.refetch();},onError:e=>setStatus(e.message)});
