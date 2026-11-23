@@ -54,8 +54,8 @@ DECLARE body text; changed text;
 BEGIN
   SELECT pg_get_functiondef('public.website_inventory_require_service()'::regprocedure) INTO body;
   changed:=replace(body,
-    E'  END IF;\nEND $function
-    E'  END IF;\n  IF NOT coalesce((SELECT stock_enabled FROM public.auraluxe_sync_control WHERE business_id=''c0f0ed15-97e4-4859-ac8f-a2d4e81f5b01''::uuid),false) THEN\n    RAISE EXCEPTION ''Website stock event sync is not enabled'';\n  END IF;\nEND $function
+    E'  END IF;\nEND $function$',
+    E'  END IF;\n  IF NOT coalesce((SELECT stock_enabled FROM public.auraluxe_sync_control WHERE business_id=''c0f0ed15-97e4-4859-ac8f-a2d4e81f5b01''::uuid),false) THEN\n    RAISE EXCEPTION ''Website stock event sync is not enabled'';\n  END IF;\nEND $function$');
   IF changed=body OR position('Website stock event sync is not enabled' in changed)=0 THEN
     RAISE EXCEPTION 'Could not install website reservation stock-sync gate';
   END IF;
