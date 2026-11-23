@@ -94,12 +94,10 @@ export const Route = createFileRoute('/api/public/website-inventory')({
         try {
           const { supabaseAdmin } = await import('@/integrations/supabase/client.server');
           const db = supabaseAdmin as unknown as InventoryRpcClient;
-          const binding = await db.rpc('website_inventory_branch', { _business_id: BUSINESS_ID });
-          if (binding.error || typeof binding.data !== 'string') {
-            return json({ error: 'Website inventory integration is not enabled' }, 503);
-          }
-          const branchId = binding.data;
 
+          // The scheduled legacy outbox publisher is retired. Check its disabled
+          // state before requiring a branch binding, so this no-op cannot block
+          // the independent catalogue and stock-event publishers in the same cron.
           if (parsed.action === 'publish_outbox') {
             const enabled = await db.rpc('website_inventory_integration_enabled', { _business_id: BUSINESS_ID });
             if (enabled.error) return json({ error: 'Inventory integration status unavailable' }, 503);
@@ -107,6 +105,12 @@ export const Route = createFileRoute('/api/public/website-inventory')({
             const result = await publishPendingOutbox(db);
             return json({ ok: true, ...result });
           }
+
+          const binding = await db.rpc('website_inventory_branch', { _business_id: BUSINESS_ID });
+          if (binding.error || typeof binding.data !== 'string') {
+            return json({ error: 'Website inventory integration is not enabled' }, 503);
+          }
+          const branchId = binding.data;
 
           if (parsed.action === 'reserve') {
             const result = await db.rpc('reserve_website_inventory', {
