@@ -7,7 +7,7 @@ const headerAliases: Record<string, string[]> = {
  sizes: ['sizes','Sizes','Available Sizes','Size Options'],
  product_name: ['product_name', 'Item Name', 'item_name', 'Product Name', 'Product', 'Name'],
  category: ['category'],
- variant_name: ['variant_name', 'Variant / Size', 'Variant', 'Size'],
+ variant_name: ['variant_name', 'Variant / Size', 'Variant', 'Size', 'fit_category', 'Fit / Size Category'],
  sku: ['sku', 'Generated SKU', 'Item Code', 'Code'],
  model_code: ['model_code', 'Model Code', 'Model', 'Model No', 'Model Number'],
  barcode: ['barcode'],
