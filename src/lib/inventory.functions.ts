@@ -21,7 +21,7 @@ export const getInventory = createServerFn({method:'GET'}).middleware([requireSu
  const {data:member,error:accessError}=await context.supabase.rpc('is_business_member',{_business_id:data.businessId});
  if(accessError || !member) throw new Error('Business access is required.');
  const variants=[]; const parties=[];
- for(let offset=0;;offset+=1000){ const page=await context.supabase.from('product_variants').select('*,products!product_variants_business_id_product_id_fkey(name,category,is_active)').eq('business_id',data.businessId).order('id').range(offset,offset+999); if(page.error) throw new Error('Products could not be loaded.'); variants.push(...(page.data ?? [])); if((page.data?.length ?? 0)<1000) break; }
+ for(let offset=0;;offset+=1000){ const page=await context.supabase.from('product_variants').select('*,products!product_variants_business_id_product_id_fkey(name,category,is_active,catalogue_sizes)').eq('business_id',data.businessId).order('id').range(offset,offset+999); if(page.error) throw new Error('Products could not be loaded.'); variants.push(...(page.data ?? [])); if((page.data?.length ?? 0)<1000) break; }
  for(let offset=0;;offset+=1000){ const page=await context.supabase.from('parties').select('*').eq('business_id',data.businessId).order('id').range(offset,offset+999); if(page.error) throw new Error('Contacts could not be loaded.'); parties.push(...(page.data ?? [])); if((page.data?.length ?? 0)<1000) break; }
  const movements=[];
  for(let offset=0;;offset+=1000){const page=await context.supabase.from('commerce_stock_movements').select('id,variant_id,branch_id,quantity,kind,reference,reason,created_at,document_id').eq('business_id',data.businessId).order('created_at',{ascending:false}).order('id').range(offset,offset+999);if(page.error)throw new Error('Invoice stock history could not be loaded.');movements.push(...(page.data??[]).map(m=>({...m,operation_id:m.document_id})));if((page.data?.length??0)<1000)break;}
@@ -35,6 +35,13 @@ export const getInventory = createServerFn({method:'GET'}).middleware([requireSu
 export const saveCatalogue = createServerFn({method:'POST'}).middleware([requireSupabaseAuth]).inputValidator(catalogueInput).handler(async ({data,context})=>{
  const {data:count,error}=await context.supabase.rpc('save_catalogue_variant',{_business_id:data.businessId,_rows:data.rows.map(({opening_stock:_o,...row})=>row)});
  if(error) throw new Error('Products were not saved. Check administrator access and duplicate product variants, SKUs or barcodes.');
+ for (const row of data.rows) {
+  const {data:variant,error:variantError}=await context.supabase.from('product_variants').select('product_id').eq('business_id',data.businessId).eq('sku',row.sku).single();
+  if(variantError || !variant) throw new Error(`Sizes could not be saved for SKU ${row.sku}.`);
+  const sizes=[...new Set(row.sizes.split(',').map(s=>s.trim()).filter(Boolean))];
+  const {error:sizeError}=await context.supabase.from('products').update({catalogue_sizes:sizes}).eq('business_id',data.businessId).eq('id',variant.product_id);
+  if(sizeError) throw new Error(`Sizes could not be saved for SKU ${row.sku}.`);
+ }
  const stocked=data.rows.filter(r=>r.opening_stock>0); let opened=0; const skipped:string[]=[];
  if(data.openingBranchId&&stocked.length){
   const ids=new Map<string,string>();
@@ -52,12 +59,25 @@ export const importCatalogueBranchStock = createServerFn({method:'POST'}).middle
   _rows:data.rows.map(({opening_stock,...row})=>({...row,opening_stock})),
  });
  if(error) throw new Error(error.message.includes('different model code') ? error.message : 'CSV stock import failed. No rows were applied. Check branch access, duplicate SKUs, prices and quantities.');
+ for (const row of data.rows) {
+  const {data:variant,error:variantError}=await context.supabase.from('product_variants').select('product_id').eq('business_id',data.businessId).eq('sku',row.sku).single();
+  if(variantError || !variant) throw new Error(`Sizes could not be saved for SKU ${row.sku}.`);
+  const sizes=[...new Set(row.sizes.split(',').map(s=>s.trim()).filter(Boolean))];
+  const {error:sizeError}=await context.supabase.from('products').update({catalogue_sizes:sizes}).eq('business_id',data.businessId).eq('id',variant.product_id);
+  if(sizeError) throw new Error(`Sizes could not be saved for SKU ${row.sku}.`);
+ }
  return result as {inserted:number;updated:number;stock_adjusted:number;branch_id:string};
 });
 export const editVariant = createServerFn({method:'POST'}).middleware([requireSupabaseAuth]).inputValidator(variantEditInput).handler(async ({data,context})=>{
  const {data:allowed,error:accessError}=await context.supabase.rpc('has_business_role',{_business_id:data.businessId,_min_role:'admin'});
  if(accessError || !allowed) throw new Error('Administrator access is required.');
- const v=data.values; const {data:saved,error}=await context.supabase.from('product_variants').update({name:v.variant_name,sku:v.sku,model_code:v.model_code || null,barcode:v.barcode || null,unit:v.unit,selling_price:v.selling_price,purchase_price:v.purchase_price,mrp:v.mrp,wholesale_price:v.wholesale_price,reorder_level:v.reorder_level,is_active:v.is_active}).eq('business_id',data.businessId).eq('id',data.id).select('id').single();
+ const v=data.values;
+ const {data:existing,error:existingError}=await context.supabase.from('product_variants').select('product_id').eq('business_id',data.businessId).eq('id',data.id).single();
+ if(existingError || !existing) throw new Error('Product could not be found.');
+ const sizes=[...new Set(v.sizes.split(',').map(s=>s.trim()).filter(Boolean))];
+ const {error:sizeError}=await context.supabase.from('products').update({catalogue_sizes:sizes}).eq('business_id',data.businessId).eq('id',existing.product_id);
+ if(sizeError) throw new Error('Product sizes could not be updated.');
+ const {data:saved,error}=await context.supabase.from('product_variants').update({name:v.variant_name,sku:v.sku,model_code:v.model_code || null,barcode:v.barcode || null,unit:v.unit,selling_price:v.selling_price,purchase_price:v.purchase_price,mrp:v.mrp,wholesale_price:v.wholesale_price,reorder_level:v.reorder_level,is_active:v.is_active}).eq('business_id',data.businessId).eq('id',data.id).select('id').single();
  if(error || !saved) throw new Error('Variant could not be updated. Check unique SKU and barcode.'); return {ok:true};
 });
 export const saveParty = createServerFn({method:'POST'}).middleware([requireSupabaseAuth]).inputValidator(partyInput).handler(async ({data,context})=>{
