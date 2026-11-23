@@ -22,6 +22,9 @@ describe('Master sheet catalogue CSV compatibility', () => {
    {product_name:'Shirt',sizes:'',category:'Clothing',variant_name:'Large',sku:'S1',model_code:'',barcode:'123',unit:'pcs',selling_price:1250.5,reorder_level:2.5,opening_stock:0,purchase_price:0,mrp:0,wholesale_price:0},
   ]);
  });
+ it('parses the Master Qty header as the stock target', () => {
+  expect(parseCatalogueCsv('Item Name,Generated SKU,Master Qty\\nKurti,K-002,7', a)[0]).toMatchObject({sku:'K-002',opening_stock:7});
+ });
  it('parses one SKU with comma-separated size options', () => {
   expect(parseCatalogueCsv('Item Name,Generated SKU,Sizes,Qty\nKurti,K-001,"S, M, L, XL",12', a)[0]).toMatchObject({product_name:'Kurti',sku:'K-001',sizes:'S, M, L, XL',opening_stock:12});
  });
@@ -68,6 +71,14 @@ d2('catalogue import limit', () => {
 });
 
 import { parseCatalogueCsv as parseKarobar } from './inventory-csv';
+import { parseGoogleSheetValues } from './google-sheet-catalogue';
+describe('Google Sheets stock master validation',()=>{
+ it('requires a Master Qty column and a value on every row',()=>{
+  expect(()=>parseGoogleSheetValues([['Item Name','Generated SKU'],['Kurti','K1']],a)).toThrow(/Master Qty \/ Qty column/);
+  expect(()=>parseGoogleSheetValues([['Item Name','Generated SKU','Master Qty'],['Kurti','K1','']],a)).toThrow(/blank Master Qty/);
+  expect(parseGoogleSheetValues([['Item Name','Generated SKU','Master Qty'],['Kurti','K1',5]],a)[0]).toMatchObject({sku:'K1',opening_stock:5});
+ });
+});
 describe('Karobar item sheet', () => {
  const csv = 'Item Name,Category,Sales Price,Purchase Price,Item Code,Opening Stock,Primary Unit,MRP Price,Wholesale Price,Low Stock,HS Code,Description\nAL-ALA01-M,Kurti set 3 Piece,"1,999","1,347",ALA01-M,1,PIECES,"2,020","1,616",0,,ANUSHREE01\nAL-ALA01-XL,Kurti set 3 Piece,"1,999","1,347",ALA01-XL,3,PIECES,"2,020","1,616",0,,ANUSHREE01';
  it('groups sizes under the Description and reads opening stock', () => {
