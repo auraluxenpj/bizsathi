@@ -25,7 +25,8 @@ describe('Auraluxe POS size groups',()=>{
  it('maps Standard apparel to S through 2XL',()=>expect(catalogueSizesForVariant('Standard','Kurti')).toEqual(['S','M','L','XL','2XL']));
  it('maps Plus Size apparel to 3XL through 8XL',()=>expect(catalogueSizesForVariant('Plus Size','Kurti Set')).toEqual(['3XL','4XL','5XL','6XL','7XL','8XL']));
  it('does not show clothing sizes for Plus Size non-apparel categories',()=>expect(catalogueSizesForVariant('Plus Size','Sarees')).toEqual([]));
- it('persists the Plus Size options when importing a fit_category column',()=>{const [row]=parseCatalogueCsv('product_name,category,fit_category,sku\\nKurti Set,Kurti Set,Plus Size,K-001','10000000-0000-4000-8000-000000000001');expect(row?.variant_name).toBe('Plus Size');expect(row?.sizes).toBe('3XL, 4XL, 5XL, 6XL, 7XL, 8XL');});
+ it('persists the Plus Size options when importing a fit_category column',()=>{const [row]=parseCatalogueCsv('product_name,category,fit_category,sku\nKurti Set,Kurti Set,Plus Size,K-001','10000000-0000-4000-8000-000000000001');expect(row?.variant_name).toBe('Plus Size');expect(row?.sizes).toBe('3XL, 4XL, 5XL, 6XL, 7XL, 8XL');});
+ it('keeps legacy size-suffixed SKU rows outside the fit-size selector',()=>{const [row]=parseCatalogueCsv('product_name,description,category,sku\\nKurti Set,Anarkali Set,Kurti Set,K-002-M','10000000-0000-4000-8000-000000000001');expect(row?.variant_name).toBe('M');expect(row?.sizes).toBe('');});
  it.each(['Saree','Purse','Accessories','Unstitched','Bags','Juttis'])('does not show clothing sizes for Standard %s',category=>expect(catalogueSizesForVariant('Standard',category)).toEqual([]));
  it('does not infer sizes for unknown variant labels',()=>expect(catalogueSizesForVariant('Free Size','Kurti')).toEqual([]));
 });
