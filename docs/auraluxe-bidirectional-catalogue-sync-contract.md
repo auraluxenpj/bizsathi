@@ -40,7 +40,7 @@ Description, fabric, colours, images, SEO title/description, slug/URL merchandis
 - BizSathi stock movements (native receipts, sales, adjustments, transfers, website commits and accepted returns) publish back to Auraluxe as idempotent delta events.
 - When one BizSathi SKU represents a product with several website size choices, Auraluxe uses one generic mapped variant and one pooled SKU balance. The size is captured on the order, but stock is reserved against the total SKU balance. The system must not display or invent a size-specific quantity.
 - If size-specific inventory is required, each size must have its own confirmed SKU and BizSathi quantity before it can be independently reserved.
-- Auraluxe applies events only after an administrator has registered a physical-count baseline for that exact SKU and cross-system variant mapping. The baseline records the verifier, count reference and quantity; subsequent events must arrive in strict per-SKU version order.
+- Auraluxe applies events only after an administrator has registered a physical-count baseline for that exact SKU and cross-system variant mapping. The verified physical count must first be reconciled in BizSathi so the two quantities match; the baseline records both quantities, verifier and count reference. Subsequent events must arrive in strict per-SKU version order.
 - Fractional movements and negative projected balances are not silently rounded or forced through; they are blocked for reconciliation. Dead-letter events block later events for the same SKU until reviewed.
 - Legacy absolute stock snapshot projection is retired. The only ongoing projection path is the immutable movement-event stream.
 
