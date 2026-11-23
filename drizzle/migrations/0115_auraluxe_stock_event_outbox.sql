@@ -268,7 +268,10 @@ BEGIN
   SELECT pg_get_functiondef('public.record_website_stock_ack(uuid,uuid,uuid,uuid,text,integer)'::regprocedure) INTO body;
   changed:=replace(body,
     E'BEGIN\n IF auth.uid()',
-    E'BEGIN\n IF coalesce((SELECT enabled FROM public.website_inventory_integrations WHERE business_id=_business_id),false) THEN RAISE EXCEPTION ''BizSathi is the stock authority; post stock operations in BizSathi''; END IF;\n PERFORM set_config(''app.stock_sync_origin'',''auraluxe'',true);\n IF auth.uid()');
+    E'BEGIN\n IF coalesce((SELECT stock_enabled FROM public.auraluxe_sync_control WHERE business_id=_business_id),false)
+    OR coalesce((SELECT enabled FROM public.website_inventory_integrations WHERE business_id=_business_id),false) THEN
+    RAISE EXCEPTION ''BizSathi is the stock authority; post stock operations in BizSathi'';
+  END IF;\n PERFORM set_config(''app.stock_sync_origin'',''auraluxe'',true);\n IF auth.uid()');
   IF changed=body THEN RAISE EXCEPTION 'Could not install website stock acknowledgement authority guard'; END IF;
   EXECUTE changed;
 END $patch_website_ack$;
