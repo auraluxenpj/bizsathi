@@ -14,7 +14,7 @@ async function serviceAccountJson() {
   let binary = '';
   for (const byte of pkcs8) binary += String.fromCharCode(byte);
   const base64 = btoa(binary);
-  const pem = `-----BEGIN PRIVATE KEY-----\\n${base64.match(/.{1,64}/g)?.join('\\n')}\\n-----END PRIVATE KEY-----\\n`;
+  const pem = '-----BEGIN PRIVATE KEY-----\\n' + (base64.match(/.{1,64}/g)?.join('\\n') ?? '') + '\\n-----END PRIVATE KEY-----\\n';
   return JSON.stringify({ client_email: 'diagnostic@example.iam.gserviceaccount.com', private_key: pem });
 }
 
