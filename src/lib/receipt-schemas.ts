@@ -10,7 +10,7 @@ export const paymentMethods = [{ id: 'bank', label: 'Bank' }, { id: 'wallet', la
 const categoryIds: readonly string[] = receiptCategories.map(c => c.id);
 
 export function checkReceiptFile(file: { type: string; size: number }): string | null {
-  if (!(file.type in receiptTypes)) return 'Only JPG, PNG or PDF files can be scanned.';
+  if (!(file.type in receiptTypes)) return 'Only JPG, PNG, WebP images or PDF files can be scanned.';
   if (file.size < 1) return 'That file is empty.';
   if (file.size > MAX_RECEIPT_BYTES) return 'Files must be 8 MB or smaller.';
   return null;
