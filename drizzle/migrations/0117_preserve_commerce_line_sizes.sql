@@ -34,6 +34,18 @@ BEGIN
       FROM jsonb_array_elements(NEW.request->'lines')
      WHERE value->>'variantId' = v_variant_id::text;
 
+    IF NEW.kind IN ('sale_return','purchase_return') THEN
+      SELECT value INTO source_line
+        FROM public.commerce_documents d
+        CROSS JOIN LATERAL jsonb_array_elements(d.lines)
+       WHERE d.business_id=NEW.business_id AND d.id=NEW.source_id
+         AND value->>'variantId'=v_variant_id::text;
+      IF source_line IS NOT NULL AND jsonb_typeof(source_line->'sizeBreakdown')='array'
+         AND (request_line IS NULL OR request_line->'sizeBreakdown' IS NULL) THEN
+        RAISE EXCEPTION 'Return must preserve the original invoice size allocation';
+      END IF;
+    END IF;
+
     IF request_line IS NULL OR request_line->'sizeBreakdown' IS NULL THEN
       enriched := enriched || jsonb_build_array(line);
       CONTINUE;
