@@ -100,7 +100,7 @@ DECLARE
   row_data jsonb:=to_jsonb(NEW);
   source_business uuid;
   source_branch uuid;
-  source_id uuid;
+  v_source_id uuid;
   source_variant uuid;
   source_sku text;
   remote_product uuid;
@@ -123,14 +123,14 @@ BEGIN
      WHERE i.business_id=source_business AND i.branch_id=source_branch AND i.enabled
   ) THEN RETURN NEW; END IF;
 
-  source_id:=(row_data->>'id')::uuid;
+  v_source_id:=(row_data->>'id')::uuid;
   source_variant:=(row_data->>'variant_id')::uuid;
   delta_qty:=(row_data->>'quantity')::numeric;
   occurred:=coalesce((row_data->>'created_at')::timestamptz,now());
 
   IF EXISTS (
     SELECT 1 FROM public.auraluxe_stock_outbox
-     WHERE business_id=source_business AND source_table=TG_TABLE_NAME AND source_id=source_id
+     WHERE business_id=source_business AND source_table=TG_TABLE_NAME AND source_id=v_source_id
   ) THEN RETURN NEW; END IF;
 
   SELECT v.sku,v.auraluxe_variant_id,p.auraluxe_product_id
@@ -154,11 +154,11 @@ BEGIN
     bizsathi_product_id,bizsathi_variant_id,auraluxe_product_id,auraluxe_variant_id,
     delta,occurred_at,payload,status,last_error
   ) VALUES (
-    source_business,source_branch,source_sku,version_no,TG_TABLE_NAME,source_id,
+    source_business,source_branch,source_sku,version_no,TG_TABLE_NAME,v_source_id,
     (SELECT product_id FROM public.product_variants WHERE business_id=source_business AND id=source_variant),
     source_variant,remote_product,remote_variant,delta_qty,occurred,
     jsonb_build_object(
-      'eventId',gen_random_uuid(),'sourceTable',TG_TABLE_NAME,'sourceId',source_id,
+      'eventId',gen_random_uuid(),'sourceTable',TG_TABLE_NAME,'sourceId',v_source_id,
       'businessId',source_business,'branchId',source_branch,'sku',source_sku,
       'skuVersion',version_no,'delta',delta_qty,'bizsathiProductId',
       (SELECT product_id FROM public.product_variants WHERE business_id=source_business AND id=source_variant),
@@ -171,7 +171,7 @@ BEGIN
   -- Keep the persisted event UUID and payload UUID identical.
   UPDATE public.auraluxe_stock_outbox
      SET payload=jsonb_set(payload,'{eventId}',to_jsonb(event_id))
-   WHERE business_id=source_business AND source_table=TG_TABLE_NAME AND source_id=source_id;
+   WHERE business_id=source_business AND source_table=TG_TABLE_NAME AND source_id=v_source_id;
   RETURN NEW;
 END $$;
 
