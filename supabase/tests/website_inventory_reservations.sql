@@ -58,21 +58,10 @@ BEGIN
     'bizsathi_variant_id',v
   )));
   BEGIN
-    PERFORM public.upsert_shared_catalogue_from_auraluxe(b,jsonb_build_array(jsonb_build_object(
-      'product_id','e1070000-0000-4000-8000-000000000063',
-      'variant_id','e1070000-0000-4000-8000-000000000064',
-      'name','Conflicting remap must not overwrite',
-      'category','Test',
-      'variant_name','Standard',
-      'model_code','DUPLICATE-MODEL-OK',
-      'sku','SKU-WEB-RESERVATION-TEST',
-      'unit','pcs',
-      'purchase_price',1,'mrp',2,'selling_price',3,'wholesale_price',0,'reorder_level',0,
-      'published',false
-    )));
-    RAISE EXCEPTION 'Auraluxe cross-reference reassignment must be rejected';
+    PERFORM public.upsert_shared_catalogue_from_auraluxe(b,'[]'::jsonb);
+    RAISE EXCEPTION 'Auraluxe-origin catalogue writes must be rejected';
   EXCEPTION WHEN raise_exception THEN
-    IF SQLERRM NOT LIKE 'SKU is already linked to a different Auraluxe product%' THEN RAISE; END IF;
+    IF SQLERRM NOT LIKE 'BizSathi is the sole catalogue authority%' THEN RAISE; END IF;
   END;
   UPDATE public.auraluxe_sync_control SET catalogue_enabled=false WHERE business_id=b;
   UPDATE public.auraluxe_sync_control SET stock_enabled=true WHERE business_id=b;
