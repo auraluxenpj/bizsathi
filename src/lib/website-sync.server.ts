@@ -58,19 +58,31 @@ export async function callWebsite(request: Record<string, unknown>) {
 export async function callWebsiteCatalogue(request: Record<string, unknown>) {
   const secret = process.env['INVENTORY_SYNC_SECRET'];
   if (!secret || secret.length < 24) throw new Error('Website catalogue sync is not configured. Save the shared INVENTORY_SYNC_SECRET in both apps.');
+  // Resolve configuration before the network try/catch so URL errors remain actionable.
+  const url = websiteCatalogueUrl();
   let response: Response;
   try {
-    response = await fetch(websiteCatalogueUrl(), {
+    response = await fetch(url, {
       method: 'POST',
-      redirect: 'error',
+      // Cloudflare Workers supports manual/follow; manual prevents forwarding the secret on redirects.
+      redirect: 'manual',
       signal: AbortSignal.timeout(20000),
       headers: { 'Content-Type': 'application/json', Accept: 'application/json', Authorization: `Bearer ${secret}` },
       body: JSON.stringify(request),
     });
-  } catch {
-    throw new Error('Website catalogue endpoint could not be reached. Check the HTTPS address and shared secret.');
+  } catch (error) {
+    const reason = error instanceof Error ? error.name : 'UnknownError';
+    throw new Error(`Website catalogue network request failed (${reason}). Check that the website is reachable over HTTPS.`);
   }
-  if (!response.ok) throw new Error(response.status === 401 ? 'Website rejected the catalogue connection. Re-enter the same shared secret in both apps.' : `Website catalogue import failed with HTTP ${response.status}.`);
+  if (response.status >= 300 && response.status < 400) {
+    let host = 'another address';
+    try { host = new URL(response.headers.get('location') ?? '', url).host; } catch { /* keep generic wording */ }
+    await response.body?.cancel();
+    throw new Error(`Website catalogue address redirects to ${host}. Set WEBSITE_CATALOGUE_SYNC_URL to its final HTTPS API address; the shared secret was not forwarded.`);
+  }
+  if (!response.ok) throw new Error(response.status === 401
+    ? 'Website rejected the catalogue connection (HTTP 401). Check that INVENTORY_SYNC_SECRET matches in both apps.'
+    : `Website catalogue import failed with HTTP ${response.status}.`);
   if (!(response.headers.get('content-type') ?? '').includes('application/json')) throw new Error('Website returned a non-JSON catalogue response.');
   const result: unknown = await response.json().catch(() => null);
   if (!result || typeof result !== 'object') throw new Error('Website returned invalid catalogue data.');
