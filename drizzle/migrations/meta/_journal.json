@@ -309,6 +309,13 @@
       "when": 1795303003000,
       "tag": "0110_website_inventory_serialization",
       "breakpoints": true
+    },
+    {
+      "idx": 44,
+      "version": "7",
+      "when": 1795435001000,
+      "tag": "0113_shared_catalogue_from_auraluxe",
+      "breakpoints": true
     }
   ]
 }
