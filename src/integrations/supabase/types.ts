@@ -2832,6 +2832,7 @@ export type Database = {
         Row: {
           barcode: string | null
           business_id: string
+          catalogue_serial: number
           created_at: string
           id: string
           is_active: boolean
@@ -2850,6 +2851,7 @@ export type Database = {
         Insert: {
           barcode?: string | null
           business_id: string
+          catalogue_serial?: number
           created_at?: string
           id?: string
           is_active?: boolean
@@ -2868,6 +2870,7 @@ export type Database = {
         Update: {
           barcode?: string | null
           business_id?: string
+          catalogue_serial?: number
           created_at?: string
           id?: string
           is_active?: boolean
