@@ -16,6 +16,7 @@ import { accountsOfKind, rememberAccount, rememberedAccount } from '@/lib/accoun
 import { confirmReceipt, listReceipts, rejectReceipt, scanReceipt } from '@/lib/receipts.functions';
 import { buildExpenseRequest, checkReceiptFile, emptyExtraction, findDuplicate, normalizeExtraction, normalizeMoney, paymentMethods, receiptCategories, receiptPath, type Extraction, type ReceiptType } from '@/lib/receipt-schemas';
 import { formatBsAd, formatNPR, todayAd } from '@/lib/format';
+import { compressImageToWebp } from '@/lib/image-compression';
 
 type Status = 'needs_review' | 'posted' | 'rejected';
 type Receipt = { id: string; file_name: string; mime_type: string; status: string; ai_extraction: unknown; ai_error: string | null; reviewed: unknown; review_note: string | null; created_at: string; url: string | null };
@@ -99,11 +100,17 @@ function Body({ ctx }: { ctx: WorkspaceContext }) {
     const set = (i: number, patch: Partial<(typeof queue)[number]>) => setQueue(q => q.map((x, j) => (j === i ? { ...x, ...patch } : x)));
     for (const [i, file] of list.entries()) {
       const problem = checkReceiptFile(file); if (problem) { set(i, { state: 'failed', note: problem }); continue; }
-      const path = receiptPath(ctx.businessId, file.type as ReceiptType);
-      const up = await supabase.storage.from('expense-receipts').upload(path, file, { contentType: file.type, upsert: false });
+      let uploadFile = file;
+      if (file.type.startsWith('image/')) {
+        try { uploadFile = await compressImageToWebp(file); }
+        catch (e) { set(i, { state: 'failed', note: e instanceof Error ? e.message : 'Image compression failed.' }); continue; }
+      }
+      const mimeType = uploadFile.type as ReceiptType;
+      const path = receiptPath(ctx.businessId, mimeType);
+      const up = await supabase.storage.from('expense-receipts').upload(path, uploadFile, { contentType: mimeType, upsert: false });
       if (up.error) { set(i, { state: 'failed', note: 'Upload was not allowed. Only accountants and administrators can scan receipts.' }); continue; }
       set(i, { state: 'reading' });
-      try { const r = await scan({ data: { businessId: ctx.businessId, path, fileName: file.name, mimeType: file.type as ReceiptType } }); set(i, { state: 'done', ...(r.aiError ? { note: r.aiError } : {}) }); }
+      try { const r = await scan({ data: { businessId: ctx.businessId, path, fileName: uploadFile.name, mimeType } }); set(i, { state: 'done', ...(r.aiError ? { note: r.aiError } : {}) }); }
       catch (e) { await supabase.storage.from('expense-receipts').remove([path]); set(i, { state: 'failed', note: e instanceof Error ? e.message : 'Could not read this file.' }); }
     }
     await client.invalidateQueries({ queryKey: ['receipts', ctx.businessId] });
