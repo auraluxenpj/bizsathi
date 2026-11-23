@@ -173,7 +173,6 @@ BEGIN
     'Sellable return is delivered after the two sale deductions';
   ok:=public.ack_auraluxe_stock_outbox(stock_event.id,stock_token);
   ASSERT ok,'Return stock event can be acknowledged';
-  UPDATE public.auraluxe_sync_control SET stock_enabled=false WHERE business_id=b;
 
   rejected:=false;
   BEGIN
@@ -220,6 +219,7 @@ BEGIN
   ASSERT jsonb_array_length(events)=7,'Acknowledged events are removed from the pending view';
   ASSERT public.ack_website_inventory_outbox(b,(events->6->>'id')::bigint)=7,'Legacy cursor acknowledgement remains compatible';
   ASSERT (public.website_inventory_status(b,r4)->>'status')='committed','Uncertain operation status can be reconciled';
+  UPDATE public.auraluxe_sync_control SET stock_enabled=false WHERE business_id=b;
 END
 $final_commit$;
 
