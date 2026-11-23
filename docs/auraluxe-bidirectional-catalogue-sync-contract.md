@@ -1,4 +1,4 @@
-# Auraluxe ↔ BizSathi Shared Catalogue and Inventory Contract
+# BizSathi → Auraluxe Catalogue and Inventory Authority Contract
 
 Status: implementation contract; integrations remain disabled until parity tests and cutover approval.
 
