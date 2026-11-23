@@ -17,32 +17,29 @@ Required operational values: SKU, Category, Unit, Qty, Purchase Price, MRP, Sell
 ## Website-only fields
 Description, fabric, colours, images, SEO title/description, slug/URL merchandising fields, collection mapping, new-arrival, bestseller, and featured are website enrichment fields. They are optional and must never reject a catalogue sync. Preserve existing website enrichment when a BizSathi update omits it; leave it blank for new records. A missing website field does not imply that the product should be published.
 
-## Two-way event protocol
-- Both systems emit versioned, uniquely identified catalogue and inventory events through a durable transactional outbox.
-- Every event carries event_id, source_system, business_id, SKU, entity_type, operation, source_version, occurred_at, and a payload.
-- Consumers persist event_id in an inbox/deduplication table and apply each event once.
-- Ignore events already applied. Reject stale source_version values for the same source/SKU; never allow delayed retries to overwrite a newer state.
-- Mark outbound events delivered only after the receiver confirms durable acceptance. Retry with bounded backoff and visible dead-letter status.
-- Do not echo an inbound event back to its origin. Local edits create new events with new IDs.
-- For simultaneous edits from both systems, record a visible conflict and require reconciliation; do not silently choose a winner.
+## Authority and direction
+- BizSathi is the single source of truth for Auraluxe catalogue and inventory. Auraluxe is a storefront/projection, not a second catalogue or stock authority.
+- Catalogue changes flow only BizSathi → Auraluxe. Auraluxe-origin catalogue ingestion and publishing are disabled.
+- Stock movements flow only BizSathi → Auraluxe as immutable, idempotent deltas. Auraluxe checkout reservations and commits must be recorded in BizSathi; Auraluxe must not originate stock adjustments.
+- Website-only enrichment (images, descriptions, SEO, colours, fabric and merchandising) may be maintained on matched Auraluxe SKUs. It cannot create an independently sellable product or override BizSathi-owned fields.
+- SKU is the only cross-system matching key. Model Code is optional reference metadata, may repeat, and must never be used as a merge key or uniqueness constraint.
+
+## Catalogue reconciliation
+- A full BizSathi snapshot is the only operation allowed to reconcile the complete Auraluxe catalogue. Incremental SKU events update matched records but never infer that an omitted SKU is deleted.
+- For each matching SKU, BizSathi overwrites the shared operational fields: product name, category, SKU, unit, sizes, purchase price, MRP, selling price, wholesale price, reorder level, publication state, notes and barcode. Preserve Auraluxe website-only enrichment fields.
+- Any Auraluxe product absent from the full BizSathi snapshot, or containing a variant SKU absent from that snapshot, is unpublished/deactivated from the storefront. Never hard-delete products, variants, orders or historical records.
+- Auraluxe-only products cannot be republished once the BizSathi catalogue authority switch is enabled.
+- A missing website-only field is allowed and does not block sync. Missing website enrichment does not imply publication.
+- A snapshot must contain unique, non-empty SKUs. Model Code duplicates are allowed. SKU changes require an explicit re-key/reconciliation workflow; never infer a rename.
 
 ## Inventory semantics
-- Stock is synchronised as immutable, idempotent stock transactions (receipt, sale, return, adjustment, transfer), not as repeated absolute quantity overwrites.
-- Each transaction carries a globally unique operation/event ID, SKU, quantity, direction/type, branch/location, source document reference, and occurred_at.
-- A transaction may affect on-hand stock once only. Retries must return the prior result.
-- Existing stock movement and sales/purchase history is retained. No hard deletes or history rewrites.
-- The workbook's Qty is a reconciliation/baseline quantity, not a per-size quantity. Do not copy a product total into every listed size. Per-size stock requires separate SKU/quantity rows.
-- Existing receipt rows marked applied in either destination must not be replayed.
-
-
-### SKU-pooled stock for size-based storefront products
-- BizSathi is the stock ledger of record. Auraluxe checkout reserves and commits stock through BizSathi; a committed order creates an immutable website movement in BizSathi.
-- BizSathi stock movements (native receipts, sales, adjustments, transfers, website commits and accepted returns) publish back to Auraluxe as idempotent delta events.
-- When one BizSathi SKU represents a product with several website size choices, Auraluxe uses one generic mapped variant and one pooled SKU balance. The size is captured on the order, but stock is reserved against the total SKU balance. The system must not display or invent a size-specific quantity.
-- If size-specific inventory is required, each size must have its own confirmed SKU and BizSathi quantity before it can be independently reserved.
-- Auraluxe applies events only after an administrator has registered a physical-count baseline for that exact SKU and cross-system variant mapping. The verified physical count must first be reconciled in BizSathi so the two quantities match; the baseline records both quantities, verifier and count reference. Subsequent events must arrive in strict per-SKU version order.
-- Fractional movements and negative projected balances are not silently rounded or forced through; they are blocked for reconciliation. Dead-letter events block later events for the same SKU until reviewed.
-- Legacy absolute stock snapshot projection is retired. The only ongoing projection path is the immutable movement-event stream.
+- BizSathi is the only stock ledger of record. Auraluxe stock is a read-only projection of approved BizSathi balances and movements.
+- BizSathi receipts, sales, website commits, returns, adjustments and transfers publish to Auraluxe as immutable, idempotent delta events. Never use repeated absolute stock overwrites.
+- Auraluxe-origin stock edits and reverse stock-event publication are disabled. Checkout reserves/commits against the BizSathi SKU balance; the selected size is an order attribute, not a separate quantity unless BizSathi has a separate SKU and quantity for that size.
+- Each event carries a globally unique operation/event ID, SKU, per-SKU version, quantity delta, source movement reference and occurred_at. Consumers deduplicate event IDs, enforce strict per-SKU ordering and reject negative projected balances.
+- Auraluxe applies events only after an administrator registers a physical-count baseline for the exact SKU and cross-system mapping. The physical count must first be reconciled in BizSathi so both quantities match. Record verifier and count reference.
+- Fractional movements, missing mappings, negative projected balances and out-of-order events are blocked for reconciliation. Dead-letter events block later events for the same SKU until reviewed.
+- Existing stock movement, sales and purchase history is retained. No hard deletes, history rewrites or silent stock adjustments.
 
 ## Publication
 - Catalogue sync is independent of publication. Published=false stays unpublished.
