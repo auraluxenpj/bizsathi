@@ -1,11 +1,22 @@
 export type GoogleSheetsCredentials = { serviceAccountJson?: string | undefined };
 
+export type GoogleSheetsNetworkDiagnostic = {
+  category: 'timeout' | 'aborted' | 'fetch-error' | 'unknown';
+  errorName: string;
+  errorMessage: string;
+  causeName?: string;
+  causeCode?: string;
+  causeMessage?: string;
+  elapsedMs: number;
+};
+
 export class GoogleSheetsApiError extends Error {
   constructor(
     readonly status: number,
     readonly stage: 'credentials' | 'signing' | 'oauth' | 'sheets' | 'oauth-network' | 'sheets-network' = 'sheets',
+    readonly diagnostic?: GoogleSheetsNetworkDiagnostic,
   ) {
-    super(`Google Sheets ${stage} request failed (${status}).`);
+    super('Google Sheets ' + stage + ' request failed (' + status + ').');
     this.name = 'GoogleSheetsApiError';
   }
 }
@@ -52,9 +63,51 @@ async function createAssertion(account: ServiceAccount): Promise<string> {
     iat: issuedAt,
     exp: issuedAt + 3600,
   }));
-  const unsigned = `${header}.${payload}`;
+  const unsigned = header + '.' + payload;
   const signature = new Uint8Array(await crypto.subtle.sign('RSASSA-PKCS1-v1_5', key, new TextEncoder().encode(unsigned)));
-  return `${unsigned}.${base64Url(signature)}`;
+  return unsigned + '.' + base64Url(signature);
+}
+
+function safeDiagnosticText(value: unknown): string | undefined {
+  if (typeof value !== 'string' || !value) return undefined;
+  return value
+    .replace(/https?:\/\/[^\s"'<>]+/gi, '[url]')
+    .replace(/Bearer\s+[^\s"'<>]+/gi, 'Bearer [redacted]')
+    .slice(0, 240);
+}
+
+function networkDiagnostic(error: unknown, startedAt: number): GoogleSheetsNetworkDiagnostic {
+  const value = error instanceof Error ? error : new Error(String(error));
+  const cause = value.cause;
+  const causeObject = typeof cause === 'object' && cause !== null ? cause as Record<string, unknown> : undefined;
+  const name = value.name || 'Error';
+  const category = name === 'TimeoutError'
+    ? 'timeout'
+    : name === 'AbortError'
+      ? 'aborted'
+      : name === 'TypeError'
+        ? 'fetch-error'
+        : 'unknown';
+  const diagnostic: GoogleSheetsNetworkDiagnostic = {
+    category,
+    errorName: name,
+    errorMessage: safeDiagnosticText(value.message) ?? 'No error message',
+    elapsedMs: Math.max(0, Date.now() - startedAt),
+  };
+  if (causeObject) {
+    if (typeof causeObject.name === 'string') diagnostic.causeName = safeDiagnosticText(causeObject.name);
+    if (typeof causeObject.code === 'string') diagnostic.causeCode = safeDiagnosticText(causeObject.code);
+    if (typeof causeObject.message === 'string') diagnostic.causeMessage = safeDiagnosticText(causeObject.message);
+  } else if (cause instanceof Error) {
+    diagnostic.causeName = safeDiagnosticText(cause.name);
+    diagnostic.causeMessage = safeDiagnosticText(cause.message);
+  }
+  return diagnostic;
+}
+
+function logNetworkFailure(stage: 'oauth' | 'sheets', diagnostic: GoogleSheetsNetworkDiagnostic): void {
+  // Deliberately omit spreadsheet IDs, service-account email, access tokens, request headers and response bodies.
+  console.error('[GoogleSheets] outbound request failed', { provider: 'google', stage, ...diagnostic });
 }
 
 export async function getGoogleAccessToken(serviceAccountJson: string, request: typeof fetch = fetch): Promise<string> {
@@ -69,18 +122,21 @@ export async function getGoogleAccessToken(serviceAccountJson: string, request: 
     throw new GoogleSheetsApiError(0, 'signing');
   }
   let response: Response;
+  const startedAt = Date.now();
   try {
     response = await request('https://oauth2.googleapis.com/token', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    body: new URLSearchParams({
-      grant_type: 'urn:ietf:params:oauth:grant-type:jwt-bearer',
-      assertion,
-    }),
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({
+        grant_type: 'urn:ietf:params:oauth:grant-type:jwt-bearer',
+        assertion,
+      }),
       signal: AbortSignal.timeout(20_000),
     });
-  } catch {
-    throw new GoogleSheetsApiError(0, 'oauth-network');
+  } catch (error) {
+    const diagnostic = networkDiagnostic(error, startedAt);
+    logNetworkFailure('oauth', diagnostic);
+    throw new GoogleSheetsApiError(0, 'oauth-network', diagnostic);
   }
   if (!response.ok) throw new GoogleSheetsApiError(response.status, 'oauth');
   const token = await response.json() as { access_token?: unknown; expires_in?: unknown };
@@ -98,17 +154,20 @@ export async function readGoogleSheetRange(
 ): Promise<unknown[][]> {
   if (!credentials.serviceAccountJson) throw new GoogleSheetsApiError(403);
   const token = await getGoogleAccessToken(credentials.serviceAccountJson, request);
-  const url = new URL(`https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/${encodeURIComponent(range)}`);
+  const url = new URL('https://sheets.googleapis.com/v4/spreadsheets/' + spreadsheetId + '/values/' + encodeURIComponent(range));
   url.searchParams.set('valueRenderOption', 'FORMATTED_VALUE');
   let response: Response;
+  const startedAt = Date.now();
   try {
     response = await request(url, {
-      headers: { Authorization: `Bearer ${token}` },
+      headers: { Authorization: 'Bearer ' + token },
       redirect: 'error',
       signal: AbortSignal.timeout(20_000),
     });
-  } catch {
-    throw new GoogleSheetsApiError(0, 'sheets-network');
+  } catch (error) {
+    const diagnostic = networkDiagnostic(error, startedAt);
+    logNetworkFailure('sheets', diagnostic);
+    throw new GoogleSheetsApiError(0, 'sheets-network', diagnostic);
   }
   if (!response.ok) throw new GoogleSheetsApiError(response.status);
   const result = await response.json() as { values?: unknown[][] };
@@ -124,9 +183,9 @@ export async function writeGoogleSheetRanges(
   if (!credentials.serviceAccountJson || !data.length) return false;
   try {
     const token = await getGoogleAccessToken(credentials.serviceAccountJson, request);
-    const response = await request(`https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values:batchUpdate`, {
+    const response = await request('https://sheets.googleapis.com/v4/spreadsheets/' + spreadsheetId + '/values:batchUpdate', {
       method: 'POST',
-      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+      headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' },
       body: JSON.stringify({ valueInputOption: 'RAW', data }),
       redirect: 'error',
       signal: AbortSignal.timeout(20_000),
