@@ -44,9 +44,20 @@ describe('website client', () => {
     expect(await callWebsiteCatalogue(payload)).toEqual({ result: { products_published: false } });
     const [url, init] = fetchMock.mock.calls[0]!;
     expect(url).toBe('https://www.auraluxe.com.np/api/public/bizsathi-catalogue');
-    expect(init.redirect).toBe('error');
+    expect(init.redirect).toBe('manual');
     expect((init.headers as Record<string, string>)['Authorization']).toBe(`Bearer ${SECRET}`);
     expect(JSON.parse(String(init.body))).toEqual(payload);
+  });
+  it('rejects catalogue redirects without following them or forwarding the secret', async () => {
+    const fetchMock = vi.fn(async () => new Response(null, { status: 301, headers: { location: 'https://auraluxe.com.np/api/public/bizsathi-catalogue' } }));
+    vi.stubGlobal('fetch', fetchMock);
+    await expect(callWebsiteCatalogue({ items: [] })).rejects.toThrow(/redirects to auraluxe\.com\.np.*shared secret was not forwarded/);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(fetchMock.mock.calls[0]![1].redirect).toBe('manual');
+  });
+  it('reports an invalid catalogue URL separately from a network failure', async () => {
+    process.env['WEBSITE_CATALOGUE_SYNC_URL'] = 'http://auraluxe.com.np/api/public/bizsathi-catalogue';
+    await expect(callWebsiteCatalogue({ items: [] })).rejects.toThrow(/WEBSITE_CATALOGUE_SYNC_URL must be an https address/);
   });
   it('requires the shared secret', async () => {
     delete process.env['INVENTORY_SYNC_SECRET'];
