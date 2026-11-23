@@ -48,6 +48,11 @@ BEGIN
   SELECT id INTO v FROM public.product_variants WHERE business_id=b AND sku='SKU-WEB-RESERVATION-TEST';
   INSERT INTO public.website_inventory_integrations(business_id,branch_id,enabled) VALUES(b,br,true)
     ON CONFLICT (business_id) DO UPDATE SET branch_id=EXCLUDED.branch_id,enabled=true;
+  UPDATE public.products SET auraluxe_product_id='e1070000-0000-4000-8000-000000000061'
+   WHERE id=(SELECT product_id FROM public.product_variants WHERE business_id=b AND sku='SKU-WEB-RESERVATION-TEST');
+  UPDATE public.product_variants SET auraluxe_variant_id='e1070000-0000-4000-8000-000000000062'
+   WHERE business_id=b AND sku='SKU-WEB-RESERVATION-TEST';
+  UPDATE public.auraluxe_sync_control SET stock_enabled=true WHERE business_id=b;
 
   result:=public.reserve_website_inventory(b,r1,br,'WEB-ORDER-1','[{"sku":"SKU-WEB-RESERVATION-TEST","quantity":4}]');
   ASSERT result->>'status'='reserved' AND result->>'duplicate'='false','Reservation is created';
@@ -115,11 +120,34 @@ SELECT set_config('request.jwt.claims','{"role":"service_role"}',true);
 
 DO $final_commit$
 DECLARE b uuid; r1 uuid:='e1070000-0000-4000-8000-000000000021'; r3 uuid:='e1070000-0000-4000-8000-000000000023'; r4 uuid:='e1070000-0000-4000-8000-000000000024'; result jsonb; v uuid; br uuid; events jsonb; rejected boolean; claimed jsonb; event_id bigint; token1 uuid:='e1070000-0000-4000-8000-000000000051'; token2 uuid:='e1070000-0000-4000-8000-000000000052'; ok boolean;
+  stock_event public.auraluxe_stock_outbox;
+  stock_token uuid:='e1070000-0000-4000-8000-000000000071';
 BEGIN
   SELECT id INTO b FROM public.businesses WHERE name='Website reservation fixture';
   SELECT id INTO br FROM public.branches WHERE business_id=b AND code='WEB';
   SELECT id INTO v FROM public.product_variants WHERE business_id=b AND sku='SKU-WEB-RESERVATION-TEST';
   ASSERT public.commerce_stock_balance(b,br,v)=1,'Rejected native deduction leaves ledger unchanged';
+  ASSERT (SELECT count(*) FROM public.auraluxe_stock_outbox WHERE business_id=b)=3,
+    'Website commits and sellable returns create three immutable stock events';
+  SELECT * INTO stock_event FROM public.claim_auraluxe_stock_outbox(b,stock_token,25);
+  ASSERT FOUND AND stock_event.sku_version=1 AND stock_event.delta=-4
+    AND stock_event.payload->>'eventId'=stock_event.event_id::text,
+    'First website sale is emitted as the first idempotent SKU movement event';
+  ok:=public.ack_auraluxe_stock_outbox(stock_event.id,stock_token);
+  ASSERT ok,'First stock event can be acknowledged by its lease owner';
+  stock_token:='e1070000-0000-4000-8000-000000000072';
+  SELECT * INTO stock_event FROM public.claim_auraluxe_stock_outbox(b,stock_token,25);
+  ASSERT FOUND AND stock_event.sku_version=2 AND stock_event.delta=-1,
+    'Second website sale cannot overtake the first movement';
+  ok:=public.ack_auraluxe_stock_outbox(stock_event.id,stock_token);
+  ASSERT ok,'Second stock event can be acknowledged';
+  stock_token:='e1070000-0000-4000-8000-000000000073';
+  SELECT * INTO stock_event FROM public.claim_auraluxe_stock_outbox(b,stock_token,25);
+  ASSERT FOUND AND stock_event.sku_version=3 AND stock_event.delta=1,
+    'Sellable return is delivered after the two sale deductions';
+  ok:=public.ack_auraluxe_stock_outbox(stock_event.id,stock_token);
+  ASSERT ok,'Return stock event can be acknowledged';
+  UPDATE public.auraluxe_sync_control SET stock_enabled=false WHERE business_id=b;
   result:=public.finalize_website_inventory(b,r4,'commit','WEB-ORDER-4-CONFIRMED');
   ASSERT result->>'status'='committed','Commit succeeds after protected reservation';
   ASSERT public.commerce_stock_balance(b,br,v)=0,'Final on-hand is zero, never negative';
