@@ -53,6 +53,25 @@ export const Route = createFileRoute('/api/public/auraluxe-catalogue-publish')({
             await db.rpc('fail_auraluxe_catalogue_outbox', { _id: id, _lease: lease, _error: `Auraluxe HTTP ${response.status}` });
             return json({ ok: false, delivered, blocked: true }, 503);
           }
+          const remote = await response.json().catch(() => null) as {
+            result?: { mappings?: Array<Record<string, unknown>> };
+          } | null;
+          const mappings = remote?.result?.mappings;
+          const sourceSku = typeof payload === 'object' && payload !== null && 'sku' in payload
+            ? String(payload.sku).toLowerCase() : '';
+          if (!Array.isArray(mappings) || mappings.length !== 1
+            || String(mappings[0]?.sku ?? '').toLowerCase() !== sourceSku) {
+            await db.rpc('fail_auraluxe_catalogue_outbox', { _id: id, _lease: lease, _error: 'Auraluxe did not return the expected SKU cross-reference' });
+            return json({ ok: false, delivered, blocked: true }, 503);
+          }
+          const savedMapping = await db.rpc('upsert_auraluxe_catalogue_mappings', {
+            _business_id: BUSINESS_ID,
+            _items: mappings,
+          });
+          if (savedMapping.error || savedMapping.data !== 1) {
+            await db.rpc('fail_auraluxe_catalogue_outbox', { _id: id, _lease: lease, _error: 'Auraluxe cross-reference could not be saved in BizSathi' });
+            return json({ ok: false, delivered, blocked: true }, 503);
+          }
           const ack = await db.rpc('ack_auraluxe_catalogue_outbox', { _id: id, _lease: lease });
           if (ack.error || ack.data !== true) return json({ ok: false, delivered, blocked: true }, 503);
           delivered += 1;
