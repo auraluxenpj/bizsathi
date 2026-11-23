@@ -52,13 +52,7 @@ export const importCatalogueBranchStock = createServerFn({method:'POST'}).middle
   _rows:data.rows.map(({opening_stock,...row})=>({...row,opening_stock})),
  });
  if(error) throw new Error(error.message.includes('different model code') ? error.message : 'CSV stock import failed. No rows were applied. Check branch access, duplicate SKUs, prices and quantities.');
- for (const row of data.rows) {
-  const {data:variant,error:variantError}=await context.supabase.from('product_variants').select('product_id').eq('business_id',data.businessId).eq('sku',row.sku).single();
-  if(variantError || !variant) throw new Error(`Sizes could not be saved for SKU ${row.sku}.`);
-  const sizes=[...new Set(row.sizes.split(',').map(s=>s.trim()).filter(Boolean))];
-  const {error:sizeError}=await context.supabase.from('products').update({catalogue_sizes:sizes}).eq('business_id',data.businessId).eq('id',variant.product_id);
-  if(sizeError) throw new Error(`Sizes could not be saved for SKU ${row.sku}.`);
- }
+ // The import_catalogue_branch_stock RPC persists catalogue_sizes atomically with SKU updates.
  return result as {inserted:number;updated:number;stock_adjusted:number;branch_id:string};
 });
 export const editVariant = createServerFn({method:'POST'}).middleware([requireSupabaseAuth]).inputValidator(variantEditInput).handler(async ({data,context})=>{
