@@ -131,27 +131,6 @@ BEGIN
   SELECT id INTO br FROM public.branches WHERE business_id=b AND code='WEB';
   SELECT id INTO v FROM public.product_variants WHERE business_id=b AND sku='SKU-WEB-RESERVATION-TEST';
   ASSERT public.commerce_stock_balance(b,br,v)=1,'Rejected native deduction leaves ledger unchanged';
-  ASSERT (SELECT count(*) FROM public.auraluxe_stock_outbox WHERE business_id=b)=3,
-    'Website commits and sellable returns create three immutable stock events';
-  SELECT * INTO stock_event FROM public.claim_auraluxe_stock_outbox(b,stock_token,25);
-  ASSERT FOUND AND stock_event.sku_version=1 AND stock_event.delta=-4
-    AND stock_event.payload->>'eventId'=stock_event.event_id::text,
-    'First website sale is emitted as the first idempotent SKU movement event';
-  ok:=public.ack_auraluxe_stock_outbox(stock_event.id,stock_token);
-  ASSERT ok,'First stock event can be acknowledged by its lease owner';
-  stock_token:='e1070000-0000-4000-8000-000000000072';
-  SELECT * INTO stock_event FROM public.claim_auraluxe_stock_outbox(b,stock_token,25);
-  ASSERT FOUND AND stock_event.sku_version=2 AND stock_event.delta=-1,
-    'Second website sale cannot overtake the first movement';
-  ok:=public.ack_auraluxe_stock_outbox(stock_event.id,stock_token);
-  ASSERT ok,'Second stock event can be acknowledged';
-  stock_token:='e1070000-0000-4000-8000-000000000073';
-  SELECT * INTO stock_event FROM public.claim_auraluxe_stock_outbox(b,stock_token,25);
-  ASSERT FOUND AND stock_event.sku_version=3 AND stock_event.delta=1,
-    'Sellable return is delivered after the two sale deductions';
-  ok:=public.ack_auraluxe_stock_outbox(stock_event.id,stock_token);
-  ASSERT ok,'Return stock event can be acknowledged';
-  UPDATE public.auraluxe_sync_control SET stock_enabled=false WHERE business_id=b;
   result:=public.finalize_website_inventory(b,r4,'commit','WEB-ORDER-4-CONFIRMED');
   ASSERT result->>'status'='committed','Commit succeeds after protected reservation';
   ASSERT public.commerce_stock_balance(b,br,v)=0,'Final on-hand is zero, never negative';
@@ -174,6 +153,27 @@ BEGIN
   );
   ASSERT result->>'status'='accepted','Second partial return can complete the sold quantity';
   ASSERT public.commerce_stock_balance(b,br,v)=1,'Damaged returned units are recorded but not restocked';
+  ASSERT (SELECT count(*) FROM public.auraluxe_stock_outbox WHERE business_id=b)=3,
+    'Website commits and sellable returns create three immutable stock events';
+  SELECT * INTO stock_event FROM public.claim_auraluxe_stock_outbox(b,stock_token,25);
+  ASSERT FOUND AND stock_event.sku_version=1 AND stock_event.delta=-4
+    AND stock_event.payload->>'eventId'=stock_event.event_id::text,
+    'First website sale is emitted as the first idempotent SKU movement event';
+  ok:=public.ack_auraluxe_stock_outbox(stock_event.id,stock_token);
+  ASSERT ok,'First stock event can be acknowledged by its lease owner';
+  stock_token:='e1070000-0000-4000-8000-000000000072';
+  SELECT * INTO stock_event FROM public.claim_auraluxe_stock_outbox(b,stock_token,25);
+  ASSERT FOUND AND stock_event.sku_version=2 AND stock_event.delta=-1,
+    'Second website sale cannot overtake the first movement';
+  ok:=public.ack_auraluxe_stock_outbox(stock_event.id,stock_token);
+  ASSERT ok,'Second stock event can be acknowledged';
+  stock_token:='e1070000-0000-4000-8000-000000000073';
+  SELECT * INTO stock_event FROM public.claim_auraluxe_stock_outbox(b,stock_token,25);
+  ASSERT FOUND AND stock_event.sku_version=3 AND stock_event.delta=1,
+    'Sellable return is delivered after the two sale deductions';
+  ok:=public.ack_auraluxe_stock_outbox(stock_event.id,stock_token);
+  ASSERT ok,'Return stock event can be acknowledged';
+  UPDATE public.auraluxe_sync_control SET stock_enabled=false WHERE business_id=b;
 
   rejected:=false;
   BEGIN
