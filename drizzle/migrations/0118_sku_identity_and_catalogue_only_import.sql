@@ -5,9 +5,10 @@ CREATE UNIQUE INDEX IF NOT EXISTS product_variants_business_id_sku_normalized_ke
 
 CREATE OR REPLACE FUNCTION public.save_catalogue_variant(_business_id uuid, _rows jsonb)
 RETURNS integer LANGUAGE plpgsql SECURITY DEFINER SET search_path=public AS $$
-DECLARE r jsonb; v_sku text; v_name text; v_category text; v_variant_name text; v_product_id uuid; v_variant_id uuid; v_sizes text[]; n integer:=0;
+DECLARE r jsonb; v_sku text; v_name text; v_category text; v_variant_name text; v_product_id uuid; v_variant_id uuid; v_sizes text[]; v_can_manage_cost boolean:=false; n integer:=0;
 BEGIN
  IF NOT public.has_business_role(_business_id,'admin') THEN RAISE EXCEPTION 'Administrator access required'; END IF;
+ v_can_manage_cost:=public.has_permission(_business_id,'other.purchase_price');
  IF jsonb_typeof(_rows) IS DISTINCT FROM 'array' OR jsonb_array_length(_rows) NOT BETWEEN 1 AND 5000 THEN RAISE EXCEPTION 'Expected 1 to 5000 rows'; END IF;
  IF EXISTS(SELECT 1 FROM jsonb_array_elements(_rows) e WHERE nullif(btrim(e.value->>'sku'),'') IS NULL OR length(btrim(e.value->>'sku'))>80)
  OR EXISTS(SELECT 1 FROM jsonb_array_elements(_rows) e GROUP BY lower(btrim(e.value->>'sku')) HAVING count(*)>1) THEN RAISE EXCEPTION 'SKU is required and must appear once per import'; END IF;
@@ -19,10 +20,10 @@ BEGIN
   IF v_variant_id IS NULL THEN
    INSERT INTO public.products(business_id,name,category,catalogue_sizes) VALUES(_business_id,v_name,v_category,v_sizes) RETURNING id INTO v_product_id;
    INSERT INTO public.product_variants(business_id,product_id,name,sku,barcode,unit,selling_price,reorder_level,purchase_price,model_code,mrp,wholesale_price)
-   VALUES(_business_id,v_product_id,v_variant_name,v_sku,nullif(btrim(r->>'barcode'),''),coalesce(nullif(btrim(r->>'unit'),''),'pcs'),coalesce((r->>'selling_price')::numeric,0),coalesce((r->>'reorder_level')::numeric,0),coalesce((r->>'purchase_price')::numeric,0),nullif(btrim(r->>'model_code'),''),coalesce((r->>'mrp')::numeric,0),coalesce((r->>'wholesale_price')::numeric,0));
+   VALUES(_business_id,v_product_id,v_variant_name,v_sku,nullif(btrim(r->>'barcode'),''),coalesce(nullif(btrim(r->>'unit'),''),'pcs'),coalesce((r->>'selling_price')::numeric,0),coalesce((r->>'reorder_level')::numeric,0),CASE WHEN v_can_manage_cost THEN coalesce((r->>'purchase_price')::numeric,0) ELSE 0 END,nullif(btrim(r->>'model_code'),''),coalesce((r->>'mrp')::numeric,0),coalesce((r->>'wholesale_price')::numeric,0));
   ELSE
    UPDATE public.products SET name=v_name,category=v_category,catalogue_sizes=v_sizes,updated_at=now() WHERE business_id=_business_id AND id=v_product_id;
-   UPDATE public.product_variants SET name=v_variant_name,barcode=nullif(btrim(r->>'barcode'),''),unit=coalesce(nullif(btrim(r->>'unit'),''),'pcs'),selling_price=coalesce((r->>'selling_price')::numeric,0),reorder_level=coalesce((r->>'reorder_level')::numeric,0),purchase_price=coalesce((r->>'purchase_price')::numeric,0),model_code=nullif(btrim(r->>'model_code'),''),mrp=coalesce((r->>'mrp')::numeric,0),wholesale_price=coalesce((r->>'wholesale_price')::numeric,0),updated_at=now() WHERE business_id=_business_id AND id=v_variant_id;
+   UPDATE public.product_variants SET name=v_variant_name,barcode=nullif(btrim(r->>'barcode'),''),unit=coalesce(nullif(btrim(r->>'unit'),''),'pcs'),selling_price=coalesce((r->>'selling_price')::numeric,0),reorder_level=coalesce((r->>'reorder_level')::numeric,0),purchase_price=CASE WHEN v_can_manage_cost THEN coalesce((r->>'purchase_price')::numeric,0) ELSE purchase_price END,model_code=nullif(btrim(r->>'model_code'),''),mrp=coalesce((r->>'mrp')::numeric,0),wholesale_price=coalesce((r->>'wholesale_price')::numeric,0),updated_at=now() WHERE business_id=_business_id AND id=v_variant_id;
   END IF;n:=n+1;
  END LOOP;RETURN n;
 END $$;
