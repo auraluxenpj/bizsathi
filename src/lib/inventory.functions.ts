@@ -70,7 +70,9 @@ export const editVariant = createServerFn({method:'POST'}).middleware([requireSu
  const sizes=[...new Set(v.sizes.split(',').map(s=>s.trim()).filter(Boolean))];
  const {error:sizeError}=await context.supabase.from('products').update({catalogue_sizes:sizes}).eq('business_id',data.businessId).eq('id',existing.product_id);
  if(sizeError) throw new Error('Product sizes could not be updated.');
- const {data:saved,error}=await context.supabase.from('product_variants').update({name:v.variant_name,sku:v.sku,model_code:v.model_code || null,barcode:v.barcode || null,unit:v.unit,selling_price:v.selling_price,purchase_price:v.purchase_price,mrp:v.mrp,wholesale_price:v.wholesale_price,reorder_level:v.reorder_level,is_active:v.is_active}).eq('business_id',data.businessId).eq('id',data.id).select('id').single();
+ const {data:canManageCost,error:costPermissionError}=await context.supabase.rpc('has_permission',{_business:data.businessId,_perm:'other.purchase_price'});
+ const updateValues={name:v.variant_name,sku:v.sku,model_code:v.model_code || null,barcode:v.barcode || null,unit:v.unit,selling_price:v.selling_price,...(!costPermissionError&&canManageCost===true?{purchase_price:v.purchase_price}:{}),mrp:v.mrp,wholesale_price:v.wholesale_price,reorder_level:v.reorder_level,is_active:v.is_active};
+ const {data:saved,error}=await context.supabase.from('product_variants').update(updateValues).eq('business_id',data.businessId).eq('id',data.id).select('id').single();
  if(error || !saved) throw new Error('Variant could not be updated. Check unique SKU and barcode.'); return {ok:true};
 });
 export const saveParty = createServerFn({method:'POST'}).middleware([requireSupabaseAuth]).inputValidator(partyInput).handler(async ({data,context})=>{
