@@ -23,6 +23,7 @@ describe('SKU size allocations',()=>{
 describe('Auraluxe POS size groups',()=>{
  it('maps Standard apparel to S through 2XL',()=>expect(catalogueSizesForVariant('Standard','Kurti')).toEqual(['S','M','L','XL','2XL']));
  it('maps Plus Size apparel to 3XL through 8XL',()=>expect(catalogueSizesForVariant('Plus Size','Kurti Set')).toEqual(['3XL','4XL','5XL','6XL','7XL','8XL']));
+ it('does not show clothing sizes for Plus Size non-apparel categories',()=>expect(catalogueSizesForVariant('Plus Size','Sarees')).toEqual([]));
  it.each(['Saree','Purse','Accessories','Unstitched','Bags','Juttis'])('does not show clothing sizes for Standard %s',category=>expect(catalogueSizesForVariant('Standard',category)).toEqual([]));
  it('does not infer sizes for unknown variant labels',()=>expect(catalogueSizesForVariant('Free Size','Kurti')).toEqual([]));
 });
