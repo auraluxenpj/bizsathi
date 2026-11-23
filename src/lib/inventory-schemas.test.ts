@@ -74,9 +74,9 @@ import { parseCatalogueCsv as parseKarobar } from './inventory-csv';
 import { parseGoogleSheetValues } from './google-sheet-catalogue';
 describe('Google Sheets stock master validation',()=>{
  it('requires a Master Qty column and a value on every row',()=>{
-  expect(()=>parseGoogleSheetValues([['Item Name','Generated SKU'],['Kurti','K1']],a)).toThrow(/Master Qty \/ Qty column/);
-  expect(()=>parseGoogleSheetValues([['Item Name','Generated SKU','Master Qty'],['Kurti','K1','']],a)).toThrow(/blank Master Qty/);
-  expect(parseGoogleSheetValues([['Item Name','Generated SKU','Master Qty'],['Kurti','K1',5]],a)[0]).toMatchObject({sku:'K1',opening_stock:5});
+  expect(()=>parseGoogleSheetValues([['Item Name','Generated SKU'],['Kurti','K1']],a,true)).toThrow(/Master Qty \/ Qty column/);
+  expect(()=>parseGoogleSheetValues([['Item Name','Generated SKU','Master Qty'],['Kurti','K1','']],a,true)).toThrow(/blank Master Qty/);
+  expect(parseGoogleSheetValues([['Item Name','Generated SKU','Master Qty'],['Kurti','K1',5]],a,true)[0]).toMatchObject({sku:'K1',opening_stock:5});
  });
 });
 describe('Karobar item sheet', () => {
