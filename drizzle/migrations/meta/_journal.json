@@ -309,6 +309,34 @@
       "when": 1795303003000,
       "tag": "0110_website_inventory_serialization",
       "breakpoints": true
+    },
+    {
+      "idx": 44,
+      "version": "7",
+      "when": 1795435001000,
+      "tag": "0113_shared_catalogue_from_auraluxe",
+      "breakpoints": true
+    },
+    {
+      "idx": 45,
+      "version": "7",
+      "when": 1795436001000,
+      "tag": "0114_auraluxe_catalogue_outbox",
+      "breakpoints": true
+    },
+    {
+      "idx": 46,
+      "version": "7",
+      "when": 1795437001000,
+      "tag": "0115_auraluxe_stock_event_outbox",
+      "breakpoints": true
+    },
+    {
+      "idx": 47,
+      "version": "7",
+      "when": 1795438001000,
+      "tag": "0116_bizsathi_single_catalogue_authority",
+      "breakpoints": true
     }
   ]
 }

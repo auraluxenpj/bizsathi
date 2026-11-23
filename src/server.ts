@@ -99,6 +99,52 @@ export default {
       published: result.published ?? 0,
       blocked: result.blocked === true,
     });
+
+    // Publish both SKU-keyed catalogue queues from the existing five-minute
+    // scheduler. Each receiver is idempotent and each sender acknowledges only
+    // after the remote upsert returns HTTP success.
+    const localCatalogueRequest = new Request('https://bizsathi.internal/api/public/auraluxe-catalogue-publish', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${secret}`,
+        'Content-Type': 'application/json',
+        Accept: 'application/json',
+      },
+      body: JSON.stringify({ action: 'publish_outbox' }),
+    });
+    const localCatalogueResponse = await handler.fetch(localCatalogueRequest, env, ctx);
+    if (!localCatalogueResponse.ok) {
+      throw new Error(`BizSathi catalogue outbox publisher returned HTTP ${localCatalogueResponse.status}`);
+    }
+    const localCatalogueResult = await localCatalogueResponse.json() as { ok?: boolean; delivered?: number; blocked?: boolean };
+    if (localCatalogueResult.ok !== true || localCatalogueResult.blocked === true) {
+      throw new Error('BizSathi catalogue publisher did not confirm delivery');
+    }
+
+    console.info('[shared-catalogue] BizSathi-to-Auraluxe catalogue publisher run', {
+      delivered: localCatalogueResult.delivered ?? 0,
+    });
+
+    const stockRequest = new Request('https://bizsathi.internal/api/public/auraluxe-stock-publish', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${secret}`,
+        'Content-Type': 'application/json',
+        Accept: 'application/json',
+      },
+      body: JSON.stringify({ action: 'publish_outbox' }),
+    });
+    const stockResponse = await handler.fetch(stockRequest, env, ctx);
+    if (!stockResponse.ok) {
+      throw new Error(`Auraluxe stock event publisher returned HTTP ${stockResponse.status}`);
+    }
+    const stockResult = await stockResponse.json() as { ok?: boolean; delivered?: number; blocked?: boolean };
+    if (stockResult.ok !== true || stockResult.blocked === true) {
+      throw new Error('Auraluxe stock event publisher did not confirm delivery');
+    }
+    console.info('[shared-stock] scheduled event run', {
+      delivered: stockResult.delivered ?? 0,
+    });
   },
 
   async fetch(request: Request, env: unknown, ctx: unknown) {

@@ -36,18 +36,39 @@ SELECT set_config('request.jwt.claims','{"role":"service_role"}',true);
 
 DO $reservation$
 DECLARE
-  b uuid; br uuid; v uuid;
+  b uuid; br uuid; v uuid; p uuid;
   r1 uuid:='e1070000-0000-4000-8000-000000000021';
   r2 uuid:='e1070000-0000-4000-8000-000000000022';
   r3 uuid:='e1070000-0000-4000-8000-000000000023';
   r4 uuid:='e1070000-0000-4000-8000-000000000024';
-  result jsonb; rejected boolean;
+  result jsonb; rejected boolean; snapshot jsonb;
 BEGIN
   SELECT id INTO b FROM public.businesses WHERE name='Website reservation fixture';
   SELECT id INTO br FROM public.branches WHERE business_id=b AND code='WEB';
   SELECT id INTO v FROM public.product_variants WHERE business_id=b AND sku='SKU-WEB-RESERVATION-TEST';
   INSERT INTO public.website_inventory_integrations(business_id,branch_id,enabled) VALUES(b,br,true)
     ON CONFLICT (business_id) DO UPDATE SET branch_id=EXCLUDED.branch_id,enabled=true;
+  UPDATE public.auraluxe_sync_control SET catalogue_enabled=true WHERE business_id=b;
+  SELECT product_id INTO p FROM public.product_variants WHERE business_id=b AND sku='SKU-WEB-RESERVATION-TEST';
+  snapshot:=public.get_auraluxe_catalogue_snapshot(b);
+  IF jsonb_array_length(snapshot)<>1 OR snapshot->0->>'sku'<>'SKU-WEB-RESERVATION-TEST' THEN
+    RAISE EXCEPTION 'BizSathi full catalogue snapshot must contain the complete authoritative SKU';
+  END IF;
+  PERFORM public.upsert_auraluxe_catalogue_mappings(b,jsonb_build_array(jsonb_build_object(
+    'sku','SKU-WEB-RESERVATION-TEST',
+    'auraluxe_product_id','e1070000-0000-4000-8000-000000000061',
+    'auraluxe_variant_id','e1070000-0000-4000-8000-000000000062',
+    'bizsathi_product_id',p,
+    'bizsathi_variant_id',v
+  )));
+  BEGIN
+    PERFORM public.upsert_shared_catalogue_from_auraluxe(b,'[]'::jsonb);
+    RAISE EXCEPTION 'Auraluxe-origin catalogue writes must be rejected';
+  EXCEPTION WHEN raise_exception THEN
+    IF SQLERRM NOT LIKE 'BizSathi is the sole catalogue authority%' THEN RAISE; END IF;
+  END;
+  UPDATE public.auraluxe_sync_control SET catalogue_enabled=false WHERE business_id=b;
+  UPDATE public.auraluxe_sync_control SET stock_enabled=true WHERE business_id=b;
 
   result:=public.reserve_website_inventory(b,r1,br,'WEB-ORDER-1','[{"sku":"SKU-WEB-RESERVATION-TEST","quantity":4}]');
   ASSERT result->>'status'='reserved' AND result->>'duplicate'='false','Reservation is created';
@@ -115,6 +136,8 @@ SELECT set_config('request.jwt.claims','{"role":"service_role"}',true);
 
 DO $final_commit$
 DECLARE b uuid; r1 uuid:='e1070000-0000-4000-8000-000000000021'; r3 uuid:='e1070000-0000-4000-8000-000000000023'; r4 uuid:='e1070000-0000-4000-8000-000000000024'; result jsonb; v uuid; br uuid; events jsonb; rejected boolean; claimed jsonb; event_id bigint; token1 uuid:='e1070000-0000-4000-8000-000000000051'; token2 uuid:='e1070000-0000-4000-8000-000000000052'; ok boolean;
+  stock_event public.auraluxe_stock_outbox;
+  stock_token uuid:='e1070000-0000-4000-8000-000000000071';
 BEGIN
   SELECT id INTO b FROM public.businesses WHERE name='Website reservation fixture';
   SELECT id INTO br FROM public.branches WHERE business_id=b AND code='WEB';
@@ -142,6 +165,26 @@ BEGIN
   );
   ASSERT result->>'status'='accepted','Second partial return can complete the sold quantity';
   ASSERT public.commerce_stock_balance(b,br,v)=1,'Damaged returned units are recorded but not restocked';
+  ASSERT (SELECT count(*) FROM public.auraluxe_stock_outbox WHERE business_id=b)=3,
+    'Website commits and sellable returns create three immutable stock events';
+  SELECT * INTO stock_event FROM public.claim_auraluxe_stock_outbox(b,stock_token,25);
+  ASSERT FOUND AND stock_event.sku_version=1 AND stock_event.delta=-4
+    AND stock_event.payload->>'eventId'=stock_event.event_id::text,
+    'First website sale is emitted as the first idempotent SKU movement event';
+  ok:=public.ack_auraluxe_stock_outbox(stock_event.id,stock_token);
+  ASSERT ok,'First stock event can be acknowledged by its lease owner';
+  stock_token:='e1070000-0000-4000-8000-000000000072';
+  SELECT * INTO stock_event FROM public.claim_auraluxe_stock_outbox(b,stock_token,25);
+  ASSERT FOUND AND stock_event.sku_version=2 AND stock_event.delta=-1,
+    'Second website sale cannot overtake the first movement';
+  ok:=public.ack_auraluxe_stock_outbox(stock_event.id,stock_token);
+  ASSERT ok,'Second stock event can be acknowledged';
+  stock_token:='e1070000-0000-4000-8000-000000000073';
+  SELECT * INTO stock_event FROM public.claim_auraluxe_stock_outbox(b,stock_token,25);
+  ASSERT FOUND AND stock_event.sku_version=3 AND stock_event.delta=1,
+    'Sellable return is delivered after the two sale deductions';
+  ok:=public.ack_auraluxe_stock_outbox(stock_event.id,stock_token);
+  ASSERT ok,'Return stock event can be acknowledged';
 
   rejected:=false;
   BEGIN
@@ -188,6 +231,16 @@ BEGIN
   ASSERT jsonb_array_length(events)=7,'Acknowledged events are removed from the pending view';
   ASSERT public.ack_website_inventory_outbox(b,(events->6->>'id')::bigint)=7,'Legacy cursor acknowledgement remains compatible';
   ASSERT (public.website_inventory_status(b,r4)->>'status')='committed','Uncertain operation status can be reconciled';
+  UPDATE public.auraluxe_sync_control SET stock_enabled=false WHERE business_id=b;
+  BEGIN
+    PERFORM public.reserve_website_inventory(
+      b,'e1070000-0000-4000-8000-000000000081',br,'SYNC-GATE-CHECK',
+      jsonb_build_array(jsonb_build_object('sku','SKU-WEB-RESERVATION-TEST','quantity',1))
+    );
+    RAISE EXCEPTION 'Website reservation must fail when transactional stock sync is disabled';
+  EXCEPTION WHEN raise_exception THEN
+    IF SQLERRM NOT LIKE 'Website stock event sync is not enabled%' THEN RAISE; END IF;
+  END;
 END
 $final_commit$;
 

@@ -80,31 +80,15 @@ describe('BizSathi website inventory worker contract', () => {
     }));
   });
 
-  it('publishes a stock projection with bearer authentication and acknowledges only after success', async () => {
-    let claim = 0;
-    mocks.rpc.mockImplementation(async (name: string) => {
-      if (name === 'website_inventory_branch') return { data: BRANCH, error: null };
-      if (name === 'reserve_website_inventory') return { data: { ok: true, status: 'reserved' }, error: null };
-      if (name === 'claim_website_inventory_outbox') {
-        claim += 1;
-        return { data: claim === 1 ? [{ id: 17, payload: { items: [{ sku: 'AL-KURTI-01', available: 4 }] } }] : [], error: null };
-      }
-      if (name === 'ack_website_inventory_outbox_event') return { data: true, error: null };
-      return { data: true, error: null };
-    });
-    const fetchMock = vi.fn(async (_input: RequestInfo | URL, init?: RequestInit) => {
-      expect(new Headers(init?.headers).get('authorization')).toBe(`Bearer ${SECRET}`);
-      expect(JSON.parse(String(init?.body))).toEqual({ items: [{ sku: 'AL-KURTI-01', stock: 4 }] });
-      return Response.json({ ok: true, applied: 1 });
-    });
+  it('does not publish legacy absolute stock snapshots after transactional movement events replace them', async () => {
+    const fetchMock = vi.fn();
     vi.stubGlobal('fetch', fetchMock);
 
     const response = await invoke({ action: 'reserve', operationId: OP, reference: 'WEB-1002', items: [{ sku: 'AL-KURTI-01', quantity: 1 }] });
     expect(response.status).toBe(200);
-    expect(fetchMock).toHaveBeenCalledTimes(1);
-    expect(mocks.rpc).toHaveBeenCalledWith('ack_website_inventory_outbox_event', {
-      _business_id: 'c0f0ed15-97e4-4859-ac8f-a2d4e81f5b01', _event_id: '17', _lease_token: expect.any(String),
-    });
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(mocks.rpc).not.toHaveBeenCalledWith('claim_website_inventory_outbox', expect.anything());
+    expect(mocks.rpc).not.toHaveBeenCalledWith('ack_website_inventory_outbox_event', expect.anything());
   });
 
   it('fails closed when the integration branch is not configured', async () => {
