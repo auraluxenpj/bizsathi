@@ -49,13 +49,13 @@ export function BulkSkuCleanup({businessId,onComplete}:{businessId:string;onComp
     <Dialog open={open} onOpenChange={close}>
       <DialogContent className="max-h-[85dvh] max-w-4xl overflow-y-auto" aria-describedby={undefined}>
         <DialogHeader><DialogTitle>Clean unused SKUs · BizSathi only</DialogTitle></DialogHeader>
-        <p className="text-sm text-muted-foreground">Only SKUs with zero stock and no sales, purchase, document, stock, count, reservation, return or sync history can be deleted. Google Sheets and Auraluxe are not changed.</p>
+        <p className="text-sm text-muted-foreground">Stock quantity alone does not block deletion. SKUs with no sales, purchases, stock transactions, documents, counts, reservations, returns or sync history can be deleted. Imported CSV opening balances are removed with the SKU. Google Sheets and Auraluxe are not changed.</p>
         {preview.isPending&&<p role="status" className="text-sm">Checking every SKU and its linked records…</p>}
         {rows.length>0&&<>
           <div className="grid gap-2 sm:grid-cols-3">
             <div className="rounded-lg border p-3"><p className="text-xs text-muted-foreground">Total SKUs checked</p><p className="text-xl font-semibold tabular-nums">{rows.length}</p></div>
             <div className="rounded-lg border p-3"><p className="text-xs text-muted-foreground">Eligible to delete</p><p className="text-xl font-semibold tabular-nums">{eligible.length}</p></div>
-            <div className="rounded-lg border p-3"><p className="text-xs text-muted-foreground">Blocked by history / stock</p><p className="text-xl font-semibold tabular-nums">{rows.length-eligible.length}</p></div>
+            <div className="rounded-lg border p-3"><p className="text-xs text-muted-foreground">Blocked by transaction history</p><p className="text-xl font-semibold tabular-nums">{rows.length-eligible.length}</p></div>
           </div>
           <div className="flex flex-wrap items-center justify-between gap-3">
             <label className="flex items-center gap-2 text-sm font-medium">
