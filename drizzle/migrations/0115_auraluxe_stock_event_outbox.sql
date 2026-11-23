@@ -3,7 +3,7 @@
 -- Stock events start only after SKU/variant mappings and physical baselines are approved.
 
 CREATE TABLE public.auraluxe_sync_control (
-  business_id uuid PRIMARY KEY REFERENCES public.businesses(id) ON DELETE RESTRICT,
+  business_id uuid PRIMARY KEY,
   catalogue_enabled boolean NOT NULL DEFAULT false,
   stock_enabled boolean NOT NULL DEFAULT false,
   updated_at timestamptz NOT NULL DEFAULT now()
