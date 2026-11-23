@@ -91,6 +91,20 @@ describe('BizSathi website inventory worker contract', () => {
     expect(mocks.rpc).not.toHaveBeenCalledWith('ack_website_inventory_outbox_event', expect.anything());
   });
 
+  it('skips the retired outbox publisher before requiring a branch binding', async () => {
+    mocks.rpc.mockImplementation(async (name: string) => {
+      if (name === 'website_inventory_integration_enabled') return { data: false, error: null };
+      return { data: null, error: null };
+    });
+    const response = await invoke({ action: 'publish_outbox' });
+    expect(response.status).toBe(200);
+    expect(await response.json()).toMatchObject({ ok: true, skipped: true, published: 0 });
+    expect(mocks.rpc).toHaveBeenCalledTimes(1);
+    expect(mocks.rpc).toHaveBeenCalledWith('website_inventory_integration_enabled', {
+      _business_id: 'c0f0ed15-97e4-4859-ac8f-a2d4e81f5b01',
+    });
+  });
+
   it('fails closed when the integration branch is not configured', async () => {
     mocks.rpc.mockResolvedValue({ data: null, error: null });
     const response = await invoke({ action: 'status', operationId: OP });
