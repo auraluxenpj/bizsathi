@@ -36,8 +36,8 @@ vi.mock('@/lib/business.functions', () => ({ reissueInvitation: vi.fn(), getMemb
 vi.mock('@/lib/inventory.functions', () => ({ getInventory: async () => ({
   movements: [{ variant_id: ID.v1, branch_id: ID.br, quantity: 3 }, { variant_id: ID.v2, branch_id: ID.br, quantity: 4 }],
   variants: [
-    { id: ID.v1, product_id: ID.prod1, sku: 'AL-001', barcode: '', name: 'Large', unit: 'pcs', selling_price: 1500, reorder_level: 5, is_active: true, products: { name: 'Silk Saree', is_active: true } },
-    { id: ID.v2, product_id: ID.prod2, sku: 'AL-002', barcode: '', name: 'Standard', unit: 'pcs', selling_price: 900, reorder_level: 5, is_active: true, products: { name: 'Cotton Kurti', is_active: true } },
+    { id: ID.v1, product_id: ID.prod1, sku: 'AL-001', barcode: '', name: 'Large', unit: 'pcs', selling_price: 1500, reorder_level: 5, is_active: true, products: { name: 'Silk Saree', category: 'Saree', is_active: true } },
+    { id: ID.v2, product_id: ID.prod2, sku: 'AL-002', barcode: '', name: 'Standard', unit: 'pcs', selling_price: 900, reorder_level: 5, is_active: true, products: { name: 'Cotton Kurti', category: 'Kurti', is_active: true } },
   ],
   parties: [{ id: ID.p1, name: 'Ram Traders', phone: '9800000000', kind: 'customer', is_active: true }],
 }) }));
@@ -347,6 +347,7 @@ describe('Point of sale', () => {
     const kurtiCard = kurti.closest('article');
     if (!sareeCard || !kurtiCard) throw new Error('Expected catalogue product cards were not rendered');
     fireEvent.click(within(sareeCard).getByRole('button', { name: '+ Add' }));
+    fireEvent.change(within(kurtiCard).getByLabelText('Size for Cotton Kurti'), { target: { value: 'M' } });
     fireEvent.click(within(kurtiCard).getByRole('button', { name: '+ Add' }));
     expect(screen.getByLabelText('quantity line 1')).toHaveValue(1);
     expect(screen.getByLabelText('quantity line 2')).toHaveValue(1);
