@@ -8,7 +8,7 @@ const headerAliases: Record<string, string[]> = {
  sizes: ['sizes','Available Sizes','Size Options'],
  product_name: ['product_name', 'Item Name', 'item_name', 'Product Name', 'Product', 'Name'],
  category: ['category'],
- variant_name: ['variant_name', 'Variant / Size', 'Variant', 'fit_category', 'Fit / Size Category'],
+ variant_name: ['variant_name', 'Variant / Size', 'Variant', 'Size', 'fit_category', 'Fit / Size Category'],
  sku: ['sku', 'Generated SKU', 'Item Code', 'Code'],
  model_code: ['model_code', 'Model Code', 'Model', 'Model No', 'Model Number'],
  barcode: ['barcode'],
@@ -23,9 +23,9 @@ const headerAliases: Record<string, string[]> = {
  reorder_level: ['reorder_level', 'Reorder Level', 'Low Stock', 'Low Stock Threshold'],
 };
 const canonicalHeaders = new Map(Object.entries(headerAliases).flatMap(([column, aliases]) => aliases.map(alias => [alias.toLowerCase(), column] as const)));
-function normalizeHeader(header: string) {
+function normalizeHeader(header: string, googleSheetMode=false) {
  const trimmed = header.trim();
- if(trimmed.toLowerCase()==='size')return 'size_option';
+ if(googleSheetMode&&trimmed.toLowerCase()==='size')return 'size_option';
  return canonicalHeaders.get(trimmed.toLowerCase()) ?? trimmed;
 }
 function csvNumber(value: string | undefined): number {
@@ -40,8 +40,8 @@ export function dropCollidingGeneratedBarcodes(rows: CatalogueRow[], supplied: b
  const count=new Map<string,number>(); rows.forEach((r,i)=>{ if(!supplied[i] && r.barcode) count.set(r.barcode,(count.get(r.barcode)??0)+1); });
  return rows.map((r,i)=>!supplied[i] && r.barcode && (count.get(r.barcode)??0)>1 ? {...r,barcode:''} : r);
 }
-export function parseCatalogueCsv(text:string, businessId:string): CatalogueRow[] {
- const parsed = Papa.parse<Record<string,string>>(text, {header:true,skipEmptyLines:'greedy',transformHeader:normalizeHeader});
+export function parseCatalogueCsv(text:string, businessId:string, googleSheetMode=false): CatalogueRow[] {
+ const parsed = Papa.parse<Record<string,string>>(text, {header:true,skipEmptyLines:'greedy',transformHeader:header=>normalizeHeader(header,googleSheetMode)});
  const firstError=parsed.errors[0];
  if(firstError) throw new Error(`CSV row ${ (firstError.row ?? 0)+2 }: ${firstError.message}`);
  if(!parsed.meta.fields?.includes('product_name') || !parsed.meta.fields.includes('sku')) throw new Error('CSV requires product_name and sku columns.');
@@ -50,9 +50,9 @@ export function parseCatalogueCsv(text:string, businessId:string): CatalogueRow[
    // Karobar sheets list one row per size; group them by Description and use the SKU suffix as the size.
    const group=r['description']?.trim(); const sku=r['sku']?.trim() ?? ''; const explicit=r['variant_name']?.trim(); const sizeColumn=r['size_option']?.trim();
    const isSizeLabel=(value:string)=>/^(?:XXS|XS|S|M|L|XL|[2-9]XL|10XL|FREE\s*SIZE|ONE\s*SIZE|\d{2})$/i.test(value.trim());
-   const explicitIsSize=!!explicit&&isSizeLabel(explicit); const columnIsSize=!!sizeColumn&&isSizeLabel(sizeColumn);
-   const variantName=explicitIsSize||columnIsSize?'Standard':explicit||sizeColumn||(!group?'Standard':(()=>{const cut=sku.lastIndexOf('-');return cut>0&&cut<sku.length-1?sku.slice(cut+1):'Standard';})());
-   const rowSizes=r['sizes']?.trim() || (explicitIsSize?explicit:'') || (columnIsSize?sizeColumn:'') || catalogueSizesForVariant(variantName,r['category']).join(', ');
+   const explicitIsSize=googleSheetMode&&!!explicit&&isSizeLabel(explicit); const columnIsSize=googleSheetMode&&!!sizeColumn&&isSizeLabel(sizeColumn);
+   const variantName=googleSheetMode&&(explicitIsSize||columnIsSize)?'Standard':explicit||sizeColumn||(!group?'Standard':(()=>{const cut=sku.lastIndexOf('-');return cut>0&&cut<sku.length-1?sku.slice(cut+1):'Standard';})());
+   const rowSizes=r['sizes']?.trim() || (googleSheetMode&&explicitIsSize?explicit:'') || (googleSheetMode&&sizeColumn?sizeColumn:'') || catalogueSizesForVariant(variantName,r['category']).join(', ');
    return {
      ...r,
      ...(group&&!explicit?{product_name:group}:{}),
@@ -70,7 +70,8 @@ export function parseCatalogueCsv(text:string, businessId:string): CatalogueRow[
      purchase_price: csvNumber(r['purchase_price'])
    };
  })}).rows;
- // A sheet may provide one row per size/SKU. Merge those size labels onto the shared product record so every SKU for that product exposes the same POS size choices.
+ if(!googleSheetMode)return dropCollidingGeneratedBarcodes(rows,supplied);
+ // A Google Sheet may provide one row per size/SKU. Merge those size labels onto the shared product record so every SKU for that product exposes the same POS size choices.
  const sizesByProduct=new Map<string,string[]>();
  for(const row of rows){const key=`${row.product_name.trim().toLowerCase()}::${row.category.trim().toLowerCase()}::${row.variant_name.trim().toLowerCase()}`;const sizes=sizesByProduct.get(key)??[];for(const size of row.sizes.split(',').map(value=>value.trim()).filter(Boolean)){if(!sizes.some(existing=>existing.toLowerCase()===size.toLowerCase()))sizes.push(size);}sizesByProduct.set(key,sizes);}
  const withProductSizes=rows.map(row=>{const key=`${row.product_name.trim().toLowerCase()}::${row.category.trim().toLowerCase()}::${row.variant_name.trim().toLowerCase()}`;return {...row,sizes:(sizesByProduct.get(key)??[]).join(', ')};});
