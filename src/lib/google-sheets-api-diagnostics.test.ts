@@ -4,7 +4,7 @@ import { readGoogleSheetRange } from './google-sheets-api.server';
 
 Object.defineProperty(globalThis, 'crypto', { value: webcrypto, configurable: true });
 
-async function serviceAccountJson() {
+async function serviceAccountJson(clientEmail = 'diagnostic@example.iam.gserviceaccount.com') {
   const pair = await webcrypto.subtle.generateKey(
     { name: 'RSASSA-PKCS1-v1_5', modulusLength: 2048, publicExponent: new Uint8Array([1, 0, 1]), hash: 'SHA-256' },
     true,
@@ -15,7 +15,7 @@ async function serviceAccountJson() {
   for (const byte of pkcs8) binary += String.fromCharCode(byte);
   const base64 = btoa(binary);
   const pem = '-----BEGIN PRIVATE KEY-----\\n' + (base64.match(/.{1,64}/g)?.join('\\n') ?? '') + '\\n-----END PRIVATE KEY-----\\n';
-  return JSON.stringify({ client_email: 'diagnostic@example.iam.gserviceaccount.com', private_key: pem });
+  return JSON.stringify({ client_email: clientEmail, private_key: pem });
 }
 
 afterEach(() => vi.restoreAllMocks());
@@ -57,7 +57,7 @@ describe('Google Sheets outbound diagnostics', () => {
       .mockRejectedValueOnce(timeout);
 
     await expect(readGoogleSheetRange('sheet-id', 'Master!A1:Z5002', {
-      serviceAccountJson: await serviceAccountJson(),
+      serviceAccountJson: await serviceAccountJson('timeout-diagnostic@example.iam.gserviceaccount.com'),
     }, request)).rejects.toMatchObject({ stage: 'sheets-network', status: 0 });
 
     expect(log).toHaveBeenCalledWith('[GoogleSheets] outbound request failed', expect.objectContaining({
