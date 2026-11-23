@@ -316,6 +316,13 @@
       "when": 1795435001000,
       "tag": "0113_shared_catalogue_from_auraluxe",
       "breakpoints": true
+    },
+    {
+      "idx": 45,
+      "version": "7",
+      "when": 1795436001000,
+      "tag": "0114_auraluxe_catalogue_outbox",
+      "breakpoints": true
     }
   ]
 }
