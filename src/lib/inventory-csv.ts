@@ -51,7 +51,7 @@ export function parseCatalogueCsv(text:string, businessId:string): CatalogueRow[
    const isSizeLabel=(value:string)=>/^(?:XXS|XS|S|M|L|XL|[2-9]XL|10XL|FREE\s*SIZE|ONE\s*SIZE|\d{2})$/i.test(value.trim());
    const explicitIsSize=!!explicit&&isSizeLabel(explicit);
    const variantName=explicitIsSize?'Standard':!group||explicit?(explicit||'Standard'):(()=>{const cut=sku.lastIndexOf('-');return cut>0&&cut<sku.length-1?sku.slice(cut+1):'Standard';})();
-   const rowSizes=(explicitIsSize?explicit:r['sizes']?.trim()) || catalogueSizesForVariant(variantName,r['category']).join(', ');
+   const rowSizes=r['sizes']?.trim() || (explicitIsSize?explicit:'') || catalogueSizesForVariant(variantName,r['category']).join(', ');
    return {
      ...r,
      ...(group&&!explicit?{product_name:group}:{}),
