@@ -18,7 +18,7 @@ const headerAliases: Record<string, string[]> = {
  wholesale_price: ['wholesale_price', 'Wholesale Price', 'Wholesale Rate'],
  purchase_price: ['purchase_price', 'Purchase Price', 'Cost Price'],
  // qty is the target on-hand quantity for the selected branch; opening_stock remains a supported legacy alias.
- opening_stock: ['opening_stock', 'Opening Stock', 'Opening Qty', 'qty', 'Qty', 'Quantity', 'Stock', 'Current Stock'],
+ opening_stock: ['opening_stock', 'Opening Stock', 'Opening Qty', 'Master Qty', 'Master Quantity', 'On Hand Qty', 'Qty on Hand', 'qty', 'Qty', 'Quantity', 'Stock', 'Current Stock'],
  description: ['description', 'Description'],
  reorder_level: ['reorder_level', 'Reorder Level', 'Low Stock', 'Low Stock Threshold'],
 };
