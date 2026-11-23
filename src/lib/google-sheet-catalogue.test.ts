@@ -34,7 +34,7 @@ describe('Google Sheets catalogue import', () => {
     const credentials = { serviceAccountJson: await serviceAccountJson(`catalogue-${crypto.randomUUID()}@example.iam.gserviceaccount.com`) };
     const request = vi.fn<typeof fetch>()
       .mockResolvedValueOnce(Response.json({ access_token: 'test-access-token', expires_in: 3600 }))
-      .mockResolvedValueOnce(Response.json({ values: [['Item Name', 'Generated SKU'], ['Shirt', 'S1']] }));
+      .mockResolvedValueOnce(Response.json({ values: [['Item Name', 'Generated SKU', 'Master Qty'], ['Shirt', 'S1', '2']] }));
     const rows = await readGoogleSheetCatalogue(input, credentials, request);
     expect(rows[0]?.sku).toBe('S1');
     expect(String(request.mock.calls[0]?.[0])).toContain('oauth2.googleapis.com/token');
