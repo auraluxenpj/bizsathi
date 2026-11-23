@@ -54,7 +54,7 @@ export const importCatalogueBranchStock = createServerFn({method:'POST'}).middle
   _rows:data.rows.map(({opening_stock,...row})=>({...row,opening_stock})),
   _sync_stock:data.syncStock,
  });
- if(error) throw new Error(error.message.includes('different model code') ? error.message : 'CSV stock import failed. No rows were applied. Check branch access, duplicate SKUs, prices and quantities.');
+ if(error) throw new Error(error.message.includes('different model code') || error.message.includes('reserved for a website order') || error.message.includes('Insufficient stock') || error.message.includes('Master Qty') ? error.message : 'Catalogue import / Google Sheets sync failed. No rows were applied. Check branch access, duplicate SKUs, prices and quantities.');
  // The import_catalogue_branch_stock RPC persists catalogue_sizes atomically with SKU updates.
  return result as {inserted:number;updated:number;stock_adjusted:number;stock_units_added:number;stock_units_removed:number;stock_synced:boolean;branch_id:string};
 });
