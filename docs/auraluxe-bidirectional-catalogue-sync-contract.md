@@ -50,9 +50,12 @@ Description, fabric, colours, images, SEO title/description, slug/URL merchandis
 - Do not auto-publish a product merely because it exists in BizSathi.
 
 ## Cutover gates
-1. Schema and code deployed to both systems while integration switches remain disabled.
-2. Test create/update in each direction using test SKUs.
-3. Test receipt, sale, return, adjustment, retry, duplicate event, out-of-order event, and offline recovery.
-4. Verify exact SKU parity and stock parity without changing existing history.
-5. Reconcile the 404-row workbook Master against BizSathi and Auraluxe.
-6. Obtain separate approval before baseline stock adjustment, deactivating unmatched records, or enabling production sync.
+1. Deploy schema and code to both systems while every catalogue, stock, checkout-reservation and website-authority switch remains disabled.
+2. Complete and owner-approve the SKU mapping sheet. Do not infer matches from Model Code or numeric suffixes; confirm the physical label, category, style, size and colour. Keep unmatched records untouched.
+3. Enable catalogue sync only after approved mappings exist. Test create/update in each direction with isolated test SKUs and confirm the returned cross-reference IDs.
+4. Physically count each approved SKU. Post any variance as an audited BizSathi stock adjustment so BizSathi's ledger equals the verified count.
+5. Register the Auraluxe baseline for each approved SKU while Auraluxe stock authority and stock-event delivery are still disabled. The RPC requires the physical count and BizSathi ledger quantity to match.
+6. Enable the Auraluxe receiver/authority first, then the BizSathi stock-event publisher and website reservation integration. Enable checkout reservations only after both stock event sides are ready.
+7. Test receipt, native sale, website sale, return, adjustment, transfer, retry, duplicate event, out-of-order event, negative-stock rejection and offline recovery.
+8. Verify SKU and stock parity without changing existing movement history. Keep all unmatched records and dead-letter events visible for review.
+9. Obtain separate owner approval before any baseline write, unmatched-record deactivation, production deployment or sync activation.
