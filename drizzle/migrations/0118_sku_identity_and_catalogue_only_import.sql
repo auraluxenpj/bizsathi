@@ -1,6 +1,7 @@
 -- 0118: SKU is the catalogue identity; product names are descriptive and may repeat.
 -- Catalogue imports never mutate stock. Stock is established through reviewed inventory counts.
 DROP INDEX IF EXISTS public.products_business_id_name_key;
+CREATE UNIQUE INDEX IF NOT EXISTS product_variants_business_id_sku_normalized_key ON public.product_variants(business_id,lower(btrim(sku)));
 
 CREATE OR REPLACE FUNCTION public.save_catalogue_variant(_business_id uuid, _rows jsonb)
 RETURNS integer LANGUAGE plpgsql SECURITY DEFINER SET search_path=public AS $$
