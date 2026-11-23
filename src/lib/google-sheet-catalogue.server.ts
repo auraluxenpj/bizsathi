@@ -17,9 +17,15 @@ export async function readGoogleSheetCatalogue(
       if (error instanceof GoogleSheetsApiError) {
         const detail = error.stage === 'credentials'
           ? 'The Cloudflare Google service-account JSON is invalid or missing required fields.'
-          : error.stage === 'oauth'
-            ? `Google rejected the service-account key during OAuth authentication (HTTP ${error.status}). Check that the active JSON key matches the service account.`
-            : error.status === 401 || error.status === 403
+          : error.stage === 'signing'
+            ? 'The Worker could not sign the Google service-account assertion. Verify that the private key in the Cloudflare secret is complete and valid.'
+            : error.stage === 'oauth-network'
+              ? 'The Worker could not connect to Google OAuth (oauth2.googleapis.com). This is an outbound network or timeout failure, not a spreadsheet-sharing permission issue.'
+              : error.stage === 'sheets-network'
+                ? 'Google OAuth succeeded, but the Worker could not connect to the Google Sheets API (sheets.googleapis.com). This is an outbound network or timeout failure.'
+                : error.stage === 'oauth'
+                  ? `Google rejected the service-account key during OAuth authentication (HTTP ${error.status}). Check that the active JSON key matches the service account.`
+                  : error.status === 401 || error.status === 403
               ? `Google Sheets API denied the service account (HTTP ${error.status}). Check that the Sheets API is enabled and this exact service account has access to the spreadsheet.`
               : error.status === 404
                 ? 'Google Sheets could not find the spreadsheet or requested tab (HTTP 404). Check the spreadsheet ID and tab name.'
