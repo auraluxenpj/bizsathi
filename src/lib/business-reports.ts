@@ -46,7 +46,7 @@ export function buildBusinessReport(s:BusinessSnapshot,f:ReportInput,docLines:Do
      const size=String(allocation.size??'').trim();const qty=new Decimal(allocation.quantity??0);
      if(!size||!qty.gt(0))continue;
      const key=`${row.variantId}:${size.toLowerCase()}`;
-     if(!totals.has(key))totals.set(key,{product:row.name??row.sku??row.variantId,sku:row.sku??'',size,sold:new Decimal(0),returned:new Decimal(0)});
+     if(!totals.has(key))totals.set(key,{product:row.productName??row.name??row.sku??row.variantId,sku:row.sku??'',size,sold:new Decimal(0),returned:new Decimal(0)});
      const entry=totals.get(key)!;
      if(doc.kind==='sale')entry.sold=entry.sold.plus(qty);else entry.returned=entry.returned.plus(qty);
     }
