@@ -53,7 +53,7 @@ export function parseCatalogueCsv(text:string, businessId:string): CatalogueRow[
      ...r,
      ...(group&&!explicit?{product_name:group}:{}),
      variant_name:variantName,
-     sizes:catalogueSizesForVariant(variantName,r['category']).join(', '),
+     sizes:r['sizes']?.trim() || catalogueSizesForVariant(variantName,r['category']).join(', '),
      sku: r['sku']?.trim() || '',
      model_code: r['model_code']?.trim() || '',
      barcode: generateBarcodeFromSkuIfNeeded(r['sku'] ?? '', r['barcode']?.trim() || ''),
