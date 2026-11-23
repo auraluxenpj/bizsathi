@@ -1,5 +1,6 @@
 import {describe,it,expect} from 'vitest';
 import {parseCatalogueCsv} from './inventory-csv';
+import {parseGoogleSheetValues} from './google-sheet-catalogue';
 import {commerceLine,catalogueSizesForVariant} from './commerce-schemas';
 import {returnableLines,returnLine,sourceLines} from './invoice-returns';
 const variant='10000000-0000-4000-8000-000000000001';
@@ -29,8 +30,9 @@ describe('Auraluxe POS size groups',()=>{
  it('does not show clothing sizes for Plus Size non-apparel categories',()=>expect(catalogueSizesForVariant('Plus Size','Sarees')).toEqual([]));
  it('persists the Plus Size options when importing a fit_category column',()=>{const [row]=parseCatalogueCsv('product_name,category,fit_category,sku\nKurti Set,Kurti Set,Plus Size,K-001','10000000-0000-4000-8000-000000000001');expect(row?.variant_name).toBe('Plus Size');expect(row?.sizes).toBe('3XL, 4XL, 5XL, 6XL, 7XL, 8XL');});
  it('keeps legacy size-suffixed SKU rows outside the fit-size selector when no size column exists',()=>{const [row]=parseCatalogueCsv('product_name,description,category,sku\nKurti Set,Anarkali Set,Kurti Set,K-002-M','10000000-0000-4000-8000-000000000001');expect(row?.variant_name).toBe('M');expect(row?.sizes).toBe('');});
- it('converts explicit size variants into a shared POS size list',()=>{const rows=parseCatalogueCsv('product_name,category,variant_name,sku\nAnushree,Kurti,M,AL-001-M\nAnushree,Kurti,L,AL-001-L\nAnushree,Kurti,XL,AL-001-XL\nAnushree,Kurti,2XL,AL-001-2XL','10000000-0000-4000-8000-000000000001');expect(rows.map(row=>row.variant_name)).toEqual(['Standard','Standard','Standard','Standard']);expect(rows.map(row=>row.sizes)).toEqual(['M, L, XL, 2XL','M, L, XL, 2XL','M, L, XL, 2XL','M, L, XL, 2XL']);});
- it('reads a Google Sheets Size column as an explicit size option',()=>{const rows=parseCatalogueCsv('product_name,category,sku,Size\nAnushree,Kurti,AL-002-M,M\nAnushree,Kurti,AL-002-L,L','10000000-0000-4000-8000-000000000001');expect(rows.map(row=>row.sizes)).toEqual(['M, L','M, L']);});
+ it('converts explicit size variants into a shared POS size list for Google Sheets',()=>{const rows=parseGoogleSheetValues([['product_name','category','variant_name','sku'],['Anushree','Kurti','M','AL-001-M'],['Anushree','Kurti','L','AL-001-L'],['Anushree','Kurti','XL','AL-001-XL'],['Anushree','Kurti','2XL','AL-001-2XL']],'10000000-0000-4000-8000-000000000001');expect(rows.map(row=>row.variant_name)).toEqual(['Standard','Standard','Standard','Standard']);expect(rows.map(row=>row.sizes)).toEqual(['M, L, XL, 2XL','M, L, XL, 2XL','M, L, XL, 2XL','M, L, XL, 2XL']);});
+ it('reads a Google Sheets Size column as an explicit size option',()=>{const rows=parseGoogleSheetValues([['product_name','category','sku','Size'],['Anushree','Kurti','AL-002-M','M'],['Anushree','Kurti','AL-002-L','L']],'10000000-0000-4000-8000-000000000001');expect(rows.map(row=>row.sizes)).toEqual(['M, L','M, L']);});
+ it('keeps the legacy CSV Size alias as a variant label',()=>{const [row]=parseCatalogueCsv('Product Name,Category,Size,SKU\nShirt,Clothing,Large,S1','10000000-0000-4000-8000-000000000001');expect(row?.variant_name).toBe('Large');});
  it.each(['Saree','Purse','Accessories','Unstitched','Bags','Juttis'])('does not show clothing sizes for Standard %s',category=>expect(catalogueSizesForVariant('Standard',category)).toEqual([]));
  it('does not infer sizes for unknown variant labels',()=>expect(catalogueSizesForVariant('Free Size','Kurti')).toEqual([]));
 });
