@@ -64,7 +64,7 @@ function isH3SwallowedErrorBody(body: string): boolean {
   }
 }
 
-type ScheduledEnv = { WEBSITE_INVENTORY_SYNC_SECRET?: string };
+type ScheduledEnv = { WEBSITE_INVENTORY_SYNC_SECRET?: string; AURALUXE_CATALOGUE_PUBLISH_URL?: string };
 type ScheduledController = { cron: string; scheduledTime: number };
 
 export default {
@@ -98,6 +98,54 @@ export default {
       skipped: result.skipped === true,
       published: result.published ?? 0,
       blocked: result.blocked === true,
+    });
+
+    // Publish both SKU-keyed catalogue queues from the existing five-minute
+    // scheduler. Each receiver is idempotent and each sender acknowledges only
+    // after the remote upsert returns HTTP success.
+    const localCatalogueRequest = new Request('https://bizsathi.internal/api/public/auraluxe-catalogue-publish', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${secret}`,
+        'Content-Type': 'application/json',
+        Accept: 'application/json',
+      },
+      body: JSON.stringify({ action: 'publish_outbox' }),
+    });
+    const localCatalogueResponse = await handler.fetch(localCatalogueRequest, env, ctx);
+    if (!localCatalogueResponse.ok) {
+      throw new Error(`BizSathi catalogue outbox publisher returned HTTP ${localCatalogueResponse.status}`);
+    }
+    const localCatalogueResult = await localCatalogueResponse.json() as { ok?: boolean; delivered?: number; blocked?: boolean };
+    if (localCatalogueResult.ok !== true || localCatalogueResult.blocked === true) {
+      throw new Error('BizSathi catalogue publisher did not confirm delivery');
+    }
+
+    const remotePublisher = env.AURALUXE_CATALOGUE_PUBLISH_URL
+      ?? 'https://www.auraluxe.com.np/api/public/bizsathi-catalogue-publish';
+    const remoteUrl = new URL(remotePublisher);
+    if (remoteUrl.protocol !== 'https:' || remoteUrl.pathname !== '/api/public/bizsathi-catalogue-publish'
+      || remoteUrl.username || remoteUrl.password || remoteUrl.search || remoteUrl.hash) {
+      throw new Error('AURALUXE_CATALOGUE_PUBLISH_URL must be the final HTTPS publisher endpoint');
+    }
+    const remoteCatalogueResponse = await fetch(remoteUrl, {
+      method: 'POST',
+      redirect: 'manual',
+      signal: AbortSignal.timeout(20000),
+      headers: {
+        Authorization: `Bearer ${secret}`,
+        'Content-Type': 'application/json',
+        Accept: 'application/json',
+      },
+      body: JSON.stringify({ action: 'publish_outbox' }),
+    });
+    const remoteCatalogueResult = await remoteCatalogueResponse.json().catch(() => null) as { ok?: boolean; delivered?: number; blocked?: boolean } | null;
+    if (!remoteCatalogueResponse.ok || remoteCatalogueResult?.ok !== true || remoteCatalogueResult.blocked === true) {
+      throw new Error(`Auraluxe catalogue publisher did not confirm delivery (HTTP ${remoteCatalogueResponse.status})`);
+    }
+    console.info('[shared-catalogue] scheduled outbox run', {
+      localDelivered: localCatalogueResult.delivered ?? 0,
+      remoteDelivered: remoteCatalogueResult.delivered ?? 0,
     });
   },
 
