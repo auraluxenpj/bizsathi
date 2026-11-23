@@ -1,5 +1,6 @@
 import Papa from 'papaparse';
 import { generateBarcodeFromSkuIfNeeded } from './barcode';
+import { catalogueSizesForVariant } from './commerce-schemas';
 import { catalogueInput, type CatalogueRow } from './inventory-schemas';
 
 export const catalogueColumns = ['product_name','category','variant_name','sizes','sku','model_code','barcode','unit','qty','selling_price','mrp','wholesale_price','purchase_price','reorder_level'];
@@ -7,7 +8,7 @@ const headerAliases: Record<string, string[]> = {
  sizes: ['sizes','Sizes','Available Sizes','Size Options'],
  product_name: ['product_name', 'Item Name', 'item_name', 'Product Name', 'Product', 'Name'],
  category: ['category'],
- variant_name: ['variant_name', 'Variant / Size', 'Variant', 'Size'],
+ variant_name: ['variant_name', 'Variant / Size', 'Variant', 'Size', 'fit_category', 'Fit / Size Category'],
  sku: ['sku', 'Generated SKU', 'Item Code', 'Code'],
  model_code: ['model_code', 'Model Code', 'Model', 'Model No', 'Model Number'],
  barcode: ['barcode'],
@@ -44,23 +45,27 @@ export function parseCatalogueCsv(text:string, businessId:string): CatalogueRow[
  if(firstError) throw new Error(`CSV row ${ (firstError.row ?? 0)+2 }: ${firstError.message}`);
  if(!parsed.meta.fields?.includes('product_name') || !parsed.meta.fields.includes('sku')) throw new Error('CSV requires product_name and sku columns.');
  const supplied=parsed.data.map(r=>!!r['barcode']?.trim());
- const rows=catalogueInput.parse({businessId,rows:parsed.data.map(r => ({
-   ...r,
+ const rows=catalogueInput.parse({businessId,rows:parsed.data.map(r => {
    // Karobar sheets list one row per size; group them by Description and use the SKU suffix as the size.
-   ...(()=>{const group=r['description']?.trim(); const sku=r['sku']?.trim() ?? ''; const explicit=r['variant_name']?.trim();
-     if(!group || explicit) return {variant_name: explicit || 'Standard'};
-     const cut=sku.lastIndexOf('-'); return {product_name: group, variant_name: cut>0 && cut<sku.length-1 ? sku.slice(cut+1) : 'Standard'};})(),
-   sku: r['sku']?.trim() || '',
-   model_code: r['model_code']?.trim() || '',
-   barcode: generateBarcodeFromSkuIfNeeded(r['sku'] ?? '', r['barcode']?.trim() || ''),
-   unit: r['unit']?.trim() || 'pcs',
-   selling_price: csvNumber(r['selling_price']),
-   mrp: csvNumber(r['mrp']),
-   wholesale_price: csvNumber(r['wholesale_price']),
-   reorder_level: csvNumber(r['reorder_level']),
-   opening_stock: csvNumber(r['opening_stock']),
-   purchase_price: csvNumber(r['purchase_price'])
- }))}).rows;
+   const group=r['description']?.trim(); const sku=r['sku']?.trim() ?? ''; const explicit=r['variant_name']?.trim();
+   const variantName=!group||explicit?(explicit||'Standard'):(()=>{const cut=sku.lastIndexOf('-');return cut>0&&cut<sku.length-1?sku.slice(cut+1):'Standard';})();
+   return {
+     ...r,
+     ...(group&&!explicit?{product_name:group}:{}),
+     variant_name:variantName,
+     sizes:r['sizes']?.trim() || catalogueSizesForVariant(variantName,r['category']).join(', '),
+     sku: r['sku']?.trim() || '',
+     model_code: r['model_code']?.trim() || '',
+     barcode: generateBarcodeFromSkuIfNeeded(r['sku'] ?? '', r['barcode']?.trim() || ''),
+     unit: r['unit']?.trim() || 'pcs',
+     selling_price: csvNumber(r['selling_price']),
+     mrp: csvNumber(r['mrp']),
+     wholesale_price: csvNumber(r['wholesale_price']),
+     reorder_level: csvNumber(r['reorder_level']),
+     opening_stock: csvNumber(r['opening_stock']),
+     purchase_price: csvNumber(r['purchase_price'])
+   };
+ })}).rows;
  return dropCollidingGeneratedBarcodes(rows,supplied);
 }
 export function makeCsv(rows: Record<string, unknown>[], fields?:string[]) { return Papa.unparse(rows, {escapeFormulae:true,columns:fields}); }
