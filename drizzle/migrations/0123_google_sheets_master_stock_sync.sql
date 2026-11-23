@@ -57,7 +57,12 @@ BEGIN
   END IF;
   IF _sync_stock AND EXISTS (
     SELECT 1 FROM jsonb_array_elements(_rows) e
-    WHERE coalesce(btrim(e.value->>'opening_stock'),'') !~ '^[0-9]+(\\.[0-9]{1,3})?
+    WHERE CASE
+      WHEN nullif(btrim(e.value->>'opening_stock'),'') IS NULL THEN true
+      WHEN btrim(e.value->>'opening_stock') ~ '^[0-9]+([.][0-9]{1,3})?$'
+        THEN (e.value->>'opening_stock')::numeric > 999999999
+      ELSE true
+    END
   ) THEN
     RAISE EXCEPTION 'Every Google Sheets row must contain a valid non-negative Master Qty with at most 3 decimals';
   END IF;
