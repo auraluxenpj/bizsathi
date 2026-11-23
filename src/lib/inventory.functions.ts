@@ -35,13 +35,6 @@ export const getInventory = createServerFn({method:'GET'}).middleware([requireSu
 export const saveCatalogue = createServerFn({method:'POST'}).middleware([requireSupabaseAuth]).inputValidator(catalogueInput).handler(async ({data,context})=>{
  const {data:count,error}=await context.supabase.rpc('save_catalogue_variant',{_business_id:data.businessId,_rows:data.rows.map(({opening_stock:_o,...row})=>row)});
  if(error) throw new Error('Products were not saved. Check administrator access and duplicate product variants, SKUs or barcodes.');
- for (const row of data.rows) {
-  const {data:variant,error:variantError}=await context.supabase.from('product_variants').select('product_id').eq('business_id',data.businessId).eq('sku',row.sku).single();
-  if(variantError || !variant) throw new Error(`Sizes could not be saved for SKU ${row.sku}.`);
-  const sizes=[...new Set(row.sizes.split(',').map(s=>s.trim()).filter(Boolean))];
-  const {error:sizeError}=await context.supabase.from('products').update({catalogue_sizes:sizes}).eq('business_id',data.businessId).eq('id',variant.product_id);
-  if(sizeError) throw new Error(`Sizes could not be saved for SKU ${row.sku}.`);
- }
  const stocked=data.rows.filter(r=>r.opening_stock>0); let opened=0; const skipped:string[]=[];
  if(data.openingBranchId&&stocked.length){
   const ids=new Map<string,string>();
