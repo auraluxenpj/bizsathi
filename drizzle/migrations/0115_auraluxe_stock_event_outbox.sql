@@ -181,8 +181,8 @@ BEGIN
       'bizsathiVariantId',source_variant,'auraluxeProductId',remote_product,
       'auraluxeVariantId',remote_variant,'occurredAt',occurred
     ),
-    CASE WHEN delta_qty=trunc(delta_qty) THEN 'pending' ELSE 'dead' END,
-    CASE WHEN delta_qty=trunc(delta_qty) THEN NULL ELSE 'Fractional quantity cannot be represented by Auraluxe whole-unit stock' END
+    CASE WHEN delta_qty=trunc(delta_qty) AND abs(delta_qty)<=1000000 THEN 'pending' ELSE 'dead' END,
+    CASE WHEN delta_qty=trunc(delta_qty) AND abs(delta_qty)<=1000000 THEN NULL ELSE 'Quantity is fractional or exceeds the Auraluxe whole-unit event limit' END
   );
   -- Keep the persisted event UUID and payload UUID identical.
   UPDATE public.auraluxe_stock_outbox
