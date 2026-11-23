@@ -3,10 +3,11 @@ import { z } from 'zod';
 import { parseCatalogueCsv } from './inventory-csv';
 
 export const defaultCatalogueSpreadsheet = '1I4kUw4XJaENcx91RsAjRtjWgER2Iu4AUALhcsb56KDg';
+export const defaultCatalogueSheetName = 'aura final';
 export const googleSheetCatalogueInput = z.object({
  businessId: z.string().uuid(),
  spreadsheetIdOrUrl: z.string().trim().min(1).max(2048),
- sheetName: z.string().trim().min(1).max(100).default('Inventory & Catalogue'),
+ sheetName: z.string().trim().min(1).max(100).default(defaultCatalogueSheetName),
 });
 export function extractSpreadsheetId(input: string): string {
  const value = input.trim();
