@@ -34,7 +34,7 @@ describe('Google Sheets catalogue import', () => {
     const credentials = { serviceAccountJson: await serviceAccountJson(`catalogue-${crypto.randomUUID()}@example.iam.gserviceaccount.com`) };
     const request = vi.fn<typeof fetch>()
       .mockResolvedValueOnce(Response.json({ access_token: 'test-access-token', expires_in: 3600 }))
-      .mockResolvedValueOnce(Response.json({ values: [['Item Name', 'Generated SKU'], ['Shirt', 'S1']] }));
+      .mockResolvedValueOnce(Response.json({ values: [['Item Name', 'Generated SKU', 'Master Qty'], ['Shirt', 'S1', '2']] }));
     const rows = await readGoogleSheetCatalogue(input, credentials, request);
     expect(rows[0]?.sku).toBe('S1');
     expect(String(request.mock.calls[0]?.[0])).toContain('oauth2.googleapis.com/token');
@@ -61,7 +61,7 @@ describe('Google Sheets catalogue import', () => {
   });
 
   it('uses link-shared CSV without service-account credentials', async () => {
-    const request = vi.fn<typeof fetch>().mockResolvedValue(new Response('Item Name,Generated SKU\nShirt,S1'));
+    const request = vi.fn<typeof fetch>().mockResolvedValue(new Response('Item Name,Generated SKU,Master Qty\nShirt,S1,2'));
     expect((await readGoogleSheetCatalogue(input, {}, request))[0]?.sku).toBe('S1');
     const url = new URL(String(request.mock.calls[0]?.[0]));
     expect(url.hostname).toBe('docs.google.com');

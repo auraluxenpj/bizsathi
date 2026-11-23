@@ -26,6 +26,8 @@ export const getInventory = createServerFn({method:'GET'}).middleware([requireSu
  const movements=[];
  for(let offset=0;;offset+=1000){const page=await context.supabase.from('commerce_stock_movements').select('id,variant_id,branch_id,quantity,kind,reference,reason,created_at,document_id').eq('business_id',data.businessId).order('created_at',{ascending:false}).order('id').range(offset,offset+999);if(page.error)throw new Error('Invoice stock history could not be loaded.');movements.push(...(page.data??[]).map(m=>({...m,operation_id:m.document_id})));if((page.data?.length??0)<1000)break;}
  for(let offset=0;;offset+=1000){const page=await context.supabase.from('stock_movements').select('id,variant_id,branch_id,quantity,kind,reference,reason,created_at,operation_id').eq('business_id',data.businessId).order('created_at',{ascending:false}).order('id').range(offset,offset+999);if(page.error)throw new Error('Stock history could not be loaded.');movements.push(...(page.data ?? []));if((page.data?.length ?? 0)<1000)break;}
+ for(let offset=0;;offset+=1000){const page=await context.supabase.from('website_inventory_movements').select('id,reservation_id,variant_id,branch_id,quantity,reference,created_at').eq('business_id',data.businessId).order('created_at',{ascending:false}).order('id').range(offset,offset+999);if(page.error)throw new Error('Website stock history could not be loaded.');movements.push(...(page.data ?? []).map(m=>({...m,kind:'website_sale',reason:'Website order stock deduction',operation_id:m.reservation_id??m.id})));if((page.data?.length ?? 0)<1000)break;}
+ for(let offset=0;;offset+=1000){const page=await context.supabase.from('website_inventory_return_movements').select('id,return_id,variant_id,branch_id,quantity,reference,created_at').eq('business_id',data.businessId).order('created_at',{ascending:false}).order('id').range(offset,offset+999);if(page.error)throw new Error('Website return stock history could not be loaded.');movements.push(...(page.data ?? []).map(m=>({...m,kind:'website_return',reason:'Website return stock restock',operation_id:m.return_id??m.id})));if((page.data?.length ?? 0)<1000)break;}
  const loyalty=[];
  for(let offset=0;;offset+=1000){const page=await context.supabase.rpc('read_customer_loyalty',{_business_id:data.businessId}).order('mobile').range(offset,offset+999);if(page.error)throw new Error('Customer loyalty could not be loaded.');loyalty.push(...(page.data ?? []));if((page.data?.length ?? 0)<1000)break;}
  const {data:seesCost,error:costError}=await context.supabase.rpc('has_permission',{_business:data.businessId,_perm:'other.purchase_price'});
@@ -50,10 +52,11 @@ export const importCatalogueBranchStock = createServerFn({method:'POST'}).middle
   _business_id:data.businessId,
   _branch_id:data.branchId,
   _rows:data.rows.map(({opening_stock,...row})=>({...row,opening_stock})),
+  _sync_stock:data.syncStock,
  });
- if(error) throw new Error(error.message.includes('different model code') ? error.message : 'CSV stock import failed. No rows were applied. Check branch access, duplicate SKUs, prices and quantities.');
+ if(error) throw new Error(error.message.includes('different model code') || error.message.includes('reserved for a website order') || error.message.includes('Insufficient stock') || error.message.includes('Master Qty') ? error.message : 'Catalogue import / Google Sheets sync failed. No rows were applied. Check branch access, duplicate SKUs, prices and quantities.');
  // The import_catalogue_branch_stock RPC persists catalogue_sizes atomically with SKU updates.
- return result as {inserted:number;updated:number;stock_adjusted:number;branch_id:string};
+ return result as {inserted:number;updated:number;stock_adjusted:number;stock_units_added:number;stock_units_removed:number;stock_synced:boolean;branch_id:string};
 });
 export const editVariant = createServerFn({method:'POST'}).middleware([requireSupabaseAuth]).inputValidator(variantEditInput).handler(async ({data,context})=>{
  const {data:allowed,error:accessError}=await context.supabase.rpc('has_business_role',{_business_id:data.businessId,_min_role:'admin'});

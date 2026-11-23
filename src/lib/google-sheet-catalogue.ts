@@ -19,10 +19,24 @@ export function extractSpreadsheetId(input: string): string {
  } catch { /* Report invalid input below. */ }
  throw new Error('Enter a valid Google Sheets URL or spreadsheet ID.');
 }
-export function parseGoogleSheetValues(values: unknown, businessId: string) {
+export function parseGoogleSheetValues(values: unknown, businessId: string, requireStockQty = false) {
  const rows = z.array(z.array(z.union([z.string(), z.number(), z.boolean(), z.null()]))).parse(values);
  const header = rows[0];
  if (!header?.length) throw new Error('The sheet tab is empty.');
  const width = header.length;
+ if (requireStockQty) {
+  const qtyHeaders = new Set(['opening_stock','opening stock','opening qty','master qty','master quantity','on hand qty','qty on hand','qty','quantity','stock','current stock']);
+  const qtyIndex = header.findIndex(cell => typeof cell === 'string' && qtyHeaders.has(cell.trim().toLowerCase().replace(/[_-]+/g,' ')));
+  if (qtyIndex < 0) throw new Error('The Google Sheet must include a Master Qty / Qty column. Stock cannot be synced without an explicit quantity column.');
+  for (let i=1;i<rows.length;i++) {
+   const quantity = rows[i]?.[qtyIndex];
+   if (quantity === null || quantity === undefined || String(quantity).trim() === '') throw new Error(`Google Sheets row ${i+1} has a blank Master Qty. Fill every SKU quantity before syncing.`);
+  }
+ }
  return parseCatalogueCsv(Papa.unparse(rows.map(row => Array.from({length:width}, (_, i) => row[i] ?? ''))), businessId);
+}
+export function parseGoogleSheetCsv(text: string, businessId: string) {
+ const parsed = Papa.parse<string[]>(text, {header:false,skipEmptyLines:'greedy'});
+ if (parsed.errors[0]) throw new Error(`Google Sheets CSV row ${(parsed.errors[0].row ?? 0)+1}: ${parsed.errors[0].message}`);
+ return parseGoogleSheetValues(parsed.data, businessId, true);
 }
