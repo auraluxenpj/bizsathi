@@ -48,6 +48,12 @@ BEGIN
            OR line->>'variantId'=v.variant_id::text
            OR lower(btrim(coalesce(line->>'sku','')))=lower(btrim(v.sku))
          )
+    ) OR EXISTS(
+      SELECT 1 FROM public.website_inventory_movements wim
+       WHERE wim.business_id=_business_id AND wim.variant_id=v.variant_id
+    ) OR EXISTS(
+      SELECT 1 FROM public.website_inventory_return_movements wirm
+       WHERE wirm.business_id=_business_id AND wirm.variant_id=v.variant_id
     ) INTO sales_refs;
 
     IF sales_refs THEN
