@@ -25,7 +25,7 @@ export function validateCatalogueIdentity(rows: CatalogueIdentityRow[]): string 
   const variantIds = new Set<string>();
   for (const row of rows) {
     const sku = row.sku.trim().toLocaleLowerCase();
-    if (!sku || sku.length > 80 || /\\s/.test(sku)) return `Variant ${row.variant_id}: SKU is missing or invalid`;
+    if (!sku || sku.length > 80 || /\s/.test(sku)) return `Variant ${row.variant_id}: SKU is missing or invalid`;
     if (skus.has(sku)) return `Duplicate SKU in catalogue batch: ${row.sku}`;
     if (!row.variant_name.trim()) return `SKU ${row.sku}: variant name is missing`;
     if (variantIds.has(row.variant_id)) return `Duplicate variant ID in catalogue batch: ${row.variant_id}`;
