@@ -39,9 +39,12 @@ describe('read-only Auraluxe catalogue validation', () => {
   it('rejects invalid names, variant IDs and prices', async () => {
     mocks.rpc.mockResolvedValue({ data: [{ ...rows[0], variant_name: ' ', variant_id: 'bad-id', selling_price: -1 }], error: null });
     const response = await invoke({ action: 'validate_snapshot' });
-    expect(await response.json()).toMatchObject({ valid: false });
-    const result = await response.json().catch(() => null);
-    expect(result).toBeNull();
+    const result = await response.json();
+    expect(result).toMatchObject({ valid: false, issues: expect.arrayContaining([
+      'AL-KUR-135: invalid variant ID',
+      'AL-KUR-135: variant name is missing',
+      'AL-KUR-135: selling_price must be a non-negative number or null',
+    ]) });
   });
 
   it('rejects unauthenticated calls before reading the database', async () => {
