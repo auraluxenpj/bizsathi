@@ -84,8 +84,10 @@ export async function writeStatusCells(
     ...(update.bizsathi && bizsathiColumn ? [{ range: `${quoted(sheetName)}!${bizsathiColumn}${update.row}`, values: [[update.bizsathi]] }] : []),
     ...(update.website && websiteColumn ? [{ range: `${quoted(sheetName)}!${websiteColumn}${update.row}`, values: [[update.website]] }] : []),
   ]);
-  if (!bizsathiColumn || !websiteColumn) {
-    const missing = [!bizsathiColumn ? 'Applied in BizSathi' : '', !websiteColumn ? 'Applied on Website' : ''].filter(Boolean);
+  const needsBizsathi = updates.some(update => !!update.bizsathi);
+  const needsWebsite = updates.some(update => !!update.website);
+  if ((needsBizsathi && !bizsathiColumn) || (needsWebsite && !websiteColumn)) {
+    const missing = [needsBizsathi && !bizsathiColumn ? 'Applied in BizSathi' : '', needsWebsite && !websiteColumn ? 'Applied on Website' : ''].filter(Boolean);
     return { updated: false, issue: `The Stock In tab is missing these status columns: ${missing.join(' and ')}. Add the exact column headers and retry.` };
   }
   if (!data.length) return { updated: true, issue: null };
