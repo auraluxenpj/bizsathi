@@ -13,7 +13,7 @@ const input = z.object({
   includeWebsite: z.boolean().default(true),
   confirmed: z.literal(true),
 });
-export type SheetSyncResult = { stockIn: StockInReport; website: SyncReport | null; sheetStatusUpdated: boolean; sheetIssues: string[] };
+export type SheetSyncResult = { stockIn: StockInReport; website: SyncReport | null; sheetStatusUpdated: boolean; sheetStatusIssue: string | null; sheetIssues: string[] };
 
 /** Sheet "Stock In" -> BizSathi ledger -> website. Safe to run repeatedly: every receipt posts at most once. */
 export const syncSheetStock = createServerFn({ method: 'POST' }).middleware([requireSupabaseAuth]).inputValidator(input).handler(async ({ data, context }): Promise<SheetSyncResult> => {
@@ -72,6 +72,6 @@ export const syncSheetStock = createServerFn({ method: 'POST' }).middleware([req
     if (website && !website.error && !r.appliedOnWebsite && !blockedSkus.has(r.sku.toLowerCase())) u.website = stamp;
     if (u.bizsathi || u.website) updates.push(u);
   }
-  const sheetStatusUpdated = await bestEffortSheetStatusWrite(() => writeStatusCells(data.spreadsheetIdOrUrl, STOCK_IN_SHEET, updates, credentials, statusColumns));
-  return { stockIn, website, sheetStatusUpdated, sheetIssues: parsed.issues };
+  const sheetStatus = await bestEffortSheetStatusWrite(() => writeStatusCells(data.spreadsheetIdOrUrl, STOCK_IN_SHEET, updates, credentials, statusColumns));
+  return { stockIn, website, sheetStatusUpdated: sheetStatus.updated, sheetStatusIssue: sheetStatus.issue, sheetIssues: parsed.issues };
 });
