@@ -85,8 +85,8 @@ export const syncWebsiteCatalogueDrafts = createServerFn({ method: 'POST' })
           name: product.name,
           category: product.category ?? '',
           variant_name: variant.name,
-          model_code: variant.model_code?.trim() || null,
           sku: variant.sku,
+          model_code: variant.model_code?.trim() || null,
           selling_price: sellingPrice,
         });
       }
