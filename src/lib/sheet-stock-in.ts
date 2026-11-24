@@ -55,9 +55,11 @@ export async function receiptOperationId(businessId: string, receipt: string): P
   return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
 }
 
-/** Sheet timestamps are cosmetic; a failed writeback must never turn a completed ledger post into an apparent sync failure. */
-export async function bestEffortSheetStatusWrite(write: () => Promise<boolean>): Promise<boolean> {
-  try { return await write(); } catch { return false; }
+/** Sheet timestamps are cosmetic; a failed writeback must never roll back or disguise a completed ledger post. */
+export type SheetStatusWriteResult = { updated: boolean; issue: string | null };
+export async function bestEffortSheetStatusWrite(write: () => Promise<SheetStatusWriteResult>): Promise<SheetStatusWriteResult> {
+  try { return await write(); }
+  catch { return { updated: false, issue: 'Google Sheets status update failed unexpectedly. Verify the service account has Editor access and retry; stock ledger entries are not affected.' }; }
 }
 
 export type StockInReport = { read: number; applied: number; alreadyApplied: number; failed: number; issues: string[]; syncedSkus: string[] };
@@ -77,7 +79,7 @@ export async function applyStockIn(receipts: StockInReceipt[], d: Dependencies):
   const report: StockInReport = { read: receipts.length, applied: 0, alreadyApplied: 0, failed: 0, issues: [], syncedSkus: [] };
   for (const r of receipts) {
     const variants = d.variantsBySku.get(r.sku.toLowerCase()) ?? [];
-    if (variants.length !== 1) { report.failed++; report.issues.push(`${r.receiptId}: SKU ${r.sku} ${variants.length ? 'matches several items' : 'is not in Sutra (import the Master tab first)'}`); continue; }
+    if (variants.length !== 1) { report.failed++; report.issues.push(`${r.receiptId}: SKU ${r.sku} ${variants.length ? 'matches several active BizSathi variants; resolve the duplicate SKU before retrying' : 'is not in active BizSathi inventory. Import the Master tab into Products first, then retry this receipt'}`); continue; }
     const variantId = variants[0]!; const reference = `${STOCK_IN_REFERENCE_PREFIX}${r.receiptId}`;
     const found = await d.existing(reference);
     if (found) {
