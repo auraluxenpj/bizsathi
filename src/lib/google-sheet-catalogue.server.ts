@@ -2,7 +2,7 @@ import { extractSpreadsheetId, parseGoogleSheetCsv, parseGoogleSheetValues } fro
 import { GoogleSheetsApiError, readGoogleSheetRange, type GoogleSheetsCredentials } from './google-sheets-api.server';
 
 export async function readGoogleSheetCatalogue(
-  input: { businessId: string; spreadsheetIdOrUrl: string; sheetName: string },
+  input: { businessId: string; spreadsheetIdOrUrl: string; sheetName: string; syncMasterQty?: boolean },
   credentials: GoogleSheetsCredentials,
   request: typeof fetch = fetch,
 ) {
@@ -11,7 +11,7 @@ export async function readGoogleSheetCatalogue(
     const range = `'${input.sheetName.replace(/'/g, "''")}'!A1:Z5002`;
     try {
       const values = await readGoogleSheetRange(id, range, credentials, request);
-      return parseGoogleSheetValues(values, input.businessId, true);
+      return parseGoogleSheetValues(values, input.businessId, input.syncMasterQty === true);
     } catch (error) {
       if (error instanceof GoogleSheetsApiError) {
         const detail = error.stage === 'credentials'
