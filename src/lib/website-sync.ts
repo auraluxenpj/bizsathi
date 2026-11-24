@@ -15,29 +15,21 @@ export type CatalogueIdentityRow = {
   product_id: string;
   variant_id: string;
   variant_name: string;
+  sku: string;
   model_code: string | null;
 };
 
-/** Validate model-number product identity and model+variant-name uniqueness before sending a catalogue batch. */
+/** SKU is the catalogue identity. Model codes are optional descriptive metadata and may repeat across products and variants. */
 export function validateCatalogueIdentity(rows: CatalogueIdentityRow[]): string | null {
-  const modelToProduct = new Map<string, string>();
-  const productToModel = new Map<string, string>();
-  const variantKeys = new Set<string>();
+  const skus = new Set<string>();
   const variantIds = new Set<string>();
   for (const row of rows) {
-    const model = row.model_code?.trim().toLocaleLowerCase() ?? '';
-    const variant = row.variant_name.trim().toLocaleLowerCase();
-    if (!model || model.length > 64) return `SKU ${row.variant_id}: model number is missing or invalid`;
-    const knownProduct = modelToProduct.get(model);
-    if (knownProduct && knownProduct !== row.product_id) return `Model number ${row.model_code} is assigned to more than one product`;
-    const knownModel = productToModel.get(row.product_id);
-    if (knownModel && knownModel !== model) return `Product ${row.product_id} has inconsistent model numbers`;
-    const variantKey = `${model}::${variant}`;
-    if (!variant || variantKeys.has(variantKey)) return `Model number ${row.model_code} has a missing or duplicate variant name`;
+    const sku = row.sku.trim().toLocaleLowerCase();
+    if (!sku || sku.length > 80 || /\\s/.test(sku)) return `Variant ${row.variant_id}: SKU is missing or invalid`;
+    if (skus.has(sku)) return `Duplicate SKU in catalogue batch: ${row.sku}`;
+    if (!row.variant_name.trim()) return `SKU ${row.sku}: variant name is missing`;
     if (variantIds.has(row.variant_id)) return `Duplicate variant ID in catalogue batch: ${row.variant_id}`;
-    modelToProduct.set(model, row.product_id);
-    productToModel.set(row.product_id, model);
-    variantKeys.add(variantKey);
+    skus.add(sku);
     variantIds.add(row.variant_id);
   }
   return null;
