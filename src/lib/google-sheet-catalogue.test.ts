@@ -93,7 +93,7 @@ describe('Google Sheets catalogue import', () => {
       .mockResolvedValueOnce(Response.json({ access_token: 'test-access-token', expires_in: 3600 }))
       .mockResolvedValueOnce(new Response(null, { status: 200 }));
     const ok = await writeStatusCells('sheet_123', 'Stock In', [{ row: 2, bizsathi: '2026-11-19 08:00 UTC', website: '2026-11-19 08:00 UTC' }], credentials, { bizsathi: 8, website: 9 }, request);
-    expect(ok).toBe(true);
+    expect(ok).toEqual({ updated: true, issue: null });
     expect(String(request.mock.calls[1]?.[0])).toContain('sheets.googleapis.com/v4/spreadsheets/sheet_123/values:batchUpdate');
     const body = JSON.parse(String(request.mock.calls[1]?.[1]?.body));
     expect(body.valueInputOption).toBe('RAW');
@@ -117,12 +117,22 @@ describe('Google Sheets catalogue import', () => {
     ]);
   });
 
-  it('does not write status cells when the corresponding headers are absent', async () => {
+  it('returns a clear issue when status columns are absent', async () => {
     const credentials = { serviceAccountJson: await serviceAccountJson(`missing-columns-${crypto.randomUUID()}@example.iam.gserviceaccount.com`) };
     const request = vi.fn<typeof fetch>();
     const ok = await writeStatusCells('sheet_123', 'Stock In', [{ row: 2, bizsathi: 'done', website: 'synced' }], credentials, { bizsathi: -1, website: -1 }, request);
-    expect(ok).toBe(false);
+    expect(ok).toMatchObject({ updated: false, issue: expect.stringContaining('Applied in BizSathi') });
     expect(request).not.toHaveBeenCalled();
+  });
+
+  it('does not require Master Qty for catalogue-only imports', () => {
+    expect(parseGoogleSheetValues([['Item Name', 'Generated SKU', 'Selling Price'], ['Kurti', 'AL-KURTI-001', '1200']], businessId))
+      .toMatchObject([{ product_name: 'Kurti', sku: 'AL-KURTI-001', opening_stock: 0 }]);
+  });
+
+  it('requires Master Qty only when stock reconciliation is explicitly requested', () => {
+    expect(() => parseGoogleSheetValues([['Item Name', 'Generated SKU'], ['Kurti', 'AL-KURTI-001']], businessId, true))
+      .toThrow(/Master Qty/);
   });
 
   it('reports private workbook HTML clearly', async () => {
