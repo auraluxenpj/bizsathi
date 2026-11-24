@@ -15,7 +15,7 @@ describe('read-only Auraluxe catalogue validation client', () => {
     vi.stubGlobal('fetch', fetchMock);
     await expect(validateAuraluxeCatalogueSnapshot()).resolves.toMatchObject({ valid: true, row_count: 395, unique_skus: 395 });
     const [url, init] = fetchMock.mock.calls[0]!;
-    expect(url).toBe('https://admin.auraluxe.com.np/api/public/auraluxe-catalogue-validate');
+    expect(url).toBe('https://bizsathi-migration.auraluxe26.workers.dev/api/public/auraluxe-catalogue-validate');
     expect(init.method).toBe('POST'); expect(init.redirect).toBe('manual');
     expect((init.headers as Record<string, string>).Authorization).toBe('Bearer validation-secret-with-enough-length-123');
     expect(JSON.parse(String(init.body))).toEqual({ action: 'validate_snapshot' });

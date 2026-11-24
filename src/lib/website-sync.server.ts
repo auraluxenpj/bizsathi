@@ -129,7 +129,7 @@ export async function callWebsiteCatalogue(request: Record<string, unknown>) {
 export async function validateAuraluxeCatalogueSnapshot() {
   const secret = process.env['WEBSITE_INVENTORY_SYNC_SECRET'];
   if (!secret || secret.length < 24) throw new Error('Catalogue validation is not configured in the BizSathi Worker.');
-  const url = 'https://admin.auraluxe.com.np/api/public/auraluxe-catalogue-validate';
+  const url = 'https://bizsathi-migration.auraluxe26.workers.dev/api/public/auraluxe-catalogue-validate';
   let response: Response;
   try {
     response = await fetch(url, { method: 'POST', redirect: 'manual', signal: AbortSignal.timeout(20000), headers: { 'Content-Type': 'application/json', Accept: 'application/json', Authorization: 'Bearer ' + secret }, body: JSON.stringify({ action: 'validate_snapshot' }) });
