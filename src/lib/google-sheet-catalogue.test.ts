@@ -109,7 +109,7 @@ describe('Google Sheets catalogue import', () => {
       .mockResolvedValueOnce(Response.json({ access_token: 'test-access-token', expires_in: 3600 }))
       .mockResolvedValueOnce(new Response(null, { status: 200 }));
     const ok = await writeStatusCells('sheet_123', 'Stock In', [{ row: 7, bizsathi: 'done', website: 'synced' }], credentials, { bizsathi: 2, website: 0 }, request);
-    expect(ok).toBe(true);
+    expect(ok).toEqual({ updated: true, issue: null });
     const body = JSON.parse(String(request.mock.calls[1]?.[1]?.body));
     expect(body.data).toEqual([
       { range: "'Stock In'!C7", values: [['done']] },
@@ -133,6 +133,10 @@ describe('Google Sheets catalogue import', () => {
   it('requires Master Qty only when stock reconciliation is explicitly requested', () => {
     expect(() => parseGoogleSheetValues([['Item Name', 'Generated SKU'], ['Kurti', 'AL-KURTI-001']], businessId, true))
       .toThrow(/Master Qty/);
+  });
+
+  it('enforces Master Qty for public CSV imports only when explicitly requested', () => {
+    expect(() => parseGoogleSheetValues([['Item Name', 'Generated SKU'], ['Kurti', 'AL-KURTI-001']], businessId, true)).toThrow(/Master Qty/);
   });
 
   it('reports private workbook HTML clearly', async () => {
