@@ -1,11 +1,39 @@
 // @vitest-environment node
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { callWebsite, callWebsiteCatalogue, probeWebsiteCatalogueAuth, websiteUrl } from './website-sync.server';
+import { callWebsite, callWebsiteCatalogue, probeWebsiteCatalogueAuth, validateAuraluxeCatalogueSnapshot, websiteUrl } from './website-sync.server';
 
 const SECRET = 'shared-secret-with-enough-length-1234';
 const json = (body: unknown, init: ResponseInit = {}) => new Response(JSON.stringify(body), { status: 200, headers: { 'content-type': 'application/json' }, ...init });
-beforeEach(() => { process.env['INVENTORY_SYNC_SECRET'] = SECRET; delete process.env['WEBSITE_SYNC_URL']; delete process.env['WEBSITE_CATALOGUE_SYNC_URL']; });
+beforeEach(() => { process.env['INVENTORY_SYNC_SECRET'] = SECRET; delete process.env['WEBSITE_SYNC_URL']; delete process.env['WEBSITE_CATALOGUE_SYNC_URL']; delete process.env['WEBSITE_INVENTORY_SYNC_SECRET']; });
 afterEach(() => { vi.unstubAllGlobals(); delete process.env['INVENTORY_SYNC_SECRET']; delete process.env['WEBSITE_SYNC_URL']; delete process.env['WEBSITE_CATALOGUE_SYNC_URL']; });
+
+
+describe('read-only Auraluxe catalogue validation client', () => {
+  it('posts only validate_snapshot with the server-side credential', async () => {
+    process.env['WEBSITE_INVENTORY_SYNC_SECRET'] = 'validation-secret-with-enough-length-123';
+    const fetchMock = vi.fn(async () => json({ ok: true, valid: true, row_count: 395, unique_skus: 395, issues: [] }));
+    vi.stubGlobal('fetch', fetchMock);
+    await expect(validateAuraluxeCatalogueSnapshot()).resolves.toMatchObject({ valid: true, row_count: 395, unique_skus: 395 });
+    const [url, init] = fetchMock.mock.calls[0]!;
+    expect(url).toBe('https://admin.auraluxe.com.np/api/public/auraluxe-catalogue-validate');
+    expect(init.method).toBe('POST'); expect(init.redirect).toBe('manual');
+    expect((init.headers as Record<string, string>).Authorization).toBe('Bearer validation-secret-with-enough-length-123');
+    expect(JSON.parse(String(init.body))).toEqual({ action: 'validate_snapshot' });
+  });
+  it('does not call the endpoint when the credential is missing', async () => {
+    delete process.env['WEBSITE_INVENTORY_SYNC_SECRET'];
+    const fetchMock = vi.fn(); vi.stubGlobal('fetch', fetchMock);
+    await expect(validateAuraluxeCatalogueSnapshot()).rejects.toThrow('not configured');
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+  it('does not follow redirects', async () => {
+    process.env['WEBSITE_INVENTORY_SYNC_SECRET'] = 'validation-secret-with-enough-length-123';
+    const fetchMock = vi.fn(async () => new Response(null, { status: 302, headers: { location: 'https://elsewhere.example/api' } }));
+    vi.stubGlobal('fetch', fetchMock);
+    await expect(validateAuraluxeCatalogueSnapshot()).rejects.toThrow(/redirected; the secret was not forwarded/);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+});
 
 describe('website client', () => {
   it('uses the saved address when one is set, otherwise the default', () => {
