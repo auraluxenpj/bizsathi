@@ -8,6 +8,7 @@ export const googleSheetCatalogueInput = z.object({
  businessId: z.string().uuid(),
  spreadsheetIdOrUrl: z.string().trim().min(1).max(2048),
  sheetName: z.string().trim().min(1).max(100).default(defaultCatalogueSheetName),
+ syncMasterQty: z.boolean().default(false),
 });
 export function extractSpreadsheetId(input: string): string {
  const value = input.trim();
