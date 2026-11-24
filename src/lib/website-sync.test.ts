@@ -6,26 +6,32 @@ const row = { id, sku: 'AL-1', stock: '10' };
 const local = [row];
 const remote = { sku: 'AL-1', match: 'variant' as const, current: 8, last: 10, pending: 0 };
 const state = { items: [remote] };
-describe('catalogue model identity', () => {
+describe('catalogue SKU identity', () => {
   const identityRows = [
-    { product_id: 'p1', variant_id: 'v1', variant_name: 'Black / M', model_code: 'MODEL-001' },
-    { product_id: 'p1', variant_id: 'v2', variant_name: 'Black / L', model_code: 'MODEL-001' },
+    { product_id: 'p1', variant_id: 'v1', variant_name: 'Black / M', sku: 'ALJS015-BLK-M', model_code: 'ALJS015' },
+    { product_id: 'p1', variant_id: 'v2', variant_name: 'Black / L', sku: 'ALJS015-BLK-L', model_code: 'ALJS015' },
   ];
-  it('allows multiple size/colour variants under one unique model number', () => {
-    expect(validateCatalogueIdentity(identityRows)).toBeNull();
+  it('allows the same model number across different products', () => {
+    expect(validateCatalogueIdentity([
+      ...identityRows,
+      { product_id: 'p2', variant_id: 'v3', variant_name: 'Standard', sku: 'ALJS015-OTHER', model_code: 'ALJS015' },
+    ])).toBeNull();
   });
-  it('rejects a model number reused for a different product', () => {
-    expect(validateCatalogueIdentity([...identityRows, { ...identityRows[0]!, product_id: 'p2', variant_id: 'v3' }])).toContain('assigned to more than one product');
+  it('allows optional and differing model numbers within a product', () => {
+    expect(validateCatalogueIdentity([
+      ...identityRows,
+      { product_id: 'p1', variant_id: 'v3', variant_name: 'Red / M', sku: 'ALJS015-RED-M', model_code: null },
+    ])).toBeNull();
   });
-  it('rejects inconsistent model numbers within one product', () => {
-    expect(validateCatalogueIdentity([...identityRows, { ...identityRows[1]!, variant_id: 'v3', model_code: 'MODEL-002' }])).toContain('inconsistent model numbers');
+  it('rejects missing, malformed or duplicate SKUs', () => {
+    expect(validateCatalogueIdentity([{ ...identityRows[0]!, sku: ' ' }])).toContain('SKU is missing or invalid');
+    expect(validateCatalogueIdentity([...identityRows, { ...identityRows[0]!, variant_id: 'v3', sku: ' aljs015-blk-m ' }])).toContain('Duplicate SKU');
   });
-  it('rejects missing model numbers and duplicate variant names', () => {
-    expect(validateCatalogueIdentity([{ ...identityRows[0]!, model_code: null }])).toContain('model number is missing');
-    expect(validateCatalogueIdentity([...identityRows, { ...identityRows[0]!, variant_id: 'v3' }])).toContain('duplicate variant name');
+  it('rejects duplicate variant IDs and missing variant names', () => {
+    expect(validateCatalogueIdentity([...identityRows, { ...identityRows[0]!, sku: 'ALJS015-BLK-XL' }])).toContain('Duplicate variant ID');
+    expect(validateCatalogueIdentity([{ ...identityRows[0]!, variant_name: ' ' }])).toContain('variant name is missing');
   });
 });
-
 describe('website stock sync', () => {
   it('targets the verified Auraluxe business tenant', () => {
     expect(AURALUXE_BUSINESS_ID).toBe('c0f0ed15-97e4-4859-ac8f-a2d4e81f5b01');
