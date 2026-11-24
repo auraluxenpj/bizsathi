@@ -6,6 +6,7 @@ const authMocks = vi.hoisted(() => ({
   getUser: vi.fn(),
   signInWithOAuth: vi.fn(),
   signInWithOtp: vi.fn(),
+  setSession: vi.fn(),
 }));
 
 vi.mock("@tanstack/react-router", () => ({
@@ -17,9 +18,10 @@ vi.mock("@/integrations/supabase/client", () => ({
   supabase: { auth: authMocks },
 }));
 
+const mobileMocks = vi.hoisted(() => ({ signInWithMobile: vi.fn() }));
 vi.mock("@/lib/mobile-login.functions", () => ({
   signInWithEmployeeId: vi.fn(),
-  signInWithMobile: vi.fn(),
+  signInWithMobile: mobileMocks.signInWithMobile,
 }));
 
 import { SignIn } from "./sign-in";
@@ -30,6 +32,8 @@ describe("SignIn Google OAuth", () => {
     authMocks.getUser.mockResolvedValue({ data: { user: null } });
     authMocks.signInWithOAuth.mockResolvedValue({ data: { provider: "google", url: "https://accounts.google.com" }, error: null });
     authMocks.signInWithOtp.mockResolvedValue({ data: { user: null, session: null }, error: null });
+    authMocks.setSession.mockResolvedValue({ data: { session: {} }, error: null });
+    mobileMocks.signInWithMobile.mockResolvedValue({ access_token: 'access-token', refresh_token: 'refresh-token' });
     sessionStorage.clear();
   });
 
@@ -111,5 +115,35 @@ describe("SignIn email OTP", () => {
       });
     });
     expect(screen.getByRole("status")).toHaveTextContent("Sutra");
+  });
+});
+
+
+describe("SignIn mobile password", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    authMocks.getUser.mockResolvedValue({ data: { user: null } });
+    authMocks.setSession.mockResolvedValue({ data: { session: {} }, error: null });
+    mobileMocks.signInWithMobile.mockResolvedValue({ access_token: "access-token", refresh_token: "refresh-token" });
+    sessionStorage.clear();
+  });
+
+  it("authenticates by mobile number and password using the server function", async () => {
+    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    render(
+      <QueryClientProvider client={queryClient}>
+        <SignIn />
+      </QueryClientProvider>,
+    );
+
+    fireEvent.click(await screen.findByRole("button", { name: "Mobile number" }));
+    fireEvent.change(screen.getByLabelText("Mobile number"), { target: { value: "9812345678" } });
+    fireEvent.change(screen.getByLabelText("Password"), { target: { value: "StrongPass123" } });
+    fireEvent.click(screen.getByRole("button", { name: "Sign in with mobile" }));
+
+    await waitFor(() => {
+      expect(mobileMocks.signInWithMobile).toHaveBeenCalledWith({ data: { mobile: "9812345678", password: "StrongPass123" } });
+      expect(authMocks.setSession).toHaveBeenCalledWith({ access_token: "access-token", refresh_token: "refresh-token" });
+    });
   });
 });
