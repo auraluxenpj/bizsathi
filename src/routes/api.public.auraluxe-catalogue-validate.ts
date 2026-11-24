@@ -30,7 +30,7 @@ function validate(rows: unknown): { valid: boolean; row_count: number; unique_sk
     const label = typeof row.sku === 'string' && row.sku.trim() ? row.sku.trim() : `row ${index + 1}`;
     const sku = typeof row.sku === 'string' ? row.sku.trim() : '';
     const normalized = sku.toLowerCase();
-    if (!/^\\S{1,80}$/.test(sku)) issues.push(`${label}: SKU is missing or invalid`);
+    if (!/^\S{1,80}$/.test(sku)) issues.push(`${label}: SKU is missing or invalid`);
     else if (skus.has(normalized)) issues.push(`${label}: duplicate SKU`);
     else skus.add(normalized);
     if (typeof row.product_id !== 'string' || !uuid.test(row.product_id)) issues.push(`${label}: invalid product ID`);
