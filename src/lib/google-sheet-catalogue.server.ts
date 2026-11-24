@@ -44,5 +44,5 @@ export async function readGoogleSheetCatalogue(
   const text = await response.text();
   if (/^\s*</.test(text)) throw new Error('The sheet is private or unreachable. Check Google Sheets access or link-sharing settings.');
   if (text.length > 5_000_000) throw new Error('Sheet data must be smaller than 5 MB.');
-  return parseGoogleSheetCsv(text, input.businessId);
+  return parseGoogleSheetCsv(text, input.businessId, input.syncMasterQty === true);
 }
