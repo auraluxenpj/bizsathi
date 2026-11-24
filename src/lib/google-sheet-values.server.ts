@@ -68,8 +68,9 @@ export async function writeStatusCells(
   credentials: GoogleSheetsCredentials,
   columns: { bizsathi: number; website: number },
   request: typeof fetch = fetch,
-): Promise<boolean> {
-  if (!credentials.serviceAccountJson || !updates.length) return false;
+): Promise<{ updated: boolean; issue: string | null }> {
+  if (!updates.length) return { updated: true, issue: null };
+  if (!credentials.serviceAccountJson) return { updated: false, issue: 'Google Sheets is connected in read-only mode. Configure GOOGLE_SERVICE_ACCOUNT_JSON on the BizSathi Worker and share the spreadsheet with that service account as an Editor.' };
   const columnName = (index: number): string => {
     if (!Number.isInteger(index) || index < 0) return '';
     let n = index + 1; let name = '';
@@ -83,6 +84,15 @@ export async function writeStatusCells(
     ...(update.bizsathi && bizsathiColumn ? [{ range: `${quoted(sheetName)}!${bizsathiColumn}${update.row}`, values: [[update.bizsathi]] }] : []),
     ...(update.website && websiteColumn ? [{ range: `${quoted(sheetName)}!${websiteColumn}${update.row}`, values: [[update.website]] }] : []),
   ]);
-  if (!data.length) return false;
-  return writeGoogleSheetRanges(id, data, credentials, request);
+  const needsBizsathi = updates.some(update => !!update.bizsathi);
+  const needsWebsite = updates.some(update => !!update.website);
+  if ((needsBizsathi && !bizsathiColumn) || (needsWebsite && !websiteColumn)) {
+    const missing = [needsBizsathi && !bizsathiColumn ? 'Applied in BizSathi' : '', needsWebsite && !websiteColumn ? 'Applied on Website' : ''].filter(Boolean);
+    return { updated: false, issue: `The Stock In tab is missing these status columns: ${missing.join(' and ')}. Add the exact column headers and retry.` };
+  }
+  if (!data.length) return { updated: true, issue: null };
+  const updated = await writeGoogleSheetRanges(id, data, credentials, request);
+  return updated
+    ? { updated: true, issue: null }
+    : { updated: false, issue: 'Google Sheets rejected the status update. Confirm the service account has Editor access, the Sheets API is enabled, and the status columns are not protected.' };
 }

@@ -2,7 +2,7 @@ import { extractSpreadsheetId, parseGoogleSheetCsv, parseGoogleSheetValues } fro
 import { GoogleSheetsApiError, readGoogleSheetRange, type GoogleSheetsCredentials } from './google-sheets-api.server';
 
 export async function readGoogleSheetCatalogue(
-  input: { businessId: string; spreadsheetIdOrUrl: string; sheetName: string },
+  input: { businessId: string; spreadsheetIdOrUrl: string; sheetName: string; syncMasterQty?: boolean },
   credentials: GoogleSheetsCredentials,
   request: typeof fetch = fetch,
 ) {
@@ -11,7 +11,7 @@ export async function readGoogleSheetCatalogue(
     const range = `'${input.sheetName.replace(/'/g, "''")}'!A1:Z5002`;
     try {
       const values = await readGoogleSheetRange(id, range, credentials, request);
-      return parseGoogleSheetValues(values, input.businessId, true);
+      return parseGoogleSheetValues(values, input.businessId, input.syncMasterQty === true);
     } catch (error) {
       if (error instanceof GoogleSheetsApiError) {
         const detail = error.stage === 'credentials'
@@ -44,5 +44,5 @@ export async function readGoogleSheetCatalogue(
   const text = await response.text();
   if (/^\s*</.test(text)) throw new Error('The sheet is private or unreachable. Check Google Sheets access or link-sharing settings.');
   if (text.length > 5_000_000) throw new Error('Sheet data must be smaller than 5 MB.');
-  return parseGoogleSheetCsv(text, input.businessId);
+  return parseGoogleSheetCsv(text, input.businessId, input.syncMasterQty === true);
 }
