@@ -6,11 +6,11 @@ const B = 'c0f0ed15-97e4-4859-ac8f-a2d4e81f5b01';
 
 describe('best-effort sheet status writeback', () => {
   it('returns the write result without changing ledger outcomes', async () => {
-    expect(await bestEffortSheetStatusWrite(async () => true)).toBe(true);
-    expect(await bestEffortSheetStatusWrite(async () => false)).toBe(false);
+    expect(await bestEffortSheetStatusWrite(async () => ({ updated: true, issue: null }))).toEqual({ updated: true, issue: null });
+    expect(await bestEffortSheetStatusWrite(async () => ({ updated: false, issue: 'permission denied' }))).toEqual({ updated: false, issue: 'permission denied' });
   });
   it('does not throw when cosmetic Google Sheets writeback fails', async () => {
-    expect(await bestEffortSheetStatusWrite(async () => { throw new Error('Google Sheets unavailable'); })).toBe(false);
+    expect(await bestEffortSheetStatusWrite(async () => { throw new Error('Google Sheets unavailable'); })).toMatchObject({ updated: false, issue: expect.stringContaining('Editor access') });
   });
 });
 
