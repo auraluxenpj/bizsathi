@@ -78,6 +78,41 @@ export default {
       return;
     }
     const handler = await getServerEntry();
+
+    // One-shot, explicitly enabled full snapshot import runs before unrelated
+    // outbox work. It reuses the server-side credential and exits after the
+    // receiver confirms every SKU mapping, so unrelated queue errors cannot
+    // prevent the approved initial catalogue import.
+    if (env.AURALUXE_CATALOGUE_IMPORT_ONCE === "true") {
+      const snapshotRequest = new Request('https://bizsathi.internal/api/public/auraluxe-catalogue-reconcile-publish', {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${secret}`,
+          'Content-Type': 'application/json',
+          Accept: 'application/json',
+        },
+        body: JSON.stringify({ action: 'publish_snapshot' }),
+      });
+      const snapshotResponse = await handler.fetch(snapshotRequest, env, ctx);
+      if (!snapshotResponse.ok) {
+        throw new Error(`Auraluxe full catalogue snapshot publisher returned HTTP ${snapshotResponse.status}`);
+      }
+      const snapshotResult = await snapshotResponse.json() as {
+        ok?: boolean;
+        snapshot_rows?: number;
+        mappings_saved?: number;
+      };
+      if (snapshotResult.ok !== true || !snapshotResult.snapshot_rows
+        || snapshotResult.mappings_saved !== snapshotResult.snapshot_rows) {
+        throw new Error('Auraluxe full catalogue snapshot did not confirm complete SKU mapping persistence');
+      }
+      console.info('[shared-catalogue] one-shot full Auraluxe snapshot completed', {
+        snapshotRows: snapshotResult.snapshot_rows,
+        mappingsSaved: snapshotResult.mappings_saved,
+      });
+      return;
+    }
+
     const request = new Request('https://bizsathi.internal/api/public/website-inventory', {
       method: 'POST',
       headers: {
@@ -148,38 +183,6 @@ export default {
     console.info('[shared-stock] scheduled event run', {
       delivered: stockResult.delivered ?? 0,
     });
-
-    // One-shot, explicitly enabled full snapshot import. This uses the same
-    // server-side credential and publisher route as the normal integration;
-    // it is never exposed to the browser and remains off by default.
-    if (env.AURALUXE_CATALOGUE_IMPORT_ONCE === "true") {
-      const snapshotRequest = new Request('https://bizsathi.internal/api/public/auraluxe-catalogue-reconcile-publish', {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${secret}`,
-          'Content-Type': 'application/json',
-          Accept: 'application/json',
-        },
-        body: JSON.stringify({ action: 'publish_snapshot' }),
-      });
-      const snapshotResponse = await handler.fetch(snapshotRequest, env, ctx);
-      if (!snapshotResponse.ok) {
-        throw new Error(`Auraluxe full catalogue snapshot publisher returned HTTP ${snapshotResponse.status}`);
-      }
-      const snapshotResult = await snapshotResponse.json() as {
-        ok?: boolean;
-        snapshot_rows?: number;
-        mappings_saved?: number;
-      };
-      if (snapshotResult.ok !== true || !snapshotResult.snapshot_rows
-        || snapshotResult.mappings_saved !== snapshotResult.snapshot_rows) {
-        throw new Error('Auraluxe full catalogue snapshot did not confirm complete SKU mapping persistence');
-      }
-      console.info('[shared-catalogue] one-shot full Auraluxe snapshot completed', {
-        snapshotRows: snapshotResult.snapshot_rows,
-        mappingsSaved: snapshotResult.mappings_saved,
-      });
-    }
   },
 
   async fetch(request: Request, env: unknown, ctx: unknown) {
