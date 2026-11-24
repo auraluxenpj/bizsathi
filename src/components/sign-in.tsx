@@ -7,6 +7,7 @@ import { supabase, isSupabaseConfigured } from '@/integrations/supabase/client';
 import { Input } from '@/components/ui/input';
 import { isEmailLoginIdentifier } from '@/lib/login-identifier';
 import { validateSignup } from '@/lib/signup-validation';
+import { signInWithMobile } from '@/lib/mobile-login.functions';
 
 export function SignIn() {
   const navigate = useNavigate();
@@ -17,7 +18,21 @@ export function SignIn() {
   const [signedIn, setSignedIn] = useState(false);
   const [mode, setMode] = useState<'login'|'signup'|'recovery'>('login'); const [hasInvite, setHasInvite] = useState(false);
   const [email, setEmail] = useState(''); const [mobile, setMobile] = useState(''); const [fullName, setFullName] = useState(''); const [identifier, setIdentifier] = useState(''); const [message, setMessage] = useState('');
+  const [loginMethod, setLoginMethod] = useState<'email'|'mobile'>('email'); const [password, setPassword] = useState('');
   useEffect(() => { if (isSupabaseConfigured()) { supabase.auth.getUser().then(({ data }) => setSignedIn(Boolean(data.user))).catch(() => setSignedIn(false)); } setHasInvite(Boolean(sessionStorage.getItem('bizsathi-invite') || sessionStorage.getItem('bizsathi-team-token'))); }, []);
+  async function mobileLogin() {
+    if (!isSupabaseConfigured()) return;
+    setBusy(true); setError(''); setMessage('');
+    try {
+      const result = await signInWithMobile({ data: { mobile: identifier.trim(), password } });
+      const { error } = await supabase.auth.setSession({ access_token: result.access_token, refresh_token: result.refresh_token });
+      if (error) throw error;
+      await queryClient.invalidateQueries();
+      await navigate({ to: sessionStorage.getItem('bizsathi-team-token') ? '/join' : sessionStorage.getItem('bizsathi-invite') ? '/invite' : '/dashboard' });
+    } catch {
+      setError('Mobile number or password is incorrect.');
+    } finally { setBusy(false); }
+  }
   async function loginWithGoogle() {
     if (!isSupabaseConfigured()) return;
     setBusy(true); setError('');
@@ -92,8 +107,11 @@ export function SignIn() {
               <label className="block text-sm">Full name<Input className="mt-1 h-11" type="text" autoComplete="name" required minLength={2} maxLength={120} value={fullName} onChange={e => setFullName(e.target.value)} /></label>
               <label className="block text-sm">Email<Input className="mt-1 h-11" type="email" autoComplete="email" required maxLength={254} value={email} onChange={e => setEmail(e.target.value)} /></label>
               <label className="block text-sm">Mobile number<Input className="mt-1 h-11" type="tel" inputMode="numeric" autoComplete="tel" required maxLength={20} placeholder="98XXXXXXXX" value={mobile} onChange={e => setMobile(e.target.value)} /></label>
-            </> : <label className="block text-sm">{mode === 'recovery' ? 'Email' : 'Email address'}<Input className="mt-1 h-11" type={mode === 'recovery' ? 'email' : 'text'} autoComplete="username" required maxLength={254} value={identifier} onChange={e => setIdentifier(e.target.value)} placeholder="you@example.com" /></label>}
-            <Button className="h-11 w-full" disabled={busy || !isSupabaseConfigured()}>{busy ? 'Please wait…' : mode === 'recovery' ? 'Send recovery link' : mode === 'signup' ? 'Send secure sign-in link' : 'Email me a sign-in link'}</Button>
+            </> : <>
+              <label className="block text-sm">{mode === 'recovery' ? 'Email' : loginMethod === 'mobile' ? 'Mobile number' : 'Email address'}<Input className="mt-1 h-11" type={mode === 'recovery' || loginMethod === 'email' ? 'text' : 'tel'} inputMode={mode === 'login' && loginMethod === 'mobile' ? 'tel' : undefined} autoComplete="username" required maxLength={mode === 'login' && loginMethod === 'mobile' ? 40 : 254} value={identifier} onChange={e => setIdentifier(e.target.value)} placeholder={mode === 'login' && loginMethod === 'mobile' ? '98XXXXXXXX' : 'you@example.com'} /></label>
+              {mode === 'login' && loginMethod === 'mobile' && <label className="block text-sm">Password<Input className="mt-1 h-11" type="password" autoComplete="current-password" required minLength={8} maxLength={128} value={password} onChange={e => setPassword(e.target.value)} /></label>}
+            </>}
+            <Button className="h-11 w-full" disabled={busy || !isSupabaseConfigured()}>{busy ? 'Please wait…' : mode === 'recovery' ? 'Send recovery link' : mode === 'signup' ? 'Send secure sign-in link' : loginMethod === 'mobile' ? 'Sign in with mobile' : 'Email me a sign-in link'}</Button>
             <div className="flex flex-wrap justify-between gap-2 text-sm">
               {(hasInvite || mode === 'signup') && <Button type="button" variant="link" className="h-auto p-0" onClick={() => { setMode(mode === 'signup' ? 'login' : 'signup'); setError(''); setMessage(''); }}>{mode === 'signup' ? 'Already have an account?' : 'Create account'}</Button>}
               <Button type="button" variant="link" className="h-auto p-0" onClick={() => { setMode(mode === 'recovery' ? 'login' : 'recovery'); setError(''); setMessage(''); }}>{mode === 'recovery' ? 'Back to sign-in' : 'Forgot password?'}</Button>
