@@ -11,7 +11,7 @@ import { compressImageToWebp } from '@/lib/image-compression';
 /** Small square photo, or a placeholder when the product has none yet. */
 export function ProductThumb({ url, name, size = 'size-12' }: { url?: string | undefined; name: string; size?: string }) {
   return url
-    ? <img src={url} alt={name} loading="lazy" className={`${size} shrink-0 rounded-md border object-cover`} />
+    ? <img src={url} alt={name} loading="lazy" className={`${size} aspect-square shrink-0 rounded-md border bg-muted p-1 object-contain`} />
     : <span role="img" aria-label={`No photo for ${name}`} className={`${size} flex shrink-0 items-center justify-center rounded-md border border-dashed text-muted-foreground`}><ImageOff className="size-4" /></span>;
 }
 
