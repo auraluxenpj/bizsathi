@@ -1,7 +1,7 @@
 import { createServerFn } from '@tanstack/react-start';
 import { z } from 'zod';
 import { requireSupabaseAuth } from '@/integrations/supabase/auth-middleware';
-import { callWebsite, callWebsiteCatalogue, probeWebsiteCatalogueAuth } from './website-sync.server';
+import { callWebsite, callWebsiteCatalogue, probeWebsiteCatalogueAuth, validateAuraluxeCatalogueSnapshot } from './website-sync.server';
 import { AURALUXE_BUSINESS_ID, compareStock, eligibleStock, localSnapshot, validateCatalogueIdentity, websiteState } from './website-sync';
 
 const input = z.object({ businessId: z.literal(AURALUXE_BUSINESS_ID), branchId: z.string().uuid() });
@@ -30,6 +30,21 @@ export const testWebsiteCatalogueConnection = createServerFn({ method: 'POST' })
     if (roleError || !allowed) throw new Error('Auraluxe administrator access is required.');
     return probeWebsiteCatalogueAuth();
   });
+
+
+/** Admin-only read-only validation. Does not publish, sync, or modify catalogue/stock. */
+export const validateWebsiteCatalogue = createServerFn({ method: 'POST' })
+  .middleware([requireSupabaseAuth])
+  .inputValidator(catalogueInput)
+  .handler(async ({ data, context }) => {
+    const { data: allowed, error: roleError } = await context.supabase.rpc('has_business_role', {
+      _business_id: data.businessId,
+      _min_role: 'admin',
+    });
+    if (roleError || !allowed) throw new Error('Auraluxe administrator access is required.');
+    return validateAuraluxeCatalogueSnapshot();
+  });
+
 const catalogueResult = z.object({
   result: z.object({
     created_products: z.number().int().nonnegative(),
