@@ -36,8 +36,8 @@ export function parseGoogleSheetValues(values: unknown, businessId: string, requ
  }
  return parseCatalogueCsv(Papa.unparse(rows.map(row => Array.from({length:width}, (_, i) => row[i] ?? ''))), businessId, true);
 }
-export function parseGoogleSheetCsv(text: string, businessId: string) {
+export function parseGoogleSheetCsv(text: string, businessId: string, requireStockQty = false) {
  const parsed = Papa.parse<string[]>(text, {header:false,skipEmptyLines:'greedy'});
  if (parsed.errors[0]) throw new Error(`Google Sheets CSV row ${(parsed.errors[0].row ?? 0)+1}: ${parsed.errors[0].message}`);
- return parseGoogleSheetValues(parsed.data, businessId, true);
+ return parseGoogleSheetValues(parsed.data, businessId, requireStockQty);
 }
