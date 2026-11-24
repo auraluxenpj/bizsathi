@@ -69,6 +69,19 @@ type ScheduledEnv = {
   AURALUXE_CATALOGUE_IMPORT_ONCE?: string;
 };
 type ScheduledController = { cron: string; scheduledTime: number };
+type TriggerEnv = ScheduledEnv & { AURALUXE_IMPORT_TRIGGER_TOKEN?: string };
+
+function constantTimeEqual(left: string, right: string): boolean {
+  const encoder = new TextEncoder();
+  const a = encoder.encode(left);
+  const b = encoder.encode(right);
+  let difference = a.length ^ b.length;
+  const length = Math.max(a.length, b.length);
+  for (let index = 0; index < length; index += 1) {
+    difference |= (a[index] ?? 0) ^ (b[index] ?? 0);
+  }
+  return difference === 0;
+}
 
 export default {
   async scheduled(controller: ScheduledController, env: ScheduledEnv, ctx: unknown) {
