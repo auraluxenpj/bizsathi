@@ -21,7 +21,7 @@ function validate(rows: unknown): { valid: boolean; row_count: number; unique_sk
   if (!Array.isArray(rows) || rows.length < 1 || rows.length > 500) {
     return { valid: false, row_count: Array.isArray(rows) ? rows.length : 0, unique_skus: 0, issues: ['Snapshot must contain between 1 and 500 rows'] };
   }
-  const skus = new Set<string>(), productIds = new Set<string>(), variantIds = new Set<string>();
+  const skus = new Set<string>(), variantIds = new Set<string>();
   const issues: string[] = [];
   const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
   const priceFields = ['purchase_price', 'mrp', 'selling_price', 'wholesale_price'] as const;
@@ -34,7 +34,7 @@ function validate(rows: unknown): { valid: boolean; row_count: number; unique_sk
     else if (skus.has(normalized)) issues.push(`${label}: duplicate SKU`);
     else skus.add(normalized);
     if (typeof row.product_id !== 'string' || !uuid.test(row.product_id)) issues.push(`${label}: invalid product ID`);
-    else productIds.add(row.product_id);
+
     if (typeof row.variant_id !== 'string' || !uuid.test(row.variant_id)) issues.push(`${label}: invalid variant ID`);
     else if (variantIds.has(row.variant_id)) issues.push(`${label}: duplicate variant ID`);
     else variantIds.add(row.variant_id);
