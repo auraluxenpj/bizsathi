@@ -123,3 +123,27 @@ export async function callWebsiteCatalogue(request: Record<string, unknown>) {
   if (!result || typeof result !== 'object') throw new Error('Website returned invalid catalogue data.');
   return result;
 }
+
+
+/** Read-only validation call; credential remains in the Worker environment. */
+export async function validateAuraluxeCatalogueSnapshot() {
+  const secret = process.env['WEBSITE_INVENTORY_SYNC_SECRET'];
+  if (!secret || secret.length < 24) throw new Error('Catalogue validation is not configured in the BizSathi Worker.');
+  const url = 'https://admin.auraluxe.com.np/api/public/auraluxe-catalogue-validate';
+  let response: Response;
+  try {
+    response = await fetch(url, { method: 'POST', redirect: 'manual', signal: AbortSignal.timeout(20000), headers: { 'Content-Type': 'application/json', Accept: 'application/json', Authorization: 'Bearer ' + secret }, body: JSON.stringify({ action: 'validate_snapshot' }) });
+  } catch { throw new Error('Could not reach the Auraluxe catalogue validation endpoint over HTTPS.'); }
+  if (response.status >= 300 && response.status < 400) { await response.body?.cancel(); throw new Error('Auraluxe catalogue validation endpoint redirected; the secret was not forwarded.'); }
+  if (response.status === 401) throw new Error('Auraluxe rejected the validation credential. Check the server-side secret binding.');
+  if (!response.ok) { await response.body?.cancel(); throw new Error('Auraluxe catalogue validation failed with HTTP ' + response.status + '.'); }
+  if (!(response.headers.get('content-type') || '').includes('application/json')) { await response.body?.cancel(); throw new Error('Auraluxe returned a non-JSON validation response.'); }
+  const body = await response.text();
+  if (body.length > 65536) throw new Error('Catalogue validation report exceeded the allowed response size.');
+  let parsed: unknown;
+  try { parsed = JSON.parse(body); } catch { throw new Error('Auraluxe returned invalid validation data.'); }
+  if (!parsed || typeof parsed !== 'object') throw new Error('Auraluxe returned invalid validation data.');
+  const value = parsed as Record<string, unknown>;
+  if (value.ok !== true || typeof value.valid !== 'boolean' || !Number.isInteger(value.row_count) || !Number.isInteger(value.unique_skus) || !Array.isArray(value.issues) || !value.issues.every(issue => typeof issue === 'string')) throw new Error('Auraluxe returned an unexpected validation report.');
+  return value as { ok: true; valid: boolean; row_count: number; unique_skus: number; issues: string[] };
+}
