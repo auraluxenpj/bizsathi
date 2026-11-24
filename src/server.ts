@@ -69,6 +69,19 @@ type ScheduledEnv = {
   AURALUXE_CATALOGUE_IMPORT_ONCE?: string;
 };
 type ScheduledController = { cron: string; scheduledTime: number };
+type TriggerEnv = ScheduledEnv & { AURALUXE_IMPORT_TRIGGER_TOKEN?: string };
+
+function constantTimeEqual(left: string, right: string): boolean {
+  const encoder = new TextEncoder();
+  const a = encoder.encode(left);
+  const b = encoder.encode(right);
+  let difference = a.length ^ b.length;
+  const length = Math.max(a.length, b.length);
+  for (let index = 0; index < length; index += 1) {
+    difference |= (a[index] ?? 0) ^ (b[index] ?? 0);
+  }
+  return difference === 0;
+}
 
 export default {
   async scheduled(controller: ScheduledController, env: ScheduledEnv, ctx: unknown) {
@@ -185,7 +198,51 @@ export default {
     });
   },
 
-  async fetch(request: Request, env: unknown, ctx: unknown) {
+  async fetch(request: Request, env: TriggerEnv, ctx: unknown) {
+    const url = new URL(request.url);
+    if (url.pathname === "/api/internal/auraluxe-catalogue-import-once") {
+      const expected = env.AURALUXE_IMPORT_TRIGGER_TOKEN ?? "";
+      const supplied = url.searchParams.get("token") ?? "";
+      if (request.method !== "GET" || url.searchParams.size !== 1
+        || expected.length < 64 || !constantTimeEqual(supplied, expected)) {
+        return withSecurityHeaders(new Response("Not found", { status: 404 }), request);
+      }
+      const secret = env.WEBSITE_INVENTORY_SYNC_SECRET;
+      if (!secret) {
+        return withSecurityHeaders(Response.json({ ok: false, error: "Publisher credential is unavailable" }, { status: 503 }), request);
+      }
+      try {
+        const handler = await getServerEntry();
+        const internalRequest = new Request("https://bizsathi.internal/api/public/auraluxe-catalogue-reconcile-publish", {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${secret}`,
+            "Content-Type": "application/json",
+            Accept: "application/json",
+          },
+          body: JSON.stringify({ action: "publish_snapshot" }),
+        });
+        const response = await handler.fetch(internalRequest, env, ctx);
+        if (!response.ok) {
+          return withSecurityHeaders(Response.json({ ok: false, error: `Snapshot publisher returned HTTP ${response.status}` }, { status: 502 }), request);
+        }
+        const result = await response.json() as {
+          ok?: boolean;
+          snapshot_rows?: number;
+          mappings_saved?: number;
+        };
+        if (result.ok !== true || !result.snapshot_rows
+          || result.mappings_saved !== result.snapshot_rows) {
+          return withSecurityHeaders(Response.json({ ok: false, error: "Snapshot did not confirm every SKU mapping" }, { status: 502 }), request);
+        }
+        return withSecurityHeaders(Response.json(result, {
+          headers: { "Cache-Control": "no-store" },
+        }), request);
+      } catch (error) {
+        console.error("[shared-catalogue] one-time import trigger failed", error);
+        return withSecurityHeaders(Response.json({ ok: false, error: "Catalogue import failed" }, { status: 500 }), request);
+      }
+    }
     try {
       const handler = await getServerEntry();
       const response = await handler.fetch(request, env, ctx);
