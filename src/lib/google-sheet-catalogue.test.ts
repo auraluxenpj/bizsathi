@@ -136,8 +136,8 @@ describe('Google Sheets catalogue import', () => {
   });
 
   it('enforces Master Qty for public CSV imports only when explicitly requested', () => {
-    expect(() => parseGoogleSheetCsv('Item Name,Generated SKU\\nKurti,AL-KURTI-001', businessId, true)).toThrow(/Master Qty/);
-    expect(parseGoogleSheetCsv('Item Name,Generated SKU\\nKurti,AL-KURTI-001', businessId)).toHaveLength(1);
+    expect(() => parseGoogleSheetCsv('Item Name,Generated SKU\nKurti,AL-KURTI-001', businessId, true)).toThrow(/Master Qty/);
+    expect(parseGoogleSheetCsv('Item Name,Generated SKU\nKurti,AL-KURTI-001', businessId)).toHaveLength(1);
   });
 
   it('reports private workbook HTML clearly', async () => {
