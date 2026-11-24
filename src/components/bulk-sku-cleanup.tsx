@@ -49,7 +49,7 @@ export function BulkSkuCleanup({businessId,onComplete}:{businessId:string;onComp
     <Dialog open={open} onOpenChange={close}>
       <DialogContent className="max-h-[85dvh] max-w-4xl overflow-y-auto" aria-describedby={undefined}>
         <DialogHeader><DialogTitle>Clean unused SKUs · BizSathi only</DialogTitle></DialogHeader>
-        <p className="text-sm text-muted-foreground">Stock quantity, purchases, receipts, adjustments, transfers, counts, reservations, purchase returns and sync history do not block archiving. Only a confirmed sale or sales return blocks it. All existing inventory movements and linked records are preserved in transaction history. Google Sheets and Auraluxe are not changed.</p>
+        <p className="text-sm text-muted-foreground">Stock quantity, purchases, receipts, adjustments, transfers, counts, reservations, purchase returns and sync history do not block archiving. Only a confirmed sale or sales return, including website sale / return movements, blocks it. All existing inventory movements and linked records are preserved in transaction history. Google Sheets and Auraluxe are not changed.</p>
         {preview.isPending&&<p role="status" className="text-sm">Checking every SKU and its linked records…</p>}
         {rows.length>0&&<>
           <div className="grid gap-2 sm:grid-cols-3">
