@@ -33,7 +33,7 @@ export function BulkSkuCleanup({businessId,onComplete}:{businessId:string;onComp
   });
   const remove=useMutation({
     mutationFn:()=>deleteFn({data:{businessId,variantIds:selected}}),
-    onSuccess:(result)=>{setStatus(`${result.deleted} unused SKU(s) deleted from BizSathi. No Google Sheet or Auraluxe records were changed.`);setRows([]);setSelected([]);onComplete();},
+    onSuccess:(result)=>{setStatus(`${result.deleted} SKU(s) archived in BizSathi. Their inventory transaction history is preserved. Google Sheets and Auraluxe records were not changed.`);setRows([]);setSelected([]);onComplete();},
     onError:(error)=>setStatus(error instanceof Error?error.message:'Deletion was not completed. Refresh the preview and try again.'),
   });
 
@@ -49,13 +49,13 @@ export function BulkSkuCleanup({businessId,onComplete}:{businessId:string;onComp
     <Dialog open={open} onOpenChange={close}>
       <DialogContent className="max-h-[85dvh] max-w-4xl overflow-y-auto" aria-describedby={undefined}>
         <DialogHeader><DialogTitle>Clean unused SKUs · BizSathi only</DialogTitle></DialogHeader>
-        <p className="text-sm text-muted-foreground">Stock quantity alone does not block deletion. SKUs with no sales, purchases, stock transactions, documents, counts, reservations, returns or sync history can be deleted. Imported CSV opening balances are removed with the SKU. Google Sheets and Auraluxe are not changed.</p>
+        <p className="text-sm text-muted-foreground">Stock quantity, purchases, receipts, adjustments, transfers, counts, reservations, purchase returns and sync history do not block archiving. Only a confirmed sale or sales return blocks it. All existing inventory movements and linked records are preserved in transaction history. Google Sheets and Auraluxe are not changed.</p>
         {preview.isPending&&<p role="status" className="text-sm">Checking every SKU and its linked records…</p>}
         {rows.length>0&&<>
           <div className="grid gap-2 sm:grid-cols-3">
             <div className="rounded-lg border p-3"><p className="text-xs text-muted-foreground">Total SKUs checked</p><p className="text-xl font-semibold tabular-nums">{rows.length}</p></div>
-            <div className="rounded-lg border p-3"><p className="text-xs text-muted-foreground">Eligible to delete</p><p className="text-xl font-semibold tabular-nums">{eligible.length}</p></div>
-            <div className="rounded-lg border p-3"><p className="text-xs text-muted-foreground">Blocked by transaction history</p><p className="text-xl font-semibold tabular-nums">{rows.length-eligible.length}</p></div>
+            <div className="rounded-lg border p-3"><p className="text-xs text-muted-foreground">Eligible to archive</p><p className="text-xl font-semibold tabular-nums">{eligible.length}</p></div>
+            <div className="rounded-lg border p-3"><p className="text-xs text-muted-foreground">Blocked by sales / sales returns</p><p className="text-xl font-semibold tabular-nums">{rows.length-eligible.length}</p></div>
           </div>
           <div className="flex flex-wrap items-center justify-between gap-3">
             <label className="flex items-center gap-2 text-sm font-medium">
@@ -82,8 +82,8 @@ export function BulkSkuCleanup({businessId,onComplete}:{businessId:string;onComp
           <Button variant="outline" disabled={remove.isPending} onClick={()=>close(false)}>Close</Button>
           <Button variant="destructive" disabled={selected.length===0||remove.isPending||preview.isPending} onClick={()=>{
             const chosen=rows.filter(r=>selected.includes(r.variant_id));
-            if(window.confirm(`Permanently delete ${chosen.length} unused SKU(s) from BizSathi only? This cannot be undone. Google Sheets and Auraluxe will not be changed.`))remove.mutate();
-          }}>{remove.isPending?'Deleting…':`Delete selected (${selected.length})`}</Button>
+            if(window.confirm(`Archive ${chosen.length} SKU(s) in BizSathi? Sales and sales returns are protected. Other inventory movements and sync history will be retained. Google Sheets and Auraluxe will not be changed.`))remove.mutate();
+          }}>{remove.isPending?'Archiving…':`Archive selected (${selected.length})`}</Button>
         </div>
       </DialogContent>
     </Dialog>
