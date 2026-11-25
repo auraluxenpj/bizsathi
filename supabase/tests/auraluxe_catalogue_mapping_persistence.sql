@@ -10,6 +10,9 @@ DECLARE
   before_movements integer;
   after_movements integer;
   saved integer;
+  name_result jsonb;
+  outbox_before integer;
+  outbox_after integer;
 BEGIN
   fn := pg_get_functiondef('public.upsert_auraluxe_catalogue_mappings(uuid,jsonb)'::regprocedure);
   IF position('service_role' IN fn)=0 OR position('bp IS DISTINCT FROM product_id' IN fn)=0 THEN
@@ -55,6 +58,37 @@ BEGIN
   IF saved<>1 THEN
     RAISE EXCEPTION 'Snapshot mapping must save one verified SKU while incremental publishing is disabled';
   END IF;
+
+  IF has_function_privilege('anon','public.apply_auraluxe_product_name(uuid,text)','EXECUTE')
+     OR has_function_privilege('authenticated','public.apply_auraluxe_product_name(uuid,text)','EXECUTE')
+     OR NOT has_function_privilege('service_role','public.apply_auraluxe_product_name(uuid,text)','EXECUTE') THEN
+    RAISE EXCEPTION 'Name-only RPC must be executable only by service_role';
+  END IF;
+  SELECT count(*) INTO outbox_before FROM public.auraluxe_catalogue_outbox
+   WHERE business_id='c0f0ed15-97e4-4859-ac8f-a2d4e81f5b01'::uuid AND sku='SYNC-MAP-TEST-ONE';
+  name_result := public.apply_auraluxe_product_name(
+    '55555555-5555-4555-8555-555555555555'::uuid,
+    'Auraluxe Renamed Product'
+  );
+  IF name_result->>'ok' <> 'true' OR name_result->>'name' <> 'Auraluxe Renamed Product' THEN
+    RAISE EXCEPTION 'Name-only RPC did not confirm the mapped Auraluxe name';
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM public.products WHERE id=biz_product
+    AND name='Auraluxe Renamed Product' AND category='Test') THEN
+    RAISE EXCEPTION 'Name-only RPC failed to update only the mapped product name';
+  END IF;
+  SELECT count(*) INTO outbox_after FROM public.auraluxe_catalogue_outbox
+   WHERE business_id='c0f0ed15-97e4-4859-ac8f-a2d4e81f5b01'::uuid AND sku='SYNC-MAP-TEST-ONE';
+  IF outbox_after <> outbox_before THEN
+    RAISE EXCEPTION 'Auraluxe-origin name update must not echo into the catalogue outbox';
+  END IF;
+  BEGIN
+    PERFORM public.apply_auraluxe_product_name(gen_random_uuid(),'Should Not Apply');
+    RAISE EXCEPTION 'Name-only RPC must reject an unmapped Auraluxe product';
+  EXCEPTION WHEN raise_exception THEN
+    IF SQLERRM NOT LIKE 'Auraluxe product mapping is missing or ambiguous%' THEN RAISE; END IF;
+  END;
+
   IF NOT EXISTS (
     SELECT 1 FROM public.products
      WHERE id=biz_product AND auraluxe_product_id='55555555-5555-4555-8555-555555555555'::uuid
