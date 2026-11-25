@@ -108,7 +108,7 @@ BEGIN
     jsonb_build_object(
       'eventId',event_uuid,
       'sourceTable',TG_TABLE_NAME,
-      'sourceId',source_id,
+      'sourceId',v_source_id,
       'businessId',source_business,
       'branchId',source_branch,
       'sku',source_sku,
