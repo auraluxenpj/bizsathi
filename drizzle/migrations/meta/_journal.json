@@ -379,6 +379,13 @@
       "when": 1795602600000,
       "tag": "0122_shared_product_media",
       "breakpoints": true
+    },
+    {
+      "idx": 54,
+      "version": "7",
+      "when": 1795606200000,
+      "tag": "0124_sku_product_images",
+      "breakpoints": true
     }
   ]
 }
