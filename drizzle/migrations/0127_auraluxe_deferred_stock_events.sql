@@ -242,7 +242,7 @@ $function$;
 DO $resolve_stock_mapping_after_catalogue$
 DECLARE
   body text;
-  anchor text := 'UPDATE public.product_variants SET auraluxe_variant_id=av WHERE business_id=_business_id AND id=variant_id;';
+  anchor text := 'n := n + 1;';
   addition text := $patch$
     UPDATE public.auraluxe_stock_outbox o
        SET auraluxe_product_id=ap,
