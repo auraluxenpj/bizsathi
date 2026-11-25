@@ -16,7 +16,7 @@ DECLARE
   row_data jsonb := to_jsonb(NEW);
   source_business uuid;
   source_branch uuid;
-  source_id uuid;
+  v_source_id uuid;
   source_variant uuid;
   source_product uuid;
   source_sku text;
@@ -54,12 +54,12 @@ BEGIN
     RAISE EXCEPTION 'Auraluxe stock sync is enabled but this BizSathi branch is not mapped to the website';
   END IF;
 
-  source_id := (row_data->>'id')::uuid;
+  v_source_id := (row_data->>'id')::uuid;
   source_variant := (row_data->>'variant_id')::uuid;
   delta_qty := (row_data->>'quantity')::numeric;
   occurred := coalesce((row_data->>'created_at')::timestamptz,now());
 
-  IF source_id IS NULL OR source_variant IS NULL
+  IF v_source_id IS NULL OR source_variant IS NULL
      OR delta_qty IS NULL OR delta_qty=0
      OR delta_qty<>trunc(delta_qty) OR abs(delta_qty)>1000000 THEN
     RAISE EXCEPTION 'Auraluxe stock sync requires a non-zero whole-unit movement of at most 1,000,000 units';
@@ -69,7 +69,7 @@ BEGIN
     SELECT 1 FROM public.auraluxe_stock_outbox
      WHERE business_id=source_business
        AND source_table=TG_TABLE_NAME
-       AND source_id=source_id
+       AND source_id=v_source_id
   ) THEN
     RETURN NEW;
   END IF;
@@ -102,7 +102,7 @@ BEGIN
     bizsathi_product_id,bizsathi_variant_id,auraluxe_product_id,auraluxe_variant_id,
     delta,occurred_at,payload,status,last_error
   ) VALUES (
-    event_uuid,source_business,source_branch,source_sku,version_no,TG_TABLE_NAME,source_id,
+    event_uuid,source_business,source_branch,source_sku,version_no,TG_TABLE_NAME,v_source_id,
     source_product,source_variant,remote_product,remote_variant,
     delta_qty,occurred,
     jsonb_build_object(
