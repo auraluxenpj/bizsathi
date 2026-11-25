@@ -28,9 +28,9 @@ BEGIN
   IF variant_trigger IS NULL OR position('is_active' IN variant_trigger)=0 THEN
     RAISE EXCEPTION 'Variant activation changes must enqueue catalogue events';
   END IF;
-  IF coalesce((SELECT catalogue_enabled FROM public.auraluxe_sync_control
-    WHERE business_id='c0f0ed15-97e4-4859-ac8f-a2d4e81f5b01'::uuid),true) THEN
-    RAISE EXCEPTION 'Catalogue sync must remain disabled until owner-approved cutover';
+  IF NOT coalesce((SELECT catalogue_enabled FROM public.auraluxe_sync_control
+    WHERE business_id='c0f0ed15-97e4-4859-ac8f-a2d4e81f5b01'::uuid),false) THEN
+    RAISE EXCEPTION 'Owner-approved catalogue sync must remain enabled';
   END IF;
   IF coalesce((SELECT stock_enabled FROM public.auraluxe_sync_control
     WHERE business_id='c0f0ed15-97e4-4859-ac8f-a2d4e81f5b01'::uuid),true) THEN
