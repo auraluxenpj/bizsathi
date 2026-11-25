@@ -393,6 +393,13 @@
       "when": 1795630000000,
       "tag": "0125_auraluxe_product_name_only_sync",
       "breakpoints": true
+    },
+    {
+      "idx": 56,
+      "version": "7",
+      "when": 1795636000000,
+      "tag": "0126_safe_auraluxe_catalogue_activation",
+      "breakpoints": true
     }
   ]
 }
