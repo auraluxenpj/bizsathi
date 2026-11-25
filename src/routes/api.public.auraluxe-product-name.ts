@@ -9,6 +9,12 @@ function equal(a: string, b: string): boolean {
   for (let i = 0; i < Math.max(x.length, y.length); i += 1) diff |= (x[i] ?? 0) ^ (y[i] ?? 0);
   return diff === 0;
 }
+function hasControlCharacters(value: string): boolean {
+  return Array.from(value).some((character) => {
+    const code = character.charCodeAt(0);
+    return code < 32 || code === 127;
+  });
+}
 function json(body: unknown, status = 200): Response {
   return Response.json(body, { status, headers: { 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff' } });
 }
