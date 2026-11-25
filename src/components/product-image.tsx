@@ -1,28 +1,116 @@
 import { useRef, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useServerFn } from '@tanstack/react-start';
-import { Camera, ImageOff, Search, Trash2 } from 'lucide-react';
+import { Camera, ImageOff, Search, Trash2, Images } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { setProductImage, uploadSharedProductImage } from '@/lib/product-images.functions';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { assignSharedProductImage, listSharedProductMedia, setProductImage, uploadSharedProductDefaultImage, uploadSharedProductImage } from '@/lib/product-images.functions';
 import { sourceProblem } from '@/lib/product-images';
 import { compressImageToWebp } from '@/lib/image-compression';
 
-/** Small square photo, or a placeholder when the product has none yet. */
+type SharedAsset = { id: string; url: string; mime_type: string; byte_size: number; created_at: string };
+
+/** Small square photo, or a placeholder when the SKU has no dedicated photo. */
 export function ProductThumb({ url, name, size = 'size-12' }: { url?: string | undefined; name: string; size?: string }) {
   return url
     ? <img src={url} alt={name} loading="lazy" className={`${size} aspect-square shrink-0 rounded-md border bg-muted p-1 object-contain`} />
     : <span role="img" aria-label={`No photo for ${name}`} className={`${size} flex shrink-0 items-center justify-center rounded-md border border-dashed text-muted-foreground`}><ImageOff className="size-4" /></span>;
 }
 
-/** Upload, replace or remove the one photo a product has. Photos are converted to WebP <=512 KiB and stored once in the shared Auraluxe media library. */
-export function ProductImageField({ businessId, productId, productName, searchQuery, url }: { businessId: string; productId: string; productName: string; searchQuery?: string; url?: string | undefined }) {
-  const client = useQueryClient(); const save = useServerFn(setProductImage); const uploadShared = useServerFn(uploadSharedProductImage);
-  const cameraInput = useRef<HTMLInputElement>(null); const fileInput = useRef<HTMLInputElement>(null); const [busy, setBusy] = useState(false); const [message, setMessage] = useState('');
-  const refresh = () => client.invalidateQueries({ queryKey: ['product-images', businessId] });
+/** Product-level default image; SKU-specific images override this on the storefront. */
+export function ProductImageField({ businessId, productId, productName, searchQuery, url }: {
+  businessId: string; productId: string; productName: string; searchQuery?: string; url?: string | undefined;
+}) {
+  const client = useQueryClient();
+  const uploadDefault = useServerFn(uploadSharedProductDefaultImage);
+  const save = useServerFn(setProductImage);
+  const cameraInput = useRef<HTMLInputElement>(null);
+  const fileInput = useRef<HTMLInputElement>(null);
+  const [busy, setBusy] = useState(false);
+  const [message, setMessage] = useState('');
+  const refresh = async () => Promise.all([
+    client.invalidateQueries({ queryKey: ['product-images', businessId] }),
+    client.invalidateQueries({ queryKey: ['inventory', businessId] }),
+  ]);
+  async function upload(files: FileList | null) {
+    const file = files?.[0];
+    if (cameraInput.current) cameraInput.current.value = '';
+    if (fileInput.current) fileInput.current.value = '';
+    if (!file) return;
+    const problem = sourceProblem(file);
+    if (problem) { setMessage(problem); return; }
+    setBusy(true); setMessage('');
+    try {
+      const webp = await compressImageToWebp(file);
+      const bytes = new Uint8Array(await webp.arrayBuffer());
+      let binary = '';
+      const chunkSize = 0x8000;
+      for (let i = 0; i < bytes.length; i += chunkSize) binary += String.fromCharCode(...bytes.subarray(i, i + chunkSize));
+      const saved = await uploadDefault({ data: { businessId, productId, mimeType: 'image/webp', base64: btoa(binary) } });
+      setMessage(saved.deduplicated ? 'Existing shared image reused as product default.' : 'Product default stored in shared image library.');
+      await refresh();
+    } catch (e) { setMessage(e instanceof Error ? e.message : 'Upload failed.'); }
+    finally { setBusy(false); }
+  }
+  async function remove() {
+    if (!window.confirm(`Remove the default photo for ${productName}? SKU-specific photos will remain unchanged.`)) return;
+    setBusy(true); setMessage('');
+    try {
+      await save({ data: { businessId, productId, path: null } });
+      setMessage('Product default image removed. SKU-specific images remain unchanged.');
+      await refresh();
+    } catch (e) { setMessage(e instanceof Error ? e.message : 'Could not remove the product default image.'); }
+    finally { setBusy(false); }
+  }
+  return <div className="mb-4 flex flex-wrap items-center gap-4 rounded-lg border p-3">
+    <ProductThumb url={url} name={productName} size="size-20" />
+    <div className="min-w-0 space-y-2">
+      <p className="text-sm font-medium">Product default photo</p>
+      <p className="text-xs text-muted-foreground">Used by every SKU unless that SKU has its own image.</p>
+      <input ref={cameraInput} type="file" accept="image/*" capture="environment" className="sr-only" aria-label="Take product photo with camera" onChange={(e) => upload(e.target.files)} />
+      <input ref={fileInput} type="file" accept="image/jpeg,image/png,image/webp" className="sr-only" aria-label="Choose product photo from device" onChange={(e) => upload(e.target.files)} />
+      <div className="flex flex-wrap gap-2">
+        <Button type="button" variant="outline" disabled={busy} onClick={() => cameraInput.current?.click()}><Camera />Take photo</Button>
+        <Button type="button" variant="outline" disabled={busy} onClick={() => fileInput.current?.click()}><ImageOff />{url ? 'Replace default' : 'Upload default'}</Button>
+        <Button type="button" variant="outline" asChild><a href={`https://www.google.com/search?tbm=isch&q=${encodeURIComponent(searchQuery?.trim() || productName)}`} target="_blank" rel="noopener noreferrer"><Search />Search web images</a></Button>
+        {url && <Button type="button" variant="outline" className="text-destructive" disabled={busy} onClick={() => void remove()}><Trash2 />Remove default</Button>}
+      </div>
+      {busy && <p role="status" className="text-sm text-muted-foreground">Saving product default…</p>}
+      {message && <p role="status" className="text-sm text-muted-foreground">{message}</p>}
+    </div>
+  </div>;
+}
+
+/** SKU photo editor. Uploads are deduplicated centrally; the selected asset is referenced by SKU in both systems. */
+export function ProductVariantImageField({ businessId, variantId, sku, productName, searchQuery, url, fallbackUrl }: {
+  businessId: string; variantId: string; sku: string; productName: string; searchQuery?: string; url?: string | undefined; fallbackUrl?: string | undefined;
+}) {
+  const client = useQueryClient();
+  const uploadShared = useServerFn(uploadSharedProductImage);
+  const listShared = useServerFn(listSharedProductMedia);
+  const assignShared = useServerFn(assignSharedProductImage);
+  const cameraInput = useRef<HTMLInputElement>(null);
+  const fileInput = useRef<HTMLInputElement>(null);
+  const [busy, setBusy] = useState(false);
+  const [loadingLibrary, setLoadingLibrary] = useState(false);
+  const [message, setMessage] = useState('');
+  const [assets, setAssets] = useState<SharedAsset[]>([]);
+  const [libraryOpen, setLibraryOpen] = useState(false);
+
+  const refresh = async () => {
+    await Promise.all([
+      client.invalidateQueries({ queryKey: ['product-images', businessId] }),
+      client.invalidateQueries({ queryKey: ['inventory', businessId] }),
+    ]);
+  };
 
   async function upload(files: FileList | null) {
-    const file = files?.[0]; if (cameraInput.current) cameraInput.current.value = ''; if (fileInput.current) fileInput.current.value = ''; if (!file) return;
-    const problem = sourceProblem(file); if (problem) { setMessage(problem); return; }
+    const file = files?.[0];
+    if (cameraInput.current) cameraInput.current.value = '';
+    if (fileInput.current) fileInput.current.value = '';
+    if (!file) return;
+    const problem = sourceProblem(file);
+    if (problem) { setMessage(problem); return; }
     setBusy(true); setMessage('');
     try {
       const webp = await compressImageToWebp(file);
@@ -31,35 +119,82 @@ export function ProductImageField({ businessId, productId, productName, searchQu
       const chunkSize = 0x8000;
       for (let i = 0; i < bytes.length; i += chunkSize) binary += String.fromCharCode(...bytes.subarray(i, i + chunkSize));
       const uploaded = await uploadShared({ data: {
-        businessId, productId, mimeType: 'image/webp', base64: btoa(binary),
+        businessId, variantId, sku, mimeType: 'image/webp', base64: btoa(binary),
       } });
-      await save({ data: { businessId, productId, path: uploaded.url } });
-      setMessage('Photo saved to the shared media library.'); await refresh();
+      setMessage(uploaded.deduplicated ? 'Existing shared image reused and assigned to this SKU.' : 'Image stored once and assigned to this SKU.');
+      await refresh();
     } catch (e) {
       setMessage(e instanceof Error ? e.message : 'Upload failed.');
     } finally { setBusy(false); }
   }
-  async function remove() {
-    if (!window.confirm('Remove this product photo?')) return;
-    setBusy(true); setMessage('');
-    try { await save({ data: { businessId, productId, path: null } }); setMessage('Photo removed.'); await refresh(); }
-    catch (e) { setMessage(e instanceof Error ? e.message : 'Could not remove the photo.'); }
-    finally { setBusy(false); }
+
+  async function browseLibrary() {
+    setLoadingLibrary(true); setMessage('');
+    try {
+      const result = await listShared({ data: { businessId } });
+      setAssets(result.assets as SharedAsset[]);
+      setLibraryOpen(true);
+      if (!result.assets.length) setMessage('The shared library is empty. Upload a photo to add the first asset.');
+    } catch (e) {
+      setMessage(e instanceof Error ? e.message : 'Shared library could not be loaded.');
+    } finally { setLoadingLibrary(false); }
   }
-  return <div className="mb-5 flex flex-wrap items-center gap-4">
-    <ProductThumb url={url} name={productName} size="size-24" />
-    <div className="space-y-2">
-      <p className="text-sm font-medium">Product photo <span className="font-normal text-muted-foreground">· one per product, shared by all its variants</span></p>
-      <input ref={cameraInput} type="file" accept="image/*" capture="environment" className="sr-only" aria-label="Take product photo with camera" onChange={(e) => upload(e.target.files)} />
-      <input ref={fileInput} type="file" accept="image/jpeg,image/png,image/webp" className="sr-only" aria-label="Choose product photo from device" onChange={(e) => upload(e.target.files)} />
-      <div className="flex flex-wrap gap-2">
-        <Button type="button" variant="outline" className="h-11" asChild><a href={`https://www.google.com/search?tbm=isch&q=${encodeURIComponent(searchQuery?.trim() || productName)}`} target="_blank" rel="noopener noreferrer"><Search />Search web images</a></Button>
-        <Button type="button" variant="outline" className="h-11" disabled={busy} onClick={() => cameraInput.current?.click()}><Camera />Take photo</Button>
-        <Button type="button" variant="outline" className="h-11" disabled={busy} onClick={() => fileInput.current?.click()}><ImageOff />{url ? 'Replace from device' : 'Choose from device'}</Button>
-        {url && <Button type="button" variant="outline" className="h-11 text-destructive" disabled={busy} onClick={remove}><Trash2 />Remove</Button>}
+
+  async function chooseAsset(asset: SharedAsset) {
+    setBusy(true); setMessage('');
+    try {
+      await assignShared({ data: { businessId, variantId, sku, assetId: asset.id } });
+      setLibraryOpen(false);
+      setMessage('Shared image assigned to this SKU in BizSathi and Auraluxe.');
+      await refresh();
+    } catch (e) {
+      setMessage(e instanceof Error ? e.message : 'SKU image assignment failed.');
+    } finally { setBusy(false); }
+  }
+
+  async function remove() {
+    if (!window.confirm(`Remove the dedicated photo for SKU ${sku}? The product default image will remain unchanged.`)) return;
+    setBusy(true); setMessage('');
+    try {
+      await assignShared({ data: { businessId, variantId, sku, assetId: null } });
+      setMessage('SKU photo override removed. Product default image remains available.');
+      await refresh();
+    } catch (e) {
+      setMessage(e instanceof Error ? e.message : 'Could not remove the SKU photo.');
+    } finally { setBusy(false); }
+  }
+
+  return <>
+    <div className="mb-5 flex flex-wrap items-center gap-4 rounded-lg border p-3">
+      <ProductThumb url={url ?? fallbackUrl} name={`${productName} · ${sku}`} size="size-24" />
+      <div className="min-w-0 space-y-2">
+        <p className="text-sm font-medium">SKU photo <span className="font-normal text-muted-foreground">· {sku}</span></p>
+        <p className="text-xs text-muted-foreground">One central image asset can be reused by multiple SKUs. No duplicate file is created for an existing image.</p>
+        <input ref={cameraInput} type="file" accept="image/*" capture="environment" className="sr-only" aria-label="Take SKU photo with camera" onChange={(e) => upload(e.target.files)} />
+        <input ref={fileInput} type="file" accept="image/jpeg,image/png,image/webp" className="sr-only" aria-label="Choose SKU photo from device" onChange={(e) => upload(e.target.files)} />
+        <div className="flex flex-wrap gap-2">
+          <Button type="button" variant="outline" className="h-10" disabled={busy || loadingLibrary} onClick={() => void browseLibrary()}><Images />Browse shared library</Button>
+          <Button type="button" variant="outline" className="h-10" disabled={busy} onClick={() => cameraInput.current?.click()}><Camera />Take photo</Button>
+          <Button type="button" variant="outline" className="h-10" disabled={busy} onClick={() => fileInput.current?.click()}><ImageOff />{url ? 'Replace SKU photo' : fallbackUrl ? 'Set SKU-specific photo' : 'Upload SKU photo'}</Button>
+          <Button type="button" variant="outline" className="h-10" asChild><a href={`https://www.google.com/search?tbm=isch&q=${encodeURIComponent(searchQuery?.trim() || productName)}`} target="_blank" rel="noopener noreferrer"><Search />Search web images</a></Button>
+          {url && <Button type="button" variant="outline" className="h-10 text-destructive" disabled={busy} onClick={() => void remove()}><Trash2 />Remove SKU photo</Button>}
+        </div>
+        {busy && <p role="status" className="text-sm text-muted-foreground">Saving shared SKU image…</p>}
+        {message && <p role="status" className="text-sm text-muted-foreground">{message}</p>}
       </div>
-      {busy && <p role="status" className="text-sm text-muted-foreground">Converting to WebP and saving…</p>}
-      {message && <p role="status" className="text-sm text-muted-foreground">{message}</p>}
     </div>
-  </div>;
+    <Dialog open={libraryOpen} onOpenChange={(open) => { if (!busy) setLibraryOpen(open); }}>
+      <DialogContent className="max-h-[85dvh] max-w-3xl overflow-y-auto" aria-describedby={undefined}>
+        <DialogHeader><DialogTitle>Shared Auraluxe image library</DialogTitle></DialogHeader>
+        <p className="text-sm text-muted-foreground">Choose an existing image to assign it to SKU {sku}. This reuses the stored asset; it does not upload another copy.</p>
+        {assets.length === 0 ? <p className="py-8 text-center text-sm text-muted-foreground">No shared images are available yet.</p> :
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4">
+            {assets.map((asset) => <button key={asset.id} type="button" disabled={busy} onClick={() => void chooseAsset(asset)} className="group rounded-lg border p-2 text-left hover:border-primary disabled:opacity-50">
+              <img src={asset.url} alt={`Shared media ${asset.id}`} loading="lazy" className="aspect-square w-full rounded-md bg-muted object-contain" />
+              <span className="mt-2 block text-xs text-muted-foreground">{(asset.byte_size / 1024).toFixed(0)} KB · {asset.mime_type.replace('image/','').toUpperCase()}</span>
+            </button>)}
+          </div>}
+      </DialogContent>
+    </Dialog>
+  </>;
 }

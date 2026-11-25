@@ -2830,6 +2830,7 @@ export type Database = {
       }
       product_variants: {
         Row: {
+          image_path: string | null
           barcode: string | null
           business_id: string
           catalogue_serial: number
@@ -2849,6 +2850,7 @@ export type Database = {
           wholesale_price: number
         }
         Insert: {
+          image_path?: string | null
           barcode?: string | null
           business_id: string
           catalogue_serial?: number
@@ -2868,6 +2870,7 @@ export type Database = {
           wholesale_price?: number
         }
         Update: {
+          image_path?: string | null
           barcode?: string | null
           business_id?: string
           catalogue_serial?: number
