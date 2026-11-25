@@ -8,7 +8,7 @@ ALTER TABLE public.products ADD CONSTRAINT products_image_path_own CHECK (
       (image_path LIKE business_id::text || '/' || id::text || '/%')
       OR image_path LIKE 'https://jsshaoucrjorbyuzagdr.supabase.co/storage/v1/object/public/product-images/%'
     )
-    AND image_path ~ '\\.(webp|jpg|png)$'
-    AND image_path !~ '\\.\\.'
+    AND (image_path LIKE '%.webp' OR image_path LIKE '%.jpg' OR image_path LIKE '%.png')
+    AND position('..' in image_path) = 0
   )
 );
