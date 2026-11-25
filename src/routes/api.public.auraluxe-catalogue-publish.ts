@@ -12,6 +12,21 @@ function equal(a: string, b: string): boolean {
 function json(body: unknown, status = 200) {
   return Response.json(body, { status, headers: { 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff' } });
 }
+
+async function releaseClaimedRange(db: Db, rows: unknown[], startIndex: number, lease: string, error: string): Promise<void> {
+  for (let index = startIndex; index < rows.length; index += 1) {
+    const raw = rows[index];
+    if (!raw || typeof raw !== 'object' || !('id' in raw)) continue;
+    const id = Number(raw.id);
+    if (!Number.isSafeInteger(id)) continue;
+    try {
+      await db.rpc('fail_auraluxe_catalogue_outbox', { _id: id, _lease: lease, _error: error });
+    } catch {
+      // The claim lease will expire if the best-effort release cannot be recorded.
+    }
+  }
+}
+
 function targetUrl(): string {
   const raw = process.env['AURALUXE_CATALOGUE_SYNC_URL']?.trim()
     || 'https://www.auraluxe.com.np/api/public/bizsathi-catalogue';
@@ -39,10 +54,10 @@ export const Route = createFileRoute('/api/public/auraluxe-catalogue-publish')({
       if (claimed.error || !Array.isArray(claimed.data)) return json({ error: 'Catalogue outbox unavailable' }, 503);
       const url = targetUrl();
       let delivered = 0;
-      for (const raw of claimed.data) {
-        if (!raw || typeof raw !== 'object' || !('id' in raw) || !('payload' in raw)) return json({ error: 'Invalid outbox event' }, 503);
+      for (let index = 0; index < claimed.data.length; index += 1) {\n        const raw = claimed.data[index];
+        if (!raw || typeof raw !== 'object' || !('id' in raw) || !('payload' in raw)) {\n          await releaseClaimedRange(db, claimed.data, index, lease, 'Invalid outbox event; releasing remaining claim');\n          return json({ error: 'Invalid outbox event' }, 503);\n        }
         const id = Number(raw.id), payload = raw.payload;
-        if (!Number.isSafeInteger(id) || !payload || typeof payload !== 'object') return json({ error: 'Invalid outbox event' }, 503);
+        if (!Number.isSafeInteger(id) || !payload || typeof payload !== 'object') {\n          await releaseClaimedRange(db, claimed.data, index, lease, 'Invalid outbox event; releasing remaining claim');\n          return json({ error: 'Invalid outbox event' }, 503);\n        }
         try {
           const response = await fetch(url, {
             method: 'POST', redirect: 'manual', signal: AbortSignal.timeout(12000),
@@ -73,10 +88,10 @@ export const Route = createFileRoute('/api/public/auraluxe-catalogue-publish')({
             return json({ ok: false, delivered, blocked: true }, 503);
           }
           const ack = await db.rpc('ack_auraluxe_catalogue_outbox', { _id: id, _lease: lease });
-          if (ack.error || ack.data !== true) return json({ ok: false, delivered, blocked: true }, 503);
+          if (ack.error || ack.data !== true) {\n            await releaseClaimedRange(db, claimed.data, index, lease, 'Catalogue acknowledgement failed; releasing remaining claim');\n            return json({ ok: false, delivered, blocked: true }, 503);\n          }
           delivered += 1;
         } catch {
-          await db.rpc('fail_auraluxe_catalogue_outbox', { _id: id, _lease: lease, _error: 'Network delivery failed' }).catch(() => undefined);
+          await releaseClaimedRange(db, claimed.data, index, lease, 'Network delivery failed');
           return json({ ok: false, delivered, blocked: true }, 503);
         }
       }
