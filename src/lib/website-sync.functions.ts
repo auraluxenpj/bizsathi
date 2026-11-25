@@ -2,7 +2,7 @@ import { createServerFn } from '@tanstack/react-start';
 import { z } from 'zod';
 import { requireSupabaseAuth } from '@/integrations/supabase/auth-middleware';
 import { callWebsite, probeWebsiteCatalogueAuth, publishAuraluxeCatalogueSnapshot, validateAuraluxeCatalogueSnapshot } from './website-sync.server';
-import { AURALUXE_BUSINESS_ID, compareStock, eligibleStock, localSnapshot, validateCatalogueIdentity, websiteState } from './website-sync';
+import { AURALUXE_BUSINESS_ID, compareStock, eligibleStock, localSnapshot, websiteState } from './website-sync';
 
 const input = z.object({ businessId: z.literal(AURALUXE_BUSINESS_ID), branchId: z.string().uuid() });
 export const compareWebsiteStock = createServerFn({ method: 'POST' }).middleware([requireSupabaseAuth]).inputValidator(input).handler(async ({ data, context }) => {
@@ -44,17 +44,6 @@ export const validateWebsiteCatalogue = createServerFn({ method: 'POST' })
     if (roleError || !allowed) throw new Error('Auraluxe administrator access is required.');
     return validateAuraluxeCatalogueSnapshot();
   });
-
-const catalogueResult = z.object({
-  result: z.object({
-    created_products: z.number().int().nonnegative(),
-    updated_products: z.number().int().nonnegative(),
-    created_variants: z.number().int().nonnegative(),
-    updated_variants: z.number().int().nonnegative(),
-    stock_imported: z.literal(false),
-    products_published: z.literal(false),
-  }),
-});
 
 export const syncWebsiteCatalogueDrafts = createServerFn({ method: 'POST' })
   .middleware([requireSupabaseAuth])
