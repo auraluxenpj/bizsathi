@@ -38,7 +38,6 @@ export const setProductImage = createServerFn({ method: 'POST' }).middleware([re
   const db = loose(context.supabase);
   const before = await db.from('products').select('image_path').eq('business_id', data.businessId).eq('id', data.productId).maybeSingle();
   if (before.error || !before.data) throw new Error('Product not found, or you do not have access.');
-  const old = (before.data as { image_path: string | null }).image_path;
   const saved = await db.from('products').update({ image_path: data.path }).eq('business_id', data.businessId).eq('id', data.productId).select('id');
   if (saved.error || !saved.data?.length) throw new Error('The photo could not be saved. Only administrators with product access can change it.');
   // Do not delete the previous object here. Shared media may be referenced by other SKUs or systems.
