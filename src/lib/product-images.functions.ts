@@ -37,7 +37,7 @@ export const setProductImage = createServerFn({ method: 'POST' }).middleware([re
   const old = (before.data as { image_path: string | null }).image_path;
   const saved = await db.from('products').update({ image_path: data.path }).eq('business_id', data.businessId).eq('id', data.productId).select('id');
   if (saved.error || !saved.data?.length) throw new Error('The photo could not be saved. Only administrators with product access can change it.');
-  // The previous file is only removed after the new one is safely saved, so a product is never left without a photo by a failed change.
-  if (old && old !== data.path) await db.storage.from(PRODUCT_IMAGE_BUCKET).remove([old]);
+  // Do not delete the previous object here. Shared media may be referenced by other SKUs or systems.
+  // Orphan cleanup belongs to the central media library and must verify that no references remain.
   return { ok: true };
 });
