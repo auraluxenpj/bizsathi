@@ -20,13 +20,17 @@ export const listProductImages = createServerFn({ method: 'GET' }).middleware([r
     throw new Error('Product photos could not be loaded.');
   }
   const paths = (rows ?? []) as { id: string; image_path: string }[];
+  const localPaths = paths.filter((r) => !/^https:\/\//i.test(r.image_path));
   const urlByPath = new Map<string, string>();
-  for (let i = 0; i < paths.length; i += 500) {
-    const signed = await loose(context.supabase).storage.from(PRODUCT_IMAGE_BUCKET).createSignedUrls(paths.slice(i, i + 500).map((r) => r.image_path), 3600);
+  for (let i = 0; i < localPaths.length; i += 500) {
+    const signed = await loose(context.supabase).storage.from(PRODUCT_IMAGE_BUCKET).createSignedUrls(localPaths.slice(i, i + 500).map((r) => r.image_path), 3600);
     for (const s of signed.data ?? []) if (s.path && s.signedUrl) urlByPath.set(s.path, s.signedUrl);
   }
   const images: Record<string, string> = {};
-  for (const r of paths) { const url = urlByPath.get(r.image_path); if (url) images[r.id] = url; }
+  for (const r of paths) {
+    const url = /^https:\/\//i.test(r.image_path) ? r.image_path : urlByPath.get(r.image_path);
+    if (url) images[r.id] = url;
+  }
   return { images };
 });
 
@@ -34,10 +38,48 @@ export const setProductImage = createServerFn({ method: 'POST' }).middleware([re
   const db = loose(context.supabase);
   const before = await db.from('products').select('image_path').eq('business_id', data.businessId).eq('id', data.productId).maybeSingle();
   if (before.error || !before.data) throw new Error('Product not found, or you do not have access.');
-  const old = (before.data as { image_path: string | null }).image_path;
   const saved = await db.from('products').update({ image_path: data.path }).eq('business_id', data.businessId).eq('id', data.productId).select('id');
   if (saved.error || !saved.data?.length) throw new Error('The photo could not be saved. Only administrators with product access can change it.');
-  // The previous file is only removed after the new one is safely saved, so a product is never left without a photo by a failed change.
-  if (old && old !== data.path) await db.storage.from(PRODUCT_IMAGE_BUCKET).remove([old]);
+  // Do not delete the previous object here. Shared media may be referenced by other SKUs or systems.
+  // Orphan cleanup belongs to the central media library and must verify that no references remain.
   return { ok: true };
 });
+
+
+/** Upload bytes to Auraluxe's central media library. The shared credential stays server-side. */
+export const uploadSharedProductImage = createServerFn({ method: 'POST' })
+  .middleware([requireSupabaseAuth])
+  .inputValidator(z.object({
+    businessId: id,
+    productId: id,
+    mimeType: z.literal('image/webp'),
+    base64: z.string().min(1).max(1_000_000),
+  }))
+  .handler(async ({ data, context }) => {
+    const product = await loose(context.supabase).from('products').select('id')
+      .eq('business_id', data.businessId).eq('id', data.productId).maybeSingle();
+    if (product.error || !product.data) throw new Error('Product not found, or you do not have access.');
+    const secret = process.env['INVENTORY_SYNC_SECRET'] ?? '';
+    if (secret.length < 24) throw new Error('Shared media connection is not configured in BizSathi.');
+    let response: Response;
+    try {
+      response = await fetch('https://www.auraluxe.com.np/api/public/shared-media', {
+        method: 'POST',
+        redirect: 'manual',
+        signal: AbortSignal.timeout(20000),
+        headers: { Authorization: `Bearer ${secret}`, 'Content-Type': 'application/json', Accept: 'application/json' },
+        body: JSON.stringify({ mime_type: data.mimeType, base64: data.base64 }),
+      });
+    } catch {
+      throw new Error('Auraluxe shared media service could not be reached.');
+    }
+    if (response.status >= 300 && response.status < 400) {
+      await response.body?.cancel();
+      throw new Error('Auraluxe shared media endpoint redirected; the shared credential was not forwarded.');
+    }
+    const result = await response.json().catch(() => null) as { ok?: boolean; url?: string; asset_id?: string; error?: string } | null;
+    if (!response.ok || result?.ok !== true || typeof result.url !== 'string' || !result.url.startsWith('https://jsshaoucrjorbyuzagdr.supabase.co/storage/v1/object/public/product-images/')) {
+      throw new Error(typeof result?.error === 'string' ? result.error : 'Auraluxe shared media upload failed.');
+    }
+    return { url: result.url, assetId: result.asset_id ?? null };
+  });
