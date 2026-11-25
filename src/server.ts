@@ -202,8 +202,14 @@ export default {
     const url = new URL(request.url);
     if (url.pathname === "/api/internal/auraluxe-catalogue-import-once") {
       const expected = env.AURALUXE_IMPORT_TRIGGER_TOKEN ?? "";
-      const supplied = url.searchParams.get("token") ?? "";
-      if (request.method !== "GET" || url.searchParams.size !== 1
+      const suppliedTokens = url.searchParams.getAll("token");
+      const trackingSources = url.searchParams.getAll("utm_source");
+      const allowedQuery = suppliedTokens.length === 1
+        && (url.searchParams.size === 1
+          || (url.searchParams.size === 2 && trackingSources.length === 1
+            && trackingSources[0] === "chatgpt.com"));
+      const supplied = suppliedTokens[0] ?? "";
+      if (request.method !== "GET" || !allowedQuery
         || expected.length < 64 || !constantTimeEqual(supplied, expected)) {
         return withSecurityHeaders(new Response("Not found", { status: 404 }), request);
       }
