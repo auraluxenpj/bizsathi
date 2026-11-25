@@ -54,10 +54,17 @@ export const Route = createFileRoute('/api/public/auraluxe-catalogue-publish')({
       if (claimed.error || !Array.isArray(claimed.data)) return json({ error: 'Catalogue outbox unavailable' }, 503);
       const url = targetUrl();
       let delivered = 0;
-      for (let index = 0; index < claimed.data.length; index += 1) {\n        const raw = claimed.data[index];
-        if (!raw || typeof raw !== 'object' || !('id' in raw) || !('payload' in raw)) {\n          await releaseClaimedRange(db, claimed.data, index, lease, 'Invalid outbox event; releasing remaining claim');\n          return json({ error: 'Invalid outbox event' }, 503);\n        }
+      for (let index = 0; index < claimed.data.length; index += 1) {
+        const raw = claimed.data[index];
+        if (!raw || typeof raw !== 'object' || !('id' in raw) || !('payload' in raw)) {
+          await releaseClaimedRange(db, claimed.data, index, lease, 'Invalid outbox event; releasing remaining claim');
+          return json({ error: 'Invalid outbox event' }, 503);
+        }
         const id = Number(raw.id), payload = raw.payload;
-        if (!Number.isSafeInteger(id) || !payload || typeof payload !== 'object') {\n          await releaseClaimedRange(db, claimed.data, index, lease, 'Invalid outbox event; releasing remaining claim');\n          return json({ error: 'Invalid outbox event' }, 503);\n        }
+        if (!Number.isSafeInteger(id) || !payload || typeof payload !== 'object') {
+          await releaseClaimedRange(db, claimed.data, index, lease, 'Invalid outbox event; releasing remaining claim');
+          return json({ error: 'Invalid outbox event' }, 503);
+        }
         try {
           const response = await fetch(url, {
             method: 'POST', redirect: 'manual', signal: AbortSignal.timeout(12000),
@@ -65,7 +72,7 @@ export const Route = createFileRoute('/api/public/auraluxe-catalogue-publish')({
             body: JSON.stringify({ items: [payload] }),
           });
           if (!response.ok) {
-            await db.rpc('fail_auraluxe_catalogue_outbox', { _id: id, _lease: lease, _error: `Auraluxe HTTP ${response.status}` });
+            await releaseClaimedRange(db, claimed.data, index, lease, `Auraluxe HTTP ${response.status}`);
             return json({ ok: false, delivered, blocked: true }, 503);
           }
           const remote = await response.json().catch(() => null) as {
@@ -76,7 +83,7 @@ export const Route = createFileRoute('/api/public/auraluxe-catalogue-publish')({
             ? String(payload.sku).toLowerCase() : '';
           if (!Array.isArray(mappings) || mappings.length !== 1
             || String(mappings[0]?.sku ?? '').toLowerCase() !== sourceSku) {
-            await db.rpc('fail_auraluxe_catalogue_outbox', { _id: id, _lease: lease, _error: 'Auraluxe did not return the expected SKU cross-reference' });
+            await releaseClaimedRange(db, claimed.data, index, lease, 'Auraluxe did not return the expected SKU cross-reference');
             return json({ ok: false, delivered, blocked: true }, 503);
           }
           const savedMapping = await db.rpc('upsert_auraluxe_catalogue_mappings', {
@@ -84,11 +91,14 @@ export const Route = createFileRoute('/api/public/auraluxe-catalogue-publish')({
             _items: mappings,
           });
           if (savedMapping.error || savedMapping.data !== 1) {
-            await db.rpc('fail_auraluxe_catalogue_outbox', { _id: id, _lease: lease, _error: 'Auraluxe cross-reference could not be saved in BizSathi' });
+            await releaseClaimedRange(db, claimed.data, index, lease, 'Auraluxe cross-reference could not be saved in BizSathi');
             return json({ ok: false, delivered, blocked: true }, 503);
           }
           const ack = await db.rpc('ack_auraluxe_catalogue_outbox', { _id: id, _lease: lease });
-          if (ack.error || ack.data !== true) {\n            await releaseClaimedRange(db, claimed.data, index, lease, 'Catalogue acknowledgement failed; releasing remaining claim');\n            return json({ ok: false, delivered, blocked: true }, 503);\n          }
+          if (ack.error || ack.data !== true) {
+            await releaseClaimedRange(db, claimed.data, index, lease, 'Catalogue acknowledgement failed; releasing remaining claim');
+            return json({ ok: false, delivered, blocked: true }, 503);
+          }
           delivered += 1;
         } catch {
           await releaseClaimedRange(db, claimed.data, index, lease, 'Network delivery failed');
