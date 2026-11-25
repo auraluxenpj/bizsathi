@@ -3,9 +3,8 @@ import { useQueryClient } from '@tanstack/react-query';
 import { useServerFn } from '@tanstack/react-start';
 import { Camera, ImageOff, Search, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { supabase } from '@/integrations/supabase/client';
-import { setProductImage } from '@/lib/product-images.functions';
-import { PRODUCT_IMAGE_BUCKET, productImagePath, sourceProblem } from '@/lib/product-images';
+import { setProductImage, uploadSharedProductImage } from '@/lib/product-images.functions';
+import { sourceProblem } from '@/lib/product-images';
 import { compressImageToWebp } from '@/lib/image-compression';
 
 /** Small square photo, or a placeholder when the product has none yet. */
@@ -15,9 +14,9 @@ export function ProductThumb({ url, name, size = 'size-12' }: { url?: string | u
     : <span role="img" aria-label={`No photo for ${name}`} className={`${size} flex shrink-0 items-center justify-center rounded-md border border-dashed text-muted-foreground`}><ImageOff className="size-4" /></span>;
 }
 
-/** Upload, replace or remove the one photo a product has. Photos are converted to WebP <=512 KiB. */
+/** Upload, replace or remove the one photo a product has. Photos are converted to WebP <=512 KiB and stored once in the shared Auraluxe media library. */
 export function ProductImageField({ businessId, productId, productName, searchQuery, url }: { businessId: string; productId: string; productName: string; searchQuery?: string; url?: string | undefined }) {
-  const client = useQueryClient(); const save = useServerFn(setProductImage);
+  const client = useQueryClient(); const save = useServerFn(setProductImage); const uploadShared = useServerFn(uploadSharedProductImage);
   const cameraInput = useRef<HTMLInputElement>(null); const fileInput = useRef<HTMLInputElement>(null); const [busy, setBusy] = useState(false); const [message, setMessage] = useState('');
   const refresh = () => client.invalidateQueries({ queryKey: ['product-images', businessId] });
 
@@ -25,17 +24,18 @@ export function ProductImageField({ businessId, productId, productName, searchQu
     const file = files?.[0]; if (cameraInput.current) cameraInput.current.value = ''; if (fileInput.current) fileInput.current.value = ''; if (!file) return;
     const problem = sourceProblem(file); if (problem) { setMessage(problem); return; }
     setBusy(true); setMessage('');
-    let path: string | null = null;
     try {
       const webp = await compressImageToWebp(file);
-      path = productImagePath(businessId, productId, crypto.randomUUID(), webp.type);
-      if (!path) throw new Error('That photo type is not supported.');
-      const up = await supabase.storage.from(PRODUCT_IMAGE_BUCKET).upload(path, webp, { contentType: 'image/webp', upsert: false });
-      if (up.error) throw new Error('Upload was not allowed. Only administrators can change product photos.');
-      await save({ data: { businessId, productId, path } });
-      setMessage('Photo saved as WebP.'); await refresh();
+      const bytes = new Uint8Array(await webp.arrayBuffer());
+      let binary = '';
+      const chunkSize = 0x8000;
+      for (let i = 0; i < bytes.length; i += chunkSize) binary += String.fromCharCode(...bytes.subarray(i, i + chunkSize));
+      const uploaded = await uploadShared({ data: {
+        businessId, productId, mimeType: 'image/webp', base64: btoa(binary),
+      } });
+      await save({ data: { businessId, productId, path: uploaded.url } });
+      setMessage('Photo saved to the shared media library.'); await refresh();
     } catch (e) {
-      if (path) await supabase.storage.from(PRODUCT_IMAGE_BUCKET).remove([path]);
       setMessage(e instanceof Error ? e.message : 'Upload failed.');
     } finally { setBusy(false); }
   }
