@@ -372,6 +372,13 @@
       "when": 1795461000000,
       "tag": "0121_auraluxe_catalogue_outbox_compaction",
       "breakpoints": true
+    },
+    {
+      "idx": 53,
+      "version": "7",
+      "when": 1795602600000,
+      "tag": "0122_shared_product_media",
+      "breakpoints": true
     }
   ]
 }
