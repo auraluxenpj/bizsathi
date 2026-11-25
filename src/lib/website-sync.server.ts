@@ -147,3 +147,51 @@ export async function validateAuraluxeCatalogueSnapshot() {
   if (value.ok !== true || typeof value.valid !== 'boolean' || !Number.isInteger(value.row_count) || !Number.isInteger(value.unique_skus) || !Array.isArray(value.issues) || !value.issues.every(issue => typeof issue === 'string')) throw new Error('Auraluxe returned an unexpected validation report.');
   return value as { ok: true; valid: boolean; row_count: number; unique_skus: number; issues: string[] };
 }
+
+
+/** Publish the complete authoritative BizSathi snapshot through the verified reconciliation route. */
+export async function publishAuraluxeCatalogueSnapshot() {
+  const secret = process.env['WEBSITE_INVENTORY_SYNC_SECRET'];
+  if (!secret || secret.length < 24) throw new Error('Auraluxe catalogue reconciliation is not configured in the BizSathi Worker.');
+  const url = 'https://bizsathi-migration.auraluxe26.workers.dev/api/public/auraluxe-catalogue-reconcile-publish';
+  let response: Response;
+  try {
+    response = await fetch(url, {
+      method: 'POST',
+      redirect: 'manual',
+      signal: AbortSignal.timeout(60000),
+      headers: { Authorization: `Bearer ${secret}`, 'Content-Type': 'application/json', Accept: 'application/json' },
+      body: JSON.stringify({ action: 'publish_snapshot' }),
+    });
+  } catch {
+    throw new Error('Could not reach the BizSathi catalogue reconciliation publisher over HTTPS.');
+  }
+  if (response.status >= 300 && response.status < 400) {
+    await response.body?.cancel();
+    throw new Error('BizSathi catalogue reconciliation publisher redirected; the shared secret was not forwarded.');
+  }
+  const body = await response.json().catch(() => null) as {
+    ok?: boolean; error?: string; snapshot_rows?: number; mappings_saved?: number;
+    reconciliation?: Record<string, unknown>;
+  } | null;
+  if (!response.ok || !body || body.ok !== true) {
+    const detail = typeof body?.error === 'string' ? body.error.slice(0, 240) : '';
+    throw new Error(detail ? `Catalogue reconciliation failed: ${detail}` : `Catalogue reconciliation failed with HTTP ${response.status}.`);
+  }
+  if (!Number.isInteger(body.snapshot_rows) || !Number.isInteger(body.mappings_saved)
+    || !body.snapshot_rows || body.mappings_saved !== body.snapshot_rows) {
+    throw new Error('Catalogue reconciliation did not confirm every SKU mapping. No stock sync was performed.');
+  }
+  const counts = body.reconciliation ?? {};
+  const count = (key: string) => Number.isInteger(counts[key]) && Number(counts[key]) >= 0 ? Number(counts[key]) : 0;
+  return {
+    rows: body.snapshot_rows,
+    createdProducts: count('created_products'),
+    updatedProducts: count('updated_products'),
+    createdVariants: count('created_variants'),
+    updatedVariants: count('updated_variants'),
+    stockImported: false as const,
+    productsPublished: false as const,
+    mappingsSaved: body.mappings_saved,
+  };
+}
