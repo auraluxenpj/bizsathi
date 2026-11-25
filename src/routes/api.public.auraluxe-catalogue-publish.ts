@@ -82,7 +82,7 @@ export const Route = createFileRoute('/api/public/auraluxe-catalogue-publish')({
           await releaseClaimedRange(db, claimedRows, index, lease, 'Invalid outbox event; releasing claimed batch');
           return json({ error: 'Invalid outbox event' }, 503);
         }
-        const sku = typeof payload.sku === 'string' ? payload.sku.trim().toLowerCase() : '';
+        const sku = 'sku' in payload && typeof payload.sku === 'string' ? payload.sku.trim().toLowerCase() : '';
         if (!sku || expectedSkus.has(sku)) {
           await releaseClaimedRange(db, claimedRows, index, lease, 'Invalid or duplicate SKU in claimed catalogue batch');
           return json({ error: 'Invalid or duplicate SKU in claimed catalogue batch' }, 503);
