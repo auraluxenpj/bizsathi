@@ -12,6 +12,21 @@ function equal(a: string, b: string): boolean {
 function json(body: unknown, status = 200) {
   return Response.json(body, { status, headers: { 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff' } });
 }
+
+async function releaseClaimedRange(db: Db, rows: unknown[], startIndex: number, lease: string, error: string): Promise<void> {
+  for (let index = startIndex; index < rows.length; index += 1) {
+    const raw = rows[index];
+    if (!raw || typeof raw !== 'object' || !('id' in raw)) continue;
+    const id = Number(raw.id);
+    if (!Number.isSafeInteger(id)) continue;
+    try {
+      await db.rpc('fail_auraluxe_stock_outbox', { _id: id, _lease: lease, _error: error });
+    } catch {
+      // The claim lease will expire if the best-effort release cannot be recorded.
+    }
+  }
+}
+
 function targetUrl(): string {
   const raw = process.env['AURALUXE_STOCK_EVENT_URL']?.trim()
     || 'https://www.auraluxe.com.np/api/public/bizsathi-stock-event';
@@ -43,11 +58,18 @@ export const Route = createFileRoute('/api/public/auraluxe-stock-publish')({
       if (claimed.error || !Array.isArray(claimed.data)) return json({ error: 'Stock event outbox unavailable' }, 503);
       const url = targetUrl();
       let delivered = 0;
-      for (const raw of claimed.data) {
-        if (!raw || typeof raw !== 'object' || !('id' in raw) || !('payload' in raw)) return json({ error: 'Invalid outbox event' }, 503);
+      for (let index = 0; index < claimed.data.length; index += 1) {
+        const raw = claimed.data[index];
+        if (!raw || typeof raw !== 'object' || !('id' in raw) || !('payload' in raw)) {
+          await releaseClaimedRange(db, claimed.data, index, lease, 'Invalid outbox event; releasing remaining claim');
+          return json({ error: 'Invalid outbox event' }, 503);
+        }
         const id = Number(raw.id);
         const payload = raw.payload;
-        if (!Number.isSafeInteger(id) || !payload || typeof payload !== 'object') return json({ error: 'Invalid outbox event' }, 503);
+        if (!Number.isSafeInteger(id) || !payload || typeof payload !== 'object') {
+          await releaseClaimedRange(db, claimed.data, index, lease, 'Invalid outbox event; releasing remaining claim');
+          return json({ error: 'Invalid outbox event' }, 503);
+        }
         try {
           const response = await fetch(url, {
             method: 'POST', redirect: 'manual', signal: AbortSignal.timeout(12000),
@@ -56,14 +78,17 @@ export const Route = createFileRoute('/api/public/auraluxe-stock-publish')({
           });
           const result = await response.json().catch(() => null) as { ok?: boolean } | null;
           if (!response.ok || result?.ok !== true) {
-            await db.rpc('fail_auraluxe_stock_outbox', { _id: id, _lease: lease, _error: `Auraluxe stock event HTTP ${response.status}` });
+            await releaseClaimedRange(db, claimed.data, index, lease, `Auraluxe stock event HTTP ${response.status}`);
             return json({ ok: false, delivered, blocked: true }, 503);
           }
           const ack = await db.rpc('ack_auraluxe_stock_outbox', { _id: id, _lease: lease });
-          if (ack.error || ack.data !== true) return json({ ok: false, delivered, blocked: true }, 503);
+          if (ack.error || ack.data !== true) {
+            await releaseClaimedRange(db, claimed.data, index, lease, 'Stock acknowledgement failed; releasing remaining claim');
+            return json({ ok: false, delivered, blocked: true }, 503);
+          }
           delivered += 1;
         } catch {
-          await db.rpc('fail_auraluxe_stock_outbox', { _id: id, _lease: lease, _error: 'Stock event network delivery failed' }).catch(() => undefined);
+          await releaseClaimedRange(db, claimed.data, index, lease, 'Stock event network delivery failed');
           return json({ ok: false, delivered, blocked: true }, 503);
         }
       }
