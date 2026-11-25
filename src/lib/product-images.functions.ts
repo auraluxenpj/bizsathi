@@ -84,6 +84,33 @@ async function requireMediaAdmin(context: { supabase: unknown }, businessId: str
   if (error || !allowed) throw new Error('Administrator access is required to manage SKU photos.');
 }
 
+/** Upload or replace the product-level default image in the same central library. */
+export const uploadSharedProductDefaultImage = createServerFn({ method: 'POST' })
+  .middleware([requireSupabaseAuth])
+  .inputValidator(z.object({
+    businessId: id,
+    productId: id,
+    mimeType: z.literal('image/webp'),
+    base64: z.string().min(1).max(1_000_000),
+  }))
+  .handler(async ({ data, context }) => {
+    await requireMediaAdmin(context, data.businessId);
+    const db = loose(context.supabase);
+    const { data: product, error: productError } = await db.from('products')
+      .select('id').eq('business_id', data.businessId).eq('id', data.productId).maybeSingle();
+    if (productError || !product) throw new Error('Product not found, or you do not have access.');
+    const secret = process.env['INVENTORY_SYNC_SECRET'] ?? '';
+    if (secret.length < 24) throw new Error('Shared media connection is not configured in BizSathi.');
+    const result = await sharedMediaRequest(sharedMediaBase, 'POST', secret, {
+      mime_type: data.mimeType, base64: data.base64,
+    });
+    if (result?.ok !== true || !sharedMediaUrl(result.url)) throw new Error('Auraluxe shared media upload returned an invalid asset URL.');
+    const { data: saved, error: saveError } = await db.from('products')
+      .update({ image_path: result.url }).eq('business_id', data.businessId).eq('id', data.productId).select('id').maybeSingle();
+    if (saveError || !saved) throw new Error('The shared image uploaded, but the product default image could not be saved.');
+    return { url: result.url, deduplicated: result.deduplicated === true };
+  });
+
 /** List the latest shared Auraluxe assets; the server-to-server secret never reaches the browser. */
 export const listSharedProductMedia = createServerFn({ method: 'GET' })
   .middleware([requireSupabaseAuth])
