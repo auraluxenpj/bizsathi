@@ -22,14 +22,18 @@ BEGIN
   END IF;
 
   PERFORM pg_advisory_xact_lock(hashtextextended(_auraluxe_product_id::text, 25));
-  SELECT count(*), min(p.id)
-    INTO v_count, v_product_id
+  SELECT count(*) INTO v_count
     FROM public.products p
    WHERE p.business_id = 'c0f0ed15-97e4-4859-ac8f-a2d4e81f5b01'::uuid
      AND p.auraluxe_product_id = _auraluxe_product_id;
   IF v_count <> 1 THEN
     RAISE EXCEPTION 'Auraluxe product mapping is missing or ambiguous';
   END IF;
+  SELECT p.id INTO v_product_id
+    FROM public.products p
+   WHERE p.business_id = 'c0f0ed15-97e4-4859-ac8f-a2d4e81f5b01'::uuid
+     AND p.auraluxe_product_id = _auraluxe_product_id
+   FOR UPDATE;
 
   PERFORM set_config('app.catalogue_sync_origin','auraluxe',true);
   UPDATE public.products
