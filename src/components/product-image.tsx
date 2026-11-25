@@ -4,7 +4,7 @@ import { useServerFn } from '@tanstack/react-start';
 import { Camera, ImageOff, Search, Trash2, Images } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { assignSharedProductImage, listSharedProductMedia, uploadSharedProductImage } from '@/lib/product-images.functions';
+import { assignSharedProductImage, listSharedProductMedia, setProductImage, uploadSharedProductDefaultImage, uploadSharedProductImage } from '@/lib/product-images.functions';
 import { sourceProblem } from '@/lib/product-images';
 import { compressImageToWebp } from '@/lib/image-compression';
 
@@ -17,9 +17,73 @@ export function ProductThumb({ url, name, size = 'size-12' }: { url?: string | u
     : <span role="img" aria-label={`No photo for ${name}`} className={`${size} flex shrink-0 items-center justify-center rounded-md border border-dashed text-muted-foreground`}><ImageOff className="size-4" /></span>;
 }
 
+/** Product-level default image; SKU-specific images override this on the storefront. */
+export function ProductImageField({ businessId, productId, productName, searchQuery, url }: {
+  businessId: string; productId: string; productName: string; searchQuery?: string; url?: string | undefined;
+}) {
+  const client = useQueryClient();
+  const uploadDefault = useServerFn(uploadSharedProductDefaultImage);
+  const save = useServerFn(setProductImage);
+  const cameraInput = useRef<HTMLInputElement>(null);
+  const fileInput = useRef<HTMLInputElement>(null);
+  const [busy, setBusy] = useState(false);
+  const [message, setMessage] = useState('');
+  const refresh = async () => Promise.all([
+    client.invalidateQueries({ queryKey: ['product-images', businessId] }),
+    client.invalidateQueries({ queryKey: ['inventory', businessId] }),
+  ]);
+  async function upload(files: FileList | null) {
+    const file = files?.[0];
+    if (cameraInput.current) cameraInput.current.value = '';
+    if (fileInput.current) fileInput.current.value = '';
+    if (!file) return;
+    const problem = sourceProblem(file);
+    if (problem) { setMessage(problem); return; }
+    setBusy(true); setMessage('');
+    try {
+      const webp = await compressImageToWebp(file);
+      const bytes = new Uint8Array(await webp.arrayBuffer());
+      let binary = '';
+      const chunkSize = 0x8000;
+      for (let i = 0; i < bytes.length; i += chunkSize) binary += String.fromCharCode(...bytes.subarray(i, i + chunkSize));
+      const saved = await uploadDefault({ data: { businessId, productId, mimeType: 'image/webp', base64: btoa(binary) } });
+      setMessage(saved.deduplicated ? 'Existing shared image reused as product default.' : 'Product default stored in shared image library.');
+      await refresh();
+    } catch (e) { setMessage(e instanceof Error ? e.message : 'Upload failed.'); }
+    finally { setBusy(false); }
+  }
+  async function remove() {
+    if (!window.confirm(`Remove the default photo for ${productName}? SKU-specific photos will remain unchanged.`)) return;
+    setBusy(true); setMessage('');
+    try {
+      await save({ data: { businessId, productId, path: null } });
+      setMessage('Product default image removed. SKU-specific images remain unchanged.');
+      await refresh();
+    } catch (e) { setMessage(e instanceof Error ? e.message : 'Could not remove the product default image.'); }
+    finally { setBusy(false); }
+  }
+  return <div className="mb-4 flex flex-wrap items-center gap-4 rounded-lg border p-3">
+    <ProductThumb url={url} name={productName} size="size-20" />
+    <div className="min-w-0 space-y-2">
+      <p className="text-sm font-medium">Product default photo</p>
+      <p className="text-xs text-muted-foreground">Used by every SKU unless that SKU has its own image.</p>
+      <input ref={cameraInput} type="file" accept="image/*" capture="environment" className="sr-only" aria-label="Take product photo with camera" onChange={(e) => upload(e.target.files)} />
+      <input ref={fileInput} type="file" accept="image/jpeg,image/png,image/webp" className="sr-only" aria-label="Choose product photo from device" onChange={(e) => upload(e.target.files)} />
+      <div className="flex flex-wrap gap-2">
+        <Button type="button" variant="outline" disabled={busy} onClick={() => cameraInput.current?.click()}><Camera />Take photo</Button>
+        <Button type="button" variant="outline" disabled={busy} onClick={() => fileInput.current?.click()}><ImageOff />{url ? 'Replace default' : 'Upload default'}</Button>
+        <Button type="button" variant="outline" asChild><a href={`https://www.google.com/search?tbm=isch&q=${encodeURIComponent(searchQuery?.trim() || productName)}`} target="_blank" rel="noopener noreferrer"><Search />Search web images</a></Button>
+        {url && <Button type="button" variant="outline" className="text-destructive" disabled={busy} onClick={() => void remove()}><Trash2 />Remove default</Button>}
+      </div>
+      {busy && <p role="status" className="text-sm text-muted-foreground">Saving product default…</p>}
+      {message && <p role="status" className="text-sm text-muted-foreground">{message}</p>}
+    </div>
+  </div>;
+}
+
 /** SKU photo editor. Uploads are deduplicated centrally; the selected asset is referenced by SKU in both systems. */
-export function ProductImageField({ businessId, variantId, sku, productName, searchQuery, url }: {
-  businessId: string; variantId: string; sku: string; productName: string; searchQuery?: string; url?: string | undefined;
+export function ProductVariantImageField({ businessId, variantId, sku, productName, searchQuery, url, fallbackUrl }: {
+  businessId: string; variantId: string; sku: string; productName: string; searchQuery?: string; url?: string | undefined; fallbackUrl?: string | undefined;
 }) {
   const client = useQueryClient();
   const uploadShared = useServerFn(uploadSharedProductImage);
@@ -102,7 +166,7 @@ export function ProductImageField({ businessId, variantId, sku, productName, sea
 
   return <>
     <div className="mb-5 flex flex-wrap items-center gap-4 rounded-lg border p-3">
-      <ProductThumb url={url} name={`${productName} · ${sku}`} size="size-24" />
+      <ProductThumb url={url ?? fallbackUrl} name={`${productName} · ${sku}`} size="size-24" />
       <div className="min-w-0 space-y-2">
         <p className="text-sm font-medium">SKU photo <span className="font-normal text-muted-foreground">· {sku}</span></p>
         <p className="text-xs text-muted-foreground">One central image asset can be reused by multiple SKUs. No duplicate file is created for an existing image.</p>
@@ -111,7 +175,7 @@ export function ProductImageField({ businessId, variantId, sku, productName, sea
         <div className="flex flex-wrap gap-2">
           <Button type="button" variant="outline" className="h-10" disabled={busy || loadingLibrary} onClick={() => void browseLibrary()}><Images />Browse shared library</Button>
           <Button type="button" variant="outline" className="h-10" disabled={busy} onClick={() => cameraInput.current?.click()}><Camera />Take photo</Button>
-          <Button type="button" variant="outline" className="h-10" disabled={busy} onClick={() => fileInput.current?.click()}><ImageOff />{url ? 'Replace photo' : 'Upload photo'}</Button>
+          <Button type="button" variant="outline" className="h-10" disabled={busy} onClick={() => fileInput.current?.click()}><ImageOff />{url ? 'Replace SKU photo' : fallbackUrl ? 'Set SKU-specific photo' : 'Upload SKU photo'}</Button>
           <Button type="button" variant="outline" className="h-10" asChild><a href={`https://www.google.com/search?tbm=isch&q=${encodeURIComponent(searchQuery?.trim() || productName)}`} target="_blank" rel="noopener noreferrer"><Search />Search web images</a></Button>
           {url && <Button type="button" variant="outline" className="h-10 text-destructive" disabled={busy} onClick={() => void remove()}><Trash2 />Remove SKU photo</Button>}
         </div>
