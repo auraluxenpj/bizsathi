@@ -400,6 +400,13 @@
       "when": 1795636000000,
       "tag": "0126_safe_auraluxe_catalogue_activation",
       "breakpoints": true
+    },
+    {
+      "idx": 57,
+      "version": "7",
+      "when": 1795636000001,
+      "tag": "0127_auraluxe_deferred_stock_events",
+      "breakpoints": true
     }
   ]
 }
