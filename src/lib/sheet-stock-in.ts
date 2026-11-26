@@ -79,7 +79,7 @@ export async function applyStockIn(receipts: StockInReceipt[], d: Dependencies):
   const report: StockInReport = { read: receipts.length, applied: 0, alreadyApplied: 0, failed: 0, issues: [], syncedSkus: [] };
   for (const r of receipts) {
     const variants = d.variantsBySku.get(r.sku.toLowerCase()) ?? [];
-    if (variants.length !== 1) { report.failed++; report.issues.push(`${r.receiptId}: SKU ${r.sku} ${variants.length ? 'matches several active BizSathi variants; resolve the duplicate SKU before retrying' : 'is not in active BizSathi inventory. Import the Master tab into Products first, then retry this receipt'}`); continue; }
+    if (variants.length !== 1) { report.failed++; report.issues.push(`${r.receiptId}: SKU ${r.sku} ${variants.length ? 'matches several active BizSathi variants; resolve the duplicate SKU before retrying' : 'is not in active BizSathi inventory. Create and activate this SKU in BizSathi Products first, then retry this receipt'}`); continue; }
     const variantId = variants[0]!; const reference = `${STOCK_IN_REFERENCE_PREFIX}${r.receiptId}`;
     const found = await d.existing(reference);
     if (found) {

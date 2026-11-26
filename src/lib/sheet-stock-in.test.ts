@@ -39,6 +39,8 @@ describe('applyStockIn', () => {
     const d = base(); const r = await applyStockIn(receipts, d);
     expect(d.post).toHaveBeenCalledTimes(1); expect(d.post.mock.calls[0]![0]).toMatchObject({ variantId: 'v1', quantity: 5, reference: 'Sheet Stock In RCP-1' });
     expect(r).toMatchObject({ applied: 1, failed: 1, syncedSkus: ['AL-KURTI-001'] });
+    expect(r.issues[0]).toContain('Create and activate this SKU in BizSathi Products first');
+    expect(r.issues[0]).not.toContain('Master');
   });
   it('does not post again when the ledger already has the receipt', async () => {
     const d = base(); d.existing.mockResolvedValue({ variantId: 'v1', branchId: 'branch-a', quantity: 5 });

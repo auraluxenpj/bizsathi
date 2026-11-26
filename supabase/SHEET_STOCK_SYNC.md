@@ -1,26 +1,50 @@
-# Common sheet → BizSathi → website stock sync
+# Aura Final → BizSathi → Auraluxe stock receipt sync
 
-One Google Sheet ("Aura Luxe Inventory Format") is the single place for product details and new stock.
+## Source and authority
 
-- **Master** tab: one row per item, key = `SKU` (e.g. `AL-KURTI-001`). Import it from Products → Import from Google Sheets, with the tab name `Master`. Catalogue-only import is the default and does not change stock. The optional “Also reconcile Master Qty as branch stock” setting must only be enabled when the sheet contains verified physical on-hand counts for the selected branch.
-- **Stock In** tab: one new row per receipt (`Receipt ID`, `SKU`, `Qty Received`). Never edit or delete an old row; correct mistakes with a new row or a stock adjustment.
+- **Aura Final → Stock In tab** is the input for new stock receipts only.
+- **BizSathi Products** is where a new product and its SKU/variant are created before the first receipt.
+- **BizSathi Sutra stock ledger** is the inventory authority.
+- **Auraluxe website** receives the resulting available quantity from BizSathi.
 
-## What "Sync sheet → BizSathi → Website" does (Inventory → Stock ledger → Sync with Website)
-1. Reads the Stock In tab (server side only).
-2. Posts each new receipt once as a `receive` movement on the linked fulfilment branch. Reference = `Sheet Stock In <Receipt ID>`; the operation UUID is derived from the Receipt ID, so retries (even by another administrator) cannot post twice.
-3. Runs the existing website sync: website sales/returns come into BizSathi as acknowledgements, then BizSathi's counts are pushed to the website with the existing expected-count guards.
-4. Best effort: writes a timestamp into `Applied in BizSathi` / `Applied on Website`. For writeback, configure `GOOGLE_SERVICE_ACCOUNT_JSON` on the BizSathi Worker, share the spreadsheet with that exact service account as an Editor, enable the Google Sheets API, and keep the two status headers on the Stock In tab. If writeback fails, the result now reports the likely permission/configuration issue; the stock ledger remains authoritative.
+The Master tab is not used by this workflow. Do not use an absolute quantity import or stock reconciliation for these receipts.
 
-## Rules that keep the three places equal
-- Receipts only enter through Stock In. Do not also type the same stock into the website admin or the Web tab: the next sync would see it as a website movement and record it a second time.
-- A receipt whose SKU is missing/duplicated/ambiguous, whose Receipt ID repeats, or whose quantity is not a whole number ≥ 1 is skipped and listed.
-- An already-recorded receipt that was edited later is refused (listed as "already recorded with different details").
-- Unit cost is not applied; set purchase prices in Master.
+## Stock In sheet format
 
-## Not included
-No background job: an administrator must press the button (every database function checks the signed-in administrator). Unattended scheduling needs a dedicated service identity and reviewed SQL, deliberately not added here.
+Use one row per SKU receipt line. Required columns:
 
+- `Receipt ID`: unique 3–60 character ID for this individual receipt line (for example `AF-2026-001-01`).
+- `SKU`: exact SKU already created and active in BizSathi.
+- `Qty Received`: positive whole number.
 
-## Missing SKU recovery
+Optional columns: Date, Supplier / Note, Entered By, Applied in BizSathi, Applied on Website.
 
-If Stock In reports that a SKU is not in active BizSathi inventory, import the Master tab from Products first and verify that the SKU is active and unique. Then retry the receipt. Do not create a duplicate variant or manually add the same receipt quantity elsewhere. Receipt IDs make the stock posting idempotent.
+If one supplier invoice contains several SKUs, give each line a unique Receipt ID (for example `AF-2026-001-01`, `AF-2026-001-02`). Do not reuse one Receipt ID across multiple rows. Do not edit or delete a receipt after it has been posted; record a new receipt or an authorized stock adjustment to correct it.
+
+## What “Sync sheet → Sutra → Website” does
+
+1. Reads the `Stock In` tab from Aura Final on the server.
+2. Validates Receipt ID, SKU and Qty Received; duplicate or malformed rows are reported and skipped.
+3. Resolves the SKU to exactly one active BizSathi variant. Missing or duplicate SKUs are rejected; create/activate the product in BizSathi Products first.
+4. Posts each new receipt once as a positive `receive` movement to the linked website fulfilment branch. The operation UUID is deterministic from the Auraluxe business ID and Receipt ID.
+5. If the same receipt is synced again, BizSathi reports it as already recorded and adds zero stock. If the receipt details differ from the posted movement, the retry is blocked.
+6. Runs the website inventory sync so website sales/returns are reconciled and BizSathi's resulting available quantities are pushed to Auraluxe.
+7. Best-effort writes timestamps to `Applied in BizSathi` and `Applied on Website`. A sheet writeback failure does not undo a posted stock movement.
+
+## Important controls
+
+- Never enter the same receipt into the Auraluxe website admin as a second stock receipt.
+- Never use an absolute Master Qty / current-stock import to represent a new delivery.
+- Never reuse a SKU or Receipt ID.
+- The selected branch must be the branch linked to the Auraluxe website.
+- An existing receipt with a different SKU, quantity or branch is not replayed; use a new receipt ID for a genuine new delivery.
+- Purchase cost is not posted by this Stock In workflow; maintain product costing separately in BizSathi.
+- The sheet status columns are informational only. The BizSathi stock ledger and website acknowledgements are the authoritative evidence.
+
+## Google Sheets access
+
+For status writeback, configure `GOOGLE_SERVICE_ACCOUNT_JSON` on the BizSathi Cloudflare Worker and share Aura Final with that service account as an Editor. Enable the Google Sheets API and keep the two status headers on the Stock In tab. The sheet must be readable by the configured service account or via its published CSV access.
+
+## Scope
+
+This is a manual, administrator-triggered workflow. It does not create product catalogue records from a stock receipt row and does not run unattended in the background.
