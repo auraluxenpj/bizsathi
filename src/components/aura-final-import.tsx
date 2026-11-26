@@ -2,7 +2,7 @@ import { useMemo, useRef, useState } from 'react';
 import Papa from 'papaparse';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useServerFn } from '@tanstack/react-start';
-import { FileSpreadsheet, Upload, CheckCircle2, AlertTriangle, X } from 'lucide-react';
+import { FileSpreadsheet, Upload, X } from 'lucide-react';
 import { Button } from './ui/button';
 import type { CommerceWorkspace } from './commerce-workspace';
 import { importAuraFinalStock } from '@/lib/aura-final-import.functions';
