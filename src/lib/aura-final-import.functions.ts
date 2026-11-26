@@ -6,7 +6,6 @@ import { receiptOperationId } from './sheet-stock-in';
 const input = z.object({
   businessId: z.string().uuid(),
   branchId: z.string().uuid(),
-  importHash: z.string().regex(/^[a-f0-9]{64}$/),
   rows: z.array(z.object({ sku: z.string().trim().min(1).max(64), quantity: z.number().int().min(1).max(1_000_000) })).min(1).max(5000),
 });
 export type AuraFinalImportReport = { applied: number; alreadyApplied: number; failed: number; issues: string[] };
@@ -41,7 +40,7 @@ export const importAuraFinalStock = createServerFn({ method: 'POST' }).middlewar
     const matches = variantsBySku.get(row.sku.toLowerCase()) ?? [];
     if (matches.length !== 1) { report.failed++; report.issues.push(`${row.sku}: ${matches.length ? 'matches multiple active variants' : 'SKU is not present in active BizSathi products'}`); continue; }
     const variantId = matches[0]!;
-    const reference = `Aura Final Import ${data.importHash.slice(0, 32)} ${row.sku}`.slice(0, 200);
+    const reference = `Aura Final receipt ${data.branchId} ${row.sku.toLowerCase()} qty ${row.quantity}`.slice(0, 200);
     const existing = await supabase.from('stock_movements').select('variant_id,branch_id,quantity').eq('business_id', data.businessId).eq('reference', reference).eq('kind', 'receive').limit(2);
     if (existing.error) throw new Error('Existing stock receipts could not be checked. No new stock was posted for this row.');
     const found = existing.data?.[0];
@@ -51,8 +50,8 @@ export const importAuraFinalStock = createServerFn({ method: 'POST' }).middlewar
       continue;
     }
     try {
-      const id = await receiptOperationId(data.businessId, `aura-final:${data.importHash}:${row.sku.toLowerCase()}`);
-      const posted = await supabase.rpc('post_stock_request', { _request: { businessId: data.businessId, id, variantId, branchId: data.branchId, destinationBranchId: null, kind: 'receive', quantity: row.quantity, reference, reason: `Aura Final CSV import ${data.importHash.slice(0, 16)}` } });
+      const id = await receiptOperationId(data.businessId, `aura-final:${data.branchId}:${row.sku.toLowerCase()}:${row.quantity}`);
+      const posted = await supabase.rpc('post_stock_request', { _request: { businessId: data.businessId, id, variantId, branchId: data.branchId, destinationBranchId: null, kind: 'receive', quantity: row.quantity, reference, reason: `Aura Final stock import · SKU ${row.sku}` } });
       if (posted.error) throw new Error(posted.error.message);
       report.applied++;
     } catch {
