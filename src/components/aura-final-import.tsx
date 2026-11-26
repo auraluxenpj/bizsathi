@@ -40,7 +40,7 @@ export function AuraFinalImport({ w, onComplete }: { w: CommerceWorkspace; onCom
   }), [rows]);
 
   const mutation = useMutation({
-    mutationFn: () => post({ data: { businessId: w.businessId, branchId, rows: rows.filter(r => r.status === 'ready').map(r => ({ sku: r.sku, quantity: r.qty })) } }),
+    mutationFn: () => post({ data: { businessId: w.businessId, branchId, importHash: fileHash, rows: rows.filter(r => r.status === 'ready').map(r => ({ sku: r.sku, quantity: r.qty })) } }),
     onSuccess: async report => {
       await queryClient.invalidateQueries({ queryKey: ['inventory', w.businessId] });
       await queryClient.invalidateQueries({ queryKey: ['commerce', w.businessId] });
