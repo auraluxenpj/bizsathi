@@ -6,6 +6,7 @@ import { FileSpreadsheet, Upload, X } from 'lucide-react';
 import { Button } from './ui/button';
 import type { CommerceWorkspace } from './commerce-workspace';
 import { importAuraFinalStock } from '@/lib/aura-final-import.functions';
+import { syncWebsiteStock } from '@/lib/website-sync.functions';
 
 const EXPECTED_HEADERS = [
   'model_code', 'category', 'variant_name', 'sku', 'product_name', 'barcode',
@@ -27,8 +28,10 @@ export function AuraFinalImport({ w, onComplete }: { w: CommerceWorkspace; onCom
   const [rows, setRows] = useState<AuraRow[]>([]);
   const [error, setError] = useState('');
   const [result, setResult] = useState('');
+  const [websiteResult, setWebsiteResult] = useState('');
   const queryClient = useQueryClient();
   const post = useServerFn(importAuraFinalStock);
+  const syncWebsite = useServerFn(syncWebsiteStock);
   const branchId = w.activeBranchId || (w.access.data?.branches.filter(b => b.is_active).length === 1 ? w.access.data.branches.find(b => b.is_active)?.id ?? '' : '');
   const variants = w.inventory.data?.variants.filter(v => v.is_active && v.products?.is_active) ?? [];
 
@@ -39,12 +42,19 @@ export function AuraFinalImport({ w, onComplete }: { w: CommerceWorkspace; onCom
     quantity: rows.filter(r => r.status === 'ready').reduce((n, r) => n + r.qty, 0),
   }), [rows]);
 
+  const websiteMutation = useMutation({
+    mutationFn: () => syncWebsite({ data: { businessId: w.businessId, branchId, confirmed: true } }),
+    onSuccess: report => setWebsiteResult(`Website sync finished: ${report.updated} website stock updates · ${report.recorded} website sales/returns recorded · ${report.issues.length} issues.${report.error ? ' ' + report.error : report.issues.length ? ' ' + report.issues.join(' | ') : ''}`),
+    onError: e => setWebsiteResult(e instanceof Error ? e.message : 'Website sync could not be completed.'),
+  });
+
   const mutation = useMutation({
     mutationFn: () => post({ data: { businessId: w.businessId, branchId, importHash: fileHash, rows: rows.filter(r => r.status === 'ready').map(r => ({ sku: r.sku, quantity: r.qty })) } }),
     onSuccess: async report => {
       await queryClient.invalidateQueries({ queryKey: ['inventory', w.businessId] });
       await queryClient.invalidateQueries({ queryKey: ['commerce', w.businessId] });
       setResult(`Import finished: ${report.applied} added · ${report.alreadyApplied} already imported · ${report.failed} failed.${report.issues.length ? ' ' + report.issues.join(' | ') : ''}`);
+      setWebsiteResult('');
       onComplete();
     },
     onError: e => setError(e instanceof Error ? e.message : 'Import failed. No stock change was confirmed.'),
@@ -105,7 +115,7 @@ export function AuraFinalImport({ w, onComplete }: { w: CommerceWorkspace; onCom
           <p className="mt-3 text-xs text-muted-foreground">Product names and prices are for reference only. This import changes stock quantities only. Zero-quantity rows are skipped. Missing or duplicate SKUs block those rows.</p>
           <div className="mt-4 flex flex-wrap justify-end gap-2"><Button variant="ghost" onClick={() => { setRows([]); setFileName(''); setFileHash(''); setResult(''); }}>Clear file</Button><Button disabled={!branchId || !fileHash || !summary.ready || summary.blocked > 0 || mutation.isPending} onClick={() => mutation.mutate()}>{mutation.isPending ? 'Adding stock…' : 'Approve & Add Stock'}</Button></div>
         </>}
-        {result && <p role="status" className="mt-4 rounded-md border p-3 text-sm">{result}</p>}
+        {result && <div className="mt-4 rounded-md border p-3 text-sm"><p role="status">{result}</p><Button className="mt-3" variant="outline" disabled={!branchId || websiteMutation.isPending || mutation.isPending} onClick={() => websiteMutation.mutate()}>{websiteMutation.isPending ? 'Syncing Auraluxe…' : 'Sync to Auraluxe website'}</Button>{websiteResult && <p role="status" className="mt-3">{websiteResult}</p>}</div>}
         {mutation.isPending && <p role="status" className="mt-3 text-sm text-muted-foreground">Posting stock receipts to the BizSathi stock ledger. Do not close this window.</p>}
       </div>
     </div>}
