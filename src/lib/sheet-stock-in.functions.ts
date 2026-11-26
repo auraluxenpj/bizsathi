@@ -58,7 +58,9 @@ export const syncSheetStock = createServerFn({ method: 'POST' }).middleware([req
   if (parsed.issues.length) { stockIn.issues.unshift(...parsed.issues); stockIn.failed += parsed.issues.length; }
 
   let website: SyncReport | null = null;
-  if (data.includeWebsite) { const { performWebsiteSync } = await import('./website-sync.run.server'); website = await performWebsiteSync(supabase, data.branchId); }
+  // Do not publish a partial stock import to the website. Resolve every receipt/parser issue first,
+  // then run the website sync as a separate clean pass.
+  if (data.includeWebsite && stockIn.failed === 0) { const { performWebsiteSync } = await import('./website-sync.run.server'); website = await performWebsiteSync(supabase, data.branchId); }
 
   // Mark the sheet for people to read. This is cosmetic: the BizSathi ledger and the website's own state decide what was applied.
   const stamp = new Date().toISOString().slice(0, 16).replace('T', ' ') + ' UTC';
