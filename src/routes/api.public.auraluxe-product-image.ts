@@ -3,6 +3,19 @@ import { createFileRoute } from '@tanstack/react-router';
 const BUSINESS_ID = 'c0f0ed15-97e4-4859-ac8f-a2d4e81f5b01';
 const SHARED_IMAGE_PREFIX = 'https://jsshaoucrjorbyuzagdr.supabase.co/storage/v1/object/public/product-images/';
 
+function isSharedImageUrl(value: unknown): value is string {
+  if (typeof value !== 'string' || value.length > 2048) return false;
+  try {
+    const url = new URL(value);
+    return url.origin === 'https://jsshaoucrjorbyuzagdr.supabase.co'
+      && url.pathname.startsWith('/storage/v1/object/public/product-images/')
+      && !url.pathname.split('/').some((segment) => segment === '..' || segment === '.')
+      && /\\.(webp|jpe?g|png)$/i.test(url.pathname);
+  } catch {
+    return false;
+  }
+}
+
 function equal(a: string, b: string): boolean {
   const x = new TextEncoder().encode(a), y = new TextEncoder().encode(b);
   let diff = x.length ^ y.length;
@@ -28,7 +41,7 @@ export const Route = createFileRoute('/api/public/auraluxe-product-image')({
     const productId = input['bizsathi_product_id'];
     const imageUrl = input['image_url'];
     if (typeof productId !== 'string' || !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(productId)
-      || (imageUrl !== null && (typeof imageUrl !== 'string' || imageUrl.length > 200 || !imageUrl.startsWith(SHARED_IMAGE_PREFIX) || imageUrl.includes('..') || !(imageUrl.toLowerCase().endsWith('.webp') || imageUrl.toLowerCase().endsWith('.jpg') || imageUrl.toLowerCase().endsWith('.png'))))) {
+      || (imageUrl !== null && !isSharedImageUrl(imageUrl))) {
       return json({ error: 'Invalid product ID or shared image URL' }, 400);
     }
 
