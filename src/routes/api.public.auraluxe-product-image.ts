@@ -37,26 +37,54 @@ export const Route = createFileRoute('/api/public/auraluxe-product-image')({
     try { body = await request.json(); } catch { return json({ error: 'Invalid JSON' }, 400); }
     if (!body || typeof body !== 'object' || Array.isArray(body)) return json({ error: 'Invalid request' }, 400);
     const input = body as Record<string, unknown>;
-    if (Object.keys(input).some((key) => !['bizsathi_product_id', 'image_url'].includes(key))) return json({ error: 'Unexpected fields' }, 400);
+    if (Object.keys(input).some((key) => !['bizsathi_product_id', 'sku', 'image_url'].includes(key))) return json({ error: 'Unexpected fields' }, 400);
     const productId = input['bizsathi_product_id'];
+    const skuValue = input['sku'];
+    const sku = typeof skuValue === 'string' ? skuValue.trim() : '';
     const imageUrl = input['image_url'];
     if (typeof productId !== 'string' || !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(productId)
+      || (skuValue !== null && skuValue !== undefined && (typeof skuValue !== 'string' || sku.length < 1 || sku.length > 100))
       || (imageUrl !== null && !isSharedImageUrl(imageUrl))) {
-      return json({ error: 'Invalid product ID or shared image URL' }, 400);
+      return json({ error: 'Invalid product ID, SKU or shared image URL' }, 400);
     }
 
     try {
       const { supabaseAdmin } = await import('@/integrations/supabase/client.server');
+      // Prefer the Auraluxe SKU when it resolves to exactly one active BizSathi variant.
+      // A missing SKU match falls back to the existing immutable product-ID mapping.
+      let targetProductId = '';
+      let matchMethod: 'sku' | 'product_id' = 'product_id';
+      if (sku) {
+        const { data: skuMatches, error: skuError } = await supabaseAdmin.from('product_variants')
+          .select('product_id,sku')
+          .eq('business_id', BUSINESS_ID)
+          .eq('sku', sku)
+          .eq('is_active', true)
+          .limit(2);
+        if (skuError) {
+          console.error('[auraluxe-product-image] SKU lookup failed', skuError.message);
+          return json({ error: 'BizSathi SKU lookup failed' }, 503);
+        }
+        if (Array.isArray(skuMatches) && skuMatches.length > 1) {
+          return json({ error: 'SKU is not unique in BizSathi; image was not changed', reason: 'duplicate_sku' }, 409);
+        }
+        if (Array.isArray(skuMatches) && skuMatches.length === 1) {
+          targetProductId = skuMatches[0].product_id;
+          matchMethod = 'sku';
+        }
+      }
+      if (!targetProductId) targetProductId = productId;
+
       const { data, error } = await supabaseAdmin.from('products')
         .update({ image_path: imageUrl })
         .eq('business_id', BUSINESS_ID)
-        .eq('id', productId)
+        .eq('id', targetProductId)
         .select('id');
       if (error || !Array.isArray(data) || data.length !== 1) {
         console.error('[auraluxe-product-image] mapped product update rejected', error?.message ?? 'not uniquely matched');
-        return json({ error: 'Mapped BizSathi product was not found uniquely' }, 409);
+        return json({ error: 'Mapped BizSathi product was not found uniquely', reason: 'product_not_found' }, 409);
       }
-      return json({ ok: true, product_id: productId, image_url: imageUrl });
+      return json({ ok: true, product_id: data[0].id, image_url: imageUrl, matched_by: matchMethod });
     } catch (error) {
       console.error('[auraluxe-product-image] update failed', error);
       return json({ error: 'Product image sync unavailable' }, 503);
