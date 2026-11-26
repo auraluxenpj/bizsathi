@@ -10,7 +10,7 @@ function isSharedImageUrl(value: unknown): value is string {
     return url.origin === 'https://jsshaoucrjorbyuzagdr.supabase.co'
       && url.pathname.startsWith('/storage/v1/object/public/product-images/')
       && !url.pathname.split('/').some((segment) => segment === '..' || segment === '.')
-      && /\\.(webp|jpe?g|png)$/i.test(url.pathname);
+      && /\.(webp|jpe?g|png)$/i.test(url.pathname);
   } catch {
     return false;
   }
