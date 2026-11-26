@@ -14,12 +14,13 @@ export type AuraFinalImportReport = { applied: number; alreadyApplied: number; f
 /** Posts Aura Final as append-only stock receipts. Same file + SKU is idempotent on retries. */
 export const importAuraFinalStock = createServerFn({ method: 'POST' }).middleware([requireSupabaseAuth]).inputValidator(input).handler(async ({ data, context }): Promise<AuraFinalImportReport> => {
   const { supabase } = context;
-  const [member, accountant] = await Promise.all([
+  const [member, accountant, platformOwner] = await Promise.all([
     supabase.rpc('is_business_member', { _business_id: data.businessId }),
     supabase.rpc('has_business_role', { _business_id: data.businessId, _min_role: 'accountant' }),
+    supabase.rpc('is_platform_owner'),
   ]);
-  if (member.error || !member.data || accountant.error || !accountant.data) throw new Error('Authorised Auraluxe accountant access is required to import stock.');
-  const branch = await supabase.from('business_branches').select('id').eq('business_id', data.businessId).eq('id', data.branchId).eq('is_active', true).maybeSingle();
+  if (member.error || accountant.error || platformOwner.error || (!member.data && !platformOwner.data) || (!accountant.data && !platformOwner.data)) throw new Error('Authorised Auraluxe accountant access is required to import stock.');
+  const branch = await supabase.from('branches').select('id').eq('business_id', data.businessId).eq('id', data.branchId).eq('is_active', true).maybeSingle();
   if (branch.error || !branch.data) throw new Error('Select an active branch belonging to this business.');
   const skuCounts = new Map<string, number>();
   for (const row of data.rows) skuCounts.set(row.sku.toLowerCase(), (skuCounts.get(row.sku.toLowerCase()) ?? 0) + 1);
@@ -40,7 +41,6 @@ export const importAuraFinalStock = createServerFn({ method: 'POST' }).middlewar
     const matches = variantsBySku.get(row.sku.toLowerCase()) ?? [];
     if (matches.length !== 1) { report.failed++; report.issues.push(`${row.sku}: ${matches.length ? 'matches multiple active variants' : 'SKU is not present in active BizSathi products'}`); continue; }
     const variantId = matches[0]!;
-    const receipt = `AF-${data.importHash.slice(0, 24)}-${(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(row.sku.toLowerCase()))).slice(0, 6).toString()}`;
     const reference = `Aura Final Import ${data.importHash.slice(0, 32)} ${row.sku}`.slice(0, 200);
     const existing = await supabase.from('stock_movements').select('variant_id,branch_id,quantity').eq('business_id', data.businessId).eq('reference', reference).eq('kind', 'receive').limit(2);
     if (existing.error) throw new Error('Existing stock receipts could not be checked. No new stock was posted for this row.');
