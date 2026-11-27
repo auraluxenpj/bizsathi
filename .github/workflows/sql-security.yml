@@ -76,7 +76,8 @@ jobs:
             supabase/tests/cashier_rls.sql \
             supabase/tests/website_inventory_reservations.sql \
             supabase/tests/auraluxe_catalogue_authority.sql \
-            supabase/tests/auraluxe_catalogue_mapping_persistence.sql; do
+            supabase/tests/auraluxe_catalogue_mapping_persistence.sql \
+            supabase/tests/rental_property_management.sql; do
             echo "::group::Running ${test_file}"
             docker exec -i "${DB_CONTAINER}" psql -U postgres -d postgres --no-psqlrc --set ON_ERROR_STOP=1 < "${test_file}"
             echo "::endgroup::"

@@ -10,7 +10,7 @@ export function isBillingStaff(can: (permission: string) => boolean) {
  return can('sales.create') && allPermissions.every(permission => posSupportPermissions.has(permission) || !can(permission));
 }
 /** POS-only employees are confined to the terminal; profile and sign-out remain in the account menu. */
-export function shouldRedirectBillingStaff(pathname: string) { return pathname !== '/pos'; }
+export function shouldRedirectBillingStaff(pathname: string) { return pathname !== '/pos' && pathname !== '/rental'; }
 export const dashboardItem: WorkspaceItem = { name: 'Dashboard', to: '/dashboard', icon: LayoutDashboard };
 export const workspaceGroups: WorkspaceGroup[] = [
  { name: 'Sales & POS', icon: Receipt, items: [
@@ -52,6 +52,9 @@ export const workspaceGroups: WorkspaceGroup[] = [
  ] },
  { name: 'Settings', icon: Settings, items: [
   { name: 'Auraluxe & App Settings', to: '/sales', search: { panel: 'settings' }, icon: Settings },
+ ] },
+ { name: 'Property Management', icon: Building2, items: [
+  { name: 'Rental Property Management', to: '/rental', icon: Building2, note: 'Separate rental workspace for properties, tenants, rent, utilities and invoices' },
  ] },
  { name: 'Security', icon: LockKeyhole, items: [
   { name: 'Security Findings', to: '/security', icon: ShieldAlert },

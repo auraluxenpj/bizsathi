@@ -407,6 +407,69 @@
       "when": 1795636000001,
       "tag": "0127_auraluxe_deferred_stock_events",
       "breakpoints": true
+    },
+    {
+      "idx": 58,
+      "version": "7",
+      "when": 1795750200000,
+      "tag": "0128_rental_property_management",
+      "breakpoints": true
+    },
+    {
+      "idx": 59,
+      "version": "7",
+      "when": 1795752000000,
+      "tag": "0129_rental_rls_query_hardening",
+      "breakpoints": true
+    },
+    {
+      "idx": 60,
+      "version": "7",
+      "when": 1795753800000,
+      "tag": "0130_rental_workspace_owner_boundary",
+      "breakpoints": true
+    },
+    {
+      "idx": 61,
+      "version": "7",
+      "when": 1795755600000,
+      "tag": "0131_rental_member_and_payment_guards",
+      "breakpoints": true
+    },
+    {
+      "idx": 62,
+      "version": "7",
+      "when": 1795757400000,
+      "tag": "0132_rental_fk_indexes",
+      "breakpoints": true
+    },
+    {
+      "idx": 63,
+      "version": "7",
+      "when": 1795759200000,
+      "tag": "0133_rental_member_revocation_audit",
+      "breakpoints": true
+    },
+    {
+      "idx": 64,
+      "version": "7",
+      "when": 1795761000000,
+      "tag": "0134_rental_invoice_sequence_variable_fix",
+      "breakpoints": true
+    },
+    {
+      "idx": 65,
+      "version": "7",
+      "when": 1795762800000,
+      "tag": "0135_rental_default_charge_types",
+      "breakpoints": true
+    },
+    {
+      "idx": 66,
+      "version": "7",
+      "when": 1795764600000,
+      "tag": "0136_rental_column_and_actor_guards",
+      "breakpoints": true
     }
   ]
 }
