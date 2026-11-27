@@ -21,7 +21,7 @@ import {
   listRentalChargeTypes, listRentalDeposits, listRentalExpenses, listRentalInvoices,
   listRentalMemberCandidates, listRentalMembers, listRentalMeterReadings, listRentalProperties,
   listRentalTenants, listRentalUnits, listRentalWorkspaces, markRentalInvoiceSent,
-  recordRentalDeposit, recordRentalPayment, saveRentalAgreement, saveRentalChargeRule,
+  recordRentalDeposit, recordRentalPayment, saveRentalOtherIncome, listRentalOtherIncome, listRentalLoans, saveRentalLoan, recordRentalLoanPayment, saveRentalAgreement, saveRentalChargeRule,
   saveRentalChargeType, saveRentalExpense, saveRentalMeterReading, saveRentalProperty,
   saveRentalTenant, saveRentalUnit,
 } from '@/lib/rental.functions';
@@ -73,6 +73,11 @@ export function RentalWorkspace() {
   const invoicesFn = useServerFn(listRentalInvoices);
   const expensesFn = useServerFn(listRentalExpenses);
   const depositsFn = useServerFn(listRentalDeposits);
+  const otherIncomeFn = useServerFn(listRentalOtherIncome);
+  const loansFn = useServerFn(listRentalLoans);
+  const saveOtherIncome = useServerFn(saveRentalOtherIncome);
+  const saveLoan = useServerFn(saveRentalLoan);
+  const recordLoanPayment = useServerFn(recordRentalLoanPayment);
   const membersFn = useServerFn(listRentalMembers);
   const candidatesFn = useServerFn(listRentalMemberCandidates);
   const auditFn = useServerFn(listRentalAuditEvents);
@@ -104,6 +109,8 @@ export function RentalWorkspace() {
   const invoices = useQuery({ queryKey:['rental-invoices',workspaceId], queryFn:()=>invoicesFn({data:{workspaceId}}), enabled:!!workspaceId });
   const expenses = useQuery({ queryKey:['rental-expenses',workspaceId], queryFn:()=>expensesFn({data:{workspaceId}}), enabled:!!workspaceId });
   const deposits = useQuery({ queryKey:['rental-deposits',workspaceId], queryFn:()=>depositsFn({data:{workspaceId}}), enabled:!!workspaceId });
+  const otherIncome = useQuery({ queryKey:['rental-other-income',workspaceId], queryFn:()=>otherIncomeFn({data:{workspaceId}}), enabled:!!workspaceId });
+  const loans = useQuery({ queryKey:['rental-loans',workspaceId], queryFn:()=>loansFn({data:{workspaceId}}), enabled:!!workspaceId });
   const members = useQuery({ queryKey:['rental-members',workspaceId], queryFn:()=>membersFn({data:{workspaceId}}), enabled:!!workspaceId });
   const candidates = useQuery({ queryKey:['rental-member-candidates',workspaceId], queryFn:()=>candidatesFn({data:{workspaceId}}), enabled:!!workspaceId && owner });
   const audit = useQuery({ queryKey:['rental-audit',workspaceId], queryFn:()=>auditFn({data:{workspaceId}}), enabled:!!workspaceId && owner });
@@ -171,6 +178,22 @@ export function RentalWorkspace() {
   const [depositUnit,setDepositUnit] = useState('');
   const [depositAmount,setDepositAmount] = useState('');
   const [depositType,setDepositType] = useState('received');
+  const [incomeProperty,setIncomeProperty] = useState('');
+  const [incomeCategory,setIncomeCategory] = useState('parking');
+  const [incomeDescription,setIncomeDescription] = useState('');
+  const [incomeAmount,setIncomeAmount] = useState('');
+  const [incomeDate,setIncomeDate] = useState(today());
+  const [loanProperty,setLoanProperty] = useState('');
+  const [loanLender,setLoanLender] = useState('');
+  const [loanPrincipal,setLoanPrincipal] = useState('');
+  const [loanEmi,setLoanEmi] = useState('');
+  const [loanStart,setLoanStart] = useState(today());
+  const [loanDue,setLoanDue] = useState(today());
+  const [loanFrequency,setLoanFrequency] = useState('monthly');
+  const [emiLoan,setEmiLoan] = useState('');
+  const [emiAmount,setEmiAmount] = useState('');
+  const [emiPrincipal,setEmiPrincipal] = useState('');
+  const [emiInterest,setEmiInterest] = useState('');
   const [candidateUser,setCandidateUser] = useState('');
   const [memberRole,setMemberRole] = useState('accountant');
   const createWorkspaceMutation = useMutation({ mutationFn:()=>createWorkspace({data:{name:'Rental Property Management'}}), onSuccess:async()=>{await refresh();toast.success('Rental workspace created.');}, onError:(e)=>toast.error(e.message) });
@@ -187,6 +210,9 @@ export function RentalWorkspace() {
   const paymentMutation = useMutation({ mutationFn:()=>recordPayment({data:{workspaceId,invoiceId:selectedInvoice,amount:Number(paymentAmount),paymentDate:today(),paymentMethod:paymentMethod as 'cash'|'bank_transfer'|'upi'|'qr'|'cheque'|'other'}}), onSuccess:async()=>{setPaymentAmount('');await refresh();toast.success('Payment recorded.');}, onError:e=>toast.error(e.message) });
   const expenseMutation = useMutation({ mutationFn:()=>saveExpense({data:{workspaceId,id:expenseEditId||undefined,propertyId:expenseProperty,unitId:expenseUnit||null,category:expenseCategory as 'repairs'|'maintenance'|'utilities'|'taxes'|'insurance'|'cleaning'|'other',description:expenseDescription,amount:Number(expenseAmount),expenseDate}}), onSuccess:async()=>{setExpenseEditId('');setExpenseDescription('');setExpenseAmount('');await refresh();toast.success('Expense saved.');}, onError:e=>toast.error(e.message) });
   const depositMutation = useMutation({ mutationFn:()=>recordDeposit({data:{workspaceId,tenantId:depositTenant,unitId:depositUnit,transactionType:depositType as 'received'|'refunded'|'adjustment',amount:Number(depositAmount),transactionDate:today()}}), onSuccess:async()=>{setDepositAmount('');await refresh();toast.success('Deposit transaction recorded.');}, onError:e=>toast.error(e.message) });
+  const otherIncomeMutation = useMutation({mutationFn:()=>saveOtherIncome({data:{workspaceId,propertyId:incomeProperty,category:incomeCategory as 'parking'|'late_fee'|'interest'|'miscellaneous'|'other',description:incomeDescription,amount:Number(incomeAmount),receivedDate:incomeDate}}),onSuccess:async()=>{setIncomeDescription('');setIncomeAmount('');await refresh();toast.success('Other income recorded.');},onError:e=>toast.error(e.message)});
+  const loanMutation = useMutation({mutationFn:()=>saveLoan({data:{workspaceId,propertyId:loanProperty,lender:loanLender,principal:Number(loanPrincipal),emiAmount:Number(loanEmi),startDate:loanStart,nextDueDate:loanDue,frequency:loanFrequency as 'monthly'|'quarterly'}}),onSuccess:async()=>{setLoanLender('');setLoanPrincipal('');setLoanEmi('');await refresh();toast.success('Property loan saved.');},onError:e=>toast.error(e.message)});
+  const emiMutation = useMutation({mutationFn:()=>recordLoanPayment({data:{workspaceId,loanId:emiLoan,amount:Number(emiAmount),principalAmount:Number(emiPrincipal),interestAmount:Number(emiInterest),paymentDate:today(),paymentMethod:'bank_transfer'}}),onSuccess:async()=>{setEmiAmount('');setEmiPrincipal('');setEmiInterest('');await refresh();toast.success('EMI payment recorded.');},onError:e=>toast.error(e.message)});
   const memberMutation = useMutation({ mutationFn:()=>assignMember({data:{workspaceId,userId:candidateUser,role:memberRole as 'accountant'|'viewer'}}), onSuccess:async()=>{setCandidateUser('');await refresh();toast.success('Existing employee account added.');}, onError:e=>toast.error(e.message) });
   const deactivateMemberMutation = useMutation({ mutationFn:(memberId:string)=>deactivateMember({data:{workspaceId,memberId}}), onSuccess:async()=>{await refresh();toast.success('Rental access revoked.');}, onError:e=>toast.error(e.message) });
 
@@ -394,20 +420,47 @@ export function RentalWorkspace() {
         </form></CardContent></Card>
         <Card className="xl:col-span-2"><CardHeader><CardTitle>Expense register</CardTitle></CardHeader><CardContent className="space-y-2">{expenseRows.map(e=><div key={e.id} className="flex flex-wrap justify-between gap-2 rounded-md border p-3 text-sm"><div><strong>{e.description}</strong><p className="text-xs text-muted-foreground">{e.category} · {e.expense_date}</p></div><div className="flex items-center gap-2"><strong>{currency(e.amount)}</strong>{editor&&<Button size="sm" variant="ghost" onClick={()=>{setExpenseEditId(e.id);setExpenseProperty(e.property_id);setExpenseUnit(e.unit_id??'');setExpenseCategory(e.category);setExpenseDescription(e.description);setExpenseAmount(String(e.amount));setExpenseDate(e.expense_date);}}>Edit</Button>}</div></div>)}{expenseRows.length===0&&<p className="text-sm text-muted-foreground">No property expenses recorded.</p>}</CardContent></Card>
         <Card className="xl:col-span-2"><CardHeader><CardTitle>Security deposit history</CardTitle></CardHeader><CardContent className="space-y-2">{(deposits.data??[]).map(d=><div key={d.id} className="flex flex-wrap justify-between gap-2 rounded-md bg-muted/40 p-3 text-sm"><span>{tenantRows.find(t=>t.id===d.tenant_id)?.full_name} · {d.transaction_type} · {d.transaction_date}</span><strong>{currency(d.amount)}</strong></div>)}{(deposits.data??[]).length===0&&<p className="text-sm text-muted-foreground">No deposit transactions recorded.</p>}</CardContent></Card>
-      </TabsContent>
+      
+        <Card><CardHeader><CardTitle>Other money received</CardTitle><CardDescription>Parking, late fees and miscellaneous receipts. Rent collections remain linked to tenant invoices.</CardDescription></CardHeader><CardContent><form className="grid gap-3" onSubmit={e=>{e.preventDefault();otherIncomeMutation.mutate();}}>
+          <Field label="Property"><select className="h-10 rounded-md border bg-background px-3 text-sm" required value={incomeProperty} onChange={e=>setIncomeProperty(e.target.value)}><option value="">Select property</option>{propertyRows.map(p=><option key={p.id} value={p.id}>{p.name}</option>)}</select></Field>
+          <Field label="Income type"><select className="h-10 rounded-md border bg-background px-3 text-sm" value={incomeCategory} onChange={e=>setIncomeCategory(e.target.value)}><option value="parking">Parking</option><option value="late_fee">Late fee</option><option value="interest">Interest received</option><option value="miscellaneous">Miscellaneous</option><option value="other">Other</option></select></Field>
+          <Field label="Description"><Input required value={incomeDescription} onChange={e=>setIncomeDescription(e.target.value)}/></Field>
+          <div className="grid grid-cols-2 gap-3"><Field label="Amount"><Input required type="number" min="0.01" step="0.01" value={incomeAmount} onChange={e=>setIncomeAmount(e.target.value)}/></Field><Field label="Received date"><Input type="date" value={incomeDate} onChange={e=>setIncomeDate(e.target.value)}/></Field></div>
+          <Button type="submit" disabled={!editor||!incomeProperty||otherIncomeMutation.isPending}>Record money in</Button>
+        </form></CardContent></Card>
+        <Card><CardHeader><CardTitle>Property loans & EMI</CardTitle><CardDescription>Track lender, original principal, EMI and next due date. Outstanding balance reduces by principal only.</CardDescription></CardHeader><CardContent className="space-y-4">
+          <form className="grid gap-3" onSubmit={e=>{e.preventDefault();loanMutation.mutate();}}>
+            <Field label="Property"><select className="h-10 rounded-md border bg-background px-3 text-sm" required value={loanProperty} onChange={e=>setLoanProperty(e.target.value)}><option value="">Select property</option>{propertyRows.map(p=><option key={p.id} value={p.id}>{p.name}</option>)}</select></Field>
+            <Field label="Bank / lender"><Input required value={loanLender} onChange={e=>setLoanLender(e.target.value)}/></Field>
+            <div className="grid grid-cols-2 gap-3"><Field label="Original loan amount"><Input required type="number" min="0.01" step="0.01" value={loanPrincipal} onChange={e=>setLoanPrincipal(e.target.value)}/></Field><Field label="EMI amount"><Input required type="number" min="0.01" step="0.01" value={loanEmi} onChange={e=>setLoanEmi(e.target.value)}/></Field></div>
+            <div className="grid grid-cols-2 gap-3"><Field label="Loan start date"><Input type="date" value={loanStart} onChange={e=>setLoanStart(e.target.value)}/></Field><Field label="Next EMI due"><Input type="date" value={loanDue} onChange={e=>setLoanDue(e.target.value)}/></Field></div>
+            <Field label="EMI frequency"><select className="h-10 rounded-md border bg-background px-3 text-sm" value={loanFrequency} onChange={e=>setLoanFrequency(e.target.value)}><option value="monthly">Monthly</option><option value="quarterly">Quarterly</option></select></Field>
+            <Button type="submit" disabled={!editor||!loanProperty||loanMutation.isPending}>Add property loan</Button>
+          </form>
+          <div className="border-t pt-4"><p className="mb-2 font-medium">Record EMI paid</p><form className="grid gap-3" onSubmit={e=>{e.preventDefault();emiMutation.mutate();}}>
+            <Field label="Loan"><select className="h-10 rounded-md border bg-background px-3 text-sm" required value={emiLoan} onChange={e=>setEmiLoan(e.target.value)}><option value="">Select loan</option>{(loans.data??[]).filter(l=>l.status==='active').map(l=><option key={l.id} value={l.id}>{l.lender} · EMI {currency(l.emi_amount)} · Balance {currency(l.outstanding)}</option>)}</select></Field>
+            <div className="grid grid-cols-3 gap-2"><Field label="Total EMI"><Input required type="number" min="0.01" step="0.01" value={emiAmount} onChange={e=>setEmiAmount(e.target.value)}/></Field><Field label="Principal"><Input required type="number" min="0" step="0.01" value={emiPrincipal} onChange={e=>setEmiPrincipal(e.target.value)}/></Field><Field label="Interest"><Input required type="number" min="0" step="0.01" value={emiInterest} onChange={e=>setEmiInterest(e.target.value)}/></Field></div>
+            <Button type="submit" disabled={!editor||!emiLoan||emiMutation.isPending}>Record EMI payment</Button>
+          </form></div>
+          <div className="space-y-2">{(loans.data??[]).map(l=><div key={l.id} className="rounded-md border p-3 text-sm"><div className="flex justify-between gap-2"><strong>{l.lender}</strong><span>{l.status}</span></div><p className="text-muted-foreground">Original {currency(l.original_principal)} · EMI {currency(l.emi_amount)} · Next due {l.next_due_date}</p><p className="font-medium">Outstanding principal: {currency(l.outstanding)}</p></div>)}{(loans.data??[]).length===0&&<p className="text-sm text-muted-foreground">No property loans added.</p>}</div>
+        </CardContent></Card>
+        <Card className="xl:col-span-2"><CardHeader><CardTitle>Other income register</CardTitle></CardHeader><CardContent className="space-y-2">{(otherIncome.data??[]).map(i=><div key={i.id} className="flex justify-between gap-2 rounded-md border p-3 text-sm"><span>{i.description} · {i.category} · {i.received_date}</span><strong>{currency(i.amount)}</strong></div>)}{(otherIncome.data??[]).length===0&&<p className="text-sm text-muted-foreground">No other income recorded.</p>}</CardContent></Card>
+</TabsContent>
 
       <TabsContent value="reports" className="space-y-4">
-        <Card><CardHeader><CardTitle>Annual rental report</CardTitle><CardDescription>Invoice value is grouped by billing month; collections and expenses are grouped by actual transaction date. Net cash = collections minus expenses.</CardDescription></CardHeader><CardContent className="flex flex-wrap items-end gap-3"><Field label="Financial year"><Input type="number" min="2000" max="2100" value={reportYear} onChange={e=>setReportYear(Number(e.target.value))}/></Field><Button variant="outline" onClick={()=>annualReport.refetch()} disabled={annualReport.isFetching}><RefreshCw className="mr-2 size-4"/>Refresh report</Button></CardContent></Card>
+        <Card><CardHeader><CardTitle>Annual rental report</CardTitle><CardDescription>Invoice value is grouped by billing month; receipts, expenses and loan payments use actual transaction dates. Net cash = collections + other income − operating expenses − full EMI payments.</CardDescription></CardHeader><CardContent className="flex flex-wrap items-end gap-3"><Field label="Financial year"><Input type="number" min="2000" max="2100" value={reportYear} onChange={e=>setReportYear(Number(e.target.value))}/></Field><Button variant="outline" onClick={()=>annualReport.refetch()} disabled={annualReport.isFetching}><RefreshCw className="mr-2 size-4"/>Refresh report</Button></CardContent></Card>
         <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
           <Metric label="Invoices raised" value={currency(annualReport.data?.invoiced)} icon={Receipt}/>
           <Metric label="Rent & charges collected" value={currency(annualReport.data?.collected)} icon={CreditCard}/>
+          <Metric label="Other income" value={currency(annualReport.data?.otherIncome)} icon={TrendingUp}/>
           <Metric label="Property expenses" value={currency(annualReport.data?.expenses)} icon={Wallet}/>
+          <Metric label="Loan EMIs paid" value={currency(annualReport.data?.loanRepayments)} icon={CreditCard}/>
           <Metric label="Net cash flow" value={currency(annualReport.data?.netCash)} icon={TrendingUp}/>
         </div>
         <Card><CardHeader><CardTitle>Monthly breakdown · {reportYear}</CardTitle></CardHeader><CardContent className="overflow-x-auto">
-          <table className="w-full min-w-[620px] text-sm"><thead><tr className="border-b text-left text-muted-foreground"><th className="py-2 pr-3 font-medium">Month</th><th className="py-2 pr-3 text-right font-medium">Invoiced</th><th className="py-2 pr-3 text-right font-medium">Collected</th><th className="py-2 pr-3 text-right font-medium">Expenses</th><th className="py-2 text-right font-medium">Net cash</th></tr></thead><tbody>
-            {(annualReport.data?.months??[]).map(m=><tr key={m.month} className="border-b last:border-0"><td className="py-2 pr-3 font-medium">{m.label}</td><td className="py-2 pr-3 text-right tabular-nums">{currency(m.invoiced)}</td><td className="py-2 pr-3 text-right tabular-nums">{currency(m.collected)}</td><td className="py-2 pr-3 text-right tabular-nums">{currency(m.expenses)}</td><td className={`py-2 text-right font-medium tabular-nums ${m.netCash<0?'text-destructive':'text-foreground'}`}>{currency(m.netCash)}</td></tr>)}
-            <tr className="bg-muted/40 font-semibold"><td className="py-2 pr-3">Annual total</td><td className="py-2 pr-3 text-right">{currency(annualReport.data?.invoiced)}</td><td className="py-2 pr-3 text-right">{currency(annualReport.data?.collected)}</td><td className="py-2 pr-3 text-right">{currency(annualReport.data?.expenses)}</td><td className="py-2 text-right">{currency(annualReport.data?.netCash)}</td></tr>
+          <table className="w-full min-w-[620px] text-sm"><thead><tr className="border-b text-left text-muted-foreground"><th className="py-2 pr-3 font-medium">Month</th><th className="py-2 pr-3 text-right font-medium">Invoiced</th><th className="py-2 pr-3 text-right font-medium">Collected</th><th className="py-2 pr-3 text-right font-medium">Other income</th><th className="py-2 pr-3 text-right font-medium">Expenses</th><th className="py-2 pr-3 text-right font-medium">EMIs</th><th className="py-2 text-right font-medium">Net cash</th></tr></thead><tbody>
+            {(annualReport.data?.months??[]).map(m=><tr key={m.month} className="border-b last:border-0"><td className="py-2 pr-3 font-medium">{m.label}</td><td className="py-2 pr-3 text-right tabular-nums">{currency(m.invoiced)}</td><td className="py-2 pr-3 text-right tabular-nums">{currency(m.collected)}</td><td className="py-2 pr-3 text-right tabular-nums">{currency(m.otherIncome)}</td><td className="py-2 pr-3 text-right tabular-nums">{currency(m.expenses)}</td><td className="py-2 pr-3 text-right tabular-nums">{currency(m.loanRepayments)}</td><td className={`py-2 text-right font-medium tabular-nums ${m.netCash<0?'text-destructive':'text-foreground'}`}>{currency(m.netCash)}</td></tr>)}
+            <tr className="bg-muted/40 font-semibold"><td className="py-2 pr-3">Annual total</td><td className="py-2 pr-3 text-right">{currency(annualReport.data?.invoiced)}</td><td className="py-2 pr-3 text-right">{currency(annualReport.data?.collected)}</td><td className="py-2 pr-3 text-right">{currency(annualReport.data?.otherIncome)}</td><td className="py-2 pr-3 text-right">{currency(annualReport.data?.expenses)}</td><td className="py-2 pr-3 text-right">{currency(annualReport.data?.loanRepayments)}</td><td className="py-2 text-right">{currency(annualReport.data?.netCash)}</td></tr>
           </tbody></table>
         </CardContent></Card>
       </TabsContent>

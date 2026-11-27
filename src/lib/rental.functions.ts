@@ -592,6 +592,106 @@ export const listRentalAuditEvents = createServerFn({ method: 'GET' })
     return rows ?? [];
   });
 
+
+const otherIncomeInput = z.object({
+  workspaceId:z.string().uuid(), propertyId:z.string().uuid(), unitId:z.string().uuid().optional().nullable(),
+  category:z.enum(['parking','late_fee','interest','miscellaneous','other']),
+  description:z.string().trim().min(1).max(180), amount:money, receivedDate:dateText,
+  paymentMethod:z.enum(['cash','bank_transfer','upi','qr','cheque','other']).optional().nullable(),
+  reference:z.string().max(120).optional().nullable(),
+});
+export const listRentalOtherIncome = createServerFn({ method:'GET' })
+  .middleware([requireSupabaseAuth]).inputValidator(workspaceInput)
+  .handler(async ({data,context})=>{
+    await rentalRole(context.supabase,data.workspaceId);
+    const {data:rows,error}=await db(context.supabase).from('rental_other_income')
+      .select('id,property_id,unit_id,category,description,amount,received_date,payment_method,reference')
+      .eq('workspace_id',data.workspaceId).order('received_date',{ascending:false});
+    if(error) fail('Other rental income could not be loaded.',error);
+    return rows??[];
+  });
+export const saveRentalOtherIncome = createServerFn({method:'POST'})
+  .middleware([requireSupabaseAuth]).inputValidator(otherIncomeInput)
+  .handler(async ({data,context})=>{
+    await rentalRole(context.supabase,data.workspaceId,['owner','accountant']);
+    const {data:row,error}=await db(context.supabase).from('rental_other_income')
+      .insert({workspace_id:data.workspaceId,property_id:data.propertyId,unit_id:data.unitId||null,
+        category:data.category,description:data.description,amount:data.amount,received_date:data.receivedDate,
+        payment_method:data.paymentMethod||null,reference:data.reference||null,recorded_by:context.userId})
+      .select('id').single();
+    if(error||!row) fail('Other rental income could not be saved.',error??undefined);
+    return {id:row.id as string};
+  });
+
+const loanInput=z.object({
+  workspaceId:z.string().uuid(),propertyId:z.string().uuid(),lender:z.string().trim().min(1).max(160),
+  loanReference:z.string().max(100).optional().nullable(),principal:money,emiAmount:money,
+  startDate:dateText,nextDueDate:dateText,frequency:z.enum(['monthly','quarterly']).default('monthly'),
+});
+export const listRentalLoans=createServerFn({method:'GET'})
+  .middleware([requireSupabaseAuth]).inputValidator(workspaceInput)
+  .handler(async ({data,context})=>{
+    await rentalRole(context.supabase,data.workspaceId);
+    const {data:loans,error}=await db(context.supabase).from('rental_loans')
+      .select('id,property_id,lender,loan_reference,original_principal,emi_amount,start_date,next_due_date,frequency,status')
+      .eq('workspace_id',data.workspaceId).order('next_due_date');
+    if(error) fail('Property loans could not be loaded.',error);
+    const {data:payments,error:pError}=await db(context.supabase).from('rental_loan_payments')
+      .select('loan_id,amount,principal_amount,interest_amount,payment_date')
+      .eq('workspace_id',data.workspaceId);
+    if(pError) fail('Loan repayments could not be loaded.',pError);
+    return (loans??[]).map(loan=>{
+      const rows=(payments??[]).filter(p=>p.loan_id===loan.id);
+      const principalPaid=rows.reduce((s,p)=>s+Number(p.principal_amount),0);
+      return {...loan,outstanding:Math.max(0,roundMoney(Number(loan.original_principal)-principalPaid)),
+        paid:roundMoney(rows.reduce((s,p)=>s+Number(p.amount),0)),payments:rows};
+    });
+  });
+export const saveRentalLoan=createServerFn({method:'POST'})
+  .middleware([requireSupabaseAuth]).inputValidator(loanInput)
+  .handler(async ({data,context})=>{
+    await rentalRole(context.supabase,data.workspaceId,['owner','accountant']);
+    const {data:row,error}=await db(context.supabase).from('rental_loans').insert({
+      workspace_id:data.workspaceId,property_id:data.propertyId,lender:data.lender,
+      loan_reference:data.loanReference||null,original_principal:data.principal,emi_amount:data.emiAmount,
+      start_date:data.startDate,next_due_date:data.nextDueDate,frequency:data.frequency,created_by:context.userId
+    }).select('id').single();
+    if(error||!row) fail('Property loan could not be saved.',error??undefined);
+    return {id:row.id as string};
+  });
+const loanPaymentInput=z.object({
+  workspaceId:z.string().uuid(),loanId:z.string().uuid(),amount:money,
+  principalAmount:money,interestAmount:money,paymentDate:dateText,
+  paymentMethod:z.enum(['cash','bank_transfer','upi','qr','cheque','other']).default('bank_transfer'),
+  reference:z.string().max(120).optional().nullable(),
+}).refine(v=>roundMoney(v.principalAmount+v.interestAmount)===roundMoney(v.amount),{message:'Principal plus interest must equal the EMI amount.'});
+export const recordRentalLoanPayment=createServerFn({method:'POST'})
+  .middleware([requireSupabaseAuth]).inputValidator(loanPaymentInput)
+  .handler(async ({data,context})=>{
+    await rentalRole(context.supabase,data.workspaceId,['owner','accountant']);
+    const {data:loan,error:loanError}=await db(context.supabase).from('rental_loans')
+      .select('id,original_principal,next_due_date,frequency').eq('workspace_id',data.workspaceId).eq('id',data.loanId).single();
+    if(loanError||!loan) fail('Selected property loan could not be verified.',loanError??undefined);
+    const {data:paidRows,error:paidError}=await db(context.supabase).from('rental_loan_payments')
+      .select('principal_amount').eq('workspace_id',data.workspaceId).eq('loan_id',data.loanId);
+    if(paidError) fail('Loan balance could not be verified.',paidError);
+    const paidPrincipal=(paidRows??[]).reduce((s,p)=>s+Number(p.principal_amount),0);
+    if(data.principalAmount>Number(loan.original_principal)-paidPrincipal+0.01) throw new Error('Principal repayment exceeds the outstanding loan balance.');
+    const {data:row,error}=await db(context.supabase).from('rental_loan_payments').insert({
+      workspace_id:data.workspaceId,loan_id:data.loanId,amount:data.amount,principal_amount:data.principalAmount,
+      interest_amount:data.interestAmount,payment_date:data.paymentDate,payment_method:data.paymentMethod,
+      reference:data.reference||null,recorded_by:context.userId
+    }).select('id').single();
+    if(error||!row) fail('Loan EMI payment could not be recorded.',error??undefined);
+    const next=new Date(loan.next_due_date+'T00:00:00Z');
+    if(loan.frequency==='quarterly') next.setUTCMonth(next.getUTCMonth()+3); else next.setUTCMonth(next.getUTCMonth()+1);
+    const {error:updateError}=await db(context.supabase).from('rental_loans')
+      .update({next_due_date:next.toISOString().slice(0,10),status:data.principalAmount>=Number(loan.original_principal)-paidPrincipal-0.01?'closed':'active'})
+      .eq('workspace_id',data.workspaceId).eq('id',data.loanId);
+    if(updateError) fail('EMI was recorded but the next due date could not be updated.',updateError);
+    return {id:row.id as string};
+  });
+
 export const getRentalAnnualReport = createServerFn({ method: 'GET' })
   .middleware([requireSupabaseAuth])
   .inputValidator(z.object({ workspaceId: z.string().uuid(), year: z.number().int().min(2000).max(2100) }))
@@ -599,32 +699,40 @@ export const getRentalAnnualReport = createServerFn({ method: 'GET' })
     await rentalRole(context.supabase,data.workspaceId);
     const from = `${data.year}-01-01`;
     const to = `${data.year+1}-01-01`;
-    const [invoices,payments,expenses] = await Promise.all([
+    const [invoices,payments,expenses,otherIncome,loanPayments] = await Promise.all([
       db(context.supabase).from('rental_invoices').select('billing_period_start,total,status').eq('workspace_id',data.workspaceId).neq('status','void').gte('billing_period_start',from).lt('billing_period_start',to),
       db(context.supabase).from('rental_payments').select('payment_date,amount').eq('workspace_id',data.workspaceId).gte('payment_date',from).lt('payment_date',to),
       db(context.supabase).from('rental_expenses').select('expense_date,amount,category').eq('workspace_id',data.workspaceId).gte('expense_date',from).lt('expense_date',to),
+      db(context.supabase).from('rental_other_income').select('received_date,amount').eq('workspace_id',data.workspaceId).gte('received_date',from).lt('received_date',to),
+      db(context.supabase).from('rental_loan_payments').select('payment_date,amount,interest_amount').eq('workspace_id',data.workspaceId).gte('payment_date',from).lt('payment_date',to),
     ]);
-    const failed = [invoices,payments,expenses].find(r=>r.error);
+    const failed = [invoices,payments,expenses,otherIncome,loanPayments].find(r=>r.error);
     if (failed?.error) fail('Rental annual report could not be loaded.',failed.error);
     const months = Array.from({length:12},(_,index)=>({
       month:index+1,
       label:new Date(Date.UTC(data.year,index,1)).toLocaleString('en-IN',{month:'short',timeZone:'UTC'}),
-      invoiced:0, collected:0, expenses:0, netCash:0,
+      invoiced:0, collected:0, otherIncome:0, expenses:0, loanRepayments:0, netCash:0,
     }));
     for (const row of invoices.data??[]) months[Number(row.billing_period_start.slice(5,7))-1].invoiced += Number(row.total);
     for (const row of payments.data??[]) months[Number(row.payment_date.slice(5,7))-1].collected += Number(row.amount);
     for (const row of expenses.data??[]) months[Number(row.expense_date.slice(5,7))-1].expenses += Number(row.amount);
+    for (const row of otherIncome.data??[]) months[Number(row.received_date.slice(5,7))-1].otherIncome += Number(row.amount);
+    for (const row of loanPayments.data??[]) months[Number(row.payment_date.slice(5,7))-1].loanRepayments += Number(row.amount);
     for (const month of months) {
       month.invoiced=roundMoney(month.invoiced);
       month.collected=roundMoney(month.collected);
       month.expenses=roundMoney(month.expenses);
-      month.netCash=roundMoney(month.collected-month.expenses);
+      month.otherIncome=roundMoney(month.otherIncome);
+      month.loanRepayments=roundMoney(month.loanRepayments);
+      month.netCash=roundMoney(month.collected+month.otherIncome-month.expenses-month.loanRepayments);
     }
     return {
       year:data.year, months,
       invoiced:roundMoney(months.reduce((s,m)=>s+m.invoiced,0)),
       collected:roundMoney(months.reduce((s,m)=>s+m.collected,0)),
+      otherIncome:roundMoney(months.reduce((s,m)=>s+m.otherIncome,0)),
       expenses:roundMoney(months.reduce((s,m)=>s+m.expenses,0)),
+      loanRepayments:roundMoney(months.reduce((s,m)=>s+m.loanRepayments,0)),
       netCash:roundMoney(months.reduce((s,m)=>s+m.netCash,0)),
     };
   });
