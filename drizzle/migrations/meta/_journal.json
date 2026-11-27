@@ -456,6 +456,13 @@
       "when": 1795761000000,
       "tag": "0134_rental_invoice_sequence_variable_fix",
       "breakpoints": true
+    },
+    {
+      "idx": 65,
+      "version": "7",
+      "when": 1795762800000,
+      "tag": "0135_rental_default_charge_types",
+      "breakpoints": true
     }
   ]
 }
