@@ -333,18 +333,16 @@ AS $fn$
   SELECT EXISTS (
     SELECT 1 FROM public.rental_invoices i
     WHERE i.workspace_id=_workspace AND i.id=_invoice
-      AND (
-        rental_private.has_role(_workspace,'owner')
-        OR (rental_private.has_role(_workspace,'accountant') AND i.status IN ('draft','pending_approval'))
-      )
+      AND i.status IN ('draft','pending_approval')
+      AND rental_private.has_role(_workspace,'accountant')
   );
 $fn$;
 
 CREATE OR REPLACE FUNCTION rental_private.refresh_invoice_totals()
 RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER SET search_path=''
 AS $fn$
-DECLARE target_workspace uuid := coalesce(NEW.workspace_id,OLD.workspace_id);
-        target_invoice uuid := coalesce(NEW.invoice_id,OLD.invoice_id);
+DECLARE target_workspace uuid := NEW.workspace_id;
+        target_invoice uuid := NEW.invoice_id;
 BEGIN
   UPDATE public.rental_invoices i
      SET subtotal=coalesce((SELECT sum(l.amount) FROM public.rental_invoice_lines l
@@ -354,7 +352,7 @@ BEGIN
          updated_at=now()
    WHERE i.workspace_id=target_workspace AND i.id=target_invoice
      AND i.status IN ('draft','pending_approval');
-  RETURN coalesce(NEW,OLD);
+  RETURN NEW;
 END;
 $fn$;
 
@@ -681,7 +679,7 @@ CREATE POLICY rental_invoices_insert ON public.rental_invoices
   FOR INSERT TO authenticated WITH CHECK (rental_private.has_role(workspace_id,'accountant'));
 CREATE POLICY rental_invoices_update ON public.rental_invoices
   FOR UPDATE TO authenticated
-  USING (rental_private.can_edit_invoice(workspace_id,id))
+  USING (rental_private.has_role(workspace_id,'owner') OR rental_private.can_edit_invoice(workspace_id,id))
   WITH CHECK (
     rental_private.has_role(workspace_id,'owner')
     OR (rental_private.has_role(workspace_id,'accountant') AND status IN ('draft','pending_approval'))
