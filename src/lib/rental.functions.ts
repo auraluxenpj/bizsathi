@@ -347,7 +347,7 @@ export const generateRentalMonthlyInvoices = createServerFn({ method: 'POST' })
       db(context.supabase).from('rental_units').select('id,unit_code,property_id,electricity_rate').eq('workspace_id', data.workspaceId),
       db(context.supabase).from('rental_tenants').select('id,full_name').eq('workspace_id', data.workspaceId),
       db(context.supabase).from('rental_meter_readings').select('unit_id,meter_type,units_consumed,rate_per_unit,charge_amount').eq('workspace_id', data.workspaceId).eq('period_start',data.periodStart).eq('period_end',data.periodEnd),
-      db(context.supabase).from('rental_charge_rules').select('id,property_id,unit_id,charge_type_id,allocation_method,amount,allocation_percent').eq('workspace_id',data.workspaceId).eq('is_active',true).eq('is_recurring',true).lte('start_date',data.periodEnd).or(`end_date.is.null,end_date.gte.${data.periodStart}`),
+      db(context.supabase).from('rental_charge_rules').select('id,property_id,unit_id,charge_type_id,allocation_method,amount,allocation_percent,is_recurring,start_date,end_date').eq('workspace_id',data.workspaceId).eq('is_active',true).lte('start_date',data.periodEnd).or(`end_date.is.null,end_date.gte.${data.periodStart}`),
       db(context.supabase).from('rental_charge_types').select('id,name,category').eq('workspace_id',data.workspaceId).eq('is_active',true),
     ]);
     const failed = [agreements,units,tenants,readings,rules,types].find(r => r.error);
@@ -384,6 +384,7 @@ export const generateRentalMonthlyInvoices = createServerFn({ method: 'POST' })
         lines.push({ description: `${reading.meter_type === 'electricity' ? 'Electricity' : 'Water meter'} · ${unitsUsed} units`, category: reading.meter_type, quantity: unitsUsed > 0 ? unitsUsed : 1, unit_rate: rate });
       }
       for (const rule of rules.data ?? []) {
+        if (!rule.is_recurring && rule.start_date < data.periodStart) continue;
         const charge = typeMap.get(rule.charge_type_id);
         if (!charge) continue;
         let amount = 0;
