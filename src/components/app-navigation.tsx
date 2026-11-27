@@ -31,7 +31,7 @@ export function AppNavigation({ children, pathname }: { children: ReactNode; pat
  // The AURALUXE workspace keeps its existing permission model. Rental access is
  // checked separately against the isolated rental_memberships table and RLS policies.
  const platformOwner = businesses.data?.some(b => b.isPlatformOwner) ?? false;
- const canAccessRental = rentalAccess.data?.canAccess ?? false;
+ const canAccessRental = (rentalAccess.data?.canAccess ?? false) || platformOwner;
  const isRentalRoute = pathname === '/rental' || pathname.startsWith('/rental/');
  const permissionsQuery = usePermissionDenials(businessId);
  const permissionsReady = permissionsQuery.isSuccess;
