@@ -636,7 +636,7 @@ export const listRentalLoans=createServerFn({method:'GET'})
       .select('id,property_id,lender,loan_reference,original_principal,emi_amount,start_date,next_due_date,frequency,status')
       .eq('workspace_id',data.workspaceId).order('next_due_date');
     if(error) fail('Property loans could not be loaded.',error);
-    const {data:payments,pError}=await db(context.supabase).from('rental_loan_payments')
+    const {data:payments,error:pError}=await db(context.supabase).from('rental_loan_payments')
       .select('loan_id,amount,principal_amount,interest_amount,payment_date')
       .eq('workspace_id',data.workspaceId);
     if(pError) fail('Loan repayments could not be loaded.',pError);
