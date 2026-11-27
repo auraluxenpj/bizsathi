@@ -31,6 +31,7 @@ CREATE TABLE public.rental_loans (
   created_by uuid NOT NULL REFERENCES public.profiles(id) ON DELETE RESTRICT,
   created_at timestamptz NOT NULL DEFAULT now(),
   updated_at timestamptz NOT NULL DEFAULT now(),
+  UNIQUE (workspace_id,id),
   FOREIGN KEY (workspace_id,property_id) REFERENCES public.rental_properties(workspace_id,id) ON DELETE RESTRICT
 );
 CREATE INDEX rental_loans_workspace_idx ON public.rental_loans(workspace_id,status,next_due_date);
