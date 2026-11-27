@@ -33,7 +33,7 @@ export const getRentalAccess = createServerFn({ method: 'GET' })
     const workspaces = (memberships ?? []).map(row => ({ ...row.rental_workspaces, role: row.role }));
     if (workspaces.length) return { canAccess: true, canCreate: false, workspaces };
     const { data: ownerMemberships, error: ownerError } = await db(context.supabase).from('business_memberships')
-      .select('business_id').eq('user_id', context.userId).eq('role_code', 'owner').eq('status', 'active');
+      .select('business_id,businesses!inner(archived_at)').eq('user_id', context.userId).eq('role_code', 'owner').eq('status', 'active').is('businesses.archived_at', null);
     if (ownerError) fail('Business owner authority could not be verified.', ownerError);
     const canCreate = (ownerMemberships ?? []).length > 0;
     return { canAccess: canCreate, canCreate, workspaces: [] };
