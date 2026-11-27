@@ -39,7 +39,7 @@ export const listRentalWorkspaces = createServerFn({ method: 'GET' })
       .select('role,status,rental_workspaces!inner(id,name,currency,due_day,invoice_prefix,created_at)')
       .eq('user_id', context.userId).eq('status', 'active');
     if (error) fail('Rental workspace access could not be loaded.', error);
-    return (data ?? []).map((row: any) => ({ ...row.rental_workspaces, role: row.role }));
+    return (data ?? []).map(row => ({ ...row.rental_workspaces, role: row.role }));
   });
 
 export const createRentalWorkspace = createServerFn({ method: 'POST' })
@@ -68,8 +68,6 @@ export const getRentalOverview = createServerFn({ method: 'GET' })
     if (failed?.error) fail('Rental dashboard data could not be loaded.', failed.error);
     const invoiceRows = invoices.data ?? [];
     const paid = (payments.data ?? []).reduce((sum, row) => sum + Number(row.amount), 0);
-    const collected = invoiceRows.filter(row => row.status === 'paid' || row.status === 'partially_paid' || row.status === 'sent')
-      .reduce((sum, row) => sum + Number(row.total), 0);
     const outstanding = invoiceRows.filter(row => !['paid','void'].includes(row.status))
       .reduce((sum, row) => sum + Number(row.total), 0) - paid;
     const month = new Date().toISOString().slice(0, 7);
