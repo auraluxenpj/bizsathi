@@ -613,3 +613,13 @@ export const getRentalAnnualReport = createServerFn({ method: 'GET' })
       netCash:roundMoney(months.reduce((s,m)=>s+m.netCash,0)),
     };
   });
+
+export const deactivateRentalMember = createServerFn({ method: 'POST' })
+  .middleware([requireSupabaseAuth])
+  .inputValidator(z.object({ workspaceId:z.string().uuid(),memberId:z.string().uuid() }))
+  .handler(async ({ data, context }) => {
+    await rentalRole(context.supabase,data.workspaceId,['owner']);
+    const { data: ok,error } = await db(context.supabase).rpc('deactivate_rental_member',{_workspace:data.workspaceId,_member:data.memberId});
+    if (error || !ok) fail('Rental member access could not be revoked.',error ?? undefined);
+    return { ok:true };
+  });
