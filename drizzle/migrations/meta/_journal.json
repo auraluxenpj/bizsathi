@@ -414,6 +414,13 @@
       "when": 1795750200000,
       "tag": "0128_rental_property_management",
       "breakpoints": true
+    },
+    {
+      "idx": 59,
+      "version": "7",
+      "when": 1795752000000,
+      "tag": "0129_rental_rls_query_hardening",
+      "breakpoints": true
     }
   ]
 }
