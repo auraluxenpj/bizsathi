@@ -519,7 +519,7 @@ export const listRentalMemberCandidates = createServerFn({ method: 'GET' })
     await rentalRole(context.supabase,data.workspaceId,['owner']);
     const [profiles,members] = await Promise.all([
       db(context.supabase).from('profiles').select('id,full_name,employee_id').order('full_name'),
-      db(context.supabase).from('rental_memberships').select('user_id').eq('workspace_id',data.workspaceId),
+      db(context.supabase).from('rental_memberships').select('user_id').eq('workspace_id',data.workspaceId).eq('status','active'),
     ]);
     if (profiles.error || members.error) fail('Existing employee accounts could not be loaded.',profiles.error ?? members.error ?? undefined);
     const assigned = new Set((members.data ?? []).map(m => m.user_id));
