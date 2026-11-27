@@ -88,11 +88,11 @@ export function AppNavigation({ children, pathname }: { children: ReactNode; pat
    <Button variant="ghost" size="icon" aria-label="Open navigation menu" title="Navigation menu" className="size-10 shrink-0 lg:hidden" onClick={() => setMobileOpen(true)}><Menu className="size-5" /></Button>
    <span className="min-w-0 flex-[1_1_9rem] truncate text-base font-semibold sm:text-xl">{title}</span>
    <div className="ml-auto flex min-w-0 flex-wrap items-center justify-end gap-2">
-    {!billingStaff && <><div className="hidden min-w-0 xl:block"><CommandPalette className="w-64 max-w-full" visible={visible} can={can} businessId={businesses.data?.[0]?.id ?? ''} /></div>
+    {!billingStaff && !isRentalRoute && <><div className="hidden min-w-0 xl:block"><CommandPalette className="w-64 max-w-full" visible={visible} can={can} businessId={businesses.data?.[0]?.id ?? ''} /></div>
     <div className="xl:hidden"><CommandPalette variant="icon" shortcut={false} visible={visible} can={can} /></div></>}
-    {!billingStaff && <>{can('purchases.create') && <Button asChild variant="outline" className="hidden h-10 shrink-0 sm:inline-flex"><Link to="/purchases" search={{ new: '1' }}><Plus className="size-4" />Purchase</Link></Button>}
+    {!billingStaff && !isRentalRoute && <>{can('purchases.create') && <Button asChild variant="outline" className="hidden h-10 shrink-0 sm:inline-flex"><Link to="/purchases" search={{ new: '1' }}><Plus className="size-4" />Purchase</Link></Button>}
     {can('sales.create') && <Button asChild className="hidden h-10 shrink-0 sm:inline-flex"><Link to="/sales" search={{ new: '1' }}><Plus className="size-4" />Sale</Link></Button>}</>}
-    {workspaceMenu}
+    {!isRentalRoute && workspaceMenu}
     {isRentalRoute && businesses.data?.length ? <Button asChild variant="outline" size="sm" className="shrink-0"><Link to="/dashboard">Auraluxe</Link></Button> : null}
     <ScreenLockButton />
     <DropdownMenu><DropdownMenuTrigger asChild><Button variant="ghost" className="h-10 min-h-10 shrink-0 gap-2 px-1 sm:px-2" aria-label="Account menu"><span className="flex size-8 items-center justify-center overflow-hidden rounded-full bg-primary/10 text-xs font-semibold uppercase text-primary">{avatar ? <img src={avatar} alt="" className="size-full object-cover" /> : person.slice(0, 1) || 'A'}</span><span className="hidden max-w-24 truncate text-xs font-medium md:block">{person}</span><ChevronDown className="hidden size-3 md:block" /></Button></DropdownMenuTrigger><DropdownMenuContent align="end">{!billingStaff && <DropdownMenuItem asChild><Link to="/profile">My account</Link></DropdownMenuItem>}<DropdownMenuItem onSelect={signOut}><LogOut className="size-4" />Sign out</DropdownMenuItem></DropdownMenuContent></DropdownMenu>
