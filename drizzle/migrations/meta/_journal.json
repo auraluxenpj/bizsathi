@@ -449,6 +449,13 @@
       "when": 1795759200000,
       "tag": "0133_rental_member_revocation_audit",
       "breakpoints": true
+    },
+    {
+      "idx": 64,
+      "version": "7",
+      "when": 1795761000000,
+      "tag": "0134_rental_invoice_sequence_variable_fix",
+      "breakpoints": true
     }
   ]
 }
