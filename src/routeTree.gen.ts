@@ -325,6 +325,7 @@ export interface FileRoutesByTo {
   '/purchase-orders': typeof AuthenticatedPurchaseOrdersRoute
   '/purchases': typeof AuthenticatedPurchasesRoute
   '/quotations': typeof AuthenticatedQuotationsRoute
+  '/rental': typeof AuthenticatedRentalRoute
   '/reports': typeof AuthenticatedReportsRoute
   '/sales': typeof AuthenticatedSalesRoute
   '/security': typeof AuthenticatedSecurityRoute
@@ -408,6 +409,7 @@ export interface FileRouteTypes {
     | '/purchase-orders'
     | '/purchases'
     | '/quotations'
+    | '/rental'
     | '/rental'
     | '/reports'
     | '/sales'
