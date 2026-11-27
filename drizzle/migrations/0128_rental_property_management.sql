@@ -232,6 +232,7 @@ CREATE TABLE public.rental_invoice_lines (
   unit_rate numeric(14,4) NOT NULL DEFAULT 0 CHECK (unit_rate >= 0),
   amount numeric(14,2) NOT NULL CHECK (amount >= 0),
   created_at timestamptz NOT NULL DEFAULT now(),
+  CHECK (amount=round(quantity*unit_rate,2)),
   FOREIGN KEY (workspace_id,invoice_id) REFERENCES public.rental_invoices(workspace_id,id) ON DELETE RESTRICT,
   FOREIGN KEY (workspace_id,charge_type_id) REFERENCES public.rental_charge_types(workspace_id,id) ON DELETE RESTRICT
 );
@@ -317,12 +318,13 @@ $fn$;
 CREATE OR REPLACE FUNCTION rental_private.has_role(_workspace uuid,_minimum text)
 RETURNS boolean LANGUAGE sql STABLE SECURITY DEFINER SET search_path=''
 AS $fn$
-  SELECT CASE _minimum
-    WHEN 'owner' THEN EXISTS (SELECT 1 FROM public.rental_memberships m WHERE m.workspace_id=_workspace AND m.user_id=auth.uid() AND m.status='active' AND m.role='owner')
-    WHEN 'accountant' THEN EXISTS (SELECT 1 FROM public.rental_memberships m WHERE m.workspace_id=_workspace AND m.user_id=auth.uid() AND m.status='active' AND m.role IN ('owner','accountant'))
-    WHEN 'viewer' THEN rental_private.is_member(_workspace)
-    ELSE false
-  END;
+  SELECT EXISTS (SELECT 1 FROM public.rental_workspaces w WHERE w.id=_workspace AND w.archived_at IS NULL)
+    AND CASE _minimum
+      WHEN 'owner' THEN EXISTS (SELECT 1 FROM public.rental_memberships m WHERE m.workspace_id=_workspace AND m.user_id=auth.uid() AND m.status='active' AND m.role='owner')
+      WHEN 'accountant' THEN EXISTS (SELECT 1 FROM public.rental_memberships m WHERE m.workspace_id=_workspace AND m.user_id=auth.uid() AND m.status='active' AND m.role IN ('owner','accountant'))
+      WHEN 'viewer' THEN rental_private.is_member(_workspace)
+      ELSE false
+    END;
 $fn$;
 
 CREATE OR REPLACE FUNCTION rental_private.can_edit_invoice(_workspace uuid,_invoice uuid)
@@ -337,6 +339,28 @@ AS $fn$
       )
   );
 $fn$;
+
+CREATE OR REPLACE FUNCTION rental_private.refresh_invoice_totals()
+RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER SET search_path=''
+AS $fn$
+DECLARE target_workspace uuid := coalesce(NEW.workspace_id,OLD.workspace_id);
+        target_invoice uuid := coalesce(NEW.invoice_id,OLD.invoice_id);
+BEGIN
+  UPDATE public.rental_invoices i
+     SET subtotal=coalesce((SELECT sum(l.amount) FROM public.rental_invoice_lines l
+                            WHERE l.workspace_id=target_workspace AND l.invoice_id=target_invoice),0),
+         total=coalesce((SELECT sum(l.amount) FROM public.rental_invoice_lines l
+                         WHERE l.workspace_id=target_workspace AND l.invoice_id=target_invoice),0),
+         updated_at=now()
+   WHERE i.workspace_id=target_workspace AND i.id=target_invoice
+     AND i.status IN ('draft','pending_approval');
+  RETURN coalesce(NEW,OLD);
+END;
+$fn$;
+
+CREATE TRIGGER rental_invoice_lines_recalculate
+  AFTER INSERT OR UPDATE ON public.rental_invoice_lines
+  FOR EACH ROW EXECUTE FUNCTION rental_private.refresh_invoice_totals();
 
 CREATE OR REPLACE FUNCTION rental_private.audit_row()
 RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER SET search_path=''
@@ -361,6 +385,7 @@ BEGIN
   IF auth.uid() IS NULL OR NOT public.is_platform_owner() THEN
     RAISE EXCEPTION 'Platform owner access is required to create the rental workspace' USING ERRCODE='42501';
   END IF;
+  PERFORM pg_advisory_xact_lock(hashtextextended(auth.uid()::text,0));
   SELECT id INTO result_id FROM public.rental_workspaces WHERE owner_user_id=auth.uid() AND archived_at IS NULL;
   IF result_id IS NOT NULL THEN RETURN result_id; END IF;
   INSERT INTO public.rental_workspaces(name,owner_user_id)
@@ -409,7 +434,7 @@ BEGIN
   IF NOT rental_private.has_role(_workspace,'accountant') THEN
     RAISE EXCEPTION 'Rental accountant or owner access is required' USING ERRCODE='42501';
   END IF;
-  IF _period_end < _period_start OR _due_date < _issue_date OR jsonb_typeof(_lines)<>'array' THEN
+  IF _period_end < _period_start OR jsonb_typeof(_lines)<>'array' THEN
     RAISE EXCEPTION 'Invalid invoice period, due date or line items';
   END IF;
   line_count := jsonb_array_length(_lines);
@@ -432,10 +457,10 @@ BEGIN
     SELECT 1 FROM jsonb_array_elements(_lines) x
     WHERE coalesce((x->>'quantity')::numeric,0)<=0
        OR coalesce((x->>'unit_rate')::numeric,0)<0
-       OR coalesce((x->>'amount')::numeric,-1)<0
        OR nullif(btrim(x->>'description'),'') IS NULL
   ) THEN RAISE EXCEPTION 'Invoice line values are invalid'; END IF;
-  SELECT round(sum((x->>'amount')::numeric),2) INTO invoice_total FROM jsonb_array_elements(_lines) x;
+  SELECT round(sum(round(coalesce((x->>'quantity')::numeric,1)*coalesce((x->>'unit_rate')::numeric,0),2)),2)
+    INTO invoice_total FROM jsonb_array_elements(_lines) x;
   SELECT invoice_prefix INTO prefix FROM public.rental_workspaces WHERE id=_workspace;
   invoice_year := extract(year from _period_start)::integer;
   INSERT INTO public.rental_invoice_sequences(workspace_id,invoice_year,next_number)
@@ -458,7 +483,7 @@ BEGIN
   SELECT _workspace,invoice_id,nullif(x->>'charge_type_id','')::uuid,
     btrim(x->>'description'),coalesce(x->>'category','other'),
     coalesce((x->>'quantity')::numeric,1),coalesce((x->>'unit_rate')::numeric,0),
-    round((x->>'amount')::numeric,2)
+    round(coalesce((x->>'quantity')::numeric,1)*coalesce((x->>'unit_rate')::numeric,0),2)
   FROM jsonb_array_elements(_lines) x;
   RETURN invoice_id;
 END;
@@ -561,7 +586,7 @@ BEGIN
   FOREACH tbl IN ARRAY ARRAY[
     'rental_properties','rental_units','rental_tenants','rental_agreements',
     'rental_charge_types','rental_charge_rules','rental_meter_readings',
-    'rental_invoices','rental_invoice_lines','rental_expenses','rental_deposit_transactions'
+    'rental_invoices','rental_invoice_lines','rental_payments','rental_expenses','rental_deposit_transactions'
   ] LOOP
     EXECUTE format('CREATE TRIGGER %I_audit AFTER INSERT OR UPDATE ON public.%I FOR EACH ROW EXECUTE FUNCTION rental_private.audit_row()',tbl,tbl);
   END LOOP;
@@ -706,8 +731,9 @@ GRANT SELECT ON public.rental_memberships TO authenticated;
 GRANT SELECT,INSERT,UPDATE ON
   public.rental_properties,public.rental_units,public.rental_tenants,public.rental_agreements,
   public.rental_charge_types,public.rental_charge_rules,public.rental_meter_readings,
-  public.rental_invoices,public.rental_invoice_lines,public.rental_expenses
+  public.rental_invoice_lines,public.rental_expenses
 TO authenticated;
+GRANT SELECT,UPDATE (due_date,notes) ON public.rental_invoices TO authenticated;
 GRANT SELECT,INSERT ON public.rental_deposit_transactions TO authenticated;
 GRANT SELECT ON public.rental_payments,public.rental_audit_events TO authenticated;
 REVOKE ALL ON public.rental_invoice_sequences FROM PUBLIC,anon,authenticated;
