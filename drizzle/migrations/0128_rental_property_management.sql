@@ -308,10 +308,10 @@ CREATE INDEX rental_audit_events_workspace_idx ON public.rental_audit_events(wor
 CREATE OR REPLACE FUNCTION rental_private.is_member(_workspace uuid)
 RETURNS boolean LANGUAGE sql STABLE SECURITY DEFINER SET search_path=''
 AS $fn$
-  SELECT auth.uid() IS NOT NULL AND EXISTS (
+  SELECT (select auth.uid()) IS NOT NULL AND EXISTS (
     SELECT 1 FROM public.rental_memberships m
     JOIN public.rental_workspaces w ON w.id=m.workspace_id AND w.archived_at IS NULL
-    WHERE m.workspace_id=_workspace AND m.user_id=auth.uid() AND m.status='active'
+    WHERE m.workspace_id=_workspace AND m.user_id=(select auth.uid()) AND m.status='active'
   );
 $fn$;
 
@@ -609,13 +609,13 @@ ALTER TABLE public.rental_deposit_transactions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.rental_audit_events ENABLE ROW LEVEL SECURITY;
 
 CREATE POLICY rental_workspaces_select ON public.rental_workspaces
-  FOR SELECT TO authenticated USING (rental_private.is_member(id) OR public.is_platform_owner());
+  FOR SELECT TO authenticated USING ((select rental_private.is_member(id)) OR (select public.is_platform_owner()));
 CREATE POLICY rental_workspaces_update ON public.rental_workspaces
   FOR UPDATE TO authenticated USING (rental_private.has_role(id,'owner'))
   WITH CHECK (rental_private.has_role(id,'owner'));
 
 CREATE POLICY rental_memberships_select ON public.rental_memberships
-  FOR SELECT TO authenticated USING (user_id=auth.uid() OR rental_private.has_role(workspace_id,'owner'));
+  FOR SELECT TO authenticated USING (user_id=(select auth.uid()) OR rental_private.has_role(workspace_id,'owner'));
 
 CREATE POLICY rental_properties_access ON public.rental_properties
   FOR SELECT TO authenticated USING (rental_private.is_member(workspace_id));
@@ -696,6 +696,9 @@ CREATE POLICY rental_invoice_lines_update ON public.rental_invoice_lines
   FOR UPDATE TO authenticated
   USING (rental_private.can_edit_invoice(workspace_id,invoice_id))
   WITH CHECK (rental_private.can_edit_invoice(workspace_id,invoice_id));
+
+CREATE POLICY rental_invoice_sequences_deny ON public.rental_invoice_sequences
+  FOR ALL TO authenticated USING (false) WITH CHECK (false);
 
 CREATE POLICY rental_payments_access ON public.rental_payments
   FOR SELECT TO authenticated USING (rental_private.is_member(workspace_id));
