@@ -423,7 +423,7 @@ RETURNS uuid LANGUAGE plpgsql SECURITY DEFINER SET search_path=''
 AS $fn$
 DECLARE
   seq_no bigint;
-  invoice_year integer;
+  v_invoice_year integer;
   prefix text;
   invoice_id uuid;
   invoice_total numeric(14,2);
@@ -460,9 +460,9 @@ BEGIN
   SELECT round(sum(round(coalesce((x->>'quantity')::numeric,1)*coalesce((x->>'unit_rate')::numeric,0),2)),2)
     INTO invoice_total FROM jsonb_array_elements(_lines) x;
   SELECT invoice_prefix INTO prefix FROM public.rental_workspaces WHERE id=_workspace;
-  invoice_year := extract(year from _period_start)::integer;
+  v_invoice_year := extract(year from _period_start)::integer;
   INSERT INTO public.rental_invoice_sequences(workspace_id,invoice_year,next_number)
-  VALUES (_workspace,invoice_year,2)
+  VALUES (_workspace,v_invoice_year,2)
   ON CONFLICT (workspace_id,invoice_year)
   DO UPDATE SET next_number=public.rental_invoice_sequences.next_number+1
   RETURNING next_number-1 INTO seq_no;
@@ -471,7 +471,7 @@ BEGIN
     billing_period_start,billing_period_end,issue_date,due_date,
     subtotal,total,status,notes,created_by
   ) VALUES (
-    _workspace,prefix||'-'||invoice_year::text||'-'||lpad(seq_no::text,3,'0'),
+    _workspace,prefix||'-'||v_invoice_year::text||'-'||lpad(seq_no::text,3,'0'),
     _tenant,_unit,_agreement,_period_start,_period_end,_issue_date,_due_date,
     invoice_total,invoice_total,'pending_approval',_notes,auth.uid()
   ) RETURNING id INTO invoice_id;
