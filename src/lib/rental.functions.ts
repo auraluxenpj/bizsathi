@@ -576,3 +576,40 @@ export const listRentalAuditEvents = createServerFn({ method: 'GET' })
     if (error) fail('Rental audit history could not be loaded.',error);
     return rows ?? [];
   });
+
+export const getRentalAnnualReport = createServerFn({ method: 'GET' })
+  .middleware([requireSupabaseAuth])
+  .inputValidator(z.object({ workspaceId: z.string().uuid(), year: z.number().int().min(2000).max(2100) }))
+  .handler(async ({ data, context }) => {
+    await rentalRole(context.supabase,data.workspaceId);
+    const from = `${data.year}-01-01`;
+    const to = `${data.year+1}-01-01`;
+    const [invoices,payments,expenses] = await Promise.all([
+      db(context.supabase).from('rental_invoices').select('billing_period_start,total,status').eq('workspace_id',data.workspaceId).neq('status','void').gte('billing_period_start',from).lt('billing_period_start',to),
+      db(context.supabase).from('rental_payments').select('payment_date,amount').eq('workspace_id',data.workspaceId).gte('payment_date',from).lt('payment_date',to),
+      db(context.supabase).from('rental_expenses').select('expense_date,amount,category').eq('workspace_id',data.workspaceId).gte('expense_date',from).lt('expense_date',to),
+    ]);
+    const failed = [invoices,payments,expenses].find(r=>r.error);
+    if (failed?.error) fail('Rental annual report could not be loaded.',failed.error);
+    const months = Array.from({length:12},(_,index)=>({
+      month:index+1,
+      label:new Date(Date.UTC(data.year,index,1)).toLocaleString('en-IN',{month:'short',timeZone:'UTC'}),
+      invoiced:0, collected:0, expenses:0, netCash:0,
+    }));
+    for (const row of invoices.data??[]) months[Number(row.billing_period_start.slice(5,7))-1].invoiced += Number(row.total);
+    for (const row of payments.data??[]) months[Number(row.payment_date.slice(5,7))-1].collected += Number(row.amount);
+    for (const row of expenses.data??[]) months[Number(row.expense_date.slice(5,7))-1].expenses += Number(row.amount);
+    for (const month of months) {
+      month.invoiced=roundMoney(month.invoiced);
+      month.collected=roundMoney(month.collected);
+      month.expenses=roundMoney(month.expenses);
+      month.netCash=roundMoney(month.collected-month.expenses);
+    }
+    return {
+      year:data.year, months,
+      invoiced:roundMoney(months.reduce((s,m)=>s+m.invoiced,0)),
+      collected:roundMoney(months.reduce((s,m)=>s+m.collected,0)),
+      expenses:roundMoney(months.reduce((s,m)=>s+m.expenses,0)),
+      netCash:roundMoney(months.reduce((s,m)=>s+m.netCash,0)),
+    };
+  });
