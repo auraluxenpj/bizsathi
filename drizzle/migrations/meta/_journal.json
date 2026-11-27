@@ -421,6 +421,13 @@
       "when": 1795752000000,
       "tag": "0129_rental_rls_query_hardening",
       "breakpoints": true
+    },
+    {
+      "idx": 60,
+      "version": "7",
+      "when": 1795753800000,
+      "tag": "0130_rental_workspace_owner_boundary",
+      "breakpoints": true
     }
   ]
 }
