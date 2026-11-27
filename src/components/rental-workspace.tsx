@@ -1,13 +1,13 @@
-import { useMemo, useState } from 'react';
+/* eslint-disable @typescript-eslint/no-explicit-any */
+import { useMemo, useState, type ReactNode, type ElementType } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useServerFn } from '@tanstack/react-start';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { toast } from 'sonner';
 import {
-  BadgeCheck, Building2, CalendarDays, CheckCircle2, ClipboardList, CreditCard,
-  Droplets, FileText, Home, Loader2, Plus, Receipt, RefreshCw, Share2,
-  TrendingUp, UserPlus, Users, Wallet, Zap,
+  BadgeCheck, Building2, CalendarDays, CreditCard, Home, Loader2, Plus,
+  Receipt, RefreshCw, Share2, TrendingUp, UserPlus, Users,
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -37,10 +37,10 @@ const monthBounds = (month: string) => {
   const end = new Date(Date.UTC(year,mon,0));
   return { start: start.toISOString().slice(0,10), end: end.toISOString().slice(0,10) };
 };
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
+function Field({ label, children }: { label: string; children: ReactNode }) {
   return <div className="grid gap-1.5"><Label>{label}</Label>{children}</div>;
 }
-function Metric({ label, value, icon: Icon, hint }: { label: string; value: string; icon: React.ElementType; hint?: string }) {
+function Metric({ label, value, icon: Icon, hint }: { label: string; value: string; icon: ElementType; hint?: string }) {
   return <Card><CardContent className="flex items-start justify-between p-4"><div><p className="text-sm text-muted-foreground">{label}</p><p className="mt-1 text-2xl font-semibold tabular-nums">{value}</p>{hint && <p className="mt-1 text-xs text-muted-foreground">{hint}</p>}</div><div className="rounded-lg bg-muted p-2"><Icon className="size-5 text-muted-foreground"/></div></CardContent></Card>;
 }
 function statusBadge(status: string) {
