@@ -46,6 +46,8 @@ BEGIN
   ASSERT v_workspace_id IS NOT NULL,'Business owner can create a rental workspace';
   ASSERT (SELECT count(*) FROM public.rental_workspaces WHERE id=v_workspace_id)=1,
     'Workspace is visible to its owner';
+  ASSERT (SELECT count(*) FROM public.rental_charge_types WHERE workspace_id=v_workspace_id)=5,
+    'Workspace is seeded with standard water, maintenance, parking, cleaning and other charge types';
 
   -- Create the minimum rental records and one pending invoice as the owner.
   INSERT INTO public.rental_properties(workspace_id,name,created_by)
