@@ -435,6 +435,13 @@
       "when": 1795755600000,
       "tag": "0131_rental_member_and_payment_guards",
       "breakpoints": true
+    },
+    {
+      "idx": 62,
+      "version": "7",
+      "when": 1795757400000,
+      "tag": "0132_rental_fk_indexes",
+      "breakpoints": true
     }
   ]
 }
