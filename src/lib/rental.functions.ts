@@ -68,15 +68,17 @@ export const getRentalOverview = createServerFn({ method: 'GET' })
       db(context.supabase).from('rental_units').select('id,status,monthly_rent').eq('workspace_id', data.workspaceId),
       db(context.supabase).from('rental_agreements').select('id,monthly_rent').eq('workspace_id', data.workspaceId).eq('status', 'active'),
       db(context.supabase).from('rental_invoices').select('id,total,status,due_date').eq('workspace_id', data.workspaceId).neq('status', 'void'),
-      db(context.supabase).from('rental_payments').select('amount').eq('workspace_id', data.workspaceId),
+      db(context.supabase).from('rental_payments').select('invoice_id,amount').eq('workspace_id', data.workspaceId),
       db(context.supabase).from('rental_expenses').select('amount,expense_date').eq('workspace_id', data.workspaceId),
     ]);
     const failed = [properties, units, agreements, invoices, payments, expenses].find(r => r.error);
     if (failed?.error) fail('Rental dashboard data could not be loaded.', failed.error);
     const invoiceRows = invoices.data ?? [];
     const paid = (payments.data ?? []).reduce((sum, row) => sum + Number(row.amount), 0);
-    const outstanding = invoiceRows.filter(row => !['paid','void'].includes(row.status))
-      .reduce((sum, row) => sum + Number(row.total), 0) - paid;
+    const paidByInvoice = new Map<string,number>();
+    for (const payment of payments.data ?? []) paidByInvoice.set(payment.invoice_id,(paidByInvoice.get(payment.invoice_id) ?? 0)+Number(payment.amount));
+    const outstanding = invoiceRows.filter(row => ['sent','partially_paid'].includes(row.status))
+      .reduce((sum, row) => sum + Math.max(0,Number(row.total)-(paidByInvoice.get(row.id) ?? 0)), 0);
     const month = new Date().toISOString().slice(0, 7);
     const monthExpenses = (expenses.data ?? []).filter(row => row.expense_date.startsWith(month))
       .reduce((sum, row) => sum + Number(row.amount), 0);
