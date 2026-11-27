@@ -149,11 +149,12 @@ export const saveRentalUnit = createServerFn({ method: 'POST' })
   .middleware([requireSupabaseAuth]).inputValidator(unitInput)
   .handler(async ({ data, context }) => {
     await rentalRole(context.supabase, data.workspaceId, ['owner','accountant']);
-    if (data.id && data.status === 'vacant') {
+    if (data.id) {
       const { data: activeAgreement, error: agreementError } = await db(context.supabase).from('rental_agreements')
         .select('id').eq('workspace_id',data.workspaceId).eq('unit_id',data.id).eq('status','active').maybeSingle();
       if (agreementError) fail('Unit occupancy could not be verified.',agreementError);
-      if (activeAgreement) throw new Error('End the active rental agreement before marking this unit vacant.');
+      if (activeAgreement && data.status !== 'occupied') throw new Error('This unit has an active rental agreement and must remain occupied.');
+      if (!activeAgreement && data.status === 'occupied') throw new Error('Activate a rental agreement before marking this unit occupied.');
     }
     const payload = { property_id: data.propertyId, unit_code: data.unitCode, floor_label: data.floorLabel || null, status: data.status, monthly_rent: data.monthlyRent, security_deposit: data.securityDeposit, due_day: data.dueDay, electricity_rate: data.electricityRate, notes: data.notes || null };
     const query = data.id
