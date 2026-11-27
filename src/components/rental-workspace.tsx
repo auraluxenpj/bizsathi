@@ -21,7 +21,7 @@ import {
   listRentalChargeTypes, listRentalDeposits, listRentalExpenses, listRentalInvoices,
   listRentalMemberCandidates, listRentalMembers, listRentalMeterReadings, listRentalProperties,
   listRentalTenants, listRentalUnits, listRentalWorkspaces, markRentalInvoiceSent,
-  recordRentalDeposit, recordRentalPayment, recordRentalOtherIncome, listRentalOtherIncome, listRentalLoans, saveRentalLoan, recordRentalLoanPayment, saveRentalAgreement, saveRentalChargeRule,
+  recordRentalDeposit, recordRentalPayment, saveRentalOtherIncome, listRentalOtherIncome, listRentalLoans, saveRentalLoan, recordRentalLoanPayment, saveRentalAgreement, saveRentalChargeRule,
   saveRentalChargeType, saveRentalExpense, saveRentalMeterReading, saveRentalProperty,
   saveRentalTenant, saveRentalUnit,
 } from '@/lib/rental.functions';
@@ -75,7 +75,7 @@ export function RentalWorkspace() {
   const depositsFn = useServerFn(listRentalDeposits);
   const otherIncomeFn = useServerFn(listRentalOtherIncome);
   const loansFn = useServerFn(listRentalLoans);
-  const saveOtherIncome = useServerFn(recordRentalOtherIncome);
+  const saveOtherIncome = useServerFn(saveRentalOtherIncome);
   const saveLoan = useServerFn(saveRentalLoan);
   const recordLoanPayment = useServerFn(recordRentalLoanPayment);
   const membersFn = useServerFn(listRentalMembers);
