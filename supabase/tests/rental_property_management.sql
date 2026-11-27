@@ -51,13 +51,13 @@ BEGIN
     'Workspace is visible to its owner';
 
   -- Create the minimum rental records and one pending invoice as the owner.
-  INSERT INTO public.rental_properties(v_workspace_id,name,created_by)
+  INSERT INTO public.rental_properties(workspace_id,name,created_by)
   VALUES (v_workspace_id,'Test property',owner_id) RETURNING id INTO property_id;
-  INSERT INTO public.rental_units(v_workspace_id,property_id,unit_code,monthly_rent,created_by)
+  INSERT INTO public.rental_units(workspace_id,property_id,unit_code,monthly_rent,created_by)
   VALUES (v_workspace_id,property_id,'Unit 1',10000,owner_id) RETURNING id INTO unit_id;
-  INSERT INTO public.rental_tenants(v_workspace_id,full_name,created_by)
+  INSERT INTO public.rental_tenants(workspace_id,full_name,created_by)
   VALUES (v_workspace_id,'Test tenant',owner_id) RETURNING id INTO tenant_id;
-  INSERT INTO public.rental_agreements(v_workspace_id,unit_id,tenant_id,start_date,monthly_rent,due_day,created_by)
+  INSERT INTO public.rental_agreements(workspace_id,unit_id,tenant_id,start_date,monthly_rent,due_day,created_by)
   VALUES (v_workspace_id,unit_id,tenant_id,'2026-11-01',10000,15,owner_id) RETURNING id INTO agreement_id;
   SELECT public.create_rental_invoice(
     v_workspace_id,tenant_id,unit_id,agreement_id,'2026-11-01','2026-11-30',
@@ -101,7 +101,7 @@ BEGIN
   END;
   ASSERT rejected,'Accountant cannot directly update protected invoice status columns';
 
-  SELECT count(*) INTO visible_count FROM public.rental_audit_events WHERE v_workspace_id=v_workspace_id;
+  SELECT count(*) INTO visible_count FROM public.rental_audit_events WHERE rental_audit_events.workspace_id=v_workspace_id;
   ASSERT visible_count=0,'Accountant cannot read owner-only audit history';
 
   -- Owner approves and sends; accountant may then record a partial payment.
@@ -116,7 +116,7 @@ BEGIN
   -- Owner can revoke access; the old employee session immediately loses RLS visibility.
   PERFORM set_config('request.jwt.claims',json_build_object('sub',owner_id,'role','authenticated')::text,true);
   PERFORM public.deactivate_rental_member(v_workspace_id,
-    (SELECT id FROM public.rental_memberships WHERE v_workspace_id=v_workspace_id AND user_id=accountant_id));
+    (SELECT id FROM public.rental_memberships WHERE rental_memberships.workspace_id=v_workspace_id AND user_id=accountant_id));
   PERFORM set_config('request.jwt.claims',json_build_object('sub',accountant_id,'role','authenticated')::text,true);
   SELECT count(*) INTO visible_count FROM public.rental_workspaces WHERE id=v_workspace_id;
   ASSERT visible_count=0,'Deactivated accountant loses rental workspace access';
