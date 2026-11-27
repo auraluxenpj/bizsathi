@@ -6,15 +6,12 @@ DO $seed$
 DECLARE
   owner_id uuid := '10000000-0000-4000-8000-000000000001';
   accountant_id uuid := '10000000-0000-4000-8000-000000000002';
-  platform_owner_id uuid := '10000000-0000-4000-8000-000000000003';
+  outsider_id uuid := '10000000-0000-4000-8000-000000000003';
   business_id uuid := '10000000-0000-4000-8000-000000000004';
 BEGIN
   INSERT INTO auth.users(id,email,email_confirmed_at,raw_user_meta_data,created_at,updated_at)
   SELECT u,'rental-security+'||u||'@example.invalid',now(),'{}'::jsonb,now(),now()
-  FROM unnest(ARRAY[owner_id,accountant_id,platform_owner_id]) u;
-
-  INSERT INTO public.platform_owners(user_id,note)
-  VALUES (platform_owner_id,'synthetic rental security regression');
+  FROM unnest(ARRAY[owner_id,accountant_id,outsider_id]) u;
 
   INSERT INTO public.businesses(id,name,created_by)
   VALUES (business_id,'Rental security test business',owner_id);
@@ -29,7 +26,7 @@ DO $tests$
 DECLARE
   owner_id uuid;
   accountant_id uuid;
-  platform_owner_id uuid;
+  outsider_id uuid;
   v_workspace_id uuid;
   property_id uuid;
   unit_id uuid;
@@ -41,7 +38,7 @@ DECLARE
 BEGIN
   owner_id := '10000000-0000-4000-8000-000000000001';
   accountant_id := '10000000-0000-4000-8000-000000000002';
-  platform_owner_id := '10000000-0000-4000-8000-000000000003';
+  outsider_id := '10000000-0000-4000-8000-000000000003';
 
   -- A normal business owner can create one separate rental workspace.
   PERFORM set_config('request.jwt.claims',json_build_object('sub',owner_id,'role','authenticated')::text,true);
@@ -121,17 +118,17 @@ BEGIN
   SELECT count(*) INTO visible_count FROM public.rental_workspaces WHERE id=v_workspace_id;
   ASSERT visible_count=0,'Deactivated accountant loses rental workspace access';
 
-  -- Global platform-owner authority alone does not expose or create rental workspaces.
-  PERFORM set_config('request.jwt.claims',json_build_object('sub',platform_owner_id,'role','authenticated')::text,true);
+  -- An unrelated BizSathi profile cannot view or create rental workspaces.
+  PERFORM set_config('request.jwt.claims',json_build_object('sub',outsider_id,'role','authenticated')::text,true);
   SELECT count(*) INTO visible_count FROM public.rental_workspaces WHERE id=v_workspace_id;
-  ASSERT visible_count=0,'Platform owner without rental membership cannot view rental workspace';
+  ASSERT visible_count=0,'Non-member cannot view rental workspace';
   rejected := false;
   BEGIN
-    PERFORM public.create_rental_workspace('Unauthorized platform workspace');
+    PERFORM public.create_rental_workspace('Unauthorized rental workspace');
   EXCEPTION WHEN insufficient_privilege THEN
     rejected := true;
   END;
-  ASSERT rejected,'Platform owner without an active business-owner membership cannot create rental workspace';
+  ASSERT rejected,'Non-member without an active business-owner membership cannot create rental workspace';
 
   RAISE NOTICE 'RENTAL_PROPERTY_MANAGEMENT_SECURITY_TESTS_PASSED';
 END;
