@@ -15,7 +15,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Textarea } from '@/components/ui/textarea';
 import {
   approveRentalInvoice, assignRentalMember, createRentalWorkspace, generateRentalMonthlyInvoices,
   getRentalOverview, listRentalAgreements, listRentalAuditEvents, listRentalChargeRules,
@@ -141,6 +140,7 @@ export function RentalWorkspace() {
   const [chargeMethod,setChargeMethod] = useState('equal');
   const [chargeAmount,setChargeAmount] = useState('');
   const [chargePercent,setChargePercent] = useState('');
+  const [chargeRecurring,setChargeRecurring] = useState(true);
   const [billingMonth,setBillingMonth] = useState(today().slice(0,7));
   const [selectedInvoice,setSelectedInvoice] = useState('');
   const [paymentAmount,setPaymentAmount] = useState('');
@@ -164,7 +164,7 @@ export function RentalWorkspace() {
   const tenantMutation = useMutation({ mutationFn:()=>saveTenant({data:{workspaceId,fullName:tenantName,phone:tenantPhone,whatsappNumber:tenantWhatsApp,email:tenantEmail||null}}), onSuccess:async()=>{setTenantName('');setTenantPhone('');setTenantWhatsApp('');setTenantEmail('');await refresh();toast.success('Tenant saved.');}, onError:e=>toast.error(e.message) });
   const agreementMutation = useMutation({ mutationFn:()=>saveAgreement({data:{workspaceId,unitId:agreementUnit,tenantId:agreementTenant,monthlyRent:Number(agreementRent),securityDeposit:Number(agreementDeposit||0),startDate:agreementStart,dueDay:Number(agreementDue),status:'active'}}), onSuccess:async()=>{await refresh();toast.success('Rental agreement activated.');}, onError:e=>toast.error(e.message) });
   const typeMutation = useMutation({ mutationFn:()=>saveType({data:{workspaceId,code:chargeName.toLowerCase().trim().replace(/[^a-z0-9]+/g,'_').replace(/^_|_$/g,''),name:chargeName,category:chargeCategory as 'water'|'maintenance'|'parking'|'cleaning'|'other',isActive:true}}), onSuccess:async()=>{await refresh();toast.success('Charge type saved.');}, onError:e=>toast.error(e.message) });
-  const ruleMutation = useMutation({ mutationFn:()=>saveRule({data:{workspaceId,propertyId:chargeProperty,unitId:chargeUnit||null,chargeTypeId:chargeType,allocationMethod:chargeMethod as 'fixed'|'equal'|'percentage',amount:Number(chargeAmount),allocationPercent:chargeMethod==='percentage'?Number(chargePercent):null,isRecurring:true,startDate:today(),isActive:true}}), onSuccess:async()=>{await refresh();toast.success('Recurring charge saved.');}, onError:e=>toast.error(e.message) });
+  const ruleMutation = useMutation({ mutationFn:()=>saveRule({data:{workspaceId,propertyId:chargeProperty,unitId:chargeUnit||null,chargeTypeId:chargeType,allocationMethod:chargeMethod as 'fixed'|'equal'|'percentage',amount:Number(chargeAmount),allocationPercent:chargeMethod==='percentage'?Number(chargePercent):null,isRecurring:chargeRecurring,startDate:today(),isActive:true}}), onSuccess:async()=>{await refresh();toast.success('Recurring charge saved.');}, onError:e=>toast.error(e.message) });
   const meterMutation = useMutation({ mutationFn:()=>saveReading({data:{workspaceId,unitId:meterUnit,meterType:meterType as 'electricity'|'water',periodStart:meterStart,periodEnd:meterEnd,previousReading:Number(meterPrevious),currentReading:Number(meterCurrent),ratePerUnit:Number(meterRate),readAt:today()}}), onSuccess:async()=>{await refresh();setMeterPrevious('');setMeterCurrent('');toast.success('Meter reading saved.');}, onError:e=>toast.error(e.message) });
   const invoiceMutation = useMutation({ mutationFn:()=>{const range=monthBounds(billingMonth);return generateInvoices({data:{workspaceId,periodStart:range.start,periodEnd:range.end,issueDate:today()}});}, onSuccess:async(result)=>{await refresh();toast.success(`${result.generated} invoice(s) generated for approval.`);}, onError:e=>toast.error(e.message) });
   const approveMutation = useMutation({ mutationFn:(invoiceId:string)=>approveInvoice({data:{workspaceId,invoiceId}}), onSuccess:async()=>{await refresh();toast.success('Invoice approved.');}, onError:e=>toast.error(e.message) });
@@ -182,7 +182,8 @@ export function RentalWorkspace() {
   const expenseRows = expenses.data ?? [];
   const activeInvoice = invoiceRows.find(i => i.id === selectedInvoice);
   const outstandingForSelected = activeInvoice ? Math.max(0,Number(activeInvoice.total)-(activeInvoice.payments ?? []).reduce((s,p)=>s+Number(p.amount),0)) : 0;
-  const monthExpenseTotal = useMemo(()=>expenseRows.filter(e=>e.expense_date.slice(0,7)===today().slice(0,7)).reduce((s,e)=>s+Number(e.amount),0),[expenseRows]);
+  const currentMonth = today().slice(0,7);
+  const monthExpenseTotal = useMemo(()=>expenseRows.filter(e=>e.expense_date.slice(0,7)===currentMonth).reduce((s,e)=>s+Number(e.amount),0),[expenseRows,currentMonth]);
   const currency = (v:number|string|null|undefined)=>money(v);
 
   async function shareInvoice(invoice: any) {
@@ -318,16 +319,17 @@ export function RentalWorkspace() {
           <Field label="Category"><select className="h-10 rounded-md border bg-background px-3 text-sm" value={chargeCategory} onChange={e=>setChargeCategory(e.target.value)}><option value="water">Common water</option><option value="maintenance">Maintenance</option><option value="parking">Parking</option><option value="cleaning">Cleaning</option><option value="other">Other</option></select></Field>
           <Button type="submit" disabled={!editor||typeMutation.isPending}><Plus className="mr-2 size-4"/>Save charge type</Button>
         </form><div className="mt-4 flex flex-wrap gap-2">{(chargeTypes.data??[]).map(t=><Badge key={t.id} variant="outline">{t.name}</Badge>)}</div></CardContent></Card>
-        <Card className="xl:col-span-2"><CardHeader><CardTitle>Recurring charge allocation</CardTitle><CardDescription>Set common water and maintenance as equal sharing, or assign fixed and percentage charges per unit.</CardDescription></CardHeader><CardContent><form className="grid gap-3 md:grid-cols-3" onSubmit={e=>{e.preventDefault();ruleMutation.mutate();}}>
+        <Card className="xl:col-span-2"><CardHeader><CardTitle>Additional charge allocation</CardTitle><CardDescription>Set common water and maintenance as equal sharing, or assign fixed and percentage charges per unit. Uncheck Repeat every month for a one-time charge in the selected start month.</CardDescription></CardHeader><CardContent><form className="grid gap-3 md:grid-cols-3" onSubmit={e=>{e.preventDefault();ruleMutation.mutate();}}>
           <Field label="Property"><select className="h-10 rounded-md border bg-background px-3 text-sm" required value={chargeProperty} onChange={e=>setChargeProperty(e.target.value)}><option value="">Select property</option>{propertyRows.map(p=><option key={p.id} value={p.id}>{p.name}</option>)}</select></Field>
           <Field label="Charge type"><select className="h-10 rounded-md border bg-background px-3 text-sm" required value={chargeType} onChange={e=>setChargeType(e.target.value)}><option value="">Select charge</option>{(chargeTypes.data??[]).filter(t=>t.is_active).map(t=><option key={t.id} value={t.id}>{t.name}</option>)}</select></Field>
           <Field label="Allocation method"><select className="h-10 rounded-md border bg-background px-3 text-sm" value={chargeMethod} onChange={e=>setChargeMethod(e.target.value)}><option value="equal">Equal across occupied units</option><option value="fixed">Fixed per unit</option><option value="percentage">Percentage per unit</option></select></Field>
           {chargeMethod!=='equal'&&<Field label="Unit"><select className="h-10 rounded-md border bg-background px-3 text-sm" required value={chargeUnit} onChange={e=>setChargeUnit(e.target.value)}><option value="">Select unit</option>{unitRows.filter(u=>u.property_id===chargeProperty).map(u=><option key={u.id} value={u.id}>{u.unit_code}</option>)}</select></Field>}
           <Field label={chargeMethod==='equal'?'Total property charge':'Charge amount'}><Input required type="number" min="0" step="0.01" value={chargeAmount} onChange={e=>setChargeAmount(e.target.value)}/></Field>
           {chargeMethod==='percentage'&&<Field label="Unit share (%)"><Input required type="number" min="0.0001" max="100" step="0.01" value={chargePercent} onChange={e=>setChargePercent(e.target.value)}/></Field>}
-          <div className="flex items-end"><Button type="submit" disabled={!editor||!chargeProperty||!chargeType||ruleMutation.isPending}><Plus className="mr-2 size-4"/>Save recurring rule</Button></div>
+          <label className="flex items-center gap-2 self-end pb-2 text-sm"><input type="checkbox" checked={chargeRecurring} onChange={e=>setChargeRecurring(e.target.checked)}/>Repeat every month</label>
+          <div className="flex items-end"><Button type="submit" disabled={!editor||!chargeProperty||!chargeType||ruleMutation.isPending}><Plus className="mr-2 size-4"/>Save charge rule</Button></div>
         </form>
-        <div className="mt-4 space-y-2">{(chargeRules.data??[]).map(r=><div key={r.id} className="flex flex-wrap justify-between gap-2 rounded-md border p-3 text-sm"><div><strong>{r.charge_name}</strong><p className="text-xs text-muted-foreground">{r.property_name} · {r.unit_code} · {r.allocation_method}</p></div><div className="font-medium">{currency(r.amount)}{r.allocation_method==='percentage'? ` · ${r.allocation_percent}%`:''}</div></div>)}</div></CardContent></Card>
+        <div className="mt-4 space-y-2">{(chargeRules.data??[]).map(r=><div key={r.id} className="flex flex-wrap justify-between gap-2 rounded-md border p-3 text-sm"><div><strong>{r.charge_name}</strong><p className="text-xs text-muted-foreground">{r.property_name} · {r.unit_code} · {r.allocation_method} · {r.is_recurring?'Recurring':'One-time'}</p></div><div className="font-medium">{currency(r.amount)}{r.allocation_method==='percentage'? ` · ${r.allocation_percent}%`:''}</div></div>)}</div></CardContent></Card>
         <Card className="xl:col-span-2"><CardHeader><CardTitle>Meter reading history</CardTitle></CardHeader><CardContent className="space-y-2">{(readings.data??[]).slice(0,20).map(r=><div key={r.id} className="flex flex-wrap justify-between gap-2 rounded-md bg-muted/40 p-3 text-sm"><span>{unitRows.find(u=>u.id===r.unit_id)?.unit_code} · {r.meter_type} · {r.period_start} – {r.period_end}</span><strong>{r.units_consumed} units · {currency(r.charge_amount)}</strong></div>)}{(readings.data??[]).length===0&&<p className="text-sm text-muted-foreground">No readings entered yet.</p>}</CardContent></Card>
       </TabsContent>
 
