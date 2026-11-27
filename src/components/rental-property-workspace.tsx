@@ -1,10 +1,9 @@
-import { useMemo, useState } from 'react';
+import { useState, type ReactNode } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useServerFn } from '@tanstack/react-start';
 import { Building2, Home, Users, FileText, Gauge, Wallet, Plus, RefreshCw, ShieldCheck } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { listBusinesses } from '@/lib/business.functions';
 import {
@@ -24,7 +23,7 @@ const monthRange = () => {
   return { start: start.toLocaleDateString('en-CA'), end: end.toLocaleDateString('en-CA') };
 };
 const money = (value: number | string | null | undefined) => new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 2 }).format(Number(value || 0));
-const Field = ({ label, children }: { label: string; children: React.ReactNode }) => <label className="grid gap-1.5 text-sm"><span className="font-medium">{label}</span>{children}</label>;
+const Field = ({ label, children }: { label: string; children: ReactNode }) => <label className="grid gap-1.5 text-sm"><span className="font-medium">{label}</span>{children}</label>;
 const empty = <p className="rounded-xl border border-dashed p-8 text-center text-sm text-muted-foreground">No records yet. Add your first record to get started.</p>;
 
 export function RentalPropertyWorkspace() {
