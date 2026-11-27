@@ -107,6 +107,7 @@ export function RentalWorkspace() {
   const members = useQuery({ queryKey:['rental-members',workspaceId], queryFn:()=>membersFn({data:{workspaceId}}), enabled:!!workspaceId });
   const candidates = useQuery({ queryKey:['rental-member-candidates',workspaceId], queryFn:()=>candidatesFn({data:{workspaceId}}), enabled:!!workspaceId && owner });
   const audit = useQuery({ queryKey:['rental-audit',workspaceId], queryFn:()=>auditFn({data:{workspaceId}}), enabled:!!workspaceId && owner });
+  const [reportYear,setReportYear] = useState(new Date().getFullYear());
   const annualReport = useQuery({ queryKey:['rental-annual-report',workspaceId,reportYear], queryFn:()=>annualReportFn({data:{workspaceId,year:reportYear}}), enabled:!!workspaceId });
 
   const [propertyEditId,setPropertyEditId] = useState('');
@@ -172,8 +173,6 @@ export function RentalWorkspace() {
   const [depositType,setDepositType] = useState('received');
   const [candidateUser,setCandidateUser] = useState('');
   const [memberRole,setMemberRole] = useState('accountant');
-  const [reportYear,setReportYear] = useState(new Date().getFullYear());
-
   const createWorkspaceMutation = useMutation({ mutationFn:()=>createWorkspace({data:{name:'Rental Property Management'}}), onSuccess:async()=>{await refresh();toast.success('Rental workspace created.');}, onError:(e)=>toast.error(e.message) });
   const propertyMutation = useMutation({ mutationFn:()=>saveProperty({data:{workspaceId,id:propertyEditId||undefined,name:propertyName,address:propertyAddress,city:propertyCity}}), onSuccess:async()=>{setPropertyEditId('');setPropertyName('');setPropertyAddress('');setPropertyCity('');await refresh();toast.success('Property saved.');}, onError:e=>toast.error(e.message) });
   const unitMutation = useMutation({ mutationFn:()=>saveUnit({data:{workspaceId,id:unitEditId||undefined,propertyId:unitProperty,unitCode,monthlyRent:Number(unitRent),securityDeposit:Number(unitDeposit||0),electricityRate:Number(unitRate||0),floorLabel:unitFloor,dueDay:15,status:unitStatus as 'vacant'|'occupied'|'maintenance'}}), onSuccess:async()=>{setUnitEditId('');setUnitCode('');setUnitRent('');setUnitStatus('vacant');await refresh();toast.success('Rental unit saved.');}, onError:e=>toast.error(e.message) });
