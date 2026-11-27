@@ -28,8 +28,8 @@ export function AppNavigation({ children, pathname }: { children: ReactNode; pat
  const loadRental = useServerFn(listRentalWorkspaces);
  const rentalWorkspaces = useQuery({ queryKey: ['rental-workspaces'], queryFn: () => loadRental(), retry: false });
  const businessId = businesses.data?.[0]?.id ?? '';
- // Sutra exposes only the fixed AURALUXE workspace. Platform Owner bypass applies inside
- // that workspace only; it never grants access to another business.
+ // The AURALUXE workspace keeps its existing permission model. Rental access is
+ // checked separately against the isolated rental_memberships table and RLS policies.
  const platformOwner = businesses.data?.some(b => b.isPlatformOwner) ?? false;
  const canAccessRental = platformOwner || (rentalWorkspaces.data?.length ?? 0) > 0;
  const isRentalRoute = pathname === '/rental' || pathname.startsWith('/rental/');
@@ -67,8 +67,8 @@ export function AppNavigation({ children, pathname }: { children: ReactNode; pat
  function toggleCompact() { setCompact(prev => { const next = !prev; try { localStorage.setItem('bizsathi.sidebar.compact', String(next)); } catch { /* Keep the in-memory preference when local storage is unavailable. */ } return next; }); }
  async function signOut() { await client.cancelQueries(); client.clear(); await supabase.auth.signOut(); await navigate({ to: '/auth', replace: true }); }
  if (businesses.isPending || rentalWorkspaces.isPending) return <main className="flex min-h-screen items-center justify-center px-6 text-sm text-muted-foreground" role="status">Checking BizSathi workspace access…</main>;
- if (businesses.error && !canAccessRental) return <main className="mx-auto flex min-h-screen max-w-lg flex-col items-center justify-center px-6 text-center"><h1 className="brand text-2xl">Workspace access could not be verified</h1><p role="alert" className="mt-3 text-sm text-muted-foreground">{businesses.error.message}</p><Button className="mt-5" onClick={() => client.invalidateQueries({ queryKey: ['businesses'] })}>Try again</Button></main>;
- // The server returns only the provisioned AURALUXE workspace; branches remain selectable within it.
+ if (businesses.error && !isRentalRoute) return <main className="mx-auto flex min-h-screen max-w-lg flex-col items-center justify-center px-6 text-center"><h1 className="brand text-2xl">Workspace access could not be verified</h1><p role="alert" className="mt-3 text-sm text-muted-foreground">{businesses.error.message}</p><Button className="mt-5" onClick={() => client.invalidateQueries({ queryKey: ['businesses'] })}>Try again</Button></main>;
+ // AURALUXE remains the existing commerce workspace; Rental Property Management has its own membership boundary.
  if (!businesses.data?.length && !canAccessRental) return <main className="mx-auto flex min-h-screen max-w-lg flex-col items-center justify-center px-6 text-center"><Building2 className="size-10 text-primary" /><h1 className="brand mt-5 text-2xl">AURALUXE access required</h1><p className="mt-3 text-sm text-muted-foreground">Your account is not linked to the AURALUXE workspace yet. Ask an AURALUXE administrator for a staff invitation, then sign in again after accepting it.</p><Button variant="outline" className="mt-5" onClick={signOut}>Sign out</Button></main>;
  if (permissionsReady && billingStaff && shouldRedirectBillingStaff(pathname)) return <main className="flex min-h-screen items-center justify-center px-6 text-sm text-muted-foreground" role="status">Opening billing workspace…</main>;
  const extras = [
