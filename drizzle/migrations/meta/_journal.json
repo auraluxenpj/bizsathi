@@ -407,6 +407,13 @@
       "when": 1795636000001,
       "tag": "0127_auraluxe_deferred_stock_events",
       "breakpoints": true
+    },
+    {
+      "idx": 58,
+      "version": "7",
+      "when": 1795750200000,
+      "tag": "0128_rental_property_management",
+      "breakpoints": true
     }
   ]
 }
