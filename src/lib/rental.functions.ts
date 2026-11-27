@@ -23,18 +23,25 @@ async function rentalRole(client: unknown, workspaceId: string, allowed: string[
   return data.role as string;
 }
 
+export const getRentalAccess = createServerFn({ method: 'GET' })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const { data: memberships, error } = await db(context.supabase).from('rental_memberships')
+      .select('role,status,rental_workspaces!inner(id,name,currency,due_day,invoice_prefix,created_at)')
+      .eq('user_id', context.userId).eq('status', 'active');
+    if (error) fail('Rental workspace access could not be loaded.', error);
+    const workspaces = (memberships ?? []).map(row => ({ ...row.rental_workspaces, role: row.role }));
+    if (workspaces.length) return { canAccess: true, canCreate: false, workspaces };
+    const { data: ownerMemberships, error: ownerError } = await db(context.supabase).from('business_memberships')
+      .select('business_id').eq('user_id', context.userId).eq('role_code', 'owner').eq('status', 'active');
+    if (ownerError) fail('Business owner authority could not be verified.', ownerError);
+    const canCreate = (ownerMemberships ?? []).length > 0;
+    return { canAccess: canCreate, canCreate, workspaces: [] };
+  });
+
 export const listRentalWorkspaces = createServerFn({ method: 'GET' })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
-    const { data: isPlatformOwner, error: ownerError } = await db(context.supabase).rpc('is_platform_owner');
-    if (ownerError) fail('Rental workspace access could not be verified.', ownerError);
-    if (isPlatformOwner) {
-      const { data, error } = await db(context.supabase).from('rental_workspaces')
-        .select('id,name,currency,due_day,invoice_prefix,created_at')
-        .is('archived_at', null).order('created_at');
-      if (error) fail('Rental workspaces could not be loaded.', error);
-      return (data ?? []).map(w => ({ ...w, role: 'owner' }));
-    }
     const { data, error } = await db(context.supabase).from('rental_memberships')
       .select('role,status,rental_workspaces!inner(id,name,currency,due_day,invoice_prefix,created_at)')
       .eq('user_id', context.userId).eq('status', 'active');
