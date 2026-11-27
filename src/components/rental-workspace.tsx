@@ -7,7 +7,7 @@ import autoTable from 'jspdf-autotable';
 import { toast } from 'sonner';
 import {
   BadgeCheck, Building2, CalendarDays, CreditCard, Home, Loader2, Plus,
-  Receipt, RefreshCw, Share2, TrendingUp, UserPlus, Users,
+  Receipt, RefreshCw, Share2, TrendingUp, UserPlus, Users, Wallet,
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -17,7 +17,7 @@ import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   approveRentalInvoice, assignRentalMember, createRentalWorkspace, generateRentalMonthlyInvoices,
-  getRentalOverview, listRentalAgreements, listRentalAuditEvents, listRentalChargeRules,
+  getRentalAnnualReport, getRentalOverview, listRentalAgreements, listRentalAuditEvents, listRentalChargeRules,
   listRentalChargeTypes, listRentalDeposits, listRentalExpenses, listRentalInvoices,
   listRentalMemberCandidates, listRentalMembers, listRentalMeterReadings, listRentalProperties,
   listRentalTenants, listRentalUnits, listRentalWorkspaces, markRentalInvoiceSent,
@@ -76,6 +76,7 @@ export function RentalWorkspace() {
   const membersFn = useServerFn(listRentalMembers);
   const candidatesFn = useServerFn(listRentalMemberCandidates);
   const auditFn = useServerFn(listRentalAuditEvents);
+  const annualReportFn = useServerFn(getRentalAnnualReport);
   const saveProperty = useServerFn(saveRentalProperty);
   const saveUnit = useServerFn(saveRentalUnit);
   const saveTenant = useServerFn(saveRentalTenant);
@@ -105,6 +106,7 @@ export function RentalWorkspace() {
   const members = useQuery({ queryKey:['rental-members',workspaceId], queryFn:()=>membersFn({data:{workspaceId}}), enabled:!!workspaceId });
   const candidates = useQuery({ queryKey:['rental-member-candidates',workspaceId], queryFn:()=>candidatesFn({data:{workspaceId}}), enabled:!!workspaceId && owner });
   const audit = useQuery({ queryKey:['rental-audit',workspaceId], queryFn:()=>auditFn({data:{workspaceId}}), enabled:!!workspaceId && owner });
+  const annualReport = useQuery({ queryKey:['rental-annual-report',workspaceId,reportYear], queryFn:()=>annualReportFn({data:{workspaceId,year:reportYear}}), enabled:!!workspaceId });
 
   const [propertyName,setPropertyName] = useState('');
   const [propertyAddress,setPropertyAddress] = useState('');
@@ -157,6 +159,7 @@ export function RentalWorkspace() {
   const [depositType,setDepositType] = useState('received');
   const [candidateUser,setCandidateUser] = useState('');
   const [memberRole,setMemberRole] = useState('accountant');
+  const [reportYear,setReportYear] = useState(new Date().getFullYear());
 
   const createWorkspaceMutation = useMutation({ mutationFn:()=>createWorkspace({data:{name:'Rental Property Management'}}), onSuccess:async()=>{await refresh();toast.success('Rental workspace created.');}, onError:(e)=>toast.error(e.message) });
   const propertyMutation = useMutation({ mutationFn:()=>saveProperty({data:{workspaceId,name:propertyName,address:propertyAddress,city:propertyCity}}), onSuccess:async()=>{setPropertyName('');setPropertyAddress('');setPropertyCity('');await refresh();toast.success('Property saved.');}, onError:e=>toast.error(e.message) });
@@ -244,6 +247,7 @@ export function RentalWorkspace() {
         <TabsTrigger value="utilities">Utilities & charges</TabsTrigger>
         <TabsTrigger value="invoices">Invoices & payments</TabsTrigger>
         <TabsTrigger value="expenses">Expenses & deposits</TabsTrigger>
+        <TabsTrigger value="reports">Reports</TabsTrigger>
         {owner && <TabsTrigger value="team">Accountant & audit</TabsTrigger>}
       </TabsList>
 
@@ -372,6 +376,22 @@ export function RentalWorkspace() {
         </form></CardContent></Card>
         <Card className="xl:col-span-2"><CardHeader><CardTitle>Expense register</CardTitle></CardHeader><CardContent className="space-y-2">{expenseRows.map(e=><div key={e.id} className="flex flex-wrap justify-between gap-2 rounded-md border p-3 text-sm"><div><strong>{e.description}</strong><p className="text-xs text-muted-foreground">{e.category} · {e.expense_date}</p></div><strong>{currency(e.amount)}</strong></div>)}{expenseRows.length===0&&<p className="text-sm text-muted-foreground">No property expenses recorded.</p>}</CardContent></Card>
         <Card className="xl:col-span-2"><CardHeader><CardTitle>Security deposit history</CardTitle></CardHeader><CardContent className="space-y-2">{(deposits.data??[]).map(d=><div key={d.id} className="flex flex-wrap justify-between gap-2 rounded-md bg-muted/40 p-3 text-sm"><span>{tenantRows.find(t=>t.id===d.tenant_id)?.full_name} · {d.transaction_type} · {d.transaction_date}</span><strong>{currency(d.amount)}</strong></div>)}{(deposits.data??[]).length===0&&<p className="text-sm text-muted-foreground">No deposit transactions recorded.</p>}</CardContent></Card>
+      </TabsContent>
+
+      <TabsContent value="reports" className="space-y-4">
+        <Card><CardHeader><CardTitle>Annual rental report</CardTitle><CardDescription>Invoice value is grouped by billing month; collections and expenses are grouped by actual transaction date. Net cash = collections minus expenses.</CardDescription></CardHeader><CardContent className="flex flex-wrap items-end gap-3"><Field label="Financial year"><Input type="number" min="2000" max="2100" value={reportYear} onChange={e=>setReportYear(Number(e.target.value))}/></Field><Button variant="outline" onClick={()=>annualReport.refetch()} disabled={annualReport.isFetching}><RefreshCw className="mr-2 size-4"/>Refresh report</Button></CardContent></Card>
+        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+          <Metric label="Invoices raised" value={currency(annualReport.data?.invoiced)} icon={Receipt}/>
+          <Metric label="Rent & charges collected" value={currency(annualReport.data?.collected)} icon={CreditCard}/>
+          <Metric label="Property expenses" value={currency(annualReport.data?.expenses)} icon={Wallet}/>
+          <Metric label="Net cash flow" value={currency(annualReport.data?.netCash)} icon={TrendingUp}/>
+        </div>
+        <Card><CardHeader><CardTitle>Monthly breakdown · {reportYear}</CardTitle></CardHeader><CardContent className="overflow-x-auto">
+          <table className="w-full min-w-[620px] text-sm"><thead><tr className="border-b text-left text-muted-foreground"><th className="py-2 pr-3 font-medium">Month</th><th className="py-2 pr-3 text-right font-medium">Invoiced</th><th className="py-2 pr-3 text-right font-medium">Collected</th><th className="py-2 pr-3 text-right font-medium">Expenses</th><th className="py-2 text-right font-medium">Net cash</th></tr></thead><tbody>
+            {(annualReport.data?.months??[]).map(m=><tr key={m.month} className="border-b last:border-0"><td className="py-2 pr-3 font-medium">{m.label}</td><td className="py-2 pr-3 text-right tabular-nums">{currency(m.invoiced)}</td><td className="py-2 pr-3 text-right tabular-nums">{currency(m.collected)}</td><td className="py-2 pr-3 text-right tabular-nums">{currency(m.expenses)}</td><td className={`py-2 text-right font-medium tabular-nums ${m.netCash<0?'text-destructive':'text-foreground'}`}>{currency(m.netCash)}</td></tr>)}
+            <tr className="bg-muted/40 font-semibold"><td className="py-2 pr-3">Annual total</td><td className="py-2 pr-3 text-right">{currency(annualReport.data?.invoiced)}</td><td className="py-2 pr-3 text-right">{currency(annualReport.data?.collected)}</td><td className="py-2 pr-3 text-right">{currency(annualReport.data?.expenses)}</td><td className="py-2 text-right">{currency(annualReport.data?.netCash)}</td></tr>
+          </tbody></table>
+        </CardContent></Card>
       </TabsContent>
 
       {owner&&<TabsContent value="team" className="grid gap-4 xl:grid-cols-2">
