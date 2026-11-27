@@ -428,6 +428,13 @@
       "when": 1795753800000,
       "tag": "0130_rental_workspace_owner_boundary",
       "breakpoints": true
+    },
+    {
+      "idx": 61,
+      "version": "7",
+      "when": 1795755600000,
+      "tag": "0131_rental_member_and_payment_guards",
+      "breakpoints": true
     }
   ]
 }
