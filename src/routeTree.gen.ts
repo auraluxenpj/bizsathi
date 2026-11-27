@@ -40,6 +40,7 @@ import { Route as AuthenticatedProfileRouteImport } from './routes/_authenticate
 import { Route as AuthenticatedPurchaseOrdersRouteImport } from './routes/_authenticated/purchase-orders'
 import { Route as AuthenticatedPurchasesRouteImport } from './routes/_authenticated/purchases'
 import { Route as AuthenticatedQuotationsRouteImport } from './routes/_authenticated/quotations'
+import { Route as AuthenticatedRentalRouteImport } from './routes/_authenticated/rental'
 import { Route as AuthenticatedReportsRouteImport } from './routes/_authenticated/reports'
 import { Route as AuthenticatedSalesRouteImport } from './routes/_authenticated/sales'
 import { Route as AuthenticatedSecurityRouteImport } from './routes/_authenticated/security'
@@ -208,6 +209,11 @@ const AuthenticatedQuotationsRoute = AuthenticatedQuotationsRouteImport.update({
   path: '/quotations',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedRentalRoute = AuthenticatedRentalRouteImport.update({
+  id: '/rental',
+  path: '/rental',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 const AuthenticatedReportsRoute = AuthenticatedReportsRouteImport.update({
   id: '/reports',
   path: '/reports',
@@ -279,6 +285,7 @@ export interface FileRoutesByFullPath {
   '/purchase-orders': typeof AuthenticatedPurchaseOrdersRoute
   '/purchases': typeof AuthenticatedPurchasesRoute
   '/quotations': typeof AuthenticatedQuotationsRoute
+  '/rental': typeof AuthenticatedRentalRoute
   '/reports': typeof AuthenticatedReportsRoute
   '/sales': typeof AuthenticatedSalesRoute
   '/security': typeof AuthenticatedSecurityRoute
@@ -318,6 +325,7 @@ export interface FileRoutesByTo {
   '/purchase-orders': typeof AuthenticatedPurchaseOrdersRoute
   '/purchases': typeof AuthenticatedPurchasesRoute
   '/quotations': typeof AuthenticatedQuotationsRoute
+  '/rental': typeof AuthenticatedRentalRoute
   '/reports': typeof AuthenticatedReportsRoute
   '/sales': typeof AuthenticatedSalesRoute
   '/security': typeof AuthenticatedSecurityRoute
@@ -359,6 +367,7 @@ export interface FileRoutesById {
   '/_authenticated/purchase-orders': typeof AuthenticatedPurchaseOrdersRoute
   '/_authenticated/purchases': typeof AuthenticatedPurchasesRoute
   '/_authenticated/quotations': typeof AuthenticatedQuotationsRoute
+  '/_authenticated/rental': typeof AuthenticatedRentalRoute
   '/_authenticated/reports': typeof AuthenticatedReportsRoute
   '/_authenticated/sales': typeof AuthenticatedSalesRoute
   '/_authenticated/security': typeof AuthenticatedSecurityRoute
@@ -400,6 +409,8 @@ export interface FileRouteTypes {
     | '/purchase-orders'
     | '/purchases'
     | '/quotations'
+    | '/rental'
+    | '/rental'
     | '/reports'
     | '/sales'
     | '/security'
@@ -479,6 +490,7 @@ export interface FileRouteTypes {
     | '/_authenticated/purchase-orders'
     | '/_authenticated/purchases'
     | '/_authenticated/quotations'
+    | '/_authenticated/rental'
     | '/_authenticated/reports'
     | '/_authenticated/sales'
     | '/_authenticated/security'
@@ -718,6 +730,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedQuotationsRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/rental': {
+      id: '/_authenticated/rental'
+      path: '/rental'
+      fullPath: '/rental'
+      preLoaderRoute: typeof AuthenticatedRentalRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/reports': {
       id: '/_authenticated/reports'
       path: '/reports'
@@ -796,6 +815,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedPurchaseOrdersRoute: typeof AuthenticatedPurchaseOrdersRoute
   AuthenticatedPurchasesRoute: typeof AuthenticatedPurchasesRoute
   AuthenticatedQuotationsRoute: typeof AuthenticatedQuotationsRoute
+  AuthenticatedRentalRoute: typeof AuthenticatedRentalRoute
   AuthenticatedReportsRoute: typeof AuthenticatedReportsRoute
   AuthenticatedSalesRoute: typeof AuthenticatedSalesRoute
   AuthenticatedSecurityRoute: typeof AuthenticatedSecurityRoute
@@ -829,6 +849,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedPurchaseOrdersRoute: AuthenticatedPurchaseOrdersRoute,
   AuthenticatedPurchasesRoute: AuthenticatedPurchasesRoute,
   AuthenticatedQuotationsRoute: AuthenticatedQuotationsRoute,
+  AuthenticatedRentalRoute: AuthenticatedRentalRoute,
   AuthenticatedReportsRoute: AuthenticatedReportsRoute,
   AuthenticatedSalesRoute: AuthenticatedSalesRoute,
   AuthenticatedSecurityRoute: AuthenticatedSecurityRoute,
