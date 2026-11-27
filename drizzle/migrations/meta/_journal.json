@@ -463,6 +463,13 @@
       "when": 1795762800000,
       "tag": "0135_rental_default_charge_types",
       "breakpoints": true
+    },
+    {
+      "idx": 66,
+      "version": "7",
+      "when": 1795764600000,
+      "tag": "0136_rental_column_and_actor_guards",
+      "breakpoints": true
     }
   ]
 }
