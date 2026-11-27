@@ -14,6 +14,7 @@ describe('workspace navigation preserves existing workflows', () => {
  });
  it('confines POS-only billing staff to the POS terminal', () => {
   expect(shouldRedirectBillingStaff('/pos')).toBe(false);
+  expect(shouldRedirectBillingStaff('/rental')).toBe(false);
   for (const path of ['/dashboard','/cash-counters','/sales','/parties','/membership','/hrm','/purchases','/products','/reports','/businesses']) {
    expect(shouldRedirectBillingStaff(path)).toBe(true);
   }
@@ -40,7 +41,7 @@ describe('workspace navigation preserves existing workflows', () => {
   expect(rows).toEqual([{ date: '2026-11-13', revenue: 0, expense: 0 }, { date: '2026-11-14', revenue: 80.05, expense: 0.3 }]);
  });
  it('groups daily workflows into dedicated Sales, Purchases, Inventory, Finance and Reporting sections', () => {
-  expect(workspaceGroups.map(group => group.name)).toEqual(['Sales & POS', 'Purchases', 'Stock & Inventory', 'Customers & Loyalty', 'Finance', 'Reporting', 'HR & People Management', 'Settings', 'Security']);
+  expect(workspaceGroups.map(group => group.name)).toEqual(['Sales & POS', 'Purchases', 'Stock & Inventory', 'Customers & Loyalty', 'Finance', 'Reporting', 'HR & People Management', 'Settings', 'Property Management', 'Security']);
   const items = (group: string) => workspaceGroups.find(entry => entry.name === group)?.items ?? [];
   expect(items('Sales & POS').map(item => item.name)).toEqual(expect.arrayContaining(['Barcode POS', 'Sale Invoices', 'Sale Returns', 'Quotations & Estimates']));
   expect(items('Purchases').map(item => item.name)).toEqual(expect.arrayContaining(['Purchase Invoices', 'Purchase Orders', 'Purchase Returns', 'Suppliers']));
@@ -50,6 +51,7 @@ describe('workspace navigation preserves existing workflows', () => {
   expect(items('Reporting').map(item => item.name)).toEqual(expect.arrayContaining(['Customer Ledger', 'Supplier Ledger', 'Net Profit P&L', 'Current Stock']));
   expect(items('HR & People Management').map(item => item.name)).toEqual(expect.arrayContaining(['HR & People Management', 'Employees & Branch Access', 'Roles & Permissions']));
   expect(items('Settings').map(item => item.name)).toEqual(['Auraluxe & App Settings']);
+  expect(items('Property Management').map(item => item.name)).toEqual(['Rental Property Management']);
   expect(items('Security').map(item => item.name)).toEqual(['Security Findings', 'Review History']);
  });
 
