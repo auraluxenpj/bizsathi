@@ -16,7 +16,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
-  approveRentalInvoice, assignRentalMember, createRentalWorkspace, generateRentalMonthlyInvoices,
+  approveRentalInvoice, assignRentalMember, createRentalWorkspace, deactivateRentalMember, generateRentalMonthlyInvoices,
   getRentalAnnualReport, getRentalOverview, listRentalAgreements, listRentalAuditEvents, listRentalChargeRules,
   listRentalChargeTypes, listRentalDeposits, listRentalExpenses, listRentalInvoices,
   listRentalMemberCandidates, listRentalMembers, listRentalMeterReadings, listRentalProperties,
@@ -91,6 +91,7 @@ export function RentalWorkspace() {
   const saveExpense = useServerFn(saveRentalExpense);
   const recordDeposit = useServerFn(recordRentalDeposit);
   const assignMember = useServerFn(assignRentalMember);
+  const deactivateMember = useServerFn(deactivateRentalMember);
 
   const overview = useQuery({ queryKey:['rental-overview',workspaceId], queryFn:()=>overviewFn({data:{workspaceId}}), enabled:!!workspaceId });
   const properties = useQuery({ queryKey:['rental-properties',workspaceId], queryFn:()=>propertiesFn({data:{workspaceId}}), enabled:!!workspaceId });
@@ -176,6 +177,7 @@ export function RentalWorkspace() {
   const expenseMutation = useMutation({ mutationFn:()=>saveExpense({data:{workspaceId,propertyId:expenseProperty,unitId:expenseUnit||null,category:expenseCategory as 'repairs'|'maintenance'|'utilities'|'taxes'|'insurance'|'cleaning'|'other',description:expenseDescription,amount:Number(expenseAmount),expenseDate}}), onSuccess:async()=>{setExpenseDescription('');setExpenseAmount('');await refresh();toast.success('Expense saved.');}, onError:e=>toast.error(e.message) });
   const depositMutation = useMutation({ mutationFn:()=>recordDeposit({data:{workspaceId,tenantId:depositTenant,unitId:depositUnit,transactionType:depositType as 'received'|'refunded'|'adjustment',amount:Number(depositAmount),transactionDate:today()}}), onSuccess:async()=>{setDepositAmount('');await refresh();toast.success('Deposit transaction recorded.');}, onError:e=>toast.error(e.message) });
   const memberMutation = useMutation({ mutationFn:()=>assignMember({data:{workspaceId,userId:candidateUser,role:memberRole as 'accountant'|'viewer'}}), onSuccess:async()=>{setCandidateUser('');await refresh();toast.success('Existing employee account added.');}, onError:e=>toast.error(e.message) });
+  const deactivateMemberMutation = useMutation({ mutationFn:(memberId:string)=>deactivateMember({data:{workspaceId,memberId}}), onSuccess:async()=>{await refresh();toast.success('Rental access revoked.');}, onError:e=>toast.error(e.message) });
 
   const propertyRows = properties.data ?? [];
   const unitRows = units.data ?? [];
@@ -400,7 +402,7 @@ export function RentalWorkspace() {
           <Field label="Access profile"><select className="h-10 rounded-md border bg-background px-3 text-sm" value={memberRole} onChange={e=>setMemberRole(e.target.value)}><option value="accountant">Accountant – edit records, cannot approve/send</option><option value="viewer">Viewer – read-only</option></select></Field>
           <Button type="submit" disabled={!candidateUser||memberMutation.isPending}><UserPlus className="mr-2 size-4"/>Assign existing account</Button>
         </form></CardContent></Card>
-        <Card><CardHeader><CardTitle>Rental workspace members</CardTitle></CardHeader><CardContent className="space-y-2">{(members.data?.members??[]).map(m=><div key={m.id} className="flex items-center justify-between rounded-md border p-3 text-sm"><div><strong>{m.profiles?.full_name||'BizSathi user'}</strong><p className="text-xs text-muted-foreground">{m.profiles?.employee_id||m.user_id}</p></div><Badge variant={m.role==='owner'?'default':'secondary'}>{m.role}</Badge></div>)}</CardContent></Card>
+        <Card><CardHeader><CardTitle>Rental workspace members</CardTitle></CardHeader><CardContent className="space-y-2">{(members.data?.members??[]).map(m=><div key={m.id} className="flex items-center justify-between rounded-md border p-3 text-sm"><div><strong>{m.profiles?.full_name||'BizSathi user'}</strong><p className="text-xs text-muted-foreground">{m.profiles?.employee_id||m.user_id}</p></div><div className="flex items-center gap-2"><Badge variant={m.role==='owner'?'default':m.status==='active'?'secondary':'outline'}>{m.status==='active'?m.role:'Inactive'}</Badge>{owner&&m.role!=='owner'&&m.status==='active'&&<Button size="sm" variant="ghost" className="text-destructive" disabled={deactivateMemberMutation.isPending} onClick={()=>{if(window.confirm('Revoke this employee’s Rental Property Management access?'))deactivateMemberMutation.mutate(m.id);}}>Revoke</Button>}</div></div>)}</CardContent></Card>
         <Card className="xl:col-span-2"><CardHeader><CardTitle>Audit history</CardTitle><CardDescription>Owner-only record of changes to rental data.</CardDescription></CardHeader><CardContent className="space-y-2">{(audit.data??[]).slice(0,30).map(a=><div key={a.id} className="flex flex-wrap justify-between gap-2 rounded-md bg-muted/40 p-3 text-xs"><span>{a.action} · {a.entity_table} · {a.entity_id}</span><span>{new Date(a.created_at).toLocaleString()}</span></div>)}{(audit.data??[]).length===0&&<p className="text-sm text-muted-foreground">No changes recorded yet.</p>}</CardContent></Card>
       </TabsContent>}
     </Tabs>
