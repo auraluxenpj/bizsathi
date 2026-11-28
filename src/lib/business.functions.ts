@@ -42,7 +42,7 @@ export const registerBusiness = createServerFn({ method: 'POST' }).middleware([r
 });
 
 export const getBusinessAccess = createServerFn({ method: 'GET' }).middleware([requireSupabaseAuth]).inputValidator(tenantInput).handler(async ({ data, context }) => {
-  if (data.businessId !== AURALUXE_BUSINESS_ID) throw new Error('Sutra is available only for the AURALUXE workspace.');
+  if (data.businessId !== AURALUXE_BUSINESS_ID) throw new Error('Auralink is available only for the AURALUXE workspace.');
   const [{ data: member, error: memberError }, { data: isPlatformOwner, error: ownerError }] = await Promise.all([
     context.supabase.rpc('is_business_member', { _business_id: data.businessId }),
     anyDb(context.supabase).rpc('is_platform_owner'),
