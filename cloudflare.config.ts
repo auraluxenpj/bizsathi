@@ -1,18 +1,14 @@
-// Isolated migration target; do not attach production domains until acceptance is complete.
-import { bindings, defineConfig, triggers } from "cf/config";
+// Isolated Auralink preview. No production domains, scheduled jobs, or Auraluxe inventory sync.
+import { defineConfig } from "cf/config";
 
 export default defineConfig({
   worker: {
-    name: "bizsathi-migration",
+    name: "bizsathi-auralink-preview",
     entrypoint: "./src/server.ts",
     compatibilityDate: "2026-11-19",
     compatibilityFlags: ["nodejs_compat", "global_fetch_strictly_public"],
-    env: {
-      AURALUXE_WEBSITE_INVENTORY_API_URL: bindings.text("https://www.auraluxe.com.np/api/public/bizsathi-inventory"),
-    },
     observability: {
       enabled: true,
     },
-    triggers: [triggers.scheduled({ schedule: "*/5 * * * *" })],
   },
 });
