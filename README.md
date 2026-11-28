@@ -1,6 +1,6 @@
-# Sutra
+# Auralink
 
-**Sutra by Auraluxe** is the internal business management platform for Auraluxe.
+**Auralink by Auraluxe** is the internal business management platform for Auraluxe.
 
 ## Application
 
