@@ -295,7 +295,7 @@ export function TeamAccessPanel({
             <input aria-label="Team invitation link" readOnly className="h-10 w-full rounded-md border bg-background px-2 text-xs" value={inviteLink} />
             <div className="mt-2 flex gap-2">
               <Button size="sm" variant="outline" onClick={() => { void navigator.clipboard.writeText(inviteLink); setMessage('Invitation link copied.'); }}>Copy link</Button>
-              <Button size="sm" variant="outline" onClick={() => { window.open(`https://wa.me/?text=${encodeURIComponent(`Join our team on Sutra: ${inviteLink}`)}`, '_blank', 'noopener,noreferrer'); }}>Share on WhatsApp</Button>
+              <Button size="sm" variant="outline" onClick={() => { window.open(`https://wa.me/?text=${encodeURIComponent(`Join our team on Auralink: ${inviteLink}`)}`, '_blank', 'noopener,noreferrer'); }}>Share on WhatsApp</Button>
             </div>
           </div>}
           </div>
@@ -337,7 +337,7 @@ export function TeamAccessPanel({
               <input aria-label="New earlier invitation link" readOnly className="h-10 w-full rounded-md border bg-background px-2 text-xs" value={legacyInviteLink} />
               <div className="mt-2 flex flex-wrap gap-2">
                 <Button size="sm" variant="outline" onClick={() => { void navigator.clipboard.writeText(legacyInviteLink); }}>Copy link</Button>
-                <Button size="sm" variant="outline" onClick={() => { window.open(`https://wa.me/?text=${encodeURIComponent(`Join our business on Sutra: ${legacyInviteLink}`)}`, '_blank', 'noopener,noreferrer'); }}>Share on WhatsApp</Button>
+                <Button size="sm" variant="outline" onClick={() => { window.open(`https://wa.me/?text=${encodeURIComponent(`Join our business on Auralink: ${legacyInviteLink}`)}`, '_blank', 'noopener,noreferrer'); }}>Share on WhatsApp</Button>
               </div>
             </div>}
           </div>
