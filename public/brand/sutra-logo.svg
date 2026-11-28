@@ -1,6 +1,11 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 480 150" role="img" aria-labelledby="title desc">
-<title id="title">Sutra by Auraluxe</title><desc id="desc">Sutra wordmark with a simple upward gold arrow.</desc>
-<text x="12" y="98" fill="#0B1B3A" font-family="Manrope,Arial,sans-serif" font-size="82" font-weight="750" letter-spacing="1.5">SUTRA</text>
-<path d="M365 78 L414 29 M382 29 H414 V61" fill="none" stroke="#D99A24" stroke-width="9" stroke-linecap="round" stroke-linejoin="round"/>
-<text x="17" y="132" fill="#667085" font-family="Manrope,Arial,sans-serif" font-size="17" font-weight="650" letter-spacing="5.2">BY AURALUXE</text>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 180" role="img" aria-labelledby="title desc">
+<title id="title">BizSathi by Auraluxe</title><desc id="desc">Circular ivory, burgundy and gold BizSathi emblem with the Grow Together tagline.</desc>
+<defs><linearGradient id="gold" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#F1D28A"/><stop offset="1" stop-color="#B77B20"/></linearGradient></defs>
+<circle cx="90" cy="90" r="82" fill="#F8F2E7" stroke="#7B1830" stroke-width="9"/><circle cx="90" cy="90" r="74" fill="none" stroke="url(#gold)" stroke-width="3"/>
+<g fill="#7B1830"><circle cx="69" cy="56" r="9"/><circle cx="96" cy="51" r="9"/><path d="M48 105c0-22 12-35 27-35 13 0 23 10 27 25 7-17 20-28 35-28 3 0 7 1 10 2-13 6-23 17-30 32l-12 25H70c-12 0-22-8-22-21z"/></g>
+<path d="M43 115c34 9 75-3 111-45" fill="none" stroke="url(#gold)" stroke-width="7" stroke-linecap="round"/><path d="M137 68l22-13-2 26" fill="none" stroke="url(#gold)" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>
+<text x="195" y="83" fill="#7B1830" font-family="Georgia,serif" font-size="62" font-weight="700">BizSathi</text>
+<path d="M197 101h315" stroke="url(#gold)" stroke-width="2"/>
+<text x="198" y="128" fill="#7B1830" font-family="Arial,sans-serif" font-size="19" letter-spacing="3">GROW TOGETHER</text>
+<text x="198" y="155" fill="#7B1830" font-family="Georgia,serif" font-size="17" letter-spacing="4">BY AURALUXE</text>
 </svg>
