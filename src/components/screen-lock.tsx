@@ -200,9 +200,9 @@ export function ScreenLockProvider({ children }: { children: ReactNode }) {
       {loaded && locked && config && (
         <div className="fixed inset-0 z-[100] flex min-h-dvh items-center justify-center overflow-y-auto bg-[#0B1B3A] px-5 py-10 text-white">
           <form onSubmit={(event: FormEvent<HTMLFormElement>) => { event.preventDefault(); void unlock(pin); }} className="w-full max-w-sm text-center">
-            <img src="/brand/sutra-logo.svg" alt="Sutra by Auraluxe" className="mx-auto mb-10 h-9 w-auto brightness-0 invert" />
+            <img src="/brand/bizsathi-logo.svg" alt="Sutra by Auraluxe" className="mx-auto mb-10 h-9 w-auto brightness-0 invert" />
             <span className="mx-auto flex size-16 items-center justify-center rounded-2xl border border-white/15 bg-white/10"><LockKeyhole className="size-8" /></span>
-            <h1 className="mt-6 text-2xl font-semibold">Sutra is locked</h1>
+            <h1 className="mt-6 text-2xl font-semibold">BizSathi is locked</h1>
             <p className="mt-2 text-sm text-white/65">Enter your personal six-digit PIN to continue.</p>
             <Input autoFocus type="password" inputMode="numeric" autoComplete="one-time-code" pattern="[0-9]{6}" maxLength={6} value={pin} onChange={event => setPin(event.target.value.replace(/\D/g, '').slice(0, 6))} className="mt-7 h-14 border-white/20 bg-white/10 text-center text-2xl tracking-[0.65em] text-white placeholder:text-white/40" placeholder="••••••" aria-label="Six-digit screen lock PIN" />
             {message && <p role="alert" className="mt-3 text-sm text-rose-200">{message}</p>}
