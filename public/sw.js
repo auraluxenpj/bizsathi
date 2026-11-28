@@ -1,5 +1,5 @@
-/* Sutra PWA shell cache. Never cache HTML, API, auth, POS or business records. */
-const CACHE_NAME = "sutra-static-v2";
+/* Auralink PWA shell cache. Never cache HTML, API, auth, POS or business records. */
+const CACHE_NAME = "auralink-static-v3";
 const OFFLINE_URL = "/offline.html";
 const PRECACHE = [OFFLINE_URL, "/manifest.webmanifest", "/icons/sutra-icon.svg", "/brand/sutra-logo.svg"];
 self.addEventListener("install", (event) => { event.waitUntil(caches.open(CACHE_NAME).then((cache) => cache.addAll(PRECACHE)).then(() => self.skipWaiting())); });
