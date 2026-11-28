@@ -1,7 +1,7 @@
-/* Sutra PWA shell cache. Never cache HTML, API, auth, POS or business records. */
-const CACHE_NAME = "sutra-static-v2";
+/* BizSathi PWA shell cache. Never cache HTML, API, auth, POS or business records. */
+const CACHE_NAME = "bizsathi-static-v3";
 const OFFLINE_URL = "/offline.html";
-const PRECACHE = [OFFLINE_URL, "/manifest.webmanifest", "/icons/sutra-icon.svg", "/brand/sutra-logo.svg"];
+const PRECACHE = [OFFLINE_URL, "/manifest.webmanifest", "/icons/bizsathi-icon.svg", "/brand/bizsathi-logo.svg"];
 self.addEventListener("install", (event) => { event.waitUntil(caches.open(CACHE_NAME).then((cache) => cache.addAll(PRECACHE)).then(() => self.skipWaiting())); });
 self.addEventListener("activate", (event) => {
   event.waitUntil(caches.keys().then((keys) => Promise.all(keys.filter((key) =>
