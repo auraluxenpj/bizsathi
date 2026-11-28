@@ -83,7 +83,7 @@ export function SignIn() {
             },
           });
           if (error) throw error;
-          setMessage('A secure sign-in link has been sent to your email. Open it on this device to access Sutra.');
+          setMessage('A secure sign-in link has been sent to your email. Open it on this device to access Auralink.');
           return;
         }
         await navigate({ to: sessionStorage.getItem('bizsathi-team-token') ? '/join' : sessionStorage.getItem('bizsathi-invite') ? '/invite' : '/dashboard' });
@@ -94,7 +94,7 @@ export function SignIn() {
   const title = mode === 'recovery' ? 'Recover account' : mode === 'signup' ? 'Create account' : 'Sign in';
   return <main className="flex min-h-screen items-center justify-center bg-secondary/40 px-4 py-10">
     <div className="w-full max-w-sm">
-      <img src="/brand/sutra-logo.svg" alt="Sutra by Auraluxe" className="mx-auto mb-6 h-14 w-auto max-w-full" />
+      <img src="/brand/sutra-logo.svg" alt="Auralink by Auraluxe" className="mx-auto mb-6 h-14 w-auto max-w-full" />
       <div className="rounded-2xl border bg-card p-6 shadow-sm">
         {signedIn ? <div className="space-y-3">
           <h1 className="brand text-xl font-semibold">You are signed in</h1>
