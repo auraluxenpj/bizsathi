@@ -196,18 +196,18 @@ export function ScreenLockProvider({ children }: { children: ReactNode }) {
 
   return (
     <ScreenLockContext.Provider value={value}>
-      {loaded ? children : <div className="flex min-h-screen items-center justify-center bg-background text-sm text-muted-foreground">Securing your Sutra session…</div>}
+      {loaded ? children : <div className="flex min-h-screen items-center justify-center bg-background text-sm text-muted-foreground">Securing your Auralink session…</div>}
       {loaded && locked && config && (
         <div className="fixed inset-0 z-[100] flex min-h-dvh items-center justify-center overflow-y-auto bg-[#0B1B3A] px-5 py-10 text-white">
           <form onSubmit={(event: FormEvent<HTMLFormElement>) => { event.preventDefault(); void unlock(pin); }} className="w-full max-w-sm text-center">
-            <img src="/brand/sutra-logo.svg" alt="Sutra by Auraluxe" className="mx-auto mb-10 h-9 w-auto brightness-0 invert" />
+            <img src="/brand/sutra-logo.svg" alt="Auralink by Auraluxe" className="mx-auto mb-10 h-9 w-auto brightness-0 invert" />
             <span className="mx-auto flex size-16 items-center justify-center rounded-2xl border border-white/15 bg-white/10"><LockKeyhole className="size-8" /></span>
-            <h1 className="mt-6 text-2xl font-semibold">Sutra is locked</h1>
+            <h1 className="mt-6 text-2xl font-semibold">Auralink is locked</h1>
             <p className="mt-2 text-sm text-white/65">Enter your personal six-digit PIN to continue.</p>
             <Input autoFocus type="password" inputMode="numeric" autoComplete="one-time-code" pattern="[0-9]{6}" maxLength={6} value={pin} onChange={event => setPin(event.target.value.replace(/\D/g, '').slice(0, 6))} className="mt-7 h-14 border-white/20 bg-white/10 text-center text-2xl tracking-[0.65em] text-white placeholder:text-white/40" placeholder="••••••" aria-label="Six-digit screen lock PIN" />
             {message && <p role="alert" className="mt-3 text-sm text-rose-200">{message}</p>}
             {retryAt > Date.now() && <p className="mt-2 text-xs text-white/60">Try again in 30 seconds.</p>}
-            <Button type="submit" disabled={pin.length !== 6 || Date.now() < retryAt} className="mt-5 h-12 w-full bg-white text-[#0B1B3A] hover:bg-white/90">Unlock Sutra</Button>
+            <Button type="submit" disabled={pin.length !== 6 || Date.now() < retryAt} className="mt-5 h-12 w-full bg-white text-[#0B1B3A] hover:bg-white/90">Unlock Auralink</Button>
             <p className="mt-5 text-xs text-white/50">Forgot your PIN? Reset this device's lock and sign in again. You will need your normal account credentials.</p>
             <Button type="button" variant="ghost" className="mt-2 text-white/70 hover:bg-white/10 hover:text-white" onClick={resetDeviceLock}>Forgot PIN? Reset device lock</Button>
             <Button type="button" variant="ghost" className="mt-1 text-white/70 hover:bg-white/10 hover:text-white" onClick={() => void supabase.auth.signOut()}>Sign out</Button>
@@ -221,7 +221,7 @@ export function ScreenLockProvider({ children }: { children: ReactNode }) {
 export function ScreenLockButton() {
   const { config, lock } = useScreenLock();
   if (!config) return null;
-  return <Button type="button" variant="ghost" size="icon" aria-label="Lock Sutra screen" title="Lock Sutra screen" onClick={lock}><Lock className="size-4" /></Button>;
+  return <Button type="button" variant="ghost" size="icon" aria-label="Lock Auralink screen" title="Lock Auralink screen" onClick={lock}><Lock className="size-4" /></Button>;
 }
 
 export function ScreenLockSettings() {
@@ -252,7 +252,7 @@ export function ScreenLockSettings() {
 
   return (
     <section className="rounded-xl border bg-card p-5 sm:p-7">
-      <div className="mb-5 flex items-center gap-3"><ShieldCheck className="size-5 text-primary" /><div><h2 className="font-semibold">Sutra screen lock</h2><p className="text-sm text-muted-foreground">Protect your open Sutra session with a personal PIN on this device.</p></div></div>
+      <div className="mb-5 flex items-center gap-3"><ShieldCheck className="size-5 text-primary" /><div><h2 className="font-semibold">Auralink screen lock</h2><p className="text-sm text-muted-foreground">Protect your open Auralink session with a personal PIN on this device.</p></div></div>
       <div className="mb-5 flex flex-wrap items-center justify-between gap-3 rounded-lg bg-muted/50 p-4">
         <div><p className="text-sm font-medium">{config ? 'Screen lock is enabled' : 'Screen lock is not enabled'}</p><p className="mt-1 text-xs text-muted-foreground">{config ? 'You can lock immediately from the top bar.' : 'Set a PIN to enable manual and automatic locking.'}</p></div>
         <span className={config ? 'rounded-full bg-emerald-500/10 px-3 py-1 text-xs font-medium text-emerald-700' : 'rounded-full bg-muted px-3 py-1 text-xs font-medium text-muted-foreground'}>{config ? 'Enabled' : 'Disabled'}</span>
@@ -265,7 +265,7 @@ export function ScreenLockSettings() {
         <div className="flex flex-wrap gap-2"><Button disabled={busy || newPin.length !== 6 || confirmPin.length !== 6 || (config && currentPin.length !== 6)}>{busy ? 'Saving…' : config ? 'Change screen lock PIN' : 'Enable screen lock'}</Button>{config && <Button type="button" variant="outline" disabled={busy || currentPin.length !== 6} onClick={() => void remove()}>Disable screen lock</Button>}</div>
         {message && <p role="status" className="text-sm text-muted-foreground">{message}</p>}
       </form>
-      <p className="mt-5 text-xs leading-5 text-muted-foreground">Your PIN is stored only as a salted, one-way hash in this browser profile. It is separate for each employee account and device. Clearing browser data removes this device's screen-lock setting; your Sutra login and server permissions remain unchanged.</p>
+      <p className="mt-5 text-xs leading-5 text-muted-foreground">Your PIN is stored only as a salted, one-way hash in this browser profile. It is separate for each employee account and device. Clearing browser data removes this device's screen-lock setting; your Auralink login and server permissions remain unchanged.</p>
     </section>
   );
 }
