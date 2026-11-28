@@ -47,7 +47,7 @@ export function HrmDraftEmployeeProfiles({ businessId, branches, isAdmin }: { bu
   });
   if (!isAdmin) return null;
   return <section className="rounded-xl border p-4 md:p-5 space-y-4">
-    <div><h2 className="font-semibold">Pre-onboarding employee profiles</h2><p className="mt-1 text-sm text-muted-foreground">Save staff details before they receive a Sutra login. Drafts stay outside attendance, leave and payroll until linked to a real member account.</p></div>
+    <div><h2 className="font-semibold">Pre-onboarding employee profiles</h2><p className="mt-1 text-sm text-muted-foreground">Save staff details before they receive a Auralink login. Drafts stay outside attendance, leave and payroll until linked to a real member account.</p></div>
     {message && <p role="status" className="text-sm text-green-700">{message}</p>}
     {error && <p role="alert" className="text-sm text-destructive">{error}</p>}
     <form className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3" onSubmit={event => {
@@ -71,7 +71,7 @@ export function HrmDraftEmployeeProfiles({ businessId, branches, isAdmin }: { bu
       <label className="text-sm font-medium">Mobile (optional)<input name="phone" placeholder="Not provided" className={field}/></label>
       <fieldset className="sm:col-span-2 lg:col-span-3 rounded-lg border p-3">
         <legend className="px-1 text-sm font-semibold">Responsibilities</legend>
-        <p className="mb-3 text-xs text-muted-foreground">Choose the duties assigned to this job. These are HR descriptions and do not grant Sutra app permissions.</p>
+        <p className="mb-3 text-xs text-muted-foreground">Choose the duties assigned to this job. These are HR descriptions and do not grant Auralink app permissions.</p>
         <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">{responsibilities.map(item=><label key={item} className="flex items-start gap-2 text-sm font-normal"><input type="checkbox" name="responsibilities" value={item} className="mt-1"/><span>{item}</span></label>)}</div>
       </fieldset>
       <div className="flex items-end"><Button type="submit" disabled={mutation.isPending}>{mutation.isPending ? 'Saving…' : 'Save draft profile'}</Button></div>
