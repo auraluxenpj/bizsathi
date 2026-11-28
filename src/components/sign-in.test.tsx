@@ -94,7 +94,7 @@ describe("SignIn email OTP", () => {
     expect(screen.getByRole("status")).toHaveTextContent("secure link");
   });
 
-  it("sends a passwordless email link and uses the Sutra product name", async () => {
+  it("sends a passwordless email link and uses the BizSathi product name", async () => {
     const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
     render(
       <QueryClientProvider client={queryClient}>
@@ -114,7 +114,7 @@ describe("SignIn email OTP", () => {
         },
       });
     });
-    expect(screen.getByRole("status")).toHaveTextContent("Sutra");
+    expect(screen.getByRole("status")).toHaveTextContent("BizSathi");
   });
 });
 
