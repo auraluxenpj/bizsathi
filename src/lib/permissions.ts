@@ -30,7 +30,7 @@ export const routePermission:Record<string,string>={
  '/expenses':'expenses.view','/expense-receipts':'expenses.view','/products':'inventory.view','/inventory':'inventory.view',
  '/categories':'categories.view','/contacts':'customers.view','/cash-bank':'accounts.view','/parties':'customers.view',
  '/hrm':'hr.self.view','/pos':'sales.create','/cash-counters':'sales.create','/membership':'customers.view',
- '/credit-reminder':'customers.view','/calculators':'accounts.view','/notebook':'notebook.view',
+ '/credit-reminder':'customers.view','/calculators':'accounts.view','/notebook':'notebook.view','/storefront-collections':'settings.edit',
  '/transactions':'reports.view','/bill-gallery':'features.business_cards','/more':'staff.view',
 };
 

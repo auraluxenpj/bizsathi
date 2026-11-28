@@ -1,7 +1,7 @@
 import { Link, useNavigate } from '@tanstack/react-router';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useServerFn } from '@tanstack/react-start';
-import { Banknote, Building2, ScanLine, Image as ImageIcon, NotebookPen, Shapes, Calculator, ChevronRight, LogOut, MessageSquareText, ShieldCheck, ShoppingCart, ArrowLeftRight, BarChart3, UserCog, Upload, Wallet, type LucideIcon } from 'lucide-react';
+import { Banknote, Building2, Layers, ScanLine, Image as ImageIcon, NotebookPen, Shapes, Calculator, ChevronRight, LogOut, MessageSquareText, ShieldCheck, ShoppingCart, ArrowLeftRight, BarChart3, UserCog, Upload, Wallet, type LucideIcon } from 'lucide-react';
 import { listBusinesses } from '@/lib/business.functions';
 import { FiscalYearClose } from '@/components/fiscal-year-close';
 import { AppearanceSettings } from '@/components/appearance-settings';
@@ -29,7 +29,7 @@ const utilities: Item[] = [
   { to: '/inventory', label: 'Stock Ledger', icon: ArrowLeftRight },
   { to: '/cash-counters', label: 'Cash Counters', icon: Banknote },
 ];
-const adminOnly: Item[] = [{ to: '/security', label: 'Security Findings', icon: ShieldCheck }];
+const adminOnly: Item[] = [{ to: '/storefront-collections', label: 'Storefront Collections', icon: Layers }, { to: '/security', label: 'Security Findings', icon: ShieldCheck }];
 
 function Group({ title, items }: { title?: string; items: Item[] }) {
   return <section className="mt-6">{title && <h2 className="mb-2 text-sm font-medium text-muted-foreground">{title}</h2>}
