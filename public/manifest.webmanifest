@@ -13,11 +13,11 @@
   "theme_color": "#7B1830",
   "categories": ["business", "finance", "productivity"],
   "icons": [
-    {"src": "/icons/sutra-icon.svg", "sizes": "192x192", "type": "image/svg+xml", "purpose": "any"},
-    {"src": "/icons/sutra-icon.svg", "sizes": "512x512", "type": "image/svg+xml", "purpose": "any maskable"}
+    {"src": "/icons/bizsathi-icon.svg", "sizes": "192x192", "type": "image/svg+xml", "purpose": "any"},
+    {"src": "/icons/bizsathi-icon.svg", "sizes": "512x512", "type": "image/svg+xml", "purpose": "any maskable"}
   ],
   "shortcuts": [
-    {"name": "Dashboard", "short_name": "Dashboard", "url": "/dashboard", "icons": [{"src": "/icons/sutra-icon.svg", "sizes": "192x192", "type": "image/svg+xml"}]},
-    {"name": "POS Billing", "short_name": "POS", "url": "/pos", "icons": [{"src": "/icons/sutra-icon.svg", "sizes": "192x192", "type": "image/svg+xml"}]}
+    {"name": "Dashboard", "short_name": "Dashboard", "url": "/dashboard", "icons": [{"src": "/icons/bizsathi-icon.svg", "sizes": "192x192", "type": "image/svg+xml"}]},
+    {"name": "POS Billing", "short_name": "POS", "url": "/pos", "icons": [{"src": "/icons/bizsathi-icon.svg", "sizes": "192x192", "type": "image/svg+xml"}]}
   ]
 }
