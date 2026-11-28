@@ -11,7 +11,7 @@ import { verifiedContact } from '@/lib/signup-validation';
 import { Input } from '@/components/ui/input';
 
 export const Route = createFileRoute('/join')({
-  head: () => pageHead('Join team', 'Accept your BizSathi Nepal team invitation.'),
+  head: () => pageHead('Join team', 'Accept your Auralink team invitation.'),
   component: Join,
 });
 
@@ -160,7 +160,7 @@ export function Join() {
 
   return (
     <main className="mx-auto max-w-lg px-6 py-16">
-      <h1 className="brand text-3xl">Sutra by Auraluxe</h1>
+      <h1 className="brand text-3xl">Auralink by Auraluxe</h1>
       <Card className="mt-8">
         <CardHeader>
           <CardTitle>Team Invitation</CardTitle>
