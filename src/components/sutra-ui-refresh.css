@@ -238,3 +238,17 @@
   .app-workspace .app-topbar > div { gap: 1px !important; }
   .app-workspace .app-topbar > div > button { transform: scale(.94); transform-origin: right center; }
 }
+
+
+/* Keep the BizSathi mark readable on a consistent light brand surface. */
+.app-workspace .app-sidebar-brand img {
+  display: block;
+  box-sizing: content-box;
+  padding: 6px 10px;
+  border-radius: 12px;
+  background: #F8F2E7 !important;
+  object-fit: contain;
+}
+.dark .app-workspace .app-sidebar-brand img {
+  background: #F8F2E7 !important;
+}
