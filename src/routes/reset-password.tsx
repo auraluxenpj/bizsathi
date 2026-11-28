@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { supabase } from '@/integrations/supabase/client';
 import { pageHead } from '@/lib/head';
-export const Route = createFileRoute('/reset-password')({ head: () => pageHead('Reset password', 'Securely reset your BizSathi Nepal account password.'), component: ResetPassword });
+export const Route = createFileRoute('/reset-password')({ head: () => pageHead('Reset password', 'Securely reset your Auralink account password.'), component: ResetPassword });
 function ResetPassword() {
  const [recovery, setRecovery] = useState(false); const [password, setPassword] = useState(''); const [confirm, setConfirm] = useState(''); const [busy, setBusy] = useState(false); const [message, setMessage] = useState('');
   useEffect(() => { const hash = new URLSearchParams(window.location.hash.slice(1)); const isRecovery = hash.get('type') === 'recovery' || sessionStorage.getItem('bizsathi-recovery') === 'true'; supabase.auth.getUser().then(({ data }) => setRecovery(isRecovery && Boolean(data.user))); }, []);
