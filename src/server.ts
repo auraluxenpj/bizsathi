@@ -67,6 +67,7 @@ function isH3SwallowedErrorBody(body: string): boolean {
 type ScheduledEnv = {
   WEBSITE_INVENTORY_SYNC_SECRET?: string;
   AURALUXE_CATALOGUE_IMPORT_ONCE?: string;
+  AURALUXE_PUBLICATION_PUBLISH_URL?: string;
 };
 type ScheduledController = { cron: string; scheduledTime: number };
 type TriggerEnv = ScheduledEnv & { AURALUXE_IMPORT_TRIGGER_TOKEN?: string };
@@ -196,6 +197,46 @@ export default {
     console.info('[shared-stock] scheduled event run', {
       delivered: stockResult.delivered ?? 0,
     });
+
+    // Publication-only sync is deliberately separate from catalogue and stock
+    // delivery. A failure here must not interrupt those existing workflows.
+    try {
+      const localPublicationRequest = new Request('https://bizsathi.internal/api/public/auraluxe-publication-publish', {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${secret}`,
+          'Content-Type': 'application/json',
+          Accept: 'application/json',
+        },
+        body: JSON.stringify({ action: 'publish_outbox' }),
+      });
+      const localPublicationResponse = await handler.fetch(localPublicationRequest, env, ctx);
+      if (!localPublicationResponse.ok) throw new Error(`BizSathi publication publisher HTTP ${localPublicationResponse.status}`);
+      const localPublicationResult = await localPublicationResponse.json() as { ok?: boolean; delivered?: number; blocked?: boolean };
+      if (localPublicationResult.ok !== true || localPublicationResult.blocked === true) throw new Error('BizSathi publication publisher did not confirm delivery');
+      console.info('[publication-sync] BizSathi-to-Auraluxe run', { delivered: localPublicationResult.delivered ?? 0 });
+
+      const reverseUrl = env.AURALUXE_PUBLICATION_PUBLISH_URL?.trim()
+        || 'https://www.auraluxe.com.np/api/public/bizsathi-catalogue-publish';
+      const reverseResponse = await fetch(reverseUrl, {
+        method: 'POST',
+        redirect: 'manual',
+        signal: AbortSignal.timeout(15000),
+        headers: {
+          Authorization: `Bearer ${secret}`,
+          'Content-Type': 'application/json',
+          Accept: 'application/json',
+        },
+        body: JSON.stringify({ action: 'publish_outbox' }),
+      });
+      const reverseResult = await reverseResponse.json().catch(() => null) as { ok?: boolean; delivered?: number; blocked?: boolean } | null;
+      if (!reverseResponse.ok || reverseResult?.ok !== true || reverseResult.blocked === true) {
+        throw new Error(`Auraluxe-to-BizSathi publication publisher HTTP ${reverseResponse.status}`);
+      }
+      console.info('[publication-sync] Auraluxe-to-BizSathi run', { delivered: reverseResult.delivered ?? 0 });
+    } catch (error) {
+      console.error('[publication-sync] publication delivery failed; existing catalogue and stock workflows remain independent', error);
+    }
   },
 
   async fetch(request: Request, env: TriggerEnv, ctx: unknown) {
