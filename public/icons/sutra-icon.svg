@@ -1,5 +1,7 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-labelledby="title">
-<title id="title">Sutra</title><rect width="512" height="512" rx="112" fill="#0B1B3A"/>
-<text x="112" y="360" fill="#FFFFFF" font-family="Manrope,Arial,sans-serif" font-size="330" font-weight="750">S</text>
-<path d="M300 210 L394 116 M358 116 H394 V152" fill="none" stroke="#D99A24" stroke-width="24" stroke-linecap="round" stroke-linejoin="round"/>
+<title id="title">BizSathi</title><defs><linearGradient id="gold" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#F1D28A"/><stop offset="1" stop-color="#B77B20"/></linearGradient></defs>
+<circle cx="256" cy="256" r="238" fill="#F8F2E7" stroke="#7B1830" stroke-width="18"/><circle cx="256" cy="256" r="215" fill="none" stroke="url(#gold)" stroke-width="8"/>
+<g fill="#7B1830"><circle cx="191" cy="148" r="32"/><circle cx="280" cy="132" r="32"/><path d="M106 322c0-79 43-126 98-126 45 0 81 35 95 89 25-60 69-98 125-98 12 0 25 2 37 7-47 22-83 61-108 114l-43 89H184c-44 0-78-30-78-75z"/></g>
+<path d="M92 358c121 31 267-12 394-160" fill="none" stroke="url(#gold)" stroke-width="26" stroke-linecap="round"/><path d="M430 195l78-45-7 91" fill="none" stroke="url(#gold)" stroke-width="24" stroke-linecap="round" stroke-linejoin="round"/>
+<text x="256" y="451" text-anchor="middle" fill="#7B1830" font-family="Georgia,serif" font-size="53" font-weight="700">BizSathi</text>
 </svg>

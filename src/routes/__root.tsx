@@ -78,13 +78,13 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "Sutra by Auraluxe" },
-      { name: "description", content: "Sutra by Auraluxe brings billing, inventory, finance, people and operations together." },
+      { title: "BizSathi by Auraluxe" },
+      { name: "description", content: "BizSathi by Auraluxe brings billing, inventory, finance, people and operations together." },
       { name: "author", content: "Auraluxe" },
-      { name: "theme-color", content: "#0B1B3A" },
-      { name: "application-name", content: "Sutra" },
-      { name: "apple-mobile-web-app-title", content: "Sutra" },
-      { property: "og:title", content: "Sutra by Auraluxe" },
+      { name: "theme-color", content: "#7B1830" },
+      { name: "application-name", content: "BizSathi" },
+      { name: "apple-mobile-web-app-title", content: "BizSathi" },
+      { property: "og:title", content: "BizSathi by Auraluxe" },
       { property: "og:description", content: "Business management for billing, inventory, finance, people and operations." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
@@ -94,8 +94,8 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
         rel: "stylesheet",
         href: appCss,
       },
-      { rel: "icon", href: "/icons/sutra-icon.svg", type: "image/svg+xml" },
-      { rel: "apple-touch-icon", href: "/icons/sutra-icon.svg" },
+      { rel: "icon", href: "/icons/bizsathi-icon.svg", type: "image/svg+xml" },
+      { rel: "apple-touch-icon", href: "/icons/bizsathi-icon.svg" },
       { rel: "manifest", href: "/manifest.webmanifest" },
       { rel: 'stylesheet', href: 'https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Noto+Sans+Devanagari:wght@400;500;600;700&display=swap' },
     ],
@@ -128,7 +128,7 @@ function RootComponent() {
   useEffect(() => {
     if (!("serviceWorker" in navigator) || import.meta.env.DEV) return;
     navigator.serviceWorker.register("/sw.js", { scope: "/" }).catch((error) => {
-      console.error("Sutra service worker registration failed", error);
+      console.error("BizSathi service worker registration failed", error);
     });
   }, []);
 
